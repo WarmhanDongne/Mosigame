@@ -399,3 +399,164 @@ PASS/exit0이다. 이번 결합의 최종 FULL은 승인 대기다.
 모두 PASS/exit0이다. 제품은 그대로고 수정 후 canonical FULL은 미실행이다.
 검증 상태를 명시한 develop 대상 Draft PR만 생성하며 병합·자동 병합은 하지 않는다.
 [정확한 검증 범위](../DEVELOP1_WAIT_REDUCTION_INTEGRATION_20261020.md).
+
+
+<a id="server-ready-diagnostics-20261104"></a>
+### 2026-11-04 — 배포 앱 준비 실패의 서버 조사·진단 후보
+
+사용자는 분배 직후 휴대폰의 준비 승인 실패/재시도와 태블릿 배경 고착을 보고하고,
+배포 앱을 바꾸지 않는 Cloud Functions 수정을 요청했다. 정확한 게임·앱 빌드와
+개별 실행의 대응은 미확인이다. 조회용 계정 설정·확인 완료 후 승인된 당일12~14시 KST,
+project0000-ec01e의 관련 함수 실행 로그를 총100건 이내로 관찰했다.
+
+고유 요청69건 중 준비 보고40건은 모두 HTTP200, LP 분배 완료19건도 HTTP200이다.
+LP 시작9건 중1건은 HTTP400, FC 시작1건은 HTTP200이다. 관련 실행 ERROR와
+준비 결과(status/outcome) 기록은 미발견이다. HTTP200은 accepted의 증거가 아니며
+staleContext/ignored/dataMissing 또는 앱 내부 승인 처리 실패를 구분하지 못한다.
+특정 방·기기와 연결하지 않았고 RTDB·Auth 데이터는 조회하지 않았다.
+
+현재 서버 소스의 준비/분배 관련 기존34개 및 synthetic callable probe3개는 PASS다.
+정상 보고로 pause가 해제돼도 별도 complete_dealing 없이 phase가 전환되지 않는
+계약을 확인했다. 최초 운영 장애의 원인이나 서버만으로 해결 가능함을 입증한 것은 아니다.
+
+이번 후보는 game_common_recovery_report의 개인정보 없는 결과 계측만 추가한다.
+상태/역할·결과 상태·허용 오류 reason/code·처리 시간만 기록하며 신원·카드·요청/응답
+본문·오류 메시지/stack은 기록하지 않는다. 기존 응답·오류 객체·준비 검사·진행 계약은
+보존한다. 기록 실패도 원래 결과를 바꾸지 않는다. UI·Dart 코드는 수정하지 않는다.
+
+Node22 build와 관련37개 테스트 PASS/exit0. 최초 lint에서 새 helper의 문서·줄 길이12건
+FAIL/exit1 후 보완했고 동일 lint PASS/exit0. `dart run :mosigame test session --json`은
+manifest/preflight/Flutter/Functions/mutation 모두 PASS/exit0(55.823초)다.
+FULL·배포·진단 적용 후 실기기 재현은 미실행이다. 이 후보는 장애 수정 완료가 아니다.
+정제 로그와 검증 근거는 ignored `build/server-ready-investigation-2026-11-04/`에 보관한다.
+
+
+<a id="independent-recovery-20261104"></a>
+### 2026-11-04 — 사용자 승인 휴대폰 독립 복구 서버 후보
+
+사용자는 휴대폰 이탈 중 게임 진행 유지, 수신된 준비 실패의 자동 재연결 유도,
+태블릿 pause 유지 및 LP 첫 턴 제한 시간을 포함한 서버 변경 방향을 승인했다.
+앱/runtime Dart·의존성·보안 규칙은 바꾸지 않았다. 새 protocol2 게임에만 서버 전용
+independent-v1 정책을 기록하여 기존 진행 게임에는 종전 규칙을 적용한다.
+
+변경은 recovery-state/game-mutation의 controller-only barrier 및 1회 접속 갱신 유도,
+LP complete-dealing의 첫30초 시작, 기존 결과 진단의 reconnectRequested 기록이다.
+현재 접속·자격·private context 검사와 중복 요청 원장을 보존한다. 다른 휴대폰의
+손패/턴 시간은 그대로이며 태블릿이 끊기면 pause한다. 명시적 퇴장은 기존 최소 인원
+규칙을 유지한다. 라운드 변경으로 자동 재연결 한도를 초기화하지 않는다.
+
+검증은 실제 callable + RTDB null/empty-map roundtrip fixture로 시작/ready/분배,
+phone 단절·join·늦은 onDisconnect, failed 자동 재연결·응답 재생·반복 방지,
+태블릿 failed/resume·타이머 보존, private 부재/옛 자격·접속·게임 거절,
+첫 참가자 부재 timeout 및 명시적 퇴장2/3인 시나리오를 포함한다.
+7개 gameType의 공통 정책과 기존 protocol2 게임의 종전 barrier도 직접 검사한다.
+운영 Firebase 또는 실기기 테스트를 통과한 것으로 해석하지 않는다.
+
+배포 준비 순서(미실행): 새 게임 시작 함수보다 먼저 지원 함수들을 배포한다.
+핵심 지원 대상은 game_common_recovery_report, syncRealtimeRoomConnection,
+game_common_interruption_on_connection_changed,
+game_common_interruption_report_stale_player,
+game_common_interruption_report_stale_controller,
+game_common_controller_presence_changed, joinRealtimeRoom,
+resumeRealtimeControllerRoom, cleanupStaleRealtimeRooms,
+game_liars_poker_complete_dealing이다. 종료 시 새 서버 필드 정리까지 일치시키려면
+finalizeGameMutation을 사용하는 나머지 게임 명령/leave/exclude 함수도 같은 후보로
+갱신한다. 모든 지원 대상 성공 확인 후 liars_poker/final_call/mafia/holdem/yut의
+start_game 5개를 갱신한다. 실제 배포 전 index export 기준 최종 선택 목록을 재확인한다.
+
+기존 진행 게임의 정책은 직접 바꾸지 않으며 새 게임에서 확인한다. 실패 보고가
+서버에 오지 않는 경우, 앱 실행/네트워크 중단, 실제 배포 빌드에 재연결 경로가 없는
+경우는 서버만으로 복구를 보장할 수 없다. 태블릿 분배 완료 요청도 대신 생성하지
+않는다. 최초 운영 장애 원인이 확정되거나 모든 오류 UI가 해결된 것은 아니다.
+
+현재 후보의 Functions lint/test와 Project CLI session 결과는 아래 검증 기록에
+갱신한다. FULL은 skill에 따른 명시적 승인 대기이며 배포/commit/push는 하지 않았다.
+branch develop, HEAD f292f274. 기존 사용자 untracked4개 디렉터리는 보존한다.
+
+
+#### 현재 후보 관련 검증
+
+Node22에서 `npm --prefix functions run lint` PASS/exit0,
+`npm --prefix functions test` build 및568개 PASS/exit0이다.
+중간 lint의 LP 줄 길이1건은 줄 분리로 수정 후 재검사했다.
+`dart run :mosigame test session --json`은54.246초,5단계 PASS/exit0이다.
+Flutter29파일·Functions15파일, manifest/preflight/작업 트리 보존이 통과했다.
+실행 전후 HEAD·staged/unstaged/untracked 및 전체 파일 해시가 동일했다.
+이후에는 이 검증 결과를 기록하는 문서만 수정했다. `git diff --check` PASS/exit0.
+FULL 미실행, 승인 대기. 배포·실기기 검증·commit/push 없음.
+증거: ignored build/server-ready-investigation-2026-11-04/ 아래
+independent-final-check-{0,1}.log, independent-session.json,
+independent-session-progress.log, independent-session-{before,after}.json.
+
+
+#### 2026-11-04 사용자 승인 FULL 결과
+
+사용자의 “전체검증해” 승인으로 `dart run :mosigame validate --full --json`을
+실행했다. 원본 한글 경로에서는 flutter-analyze가 LSP initialize JSON 파싱 오류로
+exit255, FULL은 FAIL/exit1(3.348초)이었다. 포맷과 작업 트리 보존은 PASS이며
+후속 테스트는 실행되지 않았다. 이는 LOCAL_FIREBASE.md에 기록된 SDK 경로 문제와
+같고, 로컬 Flutter 도구가 JSON Content-Length를 바이트 수 대신 문자열 길이로
+전송하는 코드도 확인했다. 제품 코드와 SDK는 수정하지 않았다.
+
+동일 HEAD/Git 상태와 모든 tracked/untracked 파일 해시의 영문 임시 사본을 만들고
+`dart pub get --offline --enforce-lockfile`로 기존 의존성을 준비했다(PASS/exit0).
+실패 단계만 `flutter analyze --no-pub`로 확인하여 PASS/exit0, 문제0건을 얻었다.
+후보 변경 없이 같은 전체 검증을 그 경로에서 실행한 결과13/13단계 PASS/exit0,
+188.175초다. root Flutter581개, game_kit127개, LP17개, FC28개, Mafia58개,
+Holdem32개, Yut8개(Flutter 합851개), Functions568개로 총1,419개가 통과했다.
+포맷·분석·Functions lint/build와 작업 트리 보존도 PASS다.
+
+실행 전후 원본과 사본의 HEAD·Git 상태·파일 해시가 모두 같았다.
+branch develop/HEAD f292f274, staged 없음, 기존 사용자 untracked4개 디렉터리를
+보존했다. 검증 뒤에는 결과 기록용 TASKS/상세/월별 기록3개만 갱신했다.
+`git diff --check` PASS/exit0. 앱 코드·SDK·lockfile 변경, commit/push, 운영 접근,
+배포는 없으며 실기기 동작 확인은 아직 남아 있다. 운영 장애 해결 완료를 뜻하지 않는다.
+증거는 같은 ignored 폴더의 independent-full.json(원본 실패),
+independent-full-ascii.json(최종 PASS), 각 progress.log와 before/after.json,
+independent-full-ascii-analyze.log 및 prepare.log에 보관한다.
+
+
+<a id="startup-watchdog-20261105"></a>
+### 2026-11-05 — 운영 영향 제한 초기 준비 미보고 보조 복구 후보
+
+사용자는 FC/LP 순서와 관계없이 장애가 발생한다고 설명하고, 배포 서비스의 영향을
+최소화하며 추가 복구가 실행되도록 요청했다. 현재 서버 로컬 검사24건(4종 게임 간
+12방향×기존/새 protocol 정책)에서는 game 전체 교체·새 식별자·옛 ready 및 종료 이벤트
+차단이 통과했다. 실제 운영 DB 초기화 문제를 확정한 것은 아니다. 앱에는10/12의
+이전 화면 준비 예산 초기화 수정이 있으나 설치 빌드 포함 여부와11/4 스크립트 배포
+완료 여부는 사용자 확인 대기다. 이번 작업에서 운영 접근/배포는 하지 않는다.
+
+추가 서버 후보는 새 LP/FC 시작 당시 접속만 startupRecovery로 추적한다. valid ready
+도착 즉시 제외하며90초~5분 사이 최근20초 heartbeat가 정상인 미확인 접속만 기존
+재연결 경로로1회 유도한다. failed 보고가 전송되지 못한 초기 준비 장애의 보완이다.
+기존 진행 방과 다른 게임·background/offline·교체된 접속/자격은 건드리지 않는다.
+시작/완료/보고는 기존 원장·권한/context 검증을 유지한다. 반복 호출/failed 보고와
+한도를 공유하고 손패/phase/분배 완료를 생성하지 않는다. 기존1분 스케줄의 조회를
+재사용하며10개 동시 transaction 제한과 실패 방 격리, 비식별 건수 로그를 추가했다.
+
+이전 배포 스크립트는 검증된11/4 서버 파일 해시를 확인하도록 고정했다.
+새 수정안이 들어간 상태에서 그 명령으로 미검증 후보가 배포되는 것을 막는다.
+새 후보 검증 뒤 스케줄 cleanupExpiredGameInterruptions를 포함한 지원 함수와
+시작 함수 순서로 별도 명령을 갱신한다. 아직 그 명령을 운영 실행하지 않는다.
+
+앱 코드·의존성·rules 변경은 없다. 기존 사용자 변경을 보존한다.
+자동 복구가 기존 앱의 callback 소실이나 이미 승인된 준비 이후 모든 실패를 해결하는
+것은 아니다. 운영 배포·실기기 결과가 있어야 실제 해결 여부를 판정한다.
+
+
+#### 11/5 추가 후보 관련 검증 결과
+
+Node22에서 `npm --prefix functions run lint` PASS/exit0,
+`npm --prefix functions test` build 및590개 PASS/exit0이다. 추가22개는 LP/FC 실제
+start→무보고→보조 복구→resume/join→ready/분배, 정상 기기·private/타이머 보존,
+준비/접속 교체 경합, 구버전·종료·다른 게임/방·만료·background·stale/future heartbeat·
+자격/접속 교체·탈락 제외, 스케줄1회 조회/최대10개 동시/실패 격리/비식별 건수를 검사한다.
+`dart run :mosigame test session --json`은5단계 PASS/exit0,50.330초다.
+실행 전후 HEAD·Git 상태·tracked/untracked 파일 해시 동일이며 결과 문서만 이후 갱신했다.
+기존11/4 배포 스크립트는 새 후보에서 의도한 exit1로 운영 호출 전에 중단됨을 dry-run으로
+확인했다. `git diff --check` PASS/exit0. branch develop/HEAD f292f274, staged 없음.
+
+증거: ignored build/server-ready-investigation-2026-11-05/의 startup-verified-*.log와
+startup-checks-{before,after}.json. 이번 후보 FULL은 명시적 재승인 대기이고 미실행이다.
+운영 접근·배포·실기기 확인·commit/push는 하지 않았다. 이전 FULL 결과는 새 후보의
+완료 판정을 대신하지 않는다.

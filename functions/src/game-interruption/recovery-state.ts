@@ -1,6 +1,7 @@
 /* eslint-disable require-jsdoc, valid-jsdoc, max-len */
 import {HttpsError} from "firebase-functions/v2/https";
-import {assertRoomTarget, SessionRoom} from "../room/session-contract.js";
+import {applyRoomPresence, assertRoomTarget, SessionRoom} from "../room/session-contract.js";
+import {currentPresence} from "../room/current-presence.js";
 import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/common/types.js";
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
@@ -61,6 +62,12 @@ export interface RecoveryGame {
   };
   private?: Record<string, Record<string, unknown>>;
   server: {
+    playerRecoveryPolicy?: "independent-v1";
+    preparationReconnects?: Record<string, {membershipId?: string; connectionId: string; connectionSeq: number}>;
+    startupRecovery?: {
+      version: 1; gameInstanceId: string; startedAt: number;
+      waiting: Record<string, PreparationReconnectTarget>;
+    };
     recovery?: RecoveryServer;
     recoveryReports?: Record<string, {connectionId: string; reportSeq: number}>;
     [key: string]: unknown;
@@ -87,6 +94,16 @@ export function requiredRecoveryKeys(room: RecoveryRoom): string[] {
     if (player.status === "alive" && room.players?.[uid]?.status === "active") keys.push(`player:${uid}`);
   }
   return keys;
+}
+
+/** Only newly started protocol-2 games opt in; existing games keep their rules. */
+export function hasIndependentPlayerRecovery(room: RecoveryRoom): boolean {
+  return room.presenceProtocol === 2 && room.game?.server.playerRecoveryPolicy === "independent-v1";
+}
+
+function barrierRecoveryKeys(room: RecoveryRoom): string[] {
+  const keys = requiredRecoveryKeys(room);
+  return hasIndependentPlayerRecovery(room) ? keys.filter((key) => key.startsWith("controller:")) : keys;
 }
 
 export function privateRequired(game: RecoveryGame): boolean {
@@ -143,6 +160,16 @@ export function registerRecoveryFailure(
   if (!game || game.public.status !== "playing") return "ignored";
   const key = `${role}:${uid}`;
   if (!requiredRecoveryKeys(room).includes(key)) return "localOnly";
+  // Phone presence and readiness are local to that phone. The controller still
+  // owns progress and keeps the shared pause/ready contract when it disconnects.
+  if (role === "player" && hasIndependentPlayerRecovery(room)) {
+    delete game.server.recovery?.ready?.[key];
+    if (game.public.recovery?.causes?.[key]) {
+      delete game.public.recovery.causes[key];
+      touch(game, now);
+    }
+    return "localOnly";
+  }
   beginRecoveryPause(room, now, observedAt);
   const recovery = game.public.recovery!;
   // Remain a recovery pause even after its last cause is cleared by a report.
@@ -195,6 +222,9 @@ export function clearFinishedRecovery(game: RecoveryGame): void {
   delete game.public.recovery;
   delete game.server.recovery;
   delete game.server.recoveryReports;
+  delete game.server.preparationReconnects;
+  delete game.server.startupRecovery;
+  delete game.server.playerRecoveryPolicy;
   game.public.turnDeadlineAt = null;
 }
 
@@ -231,6 +261,40 @@ export function assertRecoveryConnection(room: RecoveryRoom, input: {
   }
 }
 
+/** A received failed report may request ONE fresh connection per game/member.
+ * Existing apps already observe their current connected leaf and reconnect.
+ * Never allocate identity here, remove membership, or repeatedly revoke a retry.
+ */
+export interface PreparationReconnectTarget {
+  uid: string; role: "player" | "controller"; membershipId?: string;
+  connectionId: string; connectionSeq: number;
+}
+
+export function requestPreparationReconnect(room: RecoveryRoom, input: PreparationReconnectTarget): boolean {
+  const game = room.game;
+  const key = `${input.role}:${input.uid}`;
+  if (!game || !hasIndependentPlayerRecovery(room) || !requiredRecoveryKeys(room).includes(key)) return false;
+  const previous = game.server.preparationReconnects?.[key];
+  if (previous && (input.role === "controller" || previous.membershipId === input.membershipId)) return false;
+  const connection = currentPresence(room, input.uid, input.role);
+  if (!connection || !connection.connected) return false;
+  // Scheduler callers must not revoke a replacement connection or membership.
+  const controller = input.role === "controller";
+  if ((controller ? room.controllerCurrentConnectionId : room.players?.[input.uid]?.currentConnectionId) !== input.connectionId ||
+      connection.connectionSeq !== input.connectionSeq ||
+      (!controller && room.players?.[input.uid]?.membershipId !== input.membershipId)) return false;
+  game.server.preparationReconnects ??= {};
+  game.server.preparationReconnects[key] = {
+    connectionId: input.connectionId, connectionSeq: input.connectionSeq,
+    ...(input.role === "player" ? {membershipId: input.membershipId!} : {}),
+  };
+  connection.connected = false;
+  // Update the current leaf and its legacy summary atomically. Late disconnect
+  // triggers re-check the current identity and cannot revoke the replacement.
+  applyRoomPresence(room, input.uid, input.connectionId);
+  return true;
+}
+
 /** Failed reports deliberately do not require current public/private data. */
 export function applyRecoveryReport(room: RecoveryRoom, input: RecoveryReportInput, now: number): Record<string, unknown> {
   assertRoomTarget(room, input.roomInstanceId, input.presenceProtocol);
@@ -250,7 +314,9 @@ export function applyRecoveryReport(room: RecoveryRoom, input: RecoveryReportInp
   game.server.recoveryReports[key] = {connectionId: input.connectionId, reportSeq: input.reportSeq};
   if (input.state === "failed") {
     const outcome = registerRecoveryFailure(room, input.uid, input.role, now, "preparationFailed");
-    return {status: "accepted", outcome, context: gameContext(game)};
+    const reconnectRequested = requestPreparationReconnect(room, input);
+    return {status: "accepted", outcome,
+      ...(hasIndependentPlayerRecovery(room) ? {reconnectRequested} : {}), context: gameContext(game)};
   }
   const context = gameContext(game);
   if (!sameContext(input, context) || input.screenUsable !== true || input.assetsReady !== true) {
@@ -261,6 +327,13 @@ export function applyRecoveryReport(room: RecoveryRoom, input: RecoveryReportInp
     if (!privateContext || privateContext.gameInstanceId !== context.gameInstanceId ||
         privateContext.phaseSeq !== context.phaseSeq || privateContext.turnSeq !== context.turnSeq ||
         privateContext.dataSeq !== context.dataSeq) return {status: "dataMissing", context};
+  }
+  // A valid first ready permanently removes this device from startup recovery.
+  // Do not re-arm it on phase changes, reports lost after commit, or later rounds.
+  const startup = game.server.startupRecovery;
+  if (startup?.gameInstanceId === context.gameInstanceId && startup.waiting?.[key]) {
+    delete startup.waiting[key];
+    if (Object.keys(startup.waiting).length === 0) delete game.server.startupRecovery;
   }
   if (game.public.recovery?.paused && game.server.recovery) {
     game.server.recovery.ready ??= {};
@@ -279,7 +352,7 @@ export function tryResumeRecovery(room: RecoveryRoom, now: number): boolean {
   if (!game || game.public.status !== "playing" || !game.public.recovery?.paused || !saved ||
       Object.keys(game.public.recovery.causes ?? {}).length > 0) return false;
   const context = gameContext(game);
-  for (const key of requiredRecoveryKeys(room)) {
+  for (const key of barrierRecoveryKeys(room)) {
     const report = saved.ready?.[key];
     if (!report || !sameContext(report, context)) return false;
     const split = key.indexOf(":");

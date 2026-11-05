@@ -88,6 +88,27 @@ Mafia 고유 투표는 유지하지만 네트워크 제외 투표는 없다. 자
 | game_common_interruption_wait_more | 만료된 현재 incident를 한 번 30초 연장 |
 | game_common_interruption_expire | 결정 대기 표시, 자동 제외/종료 없음 |
 
+2026-11-04 서버 동작 변경 후보(미배포): 새 protocol2 게임은 서버 전용
+`playerRecoveryPolicy=independent-v1`을 사용한다. 휴대폰 단절·준비 실패는 전체 게임을
+멈추지 않고, 최초 준비와 태블릿 복구의 공통 barrier는 태블릿만 기다린다.
+현재 접속의 failed 보고가 수신되면 게임/참가 자격당 한 번 해당 연결을 false로
+전환하여 기존 앱의 foreground 자동 재연결을 유도한다. 태블릿 단절은 계속 pause한다.
+LP 최초 턴도 실제 complete_dealing 수신부터30초로 시작한다.
+[정확한 계약과 한계](NETWORK_SESSION_CONTRACT.md#independent-player-recovery-20261104)를 따른다.
+
+`game_common_recovery_report`는
+`game_recovery_report_result` 이벤트로 허용된 reportState/role/status/errorCode/reason과
+처리 시간, 응답에 있는 paused/reconnectRequested 여부만 기록한다. 신원·방 코드·게임
+문맥·요청/응답 본문과 오류 메시지/stack은 제외한다. 계측 자체는 응답·오류를 보존한다.
+기존 운영 로그의 HTTP200만으로 준비 승인 여부를 알 수 없어 추가했으며,
+실제 장애 해결 및 배포 완료를 뜻하지 않는다.
+
+2026-11-05 추가 후보(미배포): 새 LP/FC 게임에만 startupRecovery 대상을 기록하고
+기존 cleanupExpiredGameInterruptions의1분 조회에서90초 이상 준비 미승인·최근
+heartbeat가 정상인 시작 접속을1회 재연결 유도한다. 정상 ready 및 새 접속은 제외하며
+지원 함수 배포 뒤 시작 함수를 갱신한다. 새 스케줄이나 방 조회를 추가하지 않는다.
+상세 조건·한계는 NETWORK_SESSION_CONTRACT의11/5 초기 준비 미보고 절을 따른다.
+
 connected=true만으로 타이머를 재개하지 않는다.
 vote_to_continue/finish_now는 현재 index export와 소비자에서 제거했다.
 

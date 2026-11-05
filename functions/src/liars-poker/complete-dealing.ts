@@ -4,7 +4,10 @@ import {
 import {getDatabase} from "firebase-admin/database";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
-import {RealtimeRoom} from "./common/types.js";
+import {RealtimeRoom, TURN_DURATION_MS} from "./common/types.js";
+import {
+  hasIndependentPlayerRecovery, RecoveryRoom,
+} from "../game-interruption/recovery-state.js";
 import {
   assertController,
   assertGameStatus,
@@ -70,8 +73,14 @@ export const game_liars_poker_complete_dealing = onCall<CompleteDealingData>(
         game.private = pendingHands;
         delete game.server.pendingHands;
         game.public.phase = "playing";
-        game.public.turnDeadlineAt = null;
-        game.public.isFirstTurnReady = false;
+        // A backgrounded first player cannot leave everyone without a deadline.
+        // ready_turn remains idempotent and must not restart this clock later.
+        const independent = hasIndependentPlayerRecovery(
+          room as unknown as RecoveryRoom,
+        );
+        game.public.turnDeadlineAt = independent ?
+          now + TURN_DURATION_MS : null;
+        game.public.isFirstTurnReady = independent;
         game.public.revision += 1;
         game.public.updatedAt = now;
 

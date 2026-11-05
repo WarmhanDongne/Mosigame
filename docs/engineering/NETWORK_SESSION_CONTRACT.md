@@ -366,3 +366,70 @@ Final Call 태블릿은 분배 연출 완료를 시작 시각·라운드로 기�
 pause 해제가 확인된 뒤 분배 완료 명령을 전송하며, 준비 대기 자체는 진행 명령의
 재시도 횟수를 소모하지 않는다. 같은 완료는 한 번만 처리하고 새 판·라운드나 화면
 종료 후에는 옛 완료를 전송하지 않는다. 서버의 단계·세션 검증은 그대로 적용한다.
+
+<a id="independent-player-recovery-20261104"></a>
+### 2026-11-04 휴대폰 독립 복구 — 서버 후보, 미배포
+
+사용자가 배포 앱 수정 없이 휴대폰 이탈 중 게임 계속 진행 및 자동 복구를 승인했다.
+새 protocol2 게임에만 서버 전용 `game/server/playerRecoveryPolicy=independent-v1`을
+기록한다. 기존 진행 게임과 정책이 없는 게임은 위의 전체 ready 계약을 유지한다.
+새 정책에서는 최초 준비/태블릿 복구 barrier가 controller만 기다린다. 각 휴대폰의
+본인 private/context/접속 검증과 로컬 입력 제한은 유지하며 connected를 ready로 보지 않는다.
+
+휴대폰 단절·실패 보고·재참여는 다른 참가자의 진행을 pause하지 않는다. 손패와 턴
+마감은 보존하고, 부재자의 차례는 기존 게임별 제한 시간 규칙을 따른다. LP만 최초
+턴의 무기한 대기를 없애기 위해 실제 complete_dealing부터30초를 시작한다.
+늦은 ready_turn은 시간을 다시 늘리지 않는다. 명시적 퇴장은 기존 제외/최소 인원
+규칙을 유지하므로 인원이 부족하면 게임이 끝날 수 있다. 진행 기기인 태블릿 단절은
+계속 전체 pause하며, 태블릿 복구 후 휴대폰 전원의 준비를 다시 기다리지 않는다.
+
+현재 게임/자격/접속을 검증한 failed 보고를 받으면 해당 current connection과 요약을
+같은 transaction에서 false로 전환한다. 앱의 기존 foreground 자동 CAS 재연결이
+새 접속을 얻고 게임 준비를 다시 시작하게 한다. 서버 전용 preparationReconnects는
+게임/role/UID별 기존 connectionId/sequence와 phone membershipId를 보존하여 같은
+참가 자격에서 한 번만 실행한다. 정상 ready나 라운드 변경으로 초기화하지 않으며,
+새 게임에서 초기화하고 종료 시 제거한다. 늦은 보고·옛 접속 이벤트·응답 재생이
+새 접속을 끊지 못하도록 기존 검증과 작업 원장을 유지한다.
+
+이 방식은 실패 보고가 서버에 도착하고 앱에 기존 재연결 경로가 있어야 작동한다.
+30초 예산 소진으로 failed도 전송되지 않거나 네트워크/앱 실행이 중단된 상태에서는
+서버가 화면의 오류만 감지할 수 없다. 분배 완료 요청 없이 연출 완료를 만들어내지
+않으므로 태블릿 callback 소실은 보장 범위 밖이다. GUI/버튼 구현은 바뀌지 않는다.
+실제 배포 앱의 foreground/복귀 동작은 별도 실기기 확인이 필요하다.
+
+배포 시 recovery/presence/join/resume/cleanup 및 LP complete_dealing 지원 함수를
+먼저 갱신한 뒤 각 게임 start_game을 갱신하여 새 정책을 활성화한다. 지원 함수가
+일부만 반영된 상태에서는 새 정책 게임을 시작하지 않는다. 기존 진행 게임을 직접
+마이그레이션하지 않는다. 상세 함수 집합과 검증 기록은
+[NET-RECOVERY-01](../planning/tasks/NET-RECOVERY-01.md#independent-recovery-20261104)에 남긴다.
+
+
+### 2026-11-05 초기 준비 미보고 보조 복구 — 추가 후보, 미배포
+
+사용자는 운영 중인 서비스의 영향을 최소화하고 멈춘 경우에 추가 복구 작업을
+실행하도록 요청했다. 기존 independent-v1 정책은 유지하며, 이번 시작 함수를 통해
+새로 시작한 LP/FC에만 서버 전용 startupRecovery(version1/gameInstanceId/startedAt/
+waiting)를 만든다. waiting은 시작 당시 active·alive phone 및 controller의 현재
+접속 ID/sequence/phone membershipId를 보존한다. 다른 게임과 이 필드가 없는 기존
+진행 게임에는 보조 복구를 적용하지 않는다.
+
+정상 검증을 통과한 최초 ready는 해당 기기를 waiting에서 제거한다. staleContext,
+dataMissing, 이전 접속/게임·잘못된 자격은 준비 완료로 취급하지 않는다. 모든 ready가
+끝나면 필드를 제거하고, 라운드/단계 변화로 다시 만들지 않는다. 종료와 새 게임에서도
+정리한다. 기존 failed 보고 복구와 preparationReconnects의 게임/자격당1회 제한을 공유한다.
+
+기존 cleanupExpiredGameInterruptions의1분 조회를 재사용한다. 시작 후90초 이상,
+5분 이내에서만 검토하며 같은 방/게임/시작 접속/자격이고 connected=true,
+lastSeen이 현재보다 미래가 아니며20초 이내인 기기만1회 현재 접속을 false로 바꾼다.
+실제 ready/재참가가 경합하면 root transaction에서 현재 상태를 다시 검사하여 중단한다.
+태블릿은 기존 pause/타이머 보존, phone은 localOnly 정책을 유지한다. 손패·분배 완료·
+게임 단계·승패를 대신 생성하지 않는다. 방 조회 추가 없이 transaction 동시 실행은10개로
+제한하며 한 방의 실패도 나머지 방의 시도를 막지 않는다. 로그는 적용된 재연결 건수와
+실패 방 수만 기록한다.
+
+이 보조 경로는 최초 준비 확인 전의 미보고에 한정된다. 통상 시작 후90~150초에
+감지할 수 있으나 스케줄 실행 지연은 가능하다. 오프라인·background/오래된 heartbeat,
+이미 최초 ready를 승인받은 기기, 분배 callback 누락,5분 이후 장애는 새 감시의 대상이
+아니다. 실제 설치 앱의 자동 재연결 경로가 작동해야 복구된다. 운영 배포와 실기기
+확인은 아직 하지 않았다. 지원 함수(스케줄/보고 포함)를 먼저 갱신하고 시작 함수는
+마지막에 활성화한다. 이전11/4 FULL은 이번 새 후보의 검증을 대체하지 않는다.

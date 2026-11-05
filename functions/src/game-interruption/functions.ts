@@ -23,6 +23,7 @@ import {
 } from "./game-adapters.js";
 import {finalizeGameMutation} from "./game-mutation.js";
 import {currentPresence} from "../room/current-presence.js";
+import {traceRecoveryReport} from "./recovery-report-diagnostics.js";
 
 const REGION = "asia-northeast3";
 type Data = Record<string, unknown>;
@@ -67,13 +68,13 @@ async function execute(uid: string | undefined, data: Data, kind: string, contro
 }
 
 export const game_common_recovery_report = onCall<Data>({region: REGION}, (request) =>
-  execute(request.auth?.uid, request.data, "report", false, (room, uid, now) => {
+  traceRecoveryReport(request.data, () => execute(request.auth?.uid, request.data, "report", false, (room, uid, now) => {
     if (request.data.state !== "ready" && request.data.state !== "failed") {
       throw new HttpsError("invalid-argument", "준비 결과가 필요합니다.");
     }
     return applyRecoveryReport(room, {...request.data, uid,
       role: request.data.role === "controller" ? "controller" : "player"} as RecoveryReportInput, now);
-  }));
+  })));
 
 export const game_common_interruption_expire = onCall<Data>({region: REGION}, (request) =>
   execute(request.auth?.uid, request.data, "expire", false, (room, _uid, now) => {

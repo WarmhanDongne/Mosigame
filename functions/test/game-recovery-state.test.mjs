@@ -24,14 +24,15 @@ function fixture(deadline = 20000) {
   }
   return room;
 }
-function report(room, uid, seq = 1, state = "ready", context = true) {
+function report(room, uid, seq = 1, state = "ready", context = true, now = 5000) {
   const pub = room.game.public;
   return applyRecoveryReport(room, {uid, role: uid === "t" ? "controller" : "player",
+    ...(room.presenceProtocol ? {presenceProtocol: room.presenceProtocol} : {}),
     roomInstanceId: "room-one", membershipId: `member-${uid}`, connectionId: `c${uid}`,
     connectionSeq: 1, reportSeq: seq, state, screenUsable: true, assetsReady: true,
     gameInstanceId: pub.gameInstanceId,
     ...(context ? {gameInstanceId: pub.gameInstanceId, phaseSeq: pub.phaseSeq,
-      turnSeq: pub.turnSeq, dataSeq: pub.dataSeq, resumeEpoch: pub.resumeEpoch} : {})}, 5000);
+      turnSeq: pub.turnSeq, dataSeq: pub.dataSeq, resumeEpoch: pub.resumeEpoch} : {})}, now);
 }
 
 test("최초 게임 준비는 모든 기기 ready까지 입력을 막고 initialReadiness로 표시한다", () => {
@@ -44,6 +45,64 @@ test("최초 게임 준비는 모든 기기 ready까지 입력을 막고 initial
   assert.equal(room.game.public.recovery.paused, true);
   report(room, "b");
   assert.equal(room.game.public.recovery.paused, false);
+});
+
+for (const gameType of ['liars_poker', 'final_call', 'mafia', 'holdem', 'yut', 'strategy_yut', 'strategy_yut_edition']) {
+  test(`${gameType}: new protocol-2 game isolates phones but preserves controller pause`, () => {
+    const room = fixture();
+    room.presenceProtocol = 2;
+    room.game.public.gameType = gameType;
+    finalizeGameMutation(room, undefined, 1000, 'independent-game');
+    assert.equal(room.game.server.playerRecoveryPolicy, 'independent-v1');
+    assert.equal(!!room.game.server.startupRecovery, ['liars_poker', 'final_call'].includes(gameType));
+    assert.equal(room.game.public.recovery.paused, true);
+    assert.equal(report(room, 't').paused, false);
+    const deadline = room.game.public.turnDeadlineAt;
+    const before = structuredClone(room.game.public);
+    for (const uid of ['a', 'b']) {
+      room.connections[uid][`c${uid}`].connected = false;
+      assert.equal(registerRecoveryFailure(room, uid, 'player', 6000), 'localOnly');
+    }
+    assert.deepEqual(room.game.public, before);
+    registerRecoveryFailure(room, 't', 'controller', 7000, 'preparationFailed');
+    assert.equal(room.game.public.recovery.paused, true);
+    assert.equal(report(room, 't', 2, 'ready', true, 8000).paused, false, 'offline phones do not block controller recovery');
+    assert.equal(room.game.public.turnDeadlineAt, deadline + 1000);
+    assert.ok(deadline > 0);
+  });
+}
+
+test('already running protocol-2 games retain the legacy barrier until a new game starts', () => {
+  const room = fixture(); room.presenceProtocol = 2;
+  registerRecoveryFailure(room, 'a', 'player', 1000);
+  assert.equal(report(room, 't').paused, true);
+  assert.equal(report(room, 'a').paused, true);
+  assert.equal(report(room, 'b').paused, false);
+  assert.equal(room.game.server.playerRecoveryPolicy, undefined);
+});
+
+test('automatic reconnect allowance survives rounds, resets for a new game, and clears on finish', () => {
+  const room = fixture(); room.presenceProtocol = 2;
+  finalizeGameMutation(room, undefined, 1000, 'first-game');
+  report(room, 't');
+  assert.equal(report(room, 'a', 1, 'failed').reconnectRequested, true);
+  const marker = structuredClone(room.game.server.preparationReconnects);
+  let before = structuredClone(room.game);
+  room.game.public.round = 2;
+  finalizeGameMutation(room, before, 6000, 'unused');
+  assert.equal(room.game.server.playerRecoveryPolicy, 'independent-v1');
+  assert.deepEqual(room.game.server.preparationReconnects, marker);
+  before = structuredClone(room.game);
+  room.game.public.startedAt = 7000;
+  finalizeGameMutation(room, before, 7000, 'second-game');
+  assert.equal(room.game.public.gameInstanceId, 'second-game');
+  assert.equal(room.game.server.preparationReconnects, undefined);
+  assert.equal(room.game.server.playerRecoveryPolicy, 'independent-v1');
+  before = structuredClone(room.game);
+  room.game.public.status = 'finished';
+  finalizeGameMutation(room, before, 8000, 'unused');
+  assert.equal(room.game.server.playerRecoveryPolicy, undefined);
+  assert.equal(room.game.server.preparationReconnects, undefined);
 });
 
 for (const reason of ["disconnected", "preparationFailed"]) {
