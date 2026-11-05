@@ -8,6 +8,8 @@ const onboarding = require('../lib/auth/require-complete-onboarding.js');
 const {createRealtimeRoom} = require('../lib/room/create-room.js');
 const {closeRoom, removeRealtimeRoomPlayer} = require('../lib/room/realtime-room-lifecycle.js');
 const {cleanupStaleRealtimeRooms, reconcileTerminal} = require('../lib/room/room-cleanup.js');
+const {terminalRoom} = require('../lib/room/room-allocation.js');
+const {game_common_operation_status: operationStatus} = require('../lib/room/session-functions.js');
 
 function snapshot(value) {
   return {val: () => structuredClone(value), exists: () => value != null, child: key => snapshot(value?.[key] ?? null),
@@ -94,6 +96,42 @@ function setup(t) {
   t.mock.method(onboarding, 'assertOnboardingComplete', async () => {});
   return database;
 }
+
+test('pending tablet close resolves before and after terminal cleanup without changing the room', async t => {
+  const database = setup(t);
+  const room = {...lifecycleRoom(), creationOperationId: 'create-operation'};
+  const request = lifecycleRequest({operationId: 'close_' + 'a'.repeat(32)});
+  const path = 'rooms/ABCDE';
+  const slot = 'roomCreateSlots/test-controller';
+  const terminal = terminalRoom(room, 1000);
+  database.values.set(path, terminal);
+  database.values.set(slot, {operationId: room.creationOperationId, roomInstanceId: room.roomInstanceId,
+    allocationGeneration: room.allocationGeneration, status: 'created'});
+  await assert.rejects(closeRoom.run(request), {code: 'permission-denied'});
+  assert.deepEqual(await operationStatus.run(request), {status: 'stale'});
+  assert.deepEqual(database.values.get(path), terminal);
+  await reconcileTerminal('ABCDE', terminal);
+  const compacted = structuredClone(database.values);
+  const transactions = database.transactions.length;
+  for (let retry = 0; retry < 2; retry++) {
+    assert.deepEqual(await operationStatus.run(request), {status: 'stale'});
+  }
+  await assert.rejects(operationStatus.run({...request, auth: {uid: 'another-owner'}}), {code: 'permission-denied'});
+  await assert.rejects(operationStatus.run({...request, auth: undefined}), {code: 'unauthenticated'});
+  await assert.rejects(operationStatus.run(lifecycleRequest({operationId: 'resume_' + 'a'.repeat(32)})), {code: 'permission-denied'});
+  assert.deepEqual(database.values, compacted);
+  assert.equal(database.transactions.length, transactions);
+  database.values.set(slot, {...database.values.get(slot), roomInstanceId: 'another-instance'});
+  await assert.rejects(operationStatus.run(request), {code: 'permission-denied'});
+  database.values.set(path, room);
+  assert.equal((await operationStatus.run(request)).status, 'notApplied');
+  await assert.rejects(operationStatus.run({...request, data: {...request.data,
+    controllerSessionId: '22345678-1234-4123-8123-123456789abc'}}), {code: 'permission-denied'});
+  const replacement = {...room, roomInstanceId: 'another-instance'};
+  database.values.set(path, replacement);
+  assert.deepEqual(await operationStatus.run(request), {status: 'stale'});
+  assert.deepEqual(database.values.get(path), replacement);
+});
 
 test('creation starts onboarding and mapping reads together and waits for both before writing', async t => {
   const database = setup(t);

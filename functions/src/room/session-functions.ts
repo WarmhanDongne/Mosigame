@@ -4,7 +4,7 @@ import {getDatabase} from "firebase-admin/database";
 import {onValueWritten} from "firebase-functions/v2/database";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {applyRoomPresence, parseSessionId, roomOperationResult, SessionRoom} from "./session-contract.js";
-import {assertControllerSession} from "./controller-session.js";
+import {assertControllerSession, parseControllerSessionId} from "./controller-session.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {RecoveryRoom, registerRecoveryFailure} from "../game-interruption/recovery-state.js";
 
@@ -51,6 +51,17 @@ export const game_common_operation_status = onCall({region: "asia-northeast3"}, 
   if (!room || room.roomInstanceId !== roomInstanceId) return {status: "stale"};
   const saved = roomOperationResult(room, uid, operationId);
   if (saved) return {status: "applied"};
+  if (room.status === "terminal" && /^close_[0-9a-f]{32}$/.test(operationId) && request.data?.controllerSessionId) {
+    // No live controller credential survives cleanup. A stale result only lets
+    // the tablet finish its local close; never expose context or replay a write.
+    parseControllerSessionId(request.data.controllerSessionId);
+    if (room.controllerUid === uid) return {status: "stale"};
+    if (!room.controllerUid) {
+      // Final compaction removes the owner from the room but retains their slot.
+      const slot = (await getDatabase().ref(`roomCreateSlots/${uid}`).get()).val();
+      if (slot?.status === "terminal" && slot.roomInstanceId === roomInstanceId) return {status: "stale"};
+    }
+  }
   const player = room.players?.[uid];
   if (request.data?.membershipId && player?.membershipId !== request.data.membershipId) {
     return {status: "stale"};
