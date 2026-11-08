@@ -1,5 +1,36 @@
 # Cloud Functions 정리
 
+## 2026-11-05 — 끊긴 pending join 응답 재사용 방지 배포
+
+`joinRealtimeRoom`의 기존 connect operation 재전송에서 presenceProtocol=2,
+동일한 active membership의 서버 선택 현재 연결이 disconnected이고 방이
+closed/terminal이 아닌 경우 기존 `aborted/staleConnection` 오류를 반환한다.
+현재 앱의 pending join 복구 경로가 새 operation과 최신 connectionSeq로 연결을
+다시 할당한다. 끊긴 연결을 true로 되살리지 않으며 신규 필드/함수/DB 읽기는 없다.
+정상 연결·퇴장 membership·종료 방의 기존 replay 계약은 유지한다.
+앱 제품 코드 수정 없음. 서버 요청 자체가 없는 화면 정체를 해결하는 변경은 아니다.
+사용자 승인 FULL13단계 PASS/exit0 뒤 joinRealtimeRoom 한 개만 선택 배포하여
+성공/exit0과 운영 source hash 교체를 확인했다. 실제 앱 복귀 재현은 확인 대기다.
+[검증·배포 기록](../planning/tasks/NET-RECOVERY-01.md#pending-join-disconnected-20261105).
+
+## 2026-11-05 — LP 분배·종료 결과 진단 배포
+
+complete_dealing/end_game 성공 transaction snapshot의 고정 상태·일치 여부·인원수만
+로깅하는 변경을 사용자 승인으로 두 함수에 선택 배포했다(exit0). HTTP200과 실제
+현재 게임 전이를 구분하는 진단이며 게임 동작 수정이나 장애 해결 완료가 아니다.
+FULL13단계 PASS/exit0(198.621초), 두 함수 업데이트 성공과 새 source hash를 확인했다.
+다음 실기기 재현 결과 확인이 필요하다. [후보·한계](../planning/tasks/NET-RECOVERY-01.md#restart-transition-diagnostics-20261105).
+
+## 2026-11-05 — 준비 실패 보고의 강제 연결 종료 중단
+
+사용자 승인으로 game_common_recovery_report만 project0000-ec01e 서울 리전에
+선택 배포하여 업데이트 성공·exit0을 확인했다. failed 보고는 기존 휴대폰 localOnly와
+태블릿 pause를 처리하며 현재 연결을 보존한다. independent-v1 응답은
+reconnectRequested=false다. FULL13단계 및 서버593개 PASS/exit0, 실기기 확인 대기다.
+아래11/4 자동 재연결 유도 설명은 이 후속 수정 이전의 기록이다.
+startupRecovery 스케줄의 운영 활성화는 재접속 실패 경로 검토까지 보류한다.
+[재현·검증·배포 상세](../planning/tasks/NET-RECOVERY-01.md#stop-failed-disconnect-20261105).
+
 ## 2026-10-22 — 생성·추방·초기화 효율 개선 배포
 
 사용자 승인으로 `createRealtimeRoom`, `removeRealtimeRoomPlayer`, `closeRoom`만

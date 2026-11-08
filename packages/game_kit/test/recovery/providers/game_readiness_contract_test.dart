@@ -81,6 +81,115 @@ void main() {
       await query.priv.close();
     }
   });
+  testWidgets('retry reconnects once before accepting current hand and ready', (
+    tester,
+  ) async {
+    start();
+    final game = container.read(provider.notifier);
+    final session = game.recoverySession;
+    final connected = Completer<void>();
+    var reconnects = 0;
+    session.transportRecovering = true;
+    session.changed();
+    session.reconnect = () async {
+      reconnects++;
+      await connected.future;
+      session.transportRecovering = false;
+      session.changed();
+    };
+    final first = game.retryRecovery();
+    final duplicate = game.retryRecovery();
+    await tester.pump();
+    expect(reconnects, 1);
+    expect(session.canSend, false);
+    connected.complete();
+    await tester.pump();
+    await Future.wait([first, duplicate]);
+    query.pub.add(_Event(public(2, paused: false)));
+    query.priv.add(_Event(private(1)));
+    await tester.pump();
+    game.reportScreenReady(assetsReady: true);
+    await tester.pump();
+    expect(session.canSend, false, reason: 'old hand must not unlock input');
+    query.priv.add(_Event(private(2)));
+    await tester.pump();
+    await tester.pump();
+    expect(session.canSend, true);
+    expect(reconnects, 1);
+  });
+
+  testWidgets('failed reconnect stays locked and a later retry can recover', (
+    tester,
+  ) async {
+    start();
+    final game = container.read(provider.notifier);
+    final session = game.recoverySession;
+    var reconnects = 0;
+    session.transportRecovering = true;
+    session.changed();
+    session.reconnect = () async {
+      reconnects++;
+      if (reconnects == 1) throw TimeoutException('connection failed');
+      session.transportRecovering = false;
+      session.changed();
+    };
+    await game.retryRecovery();
+    expect(reconnects, 1);
+    expect(session.canSend, false);
+    expect(container.read(provider).errorMessage, isNotNull);
+    await game.retryRecovery();
+    query.pub.add(_Event(public(1, paused: false)));
+    query.priv.add(_Event(private(1)));
+    await tester.pump();
+    game.reportScreenReady(assetsReady: true);
+    await tester.pump();
+    await tester.pump();
+    expect(reconnects, 2);
+    expect(session.canSend, true);
+    expect(container.read(provider).errorMessage, isNull);
+  });
+
+  testWidgets(
+    'screen-only retry reuses a healthy connection and exit blocks reconnect',
+    (tester) async {
+      start();
+      final game = container.read(provider.notifier);
+      final session = game.recoverySession;
+      var reconnects = 0;
+      session.reconnect = () async {
+        reconnects++;
+      };
+      await game.retryRecovery();
+      expect(reconnects, 0);
+      session.transportRecovering = true;
+      session.leaving = true;
+      await game.retryRecovery();
+      expect(reconnects, 0);
+      expect(session.canSend, false);
+    },
+  );
+
+  testWidgets('late reconnect completion cannot restore an exiting game', (
+    tester,
+  ) async {
+    start();
+    final game = container.read(provider.notifier);
+    final session = game.recoverySession;
+    final connected = Completer<void>();
+    session.transportRecovering = true;
+    session.changed();
+    session.reconnect = () => connected.future;
+    final retried = game.retryRecovery();
+    await tester.pump();
+    final subscriptions = query.subscriptionOwners.length;
+    session.leaving = true;
+    connected.complete();
+    await tester.pump();
+    await retried;
+    expect(query.subscriptionOwners.length, subscriptions);
+    expect(session.canSend, false);
+  });
+
   testWidgets(
     'tablet retry reschedules an invalidated frame for the same context',
     (tester) async {

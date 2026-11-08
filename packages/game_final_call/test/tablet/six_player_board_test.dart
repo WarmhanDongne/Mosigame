@@ -7,6 +7,8 @@ import 'package:game_final_call/tablet/tablet_board.dart';
 import 'package:game_final_call/tablet/widgets/result_overlay.dart';
 
 class _BoardGame extends Fake implements FinalCallController {
+  String currentPhase = 'playing';
+  FinalCallRoundResult? currentRoundResult;
   @override
   final Map<String, FinalCallPlayer> players = {
     for (var i = 0; i < 6; i++)
@@ -40,12 +42,58 @@ class _BoardGame extends Fake implements FinalCallController {
   @override
   String? get callerUid => null;
   @override
-  String get phase => 'playing';
+  String get phase => currentPhase;
+  @override
+  FinalCallRoundResult? get roundResult => currentRoundResult;
   @override
   int get deckRemainingCount => 17;
 }
 
 void main() {
+  testWidgets('팀 동반 탈락 문구는 카드 공개와 하트 연출이 끝난 뒤 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final game = _BoardGame()..currentPhase = 'roundResult';
+    for (final uid in ['p0', 'p3']) {
+      final player = game.players[uid]!;
+      game.players[uid] = FinalCallPlayer(
+        uid: uid,
+        nickname: player.nickname,
+        characterId: player.characterId,
+        seatIndex: player.seatIndex,
+        team: player.team,
+        status: 'eliminated',
+        lives: uid == 'p0' ? 0 : 3,
+      );
+    }
+    game.currentRoundResult = FinalCallRoundResult(
+      scores: const {'p0': 20, 'p3': 10},
+      lifeLosses: const {'p0': 1, 'p3': 0},
+      revealedHands: const {
+        'p0': [FinalCallCard(id: 'red_10', color: 'red', value: 10)],
+        'p3': [FinalCallCard(id: 'blue_10', color: 'blue', value: 10)],
+      },
+      automaticCall: false,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FinalCallTabletGameLayer(
+          controller: game,
+          stage: FinalCallTabletStage.roundResult,
+          flowConfig: buildFinalCallTabletFlowConfig(closingMessage: ''),
+          onRoundRevealCompleted: () {},
+          onDealingCompleted: () {},
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('레드팀 탈락'), findsNothing);
+    await tester.pump(const Duration(seconds: 8));
+    expect(find.text('레드팀 탈락'), findsNWidgets(2));
+  });
+
   testWidgets('6인 보드는 세 팀의 하트를 표시하고 탈락 팀은 하트 대신 탈락 표시를 유지한다', (tester) async {
     tester.view.physicalSize = const Size(1024, 768);
     tester.view.devicePixelRatio = 1;

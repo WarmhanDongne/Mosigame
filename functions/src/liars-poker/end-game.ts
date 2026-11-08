@@ -3,6 +3,9 @@ import {
 } from "../game-interruption/game-command-transaction.js";
 import {getDatabase} from "firebase-admin/database";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {
+  recordLiarsPokerTransition,
+} from "../game-interruption/transition-diagnostics.js";
 
 import {RealtimeRoom} from "./common/types.js";
 import {
@@ -87,6 +90,10 @@ export const game_liars_poker_end_game = onCall<EndGameData>(
     if (!transaction.committed || !response) {
       throw new HttpsError("aborted", "게임을 종료하지 못했습니다.");
     }
+    recordLiarsPokerTransition(
+      "endGame", request.data, response,
+      () => transaction.snapshot.val(),
+    );
     return response;
   },
 );

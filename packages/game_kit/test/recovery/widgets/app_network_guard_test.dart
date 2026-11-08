@@ -10,6 +10,109 @@ import 'package:game_kit/recovery/widgets/network_unavailable_modal.dart';
 
 void main() {
   testWidgets(
+    'game route keeps recovery controls clickable while commands stay guarded',
+    (tester) async {
+      final connection = StreamController<bool>.broadcast();
+      addTearDown(connection.close);
+      var exits = 0;
+      await _mount(
+        tester,
+        AppNetworkGuard(
+          connectionChanges: connection.stream,
+          blockChildInput: false,
+          child: Column(
+            children: [
+              const TextButton(onPressed: null, child: Text('카드 제출')),
+              TextButton(onPressed: () => exits++, child: const Text('게임 나가기')),
+            ],
+          ),
+        ),
+      );
+      connection.add(false);
+      await tester.pump();
+      expect(_gameInputIsBlocked(tester), false);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, '카드 제출'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('게임 나가기'));
+      expect(exits, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'failed recovery exposes retry immediately and success releases the guard',
+    (tester) async {
+      final connection = StreamController<bool>.broadcast();
+      addTearDown(connection.close);
+      var attempts = 0;
+      await _mount(
+        tester,
+        AppNetworkGuard(
+          connectionChanges: connection.stream,
+          onRetry: () async {
+            attempts++;
+            if (attempts == 1) throw TimeoutException('failed recovery');
+          },
+          child: const Text('게임 화면'),
+        ),
+      );
+      connection.add(false);
+      await tester.pump();
+      connection.add(true);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NetworkUnavailableModal), findsOneWidget);
+      expect(attempts, 1);
+      await tester.tap(find.byKey(NetworkUnavailableModal.retryButtonKey));
+      await tester.pump();
+      await tester.pump();
+      expect(attempts, 2);
+      expect(_gameInputIsBlocked(tester), false);
+      expect(find.byType(NetworkUnavailableModal), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('recovery modal keeps exit usable during an in-flight retry', (
+    tester,
+  ) async {
+    final connection = StreamController<bool>.broadcast();
+    addTearDown(connection.close);
+    final recovery = Completer<void>();
+    var exits = 0;
+    await _mount(
+      tester,
+      AppNetworkGuard(
+        connectionChanges: connection.stream,
+        onRetry: () => recovery.future,
+        onExit: () => exits++,
+        exitLabel: '게임 나가기',
+        child: const Text('게임 화면'),
+      ),
+    );
+    connection.add(false);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 11));
+    connection.add(true);
+    await tester.pump();
+    expect(
+      tester
+          .widget<NetworkUnavailableModal>(find.byType(NetworkUnavailableModal))
+          .isRetrying,
+      true,
+    );
+    await tester.tap(find.text('게임 나가기'));
+    expect(exits, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    recovery.complete();
+    await tester.pump();
+  });
+
+  testWidgets(
     'only foreground navigator route owns recovery notices and retry',
     (tester) async {
       final connection = StreamController<bool>.broadcast();

@@ -3,6 +3,9 @@ import {
 } from "../game-interruption/game-command-transaction.js";
 import {getDatabase} from "firebase-admin/database";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {
+  recordLiarsPokerTransition,
+} from "../game-interruption/transition-diagnostics.js";
 
 import {RealtimeRoom, TURN_DURATION_MS} from "./common/types.js";
 import {
@@ -97,6 +100,10 @@ export const game_liars_poker_complete_dealing = onCall<CompleteDealingData>(
     if (!transaction.committed || !response) {
       throw new HttpsError("aborted", "카드 배분을 완료하지 못했습니다.");
     }
+    recordLiarsPokerTransition(
+      "completeDealing", request.data, response,
+      () => transaction.snapshot.val(),
+    );
     return response;
   },
 );

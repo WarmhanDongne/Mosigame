@@ -21,6 +21,8 @@ class SessionReturnPrompt extends StatelessWidget {
     required this.onReturn,
     required this.onDecline,
     this.isBusy = false,
+    this.declineLabel,
+    this.returnLabel,
   });
 
   /// 무엇으로 돌아갈 수 있는지입니다. [RestorableSession.none]은 이 화면을
@@ -32,6 +34,8 @@ class SessionReturnPrompt extends StatelessWidget {
 
   /// 복귀 요청이 서버로 가 있는 중입니다.
   final bool isBusy;
+  final String? declineLabel;
+  final String? returnLabel;
 
   bool get _isGame => session == RestorableSession.activeGame;
 
@@ -58,12 +62,14 @@ class SessionReturnPrompt extends StatelessWidget {
         actions: [
           MosiConnectionButton(
             key: const ValueKey('session-return-decline'),
-            label: '나중에'.localized,
+            label: (declineLabel ?? '나중에').localized,
             onPressed: isBusy ? null : onDecline,
           ),
           MosiConnectionButton(
             key: const ValueKey('session-return-accept'),
-            label: _isGame ? '게임 다시 참여'.localized : '그룹 다시 참여'.localized,
+            label:
+                returnLabel?.localized ??
+                (_isGame ? '게임 다시 참여'.localized : '그룹 다시 참여'.localized),
             primary: true,
             loading: isBusy,
             onPressed: isBusy ? null : onReturn,

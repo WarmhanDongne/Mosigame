@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:project00/platform/auth/models/onboarding_state.dart';
 import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
+import 'package:project00/platform/auth/screens/login_screen.dart';
+import 'package:project00/platform/auth/widgets/auth_design.dart';
+import 'package:project00/platform/widgets/app_startup_surface.dart';
 
 //=======================끝나지 않는 로딩 막기==============================
 // 2026-08-22 실기기에서 앱이 스피너에서 멈춰 아무것도 못 하는 일이 있었습니다.
@@ -16,6 +19,23 @@ import 'package:project00/platform/auth/widgets/auth_gate.dart';
 // 이유로든 스피너가 영원히 돌지 않아야** 합니다. 8초가 지나면 다시 시도할
 // 화면으로 넘어갑니다.
 void main() {
+  testWidgets('저장된 로그인 확인 중에는 로그인 화면을 먼저 그리지 않는다', (tester) async {
+    final stalled = StreamController<User?>();
+    addTearDown(stalled.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: stalled.stream,
+          onboardingService: _SilentOnboardingService(),
+          onAuthRestoreTimeout: () {},
+        ),
+      ),
+    );
+    expect(find.byType(AppStartupSurface), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byType(MosiAuthScaffold), findsNothing);
+  });
+
   testWidgets('회원가입 상태가 오지 않으면 다시 시도 화면으로 넘어간다', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

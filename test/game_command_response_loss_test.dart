@@ -138,6 +138,34 @@ void main() {
     GameRecoverySession.forRoom('ABCDE', _identity.uid).retryCommand = null;
   });
 
+  test(
+    'gameplay remains blocked while recovery controls are available',
+    () async {
+      final session = GameRecoverySession.forRoom('ABCDE', _identity.uid);
+      session.transportConnected = true;
+      session.transportRecovering = true;
+      session.controllerAvailable = true;
+      addTearDown(() {
+        session.transportRecovering = false;
+      });
+      final calls = _Calls()
+        ..reply = (name, data) async => [
+          {'success': true},
+        ];
+      calls.install();
+      final command = LiarsPokerCommandService(retryPolicy: _shortPolicy);
+      await expectLater(command.callLiar(roomCode: 'ABCDE'), throwsStateError);
+      expect(
+        calls.requests,
+        isEmpty,
+        reason: 'no gameplay request before recovery',
+      );
+      session.transportRecovering = false;
+      await command.callLiar(roomCode: 'ABCDE');
+      expect(calls.forName('game_liars_poker_call_liar'), hasLength(1));
+    },
+  );
+
   for (final ready in [true, false]) {
     test(
       'fresh preparation report ready=$ready skips status lookup even when lookup is unavailable',

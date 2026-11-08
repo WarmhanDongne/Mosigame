@@ -314,9 +314,11 @@ export function applyRecoveryReport(room: RecoveryRoom, input: RecoveryReportInp
   game.server.recoveryReports[key] = {connectionId: input.connectionId, reportSeq: input.reportSeq};
   if (input.state === "failed") {
     const outcome = registerRecoveryFailure(room, input.uid, input.role, now, "preparationFailed");
-    const reconnectRequested = requestPreparationReconnect(room, input);
+    // A screen-preparation failure does not prove transport loss. Revoking a
+    // live connection can strand released clients after a failed reconnect,
+    // because their game retry only restarts subscriptions.
     return {status: "accepted", outcome,
-      ...(hasIndependentPlayerRecovery(room) ? {reconnectRequested} : {}), context: gameContext(game)};
+      ...(hasIndependentPlayerRecovery(room) ? {reconnectRequested: false} : {}), context: gameContext(game)};
   }
   const context = gameContext(game);
   if (!sameContext(input, context) || input.screenUsable !== true || input.assetsReady !== true) {

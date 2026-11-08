@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {finalizeGameMutation} from "../lib/game-interruption/game-mutation.js";
 import {applyRecoveryReport, beginRecoveryPause, expireRecoveryCauses, extendRecoveryCause,
-  registerRecoveryFailure, reportStaleController,
+  registerRecoveryFailure, reportStaleController, requestPreparationReconnect,
   tryResumeRecovery} from "../lib/game-interruption/recovery-state.js";
 
 function fixture(deadline = 20000) {
@@ -81,11 +81,12 @@ test('already running protocol-2 games retain the legacy barrier until a new gam
   assert.equal(room.game.server.playerRecoveryPolicy, undefined);
 });
 
-test('automatic reconnect allowance survives rounds, resets for a new game, and clears on finish', () => {
+test('startup reconnect allowance survives rounds, resets for a new game, and clears on finish', () => {
   const room = fixture(); room.presenceProtocol = 2;
   finalizeGameMutation(room, undefined, 1000, 'first-game');
   report(room, 't');
-  assert.equal(report(room, 'a', 1, 'failed').reconnectRequested, true);
+  assert.equal(requestPreparationReconnect(room, {uid: 'a', role: 'player',
+    membershipId: 'member-a', connectionId: 'ca', connectionSeq: 1}), true);
   const marker = structuredClone(room.game.server.preparationReconnects);
   let before = structuredClone(room.game);
   room.game.public.round = 2;

@@ -17,11 +17,19 @@ import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_kit/localization/game_locale.dart';
+import 'package:project00/platform/widgets/app_startup_surface.dart';
 
 class PhoneHome extends StatefulWidget {
-  const PhoneHome({super.key, required this.gameCatalog});
+  const PhoneHome({
+    super.key,
+    required this.gameCatalog,
+    this.roomProvider,
+    this.games,
+  });
 
   final GameCatalog gameCatalog;
+  final RoomProvider? roomProvider;
+  final Future<List<GameInfo>>? games;
 
   @override
   State<PhoneHome> createState() => _PhoneHomeState();
@@ -30,10 +38,8 @@ class PhoneHome extends StatefulWidget {
 class _PhoneHomeState extends State<PhoneHome> {
   late final Future<List<GameInfo>>
   _games; // PhoneGamePortraitCard에 들어갈 데이터 보관할 객체
-  final GameService _gameService = GameService(); // 데이터 fetch할 객체
-  late final RoomProvider _restoredRoomProvider = RoomProvider(
-    gameCatalog: widget.gameCatalog,
-  );
+  late final RoomProvider _restoredRoomProvider =
+      widget.roomProvider ?? RoomProvider(gameCatalog: widget.gameCatalog);
   StreamSubscription<bool>? _connectionSubscription;
 
   /// 아래 연결 띠가 듣는 서버 연결 상태입니다. 다시 그려도 같은 스트림을 씁니다.
@@ -41,6 +47,9 @@ class _PhoneHomeState extends State<PhoneHome> {
       .watchServerConnection();
   bool _restoreInFlight = false;
   bool _waitingRoomOpen = false;
+  bool _checkingPreviousRoom = true;
+  bool _detectionInFlight = false;
+  bool _detectionFailed = false;
 
   /// 돌아갈 수 있는 세션입니다. none이 아니면 복귀 안내 화면을 띄웁니다.
   RestorableSession _restorable = RestorableSession.none;
@@ -58,14 +67,16 @@ class _PhoneHomeState extends State<PhoneHome> {
     unawaited(AppSystemUi.showPlatformSystemBars());
     // 앱 첫 화면의 방향은 iOS scene이 resumed 된 뒤 main.dart에서 적용합니다.
     // 게임 종료 후 세로 복원은 휴대폰 게임 화면과 대기 화면이 담당합니다.
-    _games = _gameService.fetchGames();
+    _games = widget.games ?? GameService().fetchGames();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _connectionSubscription = _restoredRoomProvider
           .watchServerConnection()
           .listen(
             (connected) {
-              if (connected) unawaited(_detectPreviousRoom());
+              if (connected && (_checkingPreviousRoom || _detectionFailed)) {
+                unawaited(_detectPreviousRoom());
+              }
             },
             // 연결 상태 스트림 오류가 unhandled exception으로 앱을 멈추지
             // 않게 합니다. 복원은 아래의 직접 호출로 한 번은 시도됩니다.
@@ -80,7 +91,13 @@ class _PhoneHomeState extends State<PhoneHome> {
   /// 예전에는 여기서 곧바로 복원하고 대기 화면을 띄웠습니다. 게임을 그만두려고
   /// 앱을 껐어도 다시 켜면 그 방으로 끌려 들어갔습니다(P-01).
   Future<void> _detectPreviousRoom() async {
-    if (_restoreInFlight || _waitingRoomOpen || _declined || !mounted) return;
+    if (_restoreInFlight ||
+        _waitingRoomOpen ||
+        _detectionInFlight ||
+        _declined ||
+        !mounted) {
+      return;
+    }
     if (_restoredRoomProvider.isLeaving) return;
     if (_restoredRoomProvider.isInRoom) {
       await _openWaitingRoom();
@@ -88,9 +105,21 @@ class _PhoneHomeState extends State<PhoneHome> {
     }
     if (ModalRoute.of(context)?.isCurrent != true) return;
 
-    final restorable = await _restoredRoomProvider.detectRestorableSession();
-    if (!mounted || _declined) return;
-    setState(() => _restorable = restorable);
+    _detectionInFlight = true;
+    setState(() {
+      _checkingPreviousRoom = true;
+      _detectionFailed = false;
+    });
+    try {
+      final restorable = await _restoredRoomProvider.detectRestorableSession();
+      if (!mounted || _declined) return;
+      setState(() => _restorable = restorable);
+    } catch (_) {
+      if (mounted && !_declined) setState(() => _detectionFailed = true);
+    } finally {
+      _detectionInFlight = false;
+      if (mounted) setState(() => _checkingPreviousRoom = false);
+    }
   }
 
   /// 사용자가 복귀를 골랐습니다. 이제서야 서버에 참가자를 되살립니다.
@@ -119,15 +148,18 @@ class _PhoneHomeState extends State<PhoneHome> {
   Future<void> _declineReturn() async {
     setState(() {
       _declined = true;
-      _restorable = RestorableSession.none;
+      _restoreInFlight = true;
     });
-    // 서버에는 아직 아무것도 쓰지 않았으므로 저장 세션만 지웁니다. 방에 남아
-    // 있는 참가자 노드는 서버 정리가 담당합니다(C-10).
+    // 명시적 복귀 거절은 기존 퇴장 의도를 처리한 뒤 저장 세션을 정리합니다.
     try {
       await _restoredRoomProvider.declineRestorableSession();
+      if (mounted) setState(() => _restorable = RestorableSession.none);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _declined = false);
+      setState(() {
+        _declined = false;
+        _detectionFailed = true;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -140,6 +172,8 @@ class _PhoneHomeState extends State<PhoneHome> {
           ),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _restoreInFlight = false);
     }
   }
 
@@ -177,12 +211,31 @@ class _PhoneHomeState extends State<PhoneHome> {
   @override
   void dispose() {
     _connectionSubscription?.cancel();
-    _restoredRoomProvider.dispose();
+    if (widget.roomProvider == null) _restoredRoomProvider.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingPreviousRoom) return const AppStartupSurface();
+    if (_detectionFailed) {
+      return AppStartupSurface(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '이전 게임을 확인하지 못했어요.'.localized,
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 16),
+            MosiButton(
+              label: '다시 시도'.localized,
+              onPressed: () => unawaited(_detectPreviousRoom()),
+            ),
+          ],
+        ),
+      );
+    }
     if (_restorable != RestorableSession.none) {
       return SessionReturnPrompt(
         session: _restorable,

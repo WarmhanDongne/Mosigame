@@ -20,12 +20,14 @@ class CriticalNetworkGuard extends StatefulWidget {
     required this.child,
     this.onExit,
     this.exitLabel = '홈으로',
+    this.blockChildInput = true,
   });
 
   final GameRoomContext provider;
   final Widget child;
   final VoidCallback? onExit;
   final String exitLabel;
+  final bool blockChildInput;
 
   @override
   State<CriticalNetworkGuard> createState() => _CriticalNetworkGuardState();
@@ -55,6 +57,7 @@ class _CriticalNetworkGuardState extends State<CriticalNetworkGuard> {
       onRetry: widget.provider.retryConnectionRecovery,
       onExit: widget.onExit,
       exitLabel: widget.exitLabel,
+      blockChildInput: widget.blockChildInput,
       child: widget.child,
     );
   }

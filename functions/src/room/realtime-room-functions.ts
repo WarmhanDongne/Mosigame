@@ -27,6 +27,7 @@ import {
   RoomJoinDecision,
 } from "./room-join-policy.js";
 import {decideSeatSave} from "./room-seating-policy.js";
+import {currentPresence} from "./current-presence.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {
   allocateRoomConnection, assertRoomTarget, parseSessionId,
@@ -230,6 +231,19 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           sessionRoom, uid, operationId, "connect", operationPayload,
         );
         if (saved) {
+          // A lost response may be retried after this member disconnected.
+          // Let the existing client allocate a fresh connection with its CAS
+          // sequence; never resurrect a disconnected identity during replay.
+          if (sessionRoom.presenceProtocol === 2 &&
+              sessionRoom.status !== "closed" &&
+              sessionRoom.status !== "terminal" &&
+              sessionRoom.players?.[uid]?.membershipId === saved.membershipId &&
+              currentPresence(sessionRoom, uid, "player")?.connected ===
+                false) {
+            throw new HttpsError("aborted", "접속 세대가 변경되었습니다.", {
+              reason: "staleConnection",
+            });
+          }
           connectionResult = saved;
           savedNickname = saved.nickname as string;
           reconnected = saved.reconnected === true;

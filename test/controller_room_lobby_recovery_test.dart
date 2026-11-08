@@ -5,12 +5,16 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/recovery/services/controller_room_session_store.dart';
+import 'package:game_kit/template_game.dart';
+import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
+import 'package:project00/platform/home/gamelist/provider/game_list_provider.dart';
 import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/controller_presence.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:project00/platform/home/tablet/widgets/tablet_room_panel.dart';
+import 'package:project00/platform/home/tablet/screens/tablet_home.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -35,6 +39,7 @@ void main() {
     provider.dispose();
     await service.players.close();
     await service.connection.close();
+    await service.gameStatus.close();
     await ControllerRoomSessionStore.instance.clear();
   });
 
@@ -44,6 +49,26 @@ void main() {
     expect(service.restores, 1);
     expect(service.creates, 0);
     expect(provider.roomCode, 'ABCDE');
+  });
+
+  testWidgets('태블릿 시작은 기존 게임을 자동으로 열지 않고 복귀 여부를 묻는다', (tester) async {
+    final tabletProvider = _TabletProvider();
+    addTearDown(tabletProvider.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TabletHome(
+          gameCatalog: const EmptyGameCatalog(),
+          roomProvider: tabletProvider,
+          gameProvider: _GameProvider(),
+          storeProvider: _GameProvider(scope: GameListScope.store),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('진행 중인 게임이 있어요'), findsOneWidget);
+    expect(find.text('게임으로 돌아가기'), findsOneWidget);
+    expect(find.text('기존 방 종료'), findsOneWidget);
   });
 
   test(
@@ -193,6 +218,7 @@ class _Service implements RoomService {
   Completer<bool>? playerReadGate;
   final players = StreamController<List<RoomPlayer>>.broadcast();
   final connection = StreamController<bool>.broadcast();
+  final gameStatus = StreamController<String?>.broadcast();
   bool failRestore = true, failClose = false;
   Completer<String?>? gate;
   final closedCodes = <String>[];
@@ -253,6 +279,9 @@ class _Service implements RoomService {
   @override
   Stream<String?> watchRoomStatus(String code) => const Stream.empty();
   @override
+  Stream<String?> watchGameStatus(String code) => gameStatus.stream;
+
+  @override
   Stream<ControllerPresence> watchControllerPresence(String code) =>
       const Stream.empty();
   @override
@@ -262,6 +291,41 @@ class _Service implements RoomService {
 }
 
 class _Games implements GameService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _GameProvider extends ChangeNotifier implements GameProvider {
+  _GameProvider({this.scope = GameListScope.library});
+
+  @override
+  final GameListScope scope;
+  @override
+  final List<GameInfo> games = <GameInfo>[];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _TabletProvider extends ChangeNotifier implements RoomProvider {
+  @override
+  String? roomCode;
+
+  @override
+  Future<void> restoreControllerRoom() async {
+    roomCode = 'ABCDE';
+    notifyListeners();
+  }
+
+  @override
+  Stream<String?> watchGameStatus(String code) => Stream.value('playing');
+
+  @override
+  Stream<bool> watchServerConnection() => Stream.value(true);
+
+  @override
+  Future<void> pauseControllerPresence() async {}
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

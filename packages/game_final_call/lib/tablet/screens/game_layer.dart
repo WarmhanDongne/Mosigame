@@ -679,7 +679,9 @@ class _FinalCallLifeRow extends StatelessWidget {
     final rowWidth = onPlate ? 72.0 : 124.0;
     final rowHeight = onPlate ? 24.0 : 48.0;
     final heartSize = onPlate ? 20.0 : 22.0;
-    if (player.status == 'eliminated' && (loss == 0 || lossProgress >= 1)) {
+    // A teammate can be eliminated without losing a heart themselves. Their
+    // zero loss must not reveal the team outcome before the cards are shown.
+    if (player.status == 'eliminated' && (onPlate || lossProgress >= 1)) {
       return SizedBox(
         width: rowWidth,
         height: rowHeight,

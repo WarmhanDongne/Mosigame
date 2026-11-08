@@ -17,6 +17,7 @@ import 'package:project00/platform/auth/widgets/auth_design.dart';
 import 'package:project00/platform/home/home.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/widgets/platform_components.dart';
+import 'package:project00/platform/widgets/app_startup_surface.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({
@@ -108,6 +109,9 @@ class _AuthGateState extends State<AuthGate> {
       stream: _userChanges,
       builder: (context, authSnapshot) {
         final view = _buildView(context, authSnapshot);
+        if (view is _AppInitializingView) {
+          return AppStartupSurface(child: view);
+        }
         return _AuthSurfaceTransition(
           child: KeyedSubtree(
             key: ValueKey(view is Home ? 'home' : 'auth'),
@@ -584,7 +588,7 @@ class _AppInitializingViewState extends State<_AppInitializingView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: MosiColors.violet),
+          const CircularProgressIndicator(color: Colors.white),
           if (_isSlow) ...[
             const SizedBox(height: 16),
             Text(
@@ -594,7 +598,7 @@ class _AppInitializingViewState extends State<_AppInitializingView> {
                 zhHans: '${widget.step.localized}…',
                 zhHant: '${widget.step.localized}…',
               ),
-              style: MosiFonts.sans(size: 15, color: MosiColors.navy),
+              style: MosiFonts.sans(size: 15, color: Colors.white),
             ),
           ],
         ],

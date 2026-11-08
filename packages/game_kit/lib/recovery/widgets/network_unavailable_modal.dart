@@ -51,7 +51,7 @@ class NetworkUnavailableModal extends StatelessWidget {
     final status = isRetrying
         ? '다시 연결하는 중'.localized
         : retryEnabled
-        ? '자동으로 다시 연결하는 중'.localized
+        ? '다시 시도해주세요.'.localized
         : '인터넷 연결을 기다리는 중'.localized;
     return MosiConnectionLayout(
       key: cardKey,
@@ -79,10 +79,7 @@ class NetworkUnavailableModal extends StatelessWidget {
             onPressed: isRetrying ? null : onRetry,
           ),
         if (onExit != null)
-          MosiConnectionButton(
-            label: exitLabel.localized,
-            onPressed: isRetrying ? null : onExit,
-          ),
+          MosiConnectionButton(label: exitLabel.localized, onPressed: onExit),
       ],
     );
   }

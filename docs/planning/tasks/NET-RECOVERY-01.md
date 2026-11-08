@@ -560,3 +560,349 @@ start→무보고→보조 복구→resume/join→ready/분배, 정상 기기·p
 startup-checks-{before,after}.json. 이번 후보 FULL은 명시적 재승인 대기이고 미실행이다.
 운영 접근·배포·실기기 확인·commit/push는 하지 않았다. 이전 FULL 결과는 새 후보의
 완료 판정을 대신하지 않는다.
+
+
+<a id="stop-failed-disconnect-20261105"></a>
+### 2026-11-05 — 준비 실패 보고의 강제 연결 종료 중단 배포
+
+사용자가 선턴 및 특정 휴대폰의 반복 연결 실패가 최근 Functions 배포 후 심해졌다고
+보고했다. 운영 장애의 정확한 최초 원인과 설치 빌드는 미확정이다. 서버의 LP/FC 선턴
+재접속을 제한 시간 전후로 실행한 임시 4개 검사는 통과했다. 초기 임시 FC 검사의
+캐릭터 중복 fixture와 배열 변환을 바로잡은 뒤 실제 지원 입력으로 재검증했다.
+
+배포 앱과 공통 코드 경로에서는 준비 실패 보고가 정상 연결을 false로 바꿀 수 있고,
+재접속 실패 뒤 transportRecovering=true가 남으면 게임 retryRecovery가 재접속
+callback을 호출하지 않는다. 임시 Flutter 회귀에서 기대 호출 1회, 실제 0회로
+FAIL/exit1을 재현했다. 실제 화면은 GameRecoveryLayer의 session.retry 경로를 사용한다.
+이 앱 동작은 기존 코드에 있었으며 최근 서버의 연결 해제가 이 경로를 유발할 수 있다.
+
+서버 수정은 applyRecoveryReport의 failed 처리에서 requestPreparationReconnect 호출을
+제거하고 기존 응답 필드 reconnectRequested=false를 유지한다. 휴대폰 독립 진행과
+태블릿 pause/ready, 접속·참가 자격·private 검증을 보존한다. LP/FC 선턴이 반복 실패
+보고 후 동일 접속에서 ready를 승인받고 손패·턴·연결을 보존하는 회귀 2개를 추가했다.
+수정 전 두 회귀 FAIL/exit1, 수정 후 전체 서버 593개 PASS/exit0이다.
+
+`npm --prefix functions run lint`, `npm --prefix functions test`,
+`dart run :mosigame test session --json`은 PASS/exit0이다. session은 5단계와
+working-tree 보존을 통과했다. 사용자가 전체 검증 후 해당 함수 배포를 명시 승인했다.
+영문 임시 사본에서 고정 lockfile/offline 의존성을 준비하고
+`dart run :mosigame validate --full --json`을 실행했다. 13단계 PASS/exit0,
+136.467초, Flutter 851개와 서버 593개가 통과했다. 검증 중 파일 변경도 없었다.
+
+검증한 사본에서 다음 명령으로 선택 배포했다.
+
+```bash
+./functions/node_modules/.bin/firebase deploy --project project0000-ec01e --only functions:game_common_recovery_report --non-interactive
+```
+
+서울 리전 Node22 2nd Gen의 Successful update operation 및 Deploy complete,
+exit0을 확인했다. 실기기 복구와 최초 준비 실패 원인은 후속 확인 대상이다.
+이미 앱 내부의 복구 플래그가 남은 경우를 서버만으로 해제한다고 보장하지 않는다.
+startupRecovery 스케줄 후보는 별도이며 이번 배포에 포함하지 않았다. 해당 후보의
+운영 활성화는 이 재접속 위험을 해결하기 전까지 보류한다.
+
+작업 전 develop/7c46f74d의 tracked 변경은 없고 사용자 미추적 폴더 4개가 있었다.
+수정한 서버 1개·테스트 2개와 결과 문서를 로컬에 보존했으며 이번 작업의 commit/push는
+수행하지 않았다. 검증 증거는 ignored build/server-ready-investigation-2026-11-05의
+no-forced-disconnect-tests.log, no-forced-disconnect-session.json,
+no-forced-disconnect-full.json에 보관했다.
+
+
+2026-11-05 후속 사용자 확인에서 강제 끊김 중단 배포 후 재접속이 복구됐다고 보고했다.
+추가 pending join 후보는 사용자 요청으로 배포를 취소하고 로컬에서도 직전 배포 후보로
+되돌렸다. 조사 기록과 후보는 ignored build에 보관했다. 다시하기 후 분배 정체는 별도 조사한다.
+
+
+<a id="restart-background-investigation-20261105"></a>
+### 2026-11-05 — 다시하기 후 휴대폰 배경 정체 조사(미해결)
+
+사용자가 마지막 recovery_report 배포로 재접속이 된다고 확인하여 미배포
+pending-join 후보를 철회했다. 관련 5개 파일은 직전 배포 검증 checkout과
+byte 비교로 일치하며, joinRealtimeRoom 추가 배포는 하지 않았다. 기존 HEAD의
+미배포 startup watchdog까지 운영 전체와 일치한다고 주장하지 않는다.
+
+요청 시각 기준 14:10:22–14:15:22 KST를 조회용 gcloud configuration으로
+한정 조회했다(관련 callable 10개, limit100, 결과90, exit0). Firebase CLI의
+Node22 경로로 실제 runServiceId를 확인했다. LP start3/complete_dealing3/end1
+모두 HTTP200, ready 보고16개 accepted였다. 해당 구간에서 FC 호출은 없었다.
+HTTP200만으로 새 변경 commit 여부나 사용자 기기의 렌더링 성공을 확정할 수 없고,
+사용자가 보고한 판과의 대응도 아직 확인되지 않았다. 운영 DB는 조회·수정하지 않았다.
+
+합성 참가자로 실제 LP callable의 시작→ready→분배→카드 제출4회→다시하기를
+2회 반복한 뒤 종료한 snapshot을 생성했다. 공개/개인 이벤트 동시 도착,
+공개 우선, 개인 우선 3가지로 현재 Flutter 소스의 손패5장 수신과 수동 종료를
+검증했다. 준비 에셋은 테스트에서 명시적으로 준비 처리했고, 손패 펼치기는
+직접 markHandRevealed를 호출했으므로 실기기 연출 재현/통과의 증거는 아니다.
+초기 테스트의 종료 잔류는 routeActive=false인 960ms 퇴장 연출의 disposal
+프레임 대기였고, 프레임 대기 후 3개 PASS/exit0이었다. 앱 코드는 수정하지 않았다.
+
+- `npm --prefix functions run build`: PASS/exit0.
+- `node --test build/server-ready-investigation-2026-11-05/restart-snapshot-probe.mjs`:
+  PASS/exit0(합성 snapshot 1개 시나리오).
+- `flutter test --no-pub /private/tmp/mosigame-restart-probe_test.dart --reporter expanded`:
+  동일 소스 ASCII 검증 checkout에서 PASS/exit0, 3개.
+- `npm --prefix functions test`: PASS/exit0, 593개.
+- `git diff --check`: PASS/exit0. develop/7c46f74d 유지, 기존 8개 수정 파일과
+  사용자 untracked 4개 디렉터리 보존. 새 제품 코드 수정·commit·push·deploy 없음.
+- 새 수정 후보가 없어 FULL은 추가 실행하지 않았다. 증상 해결을 선언하지 않는다.
+
+정제한 운영 metadata/log와 합성 재현 evidence는 ignored
+`build/server-ready-investigation-2026-11-05/`의 `replay-game-*`, `restart-*`,
+`restored-server-tests.log`에 있다. 다음에는 해당 시간/게임과 태블릿 동반 정체
+여부를 확인하고, 필요 시 실제 실패 재현 시점의 기기 진단과 서버 처리 결과를
+연결해야 한다. 현재 evidence로 강제 연결 끊기나 자동 분배를 추가하지 않는다.
+
+
+<a id="restart-transition-diagnostics-20261105"></a>
+### 2026-11-05 — 분배·종료 결과 진단(배포 완료, 원인 미확정)
+
+사용자는 종료도 되지 않아 태블릿·휴대폰 모두 정체했을 가능성을 전했으나 확실하지
+않다고 했다. 동일 소스의 실제 태블릿 `onExitToLobby` 경로에 성공 응답을 주는
+격리 테스트를 추가 조사하여 정상/준비 대기 두 경우 모두 화면 종료 PASS/exit0을
+확인했다. 성공 callable은 Fake이며 네트워크·실기기 정상 판정은 아니다.
+
+현재 HTTP200 로그로는 이전 작업의 저장 응답 재생과 현재 게임의 실제 분배/종료를
+구분할 수 없다. 이를 다음 재현에서 구분할 수 있도록 LP complete_dealing/end_game
+두 callable의 성공 결과에만 `liars_poker_transition_result` 진단을 추가했다.
+새 함수 export, 앱 코드, DB 읽기/쓰기, API 응답 또는 게임 전이는 변경하지 않는다.
+이미 완료한 transaction snapshot에서 고정 action/responseType/status/phase,
+requestGameCurrent/paused/contextValid/pendingHands boolean 및 private 인원수와
+public-private context 일치 인원수만 기록한다. 방 코드·UID·게임 ID·손패·원문
+오류는 기록하지 않는다. snapshot 해석/로깅 실패도 원래 성공 응답을 보존한다.
+
+회귀는 실제 분배→종료→재시작 뒤 옛 분배 명령을 재전송하여, 저장된 성공 응답과
+현재 dealing 상태를 구분하면서 새 판을 바꾸지 않는지 확인한다. 이는 멱등 계약을
+검증한 것이며 운영 장애가 옛 명령 재생 때문이라고 확정한 증거가 아니다.
+
+- `npm --prefix functions run lint`: 최초 JSDoc/줄 길이 실패를 수정 후 PASS/exit0.
+- `npm --prefix functions test`: PASS/exit0, 598개(이전593+진단5).
+- `flutter test --no-pub /private/tmp/mosigame-tablet-restart-probe_test.dart --reporter expanded`:
+  동일 소스 ASCII checkout에서 PASS/exit0, 2개(정상/준비 대기 종료 경로).
+- `git diff --check`: PASS/exit0. develop/7c46f74d, 기존 변경/사용자 untracked 보존.
+- 후보 변경: `transition-diagnostics.ts`, LP `complete-dealing.ts`/`end-game.ts`,
+  `transition-diagnostics.test.mjs`, 기존 RTDB 회귀 파일에 integration 1개, 조사 문서.
+- FULL과 운영 배포는 아직 수행하지 않았다. 승인 시 배포 대상은
+  `game_liars_poker_complete_dealing`, `game_liars_poker_end_game` 두 개로 제한한다.
+  시작·startup scheduler·join 함수와 기존 재접속 배포는 변경 대상이 아니다.
+- 정상 경로와 재시도 응답을 바꾸지 않는 진단 후보다. 장애 수정 완료로 표시하지 않는다.
+  FULL은 Skill의 새 최종 후보 승인, 두 함수 배포는 기존 recovery_report 배포 범위
+  밖이므로 별도 승인을 요청한다. 승인 후에도 실제 재현 상태 확인이 필요하다.
+
+
+#### 사용자 승인 후 전체 검증·선택 배포 완료
+
+사용자의 “배포해줘”를 직전 제안한 FULL 후 두 함수 선택 배포 승인으로 받아 실행했다.
+기존에 확인된 한글 경로 Flutter 분석 오류를 피하기 위해
+`/private/tmp/mosigame-transition-deploy-6435op0r/project00`에 develop/7c46f74d의
+동일 tracked 소스와 진단 추가 파일을 복사했다. 총1657개 파일의 SHA256으로
+원본/검증본 일치를 확인했다. SDK 수정 없이 기존 Node22와 Flutter SDK를 사용했다.
+`flutter pub get --offline --enforce-lockfile`은 PASS/exit0이며 소스 변화가 없었다.
+
+- `dart run :mosigame validate --full --json`: PASS/exit0, 13/13단계,
+  198621ms. formatting, Flutter analysis, root와 6개 게임 패키지 테스트,
+  Functions lint/tests, working-tree mutation 판정이 모두 PASS다.
+- `node functions/node_modules/firebase-tools/lib/bin/firebase.js deploy --project
+  project0000-ec01e --only functions:game_liars_poker_complete_dealing,functions:game_liars_poker_end_game
+  --non-interactive`: 검증한 checkout에서 PASS/exit0. predeploy eslint/tsc,
+  두 함수 Successful update operation과 Deploy complete를 확인했다.
+- 배포 runner는 FULL PASS와 원본/검증본의 소스 hash 일치에 실패하면 배포 전에 중단한다.
+- `firebase functions:list --project project0000-ec01e --json`: 정제한 두 대상
+  metadata의 서울 리전/Node22/gcfv2 유지와 source hash 교체를 확인했다(exit0).
+  이전 `e9ecbc6ef8048a14df0fa5aaaa71d0a5131204c0` →
+  새 `8e078f4b63fb897bfc68730837dbbb2073a53502`(두 함수 동일).
+  확인 시각 2026-11-05 14:54:53 KST.
+- 검증·배포 전후 원본1657개 파일 hash 및 `git status --porcelain` 동일을 확인했다.
+  develop/7c46f74d 유지, 기존 사용자 untracked4개 디렉터리 보존, commit/push 없음.
+  이 확인 이후 배포 결과 기록을 위한 문서4개만 의도적으로 갱신했다.
+- 배포 후 실제 게임 호출은 하지 않았다. 시작/join/recovery_report/scheduler와
+  Rules/DB migration은 이번 배포 대상이 아니다. 사용자 재현 시각의 진단 로그와
+  화면 상태를 연결해야 하며, 정체 장애 해결 완료로 보고하지 않는다.
+
+Evidence: ignored `build/server-ready-investigation-2026-11-05/` 아래
+`transition-full.json`, `transition-validation-source.json`, `transition-before-status.txt`,
+`transition-deploy.log`, `transition-deploy-before.json`, `transition-deploy-after.json`,
+`deploy-transition-diagnostics.py`. 위 후보 절의 승인 대기는 이 후속 기록으로 해소됐다.
+
+
+<a id="foreground-return-investigation-20261105"></a>
+### 2026-11-05 — 다른 앱에서 복귀 후 정체 조사(제품 코드 변경 없음)
+
+사용자가 완전 종료 대신 다른 앱에 잠깐 갔다 돌아와도 멈춘다고 확인했다.
+현재 RoomProvider는 paused에서 current connection을 disconnected로 쓰고
+transportRecovering=true로 잠근 뒤 resumed에서 retryConnectionRecovery를 실행한다.
+복귀 요청의 실패는 catch되어 해당 화면에 남으며, 게임 화면의 retryRecovery는
+retrySession/에셋 준비만 호출하고 session.reconnect를 호출하지 않는다.
+transportRecovering=true이면 readiness 평가와 ready 전송이 진행되지 않는다.
+
+검증한 동일 소스 checkout에서 기존 격리 probe 한 개를 실행했다.
+`flutter test --no-pub /private/tmp/mosigame-phone-reconnect-probe.dart --plain-name
+'PROBE retry restarts a failed phone connection recovery' --reporter expanded`는
+FAIL/exit1, reconnect 호출 기대1/실제0이었다. 제품 코드 변경 없이 테스트에서만
+복구 callback을 먼저 연결한 비교 probe는 PASS/exit0, canSend=true를 확인했다.
+이는 최초 복귀 실패가 일어났다는 실기기 증거나 운영 원인 확정이 아니라,
+실패 뒤 수동 재시도로 회복하지 못하는 클라이언트 결함의 재현이다.
+
+`node --test build/server-ready-investigation-2026-11-05/foreground-server-probe.mjs`:
+PASS/exit0(2개 조건 확인). 정상 join→ready 경로는 같은 membership/자리/손패를
+유지하며 새 connected 연결과 accepted를 돌려준다. 응답을 저장하기 전 다시
+단절된 pending join을 재전송하면 현재 disconnected 연결의 저장 성공이 돌아오는
+기존 서버 경계 사례도 재현했다. 이전 철회한 join 후보는 다시 적용/배포하지 않았다.
+
+기존 ‘Cloud Function만 수정’ 범위에서는 앱이 호출하지 않는 재연결 callback을
+서버에서 연결할 수 없다. 앱 복귀·실패 재시도의 실제 연결 복원을 함께 수정할
+범위를 확인해야 한다. 최초 복귀 실패의 시각/실제 로그는 아직 확보되지 않았다.
+프로젝트에 shorebird.yaml/shorebird_code_push가 있지만 설치된 스토어 바이너리가
+Shorebird release 빌드인지 확인되지 않았으므로 무심사 패치 가능을 확정하지 않는다.
+공식 문서 https://docs.shorebird.dev/code-push/troubleshooting/ 의 기존 release
+바이너리 조건을 확인했다. 이 조사에서는 FULL·production 접근·deploy를 추가
+실행하지 않았고, 제품 소스와 사용자 파일을 유지했다.
+
+
+<a id="pending-join-disconnected-20261105"></a>
+### 2026-11-05 — 끊긴 pending join 성공 응답 재사용 방지 후보
+
+다른 앱에 갔다 복귀하는 문제에 대해 사용자는 앱 수정 없이 서버에서 가능한 최소
+수정을 승인했다. 앞서 철회했던 후보 전체를 복구하지 않고 joinRealtimeRoom의
+저장 응답 분기에만 disconnected 현재 연결 검사와 기존 staleConnection 오류를
+추가했다. 추가 지연 계측/거절 사유 로깅은 포함하지 않는다. 동일 active membership,
+presenceProtocol=2, 비종료 방에만 적용하고 currentPresence로 같은 transaction의
+연결 신원을 검증한다. 클라이언트 기존 복구가 새로운 operationId/최신 seq로 접속을
+요청한다. 기존 연결 부활, 강제 퇴장, 손패/게임 초기화, 앱 제품 코드 변경은 없다.
+
+수정 전 단일 회귀는 Missing expected rejection으로 FAIL(1/1 실패)했다.
+수정 후 npm --prefix functions test는 PASS/exit0(603개), npm --prefix functions
+run lint는 max-len 1건 수정 후 PASS/exit0이다. 정상 응답 유실 replay, 단절 뒤
+새 연결/동일 membership·손패·게임 유지, 늦은 old onDisconnect 무효,
+closed/terminal/removed/다른 membership 경계를 확인했다. Dart 테스트만 추가하여
+기존 RoomService가 aborted/staleConnection에서 새 연결을 요청하고 heartbeat를
+새 연결에 쓰는 경로를 검증한다. 앱 lib/packages 제품 코드 변경은 없다.
+
+세션 검증은 동일 소스 ASCII 임시 checkout에서 수행하며 결과를 아래에 기록한다.
+현재 전체 검증과 joinRealtimeRoom 배포는 미실행이다. 최초 단절 원인이나 모든
+복귀 정체의 해결을 확정하지 않는다. 특히 앱이 재접속 요청을 보내지 않는 경우는
+서버 후보 적용 범위 밖이다. 설치된 스토어 바이너리와 소스 일치도 별도 확인이 필요하다.
+
+
+`dart run :mosigame test session --json`: PASS/exit0, 5/5단계(63.548초).
+추가한 기존 앱 복구 회귀를 포함한 Flutter 선택 테스트와 서버 선택 테스트233개가
+통과했다. 같은 소스 ASCII checkout의 검증 전후 mutation 검사 PASS이며 원본과
+검증본의 소스 hash가 일치했다. 실행 후 차이는 의도한 작업 기록 문서4개뿐이다.
+초기 offline pub get은 SDK 캐시 sandbox 권한으로 실패했으며 기존 SDK 캐시 접근
+권한으로 재실행해 성공했다. SDK 제품 코드/권한 설정을 수정하지 않았다.
+
+develop/7c46f74d 유지, 기존 수정과 사용자 untracked4개 디렉터리 보존.
+이번 제품 수정은 functions/src/room/realtime-room-functions.ts 14줄이며 테스트
+2개 파일과 기록 문서4개를 보완했다. commit/push/production 접근/배포 없음.
+FULL 승인 전이므로 완료 판정은 보류한다. Evidence는 ignored
+build/server-ready-investigation-2026-11-05/pending-join-{baseline,server,lint}.log,
+pending-join-session.{json,progress}, pending-join-validation-source.json에 있다.
+
+
+#### 후속 승인·FULL·join 단일 배포 완료
+
+사용자의 “배포해줘” 승인으로 최종 후보 전체 검증 뒤 joinRealtimeRoom만 배포했다.
+`dart run :mosigame validate --full --json`: PASS/exit0, 13/13단계,
+186.309초. 동일 소스 ASCII checkout에서 분석/format/앱·게임 테스트/Functions
+lint·603개 테스트/working-tree mutation을 모두 통과했다.
+
+`node functions/node_modules/firebase-tools/lib/bin/firebase.js deploy --project
+project0000-ec01e --only functions:joinRealtimeRoom --non-interactive`:
+검증 checkout에서 predeploy lint/tsc, Successful update operation,
+Deploy complete를 확인했다(PASS/exit0). 배포 runner가 FULL 성공과 원본·검증본
+1657개 파일 hash 일치를 확인한 뒤 실행했다. 다른 함수·Rules·DB migration 없음.
+
+`firebase functions:list --project project0000-ec01e --json`: 배포 전후 정제한
+joinRealtimeRoom metadata 확인 PASS/exit0. asia-northeast3/nodejs22/gcfv2 유지,
+source hash e9ecbc6ef8048a14df0fa5aaaa71d0a5131204c0 →
+079397f150d3ba5f832d7366f36c005cf32faef3. 확인 시각 2026-11-05 16:22:34 KST.
+
+검증·배포 전후 원본 소스 hash와 git status 동일, develop/7c46f74d 및 기존 사용자
+변경 보존. 이후 배포 기록 문서4개만 의도적으로 갱신했다. commit/push 없음.
+실기기에서 다른 앱으로 전환·복귀 후 현재 손패/턴 유지 확인은 아직 미실행이며,
+모든 앱 복귀 정체의 해결로 보고하지 않는다. 위 FULL/배포 승인 대기는 해소됐다.
+Evidence: ignored build/server-ready-investigation-2026-11-05/의
+pending-join-full.{json,progress}, pending-join-validation-source.json,
+pending-join-deploy.log, pending-join-deploy-{before,after}.json,
+pending-join-{full-before,deploy-after}-status.txt, deploy-pending-join.py.
+
+
+### 2026-11-06 — 앱·서버 동시 개선으로 범위 전환(진단·계획)
+
+사용자는 별도 Firebase 프로젝트를 준비하고, 새 브랜치 codex/app-cloud-update에서
+출시 앱의 우회 복구 대신 앱 코드와 Functions의 근본 개선 방향을 요청했다.
+[코드 근거·실행 순서·검증 기준](../APP_SERVER_RECOVERY_PLAN_20261106.md)을 작성했다.
+확인된 retry 연결 누락을 우선하고 분배 완료/새 게임 경계/종료/서버 복구 정책을
+순차 검증한다. 실제 분배 정체 원인은 미확정이며 새 프로젝트 ID는 아직 미제공이다.
+이번 작업은 문서만 변경, 제품 코드·운영 접근·배포·테스트 실행 없음.
+
+
+<a id="foreground-input-20261106"></a>
+### 2026-11-06 — 휴대폰 앱 이탈·복귀 입력 잠금 최소 수정 후보
+
+사용자는 게임 진행은 정상이며 iOS/Android의 다른 앱 전환 후 입력 정체를 최우선으로
+지정하고 실제 재접속 연결 및 복구/나가기 접근 유지 수정을 승인했다. 자동 복구는 기존
+30초 배치 예산 후 종료될 수 있지만, 모든 장애의 최초 원인이 예산 소진으로 확정된
+것은 아니다. 확인한 결함은 게임 retryRecovery가 session.reconnect를 호출하지 않아
+transportRecovering이 남을 수 있다는 점이다.
+
+수정 전 새 회귀는 reconnect 기대1/실제0으로 FAIL/exit1이었다. 수정 후 공용 retry는
+필요한 경우 실제 reconnect를 먼저 기다리고 현재 데이터/화면 준비를 재시작한다.
+중복 클릭은 한 Future로 합치며 identity/transport 이벤트의 중복 재구독을 억제한다.
+연결 실패는 로컬 오류와 재시도를 남기고 leaving/dispose 이후 완료는 무시한다.
+휴대폰 게임 route만 blanket AbsorbPointer를 사용하지 않도록 선택하고 실제 게임
+명령의 canSend 검사는 유지한다. 기본 로비 차단은 바꾸지 않는다. guard 복구 실패 때
+즉시 재시도 UI를 노출하고 진행 중 나가기 버튼을 활성화했다.
+
+변경 제품 파일: game_session_controller.dart, app_network_guard.dart,
+critical_network_guard.dart, network_unavailable_modal.dart,
+lib/platform/home/phone/screens/phone_room_waiting.dart.
+회귀 파일: game_readiness_contract_test.dart, app_network_guard_test.dart,
+test/game_command_response_loss_test.dart. 새 dependency/서버 데이터 계약 변경 없음.
+
+동일 소스 ASCII checkout의 `flutter test --no-pub` 관련3파일: PASS/exit0, 53개.
+재접속 중복 합침, 실패 뒤 재시도, 정상 연결 재사용, 오래된 손패 입력 차단,
+퇴장 중 늦은 완료 무효, 실패 UI 재시도 후 해제, 복구 중 나가기, 실제 명령 서비스의
+복구 전 호출0/복구 후 호출1을 확인했다. `flutter analyze --no-pub` 변경8파일:
+PASS/exit0, No issues found. dart format 변경8파일 exit0, git diff --check exit0.
+공식 session 결과는 후속 기록하며 최종 후보 FULL은 별도 승인 전까지 미실행이다.
+
+이번 수정은 업데이트할 앱 후보이며 출시 앱에는 아직 적용되지 않았다. Functions는
+이번 작업에서 수정/배포하지 않았다. 새 Firebase ID가 아직 없어 실제 Android/iOS
+복귀·네트워크 전환·서버 연계 검증은 미실행이다. 전체 증상 해결로 판정하지 않는다.
+기존 Functions 수정·배포 기록과 사용자 파일은 보존하며 commit/push/운영 접근 없음.
+Evidence: ignored build/foreground-recovery-2026-11-06/의 before.json,
+test-source.json, baseline.log, targeted.log, analyze.log 및 session 결과.
+
+
+후속 공식 검증: `dart run :mosigame test session --json` PASS/exit0,
+5/5단계(50.326초). 선택 Flutter/Functions 검사와 working-tree mutation 모두 PASS.
+검증본1658개 파일 hash가 전후 동일하며 원본의 이후 차이는 의도한 기록 문서뿐이다.
+codex/app-cloud-update / 7c46f74d 유지. 최종 후보 FULL 승인 대기이며 운영 배포 없음.
+
+
+<a id="startup-session-choice-20261106"></a>
+### 2026-11-06 — 로그인 전환·이전 게임 선택·Final Call 결과 순서 후보
+
+사용자는 저장 로그인이 있어도 로그인 화면이 잠깐 보이는 현상을 없애되 인증 검증은
+유지하고, 휴대폰·태블릿 모두 로비보다 이전 게임 확인을 먼저 수행한 뒤 복귀 여부를
+묻도록 요청했다. 또한 Final Call 태블릿에서 카드 공개 전 팀 탈락 문구가 보이는
+문제를 수정하도록 승인했다.
+
+`AuthGate`의 인증·온보딩 구독과 timeout은 유지하고 초기 판정 위젯만 공용 violet
+startup surface에서 렌더링한다. `PhoneHome`은 이전 세션 판정 완료 전 로비를 숨기고,
+판정 오류를 none으로 바꾸지 않고 재시도를 제공한다. 복귀 거절도 서버 확인 성공 전
+prompt를 닫지 않는다. `TabletHome`은 기존 controller 방을 복원해 game status를
+분류하되 게임 route를 자동으로 열지 않고, 진행 게임/대기 그룹 복귀 또는 기존 방
+종료를 사용자가 선택하게 한다. status 최초값이 3초 안에 오지 않으면 방 연결을
+버리지 않고 그룹 복귀 선택으로 진행하며 후속 playing 이벤트가 오면 게임 복귀로
+갱신한다.
+
+Final Call의 결과 life row는 teammate가 직접 heart를 잃지 않은 `loss=0`인 경우도
+reveal timeline 완료 전 eliminated 문구를 숨긴다. 좌석 plate의 탈락 표시는 그대로다.
+서버 함수·persistent data·public API 변경과 production 접근·배포는 없다.
+
+직접 관련 테스트(인증 시작 화면, 휴대폰 판정 gate, 태블릿 복귀 prompt, 공용 prompt,
+Final Call 공개 순서) 23개와 변경 파일 정적 분석은 PASS/exit0이다. Node22 격리본에서
+`dart run :mosigame test auth --json`은 Flutter82개·Functions38개,
+`dart run :mosigame test session --json`은 Flutter230개·Functions233개와 각각
+working-tree mutation을 포함해 모두 5/5단계 PASS/exit0이다. FULL은 승인 대기다.

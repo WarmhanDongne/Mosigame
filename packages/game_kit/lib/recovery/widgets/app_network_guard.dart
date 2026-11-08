@@ -28,6 +28,7 @@ class AppNetworkGuard extends StatefulWidget {
     this.onRetry,
     this.onExit,
     this.exitLabel = '홈으로',
+    this.blockChildInput = true,
     this.noticeDelay = const Duration(seconds: 3),
     this.showDelay = const Duration(seconds: 10),
   });
@@ -37,6 +38,10 @@ class AppNetworkGuard extends StatefulWidget {
   final Future<void> Function()? onRetry;
   final VoidCallback? onExit;
   final String exitLabel;
+
+  /// Game routes protect gameplay through their session/command checks while
+  /// retaining access to recovery and exit controls. Lobby routes block input.
+  final bool blockChildInput;
 
   /// 이 시간 이전에는 안내를 숨깁니다. 게임 입력은 연결 단절 즉시 보호합니다.
   final Duration noticeDelay;
@@ -211,6 +216,13 @@ class _AppNetworkGuardState extends State<AppNetworkGuard>
       recovered = true;
     } catch (error) {
       _log('recovery_failed', {'errorType': error.runtimeType.toString()});
+      if (mounted &&
+          _isForeground &&
+          _isCurrentRoute &&
+          subscriptionGeneration == _subscriptionGeneration &&
+          connectionGeneration == _connectionGeneration) {
+        setState(() => _isModalVisible = true);
+      }
       // 실패 횟수만으로 게임을 종료하거나 홈으로 이동하지 않습니다.
     } finally {
       if (mounted) {
@@ -298,9 +310,9 @@ class _AppNetworkGuardState extends State<AppNetworkGuard>
           // 화면은 유지하되 오래된 손패/턴을 보고 행동하지 못하도록 입력을 보호합니다.
           // 서버의 턴 시간과 이미 전송된 명령은 이 레이어가 중지하지 않습니다.
           AbsorbPointer(
-            absorbing: active && _needsRecovery,
+            absorbing: widget.blockChildInput && active && _needsRecovery,
             child: ExcludeFocus(
-              excluding: active && _needsRecovery,
+              excluding: widget.blockChildInput && active && _needsRecovery,
               child: widget.child,
             ),
           ),

@@ -120,6 +120,33 @@ function refreshHeartbeats(ref, now) {
   }
 }
 
+test('LP completion/end diagnostics use the committed snapshot and expose an old completion replay', async t => {
+  const ref = await setup(t, 3, true);
+  await report.run(readyRequest(ref, 'tablet', 'diagnostic-ready'));
+  const logs = [];
+  t.mock.method(logger, 'info', (event, fields) => {
+    if (event === 'liars_poker_transition_result') logs.push(fields);
+  });
+  const completion = ref.request('diagnostic-complete');
+  const completed = await completeDealing.run(completion);
+  assert.equal(logs[0].status, 'playing');
+  assert.equal(logs[0].phase, 'playing');
+  assert.equal(logs[0].matchingPrivatePlayers, 3);
+  assert.equal(logs[0].pendingHands, false);
+  const {game_liars_poker_end_game: end} = require('../lib/liars-poker/end-game.js');
+  await end.run(ref.request('diagnostic-end'));
+  assert.equal(logs[1].status, 'finished');
+  assert.equal(logs[1].privatePlayers, 0);
+  await start.run(ref.request('diagnostic-restart', 'tablet', {restart: true}));
+  const restarted = structuredClone(ref.value.game);
+  assert.deepEqual(await completeDealing.run(completion), completed);
+  assert.equal(logs[2].responseType, 'dealingCompleted');
+  assert.equal(logs[2].requestGameCurrent, false);
+  assert.equal(logs[2].phase, 'dealing');
+  assert.equal(logs[2].pendingHands, true);
+  assert.deepEqual(ref.value.game, restarted, 'logging/replay cannot advance the new game');
+});
+
 for (const gameType of ['liars_poker', 'final_call']) {
   test(`${gameType}: missing failed report still recovers only unready live devices once`, async t => {
     let now = 100000;
@@ -312,7 +339,33 @@ test('independent phones disconnect/rejoin without pausing or changing hands/dea
   assert.equal(ref.value.players.player1.isConnected, true, 'late old onDisconnect cannot undo rejoin');
 });
 
-test('received phone failure requests one reconnect; replay and later failure cannot loop', async t => {
+for (const gameType of ['liars_poker', 'final_call']) {
+  test(`${gameType}: first player can retry preparation on the same connection`, async t => {
+    const ref = await setup(t, gameType === 'final_call' ? 4 : 3, true, gameType);
+    await report.run(readyRequest(ref, 'tablet', 'tablet-ready'));
+    await (gameType === 'final_call' ? completeFinalCall : completeDealing).run(ref.request('complete-dealing'));
+    ref.value.status = 'playing';
+    const uid = ref.value.game.public.turnUid;
+    const beforePublic = structuredClone(ref.value.game.public);
+    const beforePrivate = structuredClone(ref.value.game.private);
+    const beforeConnections = structuredClone(ref.value.connections);
+    const beforePlayers = structuredClone(ref.value.players);
+    for (let seq = 1; seq <= 3; seq++) {
+      const failed = await report.run(ref.request(`first-failure-${seq}`, uid, {
+        state: 'failed', reportSeq: seq, dataSeq: 1,
+      }));
+      assert.equal(failed.reconnectRequested, false);
+      assert.deepEqual(ref.value.connections, beforeConnections);
+      assert.deepEqual(ref.value.players, beforePlayers);
+    }
+    assert.equal((await report.run(readyRequest(ref, uid, 'first-retry-ready', 4))).status, 'accepted');
+    assert.deepEqual(ref.value.game.public, beforePublic);
+    assert.deepEqual(ref.value.game.private, beforePrivate);
+    assert.equal(ref.value.game.server.preparationReconnects, undefined);
+  });
+}
+
+test('phone preparation failures preserve the connection across retries and explicit rejoin', async t => {
   const ref = await independentGame(t);
   const beforePublic = structuredClone(ref.value.game.public);
   const beforePrivate = structuredClone(ref.value.game.private);
@@ -320,13 +373,15 @@ test('received phone failure requests one reconnect; replay and later failure ca
   const response = await report.run(failed);
   assert.equal(response.status, 'accepted');
   assert.equal(response.outcome, 'localOnly');
-  assert.equal(response.reconnectRequested, true);
-  assert.equal(ref.value.players.player1.isConnected, false);
-  assert.equal(ref.value.connections.player1[failed.data.connectionId].connected, false);
+  assert.equal(response.reconnectRequested, false);
+  assert.equal(ref.value.players.player1.isConnected, true);
+  assert.equal(ref.value.connections.player1[failed.data.connectionId].connected, true);
   assert.equal(ref.value.connections.player0['connection-player0'].connected, true);
   assert.equal(ref.value.controllerConnected, undefined, 'other device summaries are untouched');
   assert.deepEqual(ref.value.game.public, beforePublic);
   assert.deepEqual(ref.value.game.private, beforePrivate);
+  assert.equal(ref.value.game.server.preparationReconnects, undefined);
+  assert.equal((await report.run(readyRequest(ref, 'player1', 'same-connection-ready', 2))).status, 'accepted');
   await join.run(ref.request('automatic-rejoin', 'player1', {
     expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', reconnectOnly: true,
   }));
@@ -340,10 +395,11 @@ test('received phone failure requests one reconnect; replay and later failure ca
   assert.deepEqual(ref.value.game.public, beforePublic);
 });
 
-test('initial phone failure can reconnect without blocking controller readiness', async t => {
+test('initial phone failure preserves transport without blocking controller readiness', async t => {
   const ref = await setup(t, 3, true);
   const failed = await report.run(ref.request('initial-phone-failed', 'player1', {state: 'failed', reportSeq: 1}));
-  assert.equal(failed.reconnectRequested, true);
+  assert.equal(failed.reconnectRequested, false);
+  assert.equal(ref.value.connections.player1['connection-player1'].connected, true);
   assert.equal(ref.value.game.public.recovery.purpose, 'initialReadiness');
   assert.equal((await report.run(readyRequest(ref, 'tablet', 'initial-controller-ready'))).paused, false);
   assert.equal(ref.value.game.private, undefined, 'hands still wait for tablet animation completion');
@@ -387,8 +443,8 @@ test('controller failure still pauses; its fresh readiness resumes without waiti
   const ref = await independentGame(t);
   const beforeHands = structuredClone(ref.value.game.private);
   const failed = await report.run(ref.request('tablet-preparation-failed', 'tablet', {state: 'failed', reportSeq: 2}));
-  assert.equal(failed.reconnectRequested, true);
-  assert.equal(ref.value.controllerPresence.connected, false);
+  assert.equal(failed.reconnectRequested, false);
+  assert.equal(ref.value.connections.tablet['connection-tablet'].connected, true);
   assert.equal(ref.value.game.public.recovery.paused, true);
   assert.equal(ref.value.game.public.turnDeadlineAt, undefined);
   const restored = await resume.run(ref.request('automatic-tablet-resume', 'tablet', {expectedConnectionSeq: 1}));
@@ -538,5 +594,57 @@ for (const operation of ['resume', 'join', 'report', 'ready', 'expire', 'presenc
     assert.equal(ref.value.game.public.recovery.paused, true, 'transport success never replaces ready barrier');
     assert.equal(ref.value.game.public.recovery.causes['player:player0'].canContinue, true);
     assert.equal(ref.value.game.private, undefined);
+  });
+}
+
+test('a pending phone join replays only a usable connection after connection loss', async t => {
+  const ref = await independentGame(t);
+  const request = ref.request('pending-phone-reconnect', 'player1', {
+    expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', preserveProfile: true,
+  });
+  const joined = await join.run(request);
+  assert.deepEqual(await join.run(request), joined, 'live response-loss replay is idempotent');
+  const oldId = joined.connectionId;
+  ref.value.connections.player1[oldId].connected = false;
+  await syncConnection.run({params: {roomCode: 'ABCDE', uid: 'player1', connectionId: oldId},
+    data: {after: {val: () => false}}});
+  const before = structuredClone(ref.value);
+  await assert.rejects(join.run(request),
+    error => error.code === 'aborted' && error.details?.reason === 'staleConnection');
+  assert.deepEqual(ref.value, before, 'failed replay cannot allocate or resurrect an old connection');
+  const replacement = await join.run(ref.request('fresh-phone-reconnect', 'player1', {
+    expectedConnectionSeq: 2, nickname: 'player1', characterId: 'bear', preserveProfile: true,
+  }));
+  assert.equal(replacement.connectionSeq, 3);
+  assert.notEqual(replacement.connectionId, oldId);
+  assert.equal(replacement.membershipId, joined.membershipId);
+  assert.deepEqual(ref.value.game, before.game);
+  assert.equal((await report.run(readyRequest(ref, 'player1', 'cold-restart-ready'))).status, 'accepted');
+  const after = structuredClone(ref.value);
+  assert.deepEqual(await join.run(request), joined, 'a later live connection preserves ordinary replay semantics');
+  assert.deepEqual(ref.value, after);
+  await syncConnection.run({params: {roomCode: 'ABCDE', uid: 'player1', connectionId: oldId},
+    data: {after: {val: () => false}}});
+  assert.equal(ref.value.players.player1.isConnected, true);
+});
+
+
+for (const boundary of ['closed', 'terminal', 'removed', 'replaced-membership']) {
+  test(`pending join replay preserves the existing ${boundary} boundary`, async t => {
+    const ref = await independentGame(t);
+    const request = ref.request('boundary-reconnect', 'player1', {
+      expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', preserveProfile: true,
+    });
+    const joined = await join.run(request);
+    ref.value.connections.player1[joined.connectionId].connected = false;
+    if (boundary === 'closed' || boundary === 'terminal') ref.value.status = boundary;
+    if (boundary === 'removed') ref.value.players.player1.status = 'removed';
+    if (boundary === 'replaced-membership') {
+      ref.value.players.player1.membershipId = 'replacement-member';
+      ref.value.connections.player1[joined.connectionId].membershipId = 'replacement-member';
+    }
+    const before = structuredClone(ref.value);
+    assert.deepEqual(await join.run(request), joined);
+    assert.deepEqual(ref.value, before, 'replay must not restore membership or reopen the room');
   });
 }

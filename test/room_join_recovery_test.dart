@@ -171,6 +171,58 @@ void main() {
       );
     },
   );
+  test(
+    'disconnected pending replay requests a fresh connection for the same member',
+    () async {
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'active',
+        'membershipId': 'member',
+        'connectionSeq': 2,
+      };
+      functions.reply = (name, data) async {
+        expect(name, 'joinRealtimeRoom');
+        if (data['operationId'] == 'pending') {
+          throw FirebaseFunctionsException(
+            code: 'aborted',
+            message: 'disconnected pending connection',
+            details: {'reason': 'staleConnection'},
+          );
+        }
+        expect(data['membershipId'], 'member');
+        expect(data['expectedConnectionSeq'], 2);
+        expect(data['preserveProfile'], true);
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'member',
+          'connectionId': 'replacement',
+          'connectionSeq': 3,
+        };
+      };
+      await restore();
+      expect(functions.names, ['joinRealtimeRoom', 'joinRealtimeRoom']);
+      expect(
+        RoomSessionIdentityStore.instance
+            .current(identity.uid, 'player', 'ABCDE')!
+            .connectionId,
+        'replacement',
+      );
+      expect(
+        RoomSessionIdentityStore.instance.pending(
+          identity.uid,
+          'player',
+          'ABCDE',
+        ),
+        isNull,
+      );
+      await service.heartbeatPlayer('ABCDE');
+      expect(
+        database.writes.single,
+        'rooms/ABCDE/connections/${identity.uid}/replacement/lastSeen',
+      );
+    },
+  );
+
   test('replayed allocation cannot rejoin a removed membership', () async {
     functions.reply = (name, data) async {
       if (name == 'fetchRealtimeRoomSession') {

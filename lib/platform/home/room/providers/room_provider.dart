@@ -1825,8 +1825,9 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       }
       return restorable;
     } catch (_) {
-      // Unknown lookup results retain the saved membership.
-      return RestorableSession.none;
+      // An unknown lookup must not be presented as "no previous game".
+      // Keep the saved membership so the startup gate can offer another check.
+      rethrow;
     }
   }
 

@@ -104,6 +104,7 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
   String? _readyAckKey;
   String? _identityKey;
   bool _transportRecovering = false;
+  Future<void>? _recoveryRetryFuture;
   Future<Object?> Function()? _lastCommand;
   Future<void> Function()? _prepareAssets;
   GameRecoverySession get recoverySession =>
@@ -138,13 +139,52 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     return run(command);
   }
 
-  Future<void> retryRecovery() async {
+  Future<void> retryRecovery() {
+    if (!ref.mounted || recoverySession.leaving) return Future.value();
+    final active = _recoveryRetryFuture;
+    if (active != null) return active;
+    final completed = Completer<void>();
+    _recoveryRetryFuture = completed.future;
+    unawaited(() async {
+      try {
+        await _retryRecovery();
+      } finally {
+        _recoveryRetryFuture = null;
+        completed.complete();
+      }
+    }());
+    return completed.future;
+  }
+
+  Future<void> _retryRecovery() async {
     RecoveryMetrics.instance.begin(newEpisode: false);
-    recoverySession.preparationBatch =
-        RoomRecoveryBatch.current ?? RoomRecoveryBatch();
-    retrySession();
-    if (!_assetsReady && _prepareAssets != null) {
-      await prepareScreen(_prepareAssets!);
+    final session = recoverySession;
+    _cancelPreparationWait();
+    session.preparationBatch = RoomRecoveryBatch.current ?? RoomRecoveryBatch();
+    try {
+      if (session.transportRecovering || !session.transportConnected) {
+        final reconnect = session.reconnect;
+        if (reconnect == null) throw StateError('연결 복구를 시작할 수 없습니다.');
+        await reconnect();
+        if (!ref.mounted || session.leaving) return;
+        if (session.transportRecovering || !session.transportConnected) {
+          throw StateError('현재 연결을 확인하지 못했습니다.');
+        }
+      }
+      if (!ref.mounted || session.leaving) return;
+      retrySession();
+      if (!_assetsReady && _prepareAssets != null) {
+        await prepareScreen(_prepareAssets!);
+      }
+    } catch (error) {
+      if (!ref.mounted || session.leaving) return;
+      _recordPreparationFailure('connection', error);
+      _cancelPreparationWait();
+      _preparationFailed = true;
+      _preparationErrorMessage = '연결을 복구하지 못했어요. 다시 시도해주세요.';
+      state = state.withError(_preparationErrorMessage);
+      session.invalidate();
+      RecoveryMetrics.instance.finish(success: false);
     }
   }
 
@@ -239,7 +279,7 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     if (key != _identityKey) {
       _identityKey = key;
       _reportSeq = 0;
-      retrySession();
+      if (_recoveryRetryFuture == null) retrySession();
     }
   }
 
@@ -249,7 +289,7 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     _transportRecovering = recovering;
     if (recovering) {
       recoverySession.invalidate();
-    } else {
+    } else if (_recoveryRetryFuture == null) {
       retrySession();
     }
   }

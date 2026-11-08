@@ -30,13 +30,24 @@ import 'package:project00/platform/home/tablet/widgets/tablet_lobby_content_tran
 import 'package:project00/platform/home/tablet/tablet_lobby_selection.dart';
 import 'package:project00/platform/home/tablet/tablet_game_launcher.dart';
 import 'package:project00/platform/home/tablet/widgets/tablet_room_panel.dart';
+import 'package:project00/platform/home/phone/widgets/session_return_prompt.dart';
+import 'package:project00/platform/widgets/app_startup_surface.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile.dart';
 
 //=======================태블릿 플랫폼 홈==============================
 class TabletHome extends StatefulWidget {
-  const TabletHome({super.key, required this.gameCatalog});
+  const TabletHome({
+    super.key,
+    required this.gameCatalog,
+    this.roomProvider,
+    this.gameProvider,
+    this.storeProvider,
+  });
 
   final GameCatalog gameCatalog;
+  final RoomProvider? roomProvider;
+  final GameProvider? gameProvider;
+  final GameProvider? storeProvider;
 
   @override
   State<TabletHome> createState() => _TabletHomeState();
@@ -62,11 +73,11 @@ class _TabletHomeState extends State<TabletHome>
   final GlobalKey _selectedCoverKey = GlobalKey();
   Rect? _lastSelectedCoverRect;
 
-  late final RoomProvider roomProvider = RoomProvider(
-    gameCatalog: widget.gameCatalog,
-  );
-  final GameProvider gameProvider = GameProvider();
-  final GameProvider storeProvider = GameProvider(scope: GameListScope.store);
+  late final RoomProvider roomProvider =
+      widget.roomProvider ?? RoomProvider(gameCatalog: widget.gameCatalog);
+  late final GameProvider gameProvider = widget.gameProvider ?? GameProvider();
+  late final GameProvider storeProvider =
+      widget.storeProvider ?? GameProvider(scope: GameListScope.store);
   String? _selectedGameId;
   bool _isDetailOpen = false;
   bool _isStarting = false;
@@ -80,6 +91,9 @@ class _TabletHomeState extends State<TabletHome>
   String? _restoredGameStatus;
   Future<bool>? _restoredFinishedCleanup;
   bool _isOpeningRestoredGame = false;
+  bool _checkingPreviousRoom = true;
+  bool _returnDecisionBusy = false;
+  RestorableSession _restorable = RestorableSession.none;
 
   @override
   void initState() {
@@ -98,7 +112,73 @@ class _TabletHomeState extends State<TabletHome>
     WidgetsBinding.instance.addObserver(this);
     roomProvider.addListener(_syncRestoredGame);
     _selection.addListener(_onSelectionChanged);
-    unawaited(roomProvider.restoreControllerRoom());
+    unawaited(_restorePreviousControllerSession());
+  }
+
+  Future<void> _restorePreviousControllerSession() async {
+    await roomProvider.restoreControllerRoom();
+    if (!mounted) return;
+    final code = roomProvider.roomCode;
+    if (code == null) {
+      setState(() => _checkingPreviousRoom = false);
+      return;
+    }
+    String? gameStatus;
+    try {
+      gameStatus = await roomProvider
+          .watchGameStatus(code)
+          .first
+          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+    } catch (_) {
+      // The room connection is already restored. Keep it available as a group
+      // decision even if the game-status read could not be classified.
+    }
+    if (!mounted || roomProvider.roomCode != code) return;
+    setState(() {
+      _restorable = gameStatus == 'playing'
+          ? RestorableSession.activeGame
+          : RestorableSession.waitingRoom;
+      _checkingPreviousRoom = false;
+    });
+  }
+
+  Future<void> _acceptPreviousSession() async {
+    if (_returnDecisionBusy) return;
+    setState(() => _returnDecisionBusy = true);
+    final session = _restorable;
+    final code = roomProvider.roomCode;
+    setState(() {
+      _restorable = RestorableSession.none;
+      _returnDecisionBusy = false;
+    });
+    if (session == RestorableSession.activeGame && code != null) {
+      await _openRestoredGameIfReady(code);
+    }
+  }
+
+  Future<void> _declinePreviousSession() async {
+    if (_returnDecisionBusy) return;
+    setState(() => _returnDecisionBusy = true);
+    await roomProvider.closeControllerRoom();
+    if (!mounted) return;
+    if (roomProvider.roomCode != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              roomProvider.errorMessage ??
+                  '기존 방을 종료하지 못했어요. 다시 시도해 주세요.'.localized,
+            ),
+          ),
+        );
+    }
+    setState(() {
+      if (roomProvider.roomCode == null) {
+        _restorable = RestorableSession.none;
+      }
+      _returnDecisionBusy = false;
+    });
   }
 
   void _syncRestoredGame() {
@@ -123,7 +203,16 @@ class _TabletHomeState extends State<TabletHome>
           return;
         }
         _restoredGameStatus = status;
-        if (status == 'playing') unawaited(_openRestoredGameIfReady(code));
+        if (status == 'playing' &&
+            _restorable == RestorableSession.waitingRoom &&
+            mounted) {
+          setState(() => _restorable = RestorableSession.activeGame);
+        }
+        if (status == 'playing' &&
+            _restorable == RestorableSession.none &&
+            !_checkingPreviousRoom) {
+          unawaited(_openRestoredGameIfReady(code));
+        }
         if (status == 'finished') _restoreFinishedRoomIfReady(code);
       },
       onError: (_) {},
@@ -292,9 +381,9 @@ class _TabletHomeState extends State<TabletHome>
     unawaited(roomProvider.pauseControllerPresence());
     _selection.removeListener(_onSelectionChanged);
     _selection.dispose();
-    roomProvider.dispose();
-    gameProvider.dispose();
-    storeProvider.dispose();
+    if (widget.roomProvider == null) roomProvider.dispose();
+    if (widget.gameProvider == null) gameProvider.dispose();
+    if (widget.storeProvider == null) storeProvider.dispose();
     _storeExit.dispose();
     _gameExit.dispose();
     super.dispose();
@@ -457,6 +546,19 @@ class _TabletHomeState extends State<TabletHome>
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingPreviousRoom) return const AppStartupSurface();
+    if (_restorable != RestorableSession.none) {
+      return SessionReturnPrompt(
+        session: _restorable,
+        isBusy: _returnDecisionBusy,
+        declineLabel: '기존 방 종료',
+        returnLabel: _restorable == RestorableSession.activeGame
+            ? '게임으로 돌아가기'
+            : '그룹으로 돌아가기',
+        onReturn: () => unawaited(_acceptPreviousSession()),
+        onDecline: () => unawaited(_declinePreviousSession()),
+      );
+    }
     final art = MosiGameArt.of(_selectedGameId ?? 'liars_poker');
     final theme = art.shelfTheme;
     final detail = _isDetailOpen ? _selection.game : null;

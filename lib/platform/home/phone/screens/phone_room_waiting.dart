@@ -303,6 +303,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     final gameRoute = GameExitMaterialPageRoute<bool>(
       builder: (gameContext) => CriticalNetworkGuard(
         provider: widget.provider,
+        blockChildInput: false,
         exitLabel: '게임과 그룹 나가기'.localized,
         onExit: () => unawaited(
           _leaveGameFromReconnect(gameContext: gameContext, game: game),
