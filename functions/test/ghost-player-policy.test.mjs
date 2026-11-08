@@ -22,10 +22,21 @@ function player(overrides = {}) {
   return {isConnected: false, lastSeen: stale, role: "player", ...overrides};
 }
 
-test("유예가 지난 끊긴 참가자만 지운다", () => {
+test("종료 확인 전에는 유예가 지나도 참가자를 남긴다", () => {
   assert.deepEqual(
     findGhostPlayers({
       roomStatus: "waiting",
+      players: {ghost: player(), alive: player({isConnected: true})},
+      now,
+    }),
+    [],
+  );
+});
+
+test("종료가 확인된 방에서만 오래 끊긴 참가자를 정리한다", () => {
+  assert.deepEqual(
+    findGhostPlayers({
+      roomStatus: "finished",
       players: {ghost: player(), alive: player({isConnected: true})},
       now,
     }),

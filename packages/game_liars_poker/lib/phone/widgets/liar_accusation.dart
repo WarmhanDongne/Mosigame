@@ -74,47 +74,51 @@ class _LiarAccusationState extends State<LiarAccusation>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.enabled
-          ? (_) => setState(() => _isPressed = true)
-          : null,
-      onTapUp: widget.enabled
-          ? (_) {
-              setState(() => _isPressed = false);
-              if (widget.showSubmit) {
-                widget.onSubmit?.call();
-              } else {
-                widget.onAccuse?.call();
+    return Semantics(
+      button: true,
+      enabled: widget.enabled,
+      child: GestureDetector(
+        onTapDown: widget.enabled
+            ? (_) => setState(() => _isPressed = true)
+            : null,
+        onTapUp: widget.enabled
+            ? (_) {
+                setState(() => _isPressed = false);
+                if (widget.showSubmit) {
+                  widget.onSubmit?.call();
+                } else {
+                  widget.onAccuse?.call();
+                }
               }
-            }
-          : null,
-      onTapCancel: widget.enabled
-          ? () => setState(() => _isPressed = false)
-          : null,
-      behavior: HitTestBehavior.opaque,
+            : null,
+        onTapCancel: widget.enabled
+            ? () => setState(() => _isPressed = false)
+            : null,
+        behavior: HitTestBehavior.opaque,
 
-      child: AnimatedBuilder(
-        animation: _flipController,
-        builder: (context, _) {
-          final progress = Curves.easeInOutCubic.transform(
-            _flipController.value,
-          );
-          final showsSecondFace = progress >= 0.5;
-          final showSubmit = showsSecondFace
-              ? _targetShowsSubmit
-              : _sourceShowsSubmit;
-          final angle = showsSecondFace
-              ? -math.pi * (1 - progress)
-              : math.pi * progress;
+        child: AnimatedBuilder(
+          animation: _flipController,
+          builder: (context, _) {
+            final progress = Curves.easeInOutCubic.transform(
+              _flipController.value,
+            );
+            final showsSecondFace = progress >= 0.5;
+            final showSubmit = showsSecondFace
+                ? _targetShowsSubmit
+                : _sourceShowsSubmit;
+            final angle = showsSecondFace
+                ? -math.pi * (1 - progress)
+                : math.pi * progress;
 
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.0012)
-              ..rotateY(angle),
-            child: _buildButtonImage(showSubmit: showSubmit),
-          );
-        },
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.0012)
+                ..rotateY(angle),
+              child: _buildButtonImage(showSubmit: showSubmit),
+            );
+          },
+        ),
       ),
     );
   }
@@ -133,6 +137,7 @@ class _LiarAccusationState extends State<LiarAccusation>
         width: 195,
         height: 170,
         pressed: _isPressed,
+        enabled: widget.enabled,
       );
     }
 
@@ -145,6 +150,7 @@ class _LiarAccusationState extends State<LiarAccusation>
       width: math.min(305.w, availableHeight * 1.5),
       height: availableHeight,
       pressed: _isPressed,
+      enabled: widget.enabled,
     );
   }
 }

@@ -45,6 +45,7 @@ class LiarsPokerArcadeButtonSurface extends StatelessWidget {
     required this.width,
     required this.height,
     required this.pressed,
+    this.enabled = true,
   });
 
   static const _pressDuration = Duration(milliseconds: 115);
@@ -53,6 +54,7 @@ class LiarsPokerArcadeButtonSurface extends StatelessWidget {
   final double width;
   final double height;
   final bool pressed;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +64,7 @@ class LiarsPokerArcadeButtonSurface extends StatelessWidget {
     final travel = diameter * 0.045;
     final capTop = pressed ? diameter * 0.125 + travel : diameter * 0.08;
 
-    return SizedBox(
+    final surface = SizedBox(
       width: width,
       height: height,
       child: Center(
@@ -254,6 +256,34 @@ class LiarsPokerArcadeButtonSurface extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (enabled) return surface;
+    return ColorFiltered(
+      key: const ValueKey('liars-poker-action-disabled'),
+      colorFilter: const ColorFilter.matrix(<double>[
+        0.16,
+        0.16,
+        0.16,
+        0,
+        0,
+        0.16,
+        0.16,
+        0.16,
+        0,
+        0,
+        0.16,
+        0.16,
+        0.16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+      ]),
+      child: surface,
     );
   }
 }

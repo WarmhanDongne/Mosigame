@@ -52,7 +52,16 @@ async function enqueue(code: string, room: CleanupRoom): Promise<void> {
 export const syncRoomCleanupQueue = onValueWritten({ref: "/rooms/{roomCode}/cleanupSignal",
   region: "asia-southeast1", retry: true}, async (event) => {
   const signal = (await getDatabase().ref(`rooms/${event.params.roomCode}/cleanupSignal`).get()).val() as CleanupSignal | null;
-  if (!signal || typeof signal.nextCheckAt !== "number") return;
+  if (!signal) return;
+  if (typeof signal.nextCheckAt !== "number") {
+    // A live room has no automatic deadline. Remove an older/same-generation
+    // advisory job so it cannot later terminalize a recoverable room.
+    await runPrimedTransaction(getDatabase().ref(`roomCleanupQueue/${event.params.roomCode}`), (value) => {
+      const raw = value as CleanupJob | null;
+      return raw && raw.allocationGeneration <= signal.allocationGeneration ? null : undefined;
+    });
+    return;
+  }
   // Advisory index only: the due worker still validates identity and canonical time in R CAS.
   await enqueue(event.params.roomCode, {roomInstanceId: signal.roomInstanceId,
     allocationGeneration: signal.allocationGeneration, status: "closed", cleanupAt: signal.nextCheckAt, cleanupSignal: signal});

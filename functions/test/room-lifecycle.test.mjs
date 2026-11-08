@@ -65,7 +65,7 @@ test("controller UID와 현재 session이 모두 맞아야 진행 명령을 허�
   assert.throws(() => assertControllerSession(room, "old-tablet", sessionId));
 });
 
-test("대기 방은 순간 단절을 견디고 3분이 지나면 삭제한다", () => {
+test("대기·좌석 방은 연결이 오래 끊겨도 자동 삭제하지 않는다", () => {
   const now = 1_000_000;
   for (const status of ["waiting", "seating", undefined]) {
     assert.equal(
@@ -74,36 +74,21 @@ test("대기 방은 순간 단절을 견디고 3분이 지나면 삭제한다", 
       `${status}: 순간 단절로 삭제하면 안 됩니다`,
     );
     assert.equal(
-      shouldDeleteRoom({status, controllerPresence: {lastSeen: now - 181_000}}, now),
-      true,
-      `${status}: 3분이 지나면 삭제해야 합니다`,
+      shouldDeleteRoom({status, controllerPresence: {lastSeen: 1}}, now),
+      false,
+      `${status}: 종료 확인 전에는 복귀 가능해야 합니다`,
     );
   }
 });
 
-test("진행 중인 방은 대기 방보다 오래 붙잡는다 (C-03)", () => {
-  // 태블릿이 3분 백그라운드에 있었다는 이유로 진행 중인 판이 통째로 사라지는
-  // 것이 '그룹 폭파'의 직접 원인이었다. 대기 방이 사라지면 다시 만들면 되지만
-  // 진행 중인 판은 되돌릴 방법이 없다.
+test("진행 중인 방은 heartbeat 경과 시간으로 삭제하지 않는다 (C-03)", () => {
   const now = 1_000_000;
   const playing = (lastSeen) =>
     shouldDeleteRoom({status: "playing", controllerPresence: {lastSeen}}, now);
 
-  // 대기 방이라면 삭제됐을 시점
   assert.equal(playing(now - 181_000), false);
-  // OS 업데이트 후 재부팅(5~15분)까지 덮는다
-  assert.equal(playing(now - 14 * 60_000), false);
-  assert.equal(playing(now - 15 * 60_000), true);
-
-  // 대기 방보다 반드시 길어야 한다
-  assert.equal(
-    shouldDeleteRoom(
-      {status: "waiting", controllerPresence: {lastSeen: now - 5 * 60_000}},
-      now,
-    ),
-    true,
-  );
-  assert.equal(playing(now - 5 * 60_000), false);
+  assert.equal(playing(now - 15 * 60_000), false);
+  assert.equal(playing(1), false);
 });
 
 test("finished 방은 보존 시간이 지난 뒤에만 삭제한다", () => {

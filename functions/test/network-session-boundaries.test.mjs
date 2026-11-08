@@ -25,10 +25,10 @@ test('allocation replay and terminal generation CAS cannot resurrect or replace 
   assert.equal(sameCleanupTarget(null,{}),false);
 });
 
-test('retention keeps the approved waiting/playing/finished boundaries and terminal tombstones', () => {
+test('retention preserves live rooms and keeps finished/terminal boundaries', () => {
   const room={...initial,controllerPresence:{lastSeen:1000}};
-  assert.equal(roomCleanupDeadline(room),181000);
-  assert.equal(roomCleanupDeadline({...room,status:'playing'}),901000);
+  assert.equal(roomCleanupDeadline(room),null);
+  assert.equal(roomCleanupDeadline({...room,status:'playing'}),null);
   assert.equal(roomCleanupDeadline({...room,status:'finished',retainUntil:50000}),50000);
   assert.equal(roomCleanupDeadline({...terminalRoom(room,10000),cleanupPending:false}),null);
   const compact=terminalRoom({roomInstanceId:'only-identity',allocationGeneration:2,status:'closed'},10000);

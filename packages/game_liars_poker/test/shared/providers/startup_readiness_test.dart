@@ -138,6 +138,53 @@ void main() {
     },
   );
   testWidgets(
+    'first turn cannot call LIAR until a previous submission exists',
+    (tester) async {
+      start();
+      final value = {
+        ..._public('playing'),
+        'turnUid': 'phone',
+        'players': {
+          'phone': {'status': 'alive', 'remainingCardCount': 5},
+          'other': {'status': 'alive', 'remainingCardCount': 5},
+        },
+      };
+      query.pub.add(_Event(value));
+      query.priv.add(_Event(_private('liars-startup')));
+      await tester.pump();
+      final prepared = game.prepareScreen(() async {});
+      await tester.pump();
+      await tester.pump();
+      await prepared;
+      query.pub.add(
+        _Event({
+          ...value,
+          'revision': 2,
+          'recovery': {'paused': false},
+        }),
+      );
+      await tester.pump();
+
+      expect(game.canCallLiar, false);
+
+      query.pub.add(
+        _Event({
+          ...value,
+          'revision': 3,
+          'recovery': {'paused': false},
+          'lastPlay': {
+            'playId': 'play-1',
+            'playerUid': 'other',
+            'cardCount': 1,
+            'revealed': false,
+          },
+        }),
+      );
+      await tester.pump();
+      expect(game.canCallLiar, true);
+    },
+  );
+  testWidgets(
     'dealing timeout accepts the matching public phase instead of showing a false failure',
     (tester) async {
       start();

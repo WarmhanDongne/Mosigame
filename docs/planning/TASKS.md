@@ -27,9 +27,10 @@ E02~E12의 [구현 후보와 관련 검사](NETWORK_SESSION_E02_E12_IMPLEMENTATI
 ## 구현 검증 대기
 
 현재 `NET-RECOVERY-01`의 최신 후보는
-[11/6 시작·기존 게임 선택·Final Call 공개 순서](tasks/NET-RECOVERY-01.md#startup-session-choice-20261106)다.
-로그인 UI 선노출 제거, 휴대폰·태블릿 로비 전 세션 확인/선택, Final Call 팀 탈락
-reveal 순서를 보정했으며 관련23개·분석과 auth/session 각5단계 PASS, FULL 승인 대기다.
+[11/8 live 방 보존·LIAR 첫 턴 UI](tasks/NET-RECOVERY-01.md#live-room-retention-liar-ui-20261108)다.
+시간 경과로 live 참가자/방을 자동 삭제하지 않고 종료된 방만 정리한다.
+라이어스 첫 제출 전 LIAR 버튼은 어둡게 비활성화했다. 관련 Functions72개·
+Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 
 | ID | 작업 | 상태 | 다음 행동 |
 | --- | --- | --- | --- |

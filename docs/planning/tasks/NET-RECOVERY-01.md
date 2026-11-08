@@ -906,3 +906,31 @@ Final Call 공개 순서) 23개와 변경 파일 정적 분석은 PASS/exit0이�
 `dart run :mosigame test auth --json`은 Flutter82개·Functions38개,
 `dart run :mosigame test session --json`은 Flutter230개·Functions233개와 각각
 working-tree mutation을 포함해 모두 5/5단계 PASS/exit0이다. FULL은 승인 대기다.
+
+
+<a id="live-room-retention-liar-ui-20261108"></a>
+### 2026-11-08 — live 방 자동 퇴장 제거·LIAR 첫 턴 비활성 후보
+
+사용자 요청으로 연결 단절 경과 시간만으로 자동 퇴장·방 삭제하는
+경로를 제거했다. `findGhostPlayers`는 게임/방 종료가 확인된 경우에만
+대상을 반환하고, `cleanupDeadline`/`shouldDeleteRoom`은 waiting·seating·playing에
+시간 기한을 만들지 않는다. 명시적 자기 퇴장·강퇴·방 종료와 finished
+보존 기한은 유지한다. 이전 cleanup queue job은 live signal에서 job만 제거한다.
+
+라이어스 포커는 기존 `LiarsPokerController.canCallLiar` 서버 권한 조건
+(`lastPlayPlayerUid != null`)을 UI 색에도 반영했다. 첫 제출 전 선택 카드가 없으면
+LIAR 버튼은 grayscale/dark filter와 disabled semantics를 사용하고 터치를 무시한다.
+직전 제출이 생기면 같은 controller getter로 즉시 활성화된다.
+
+CI 2개 실패도 함께 보정했다. session frozen manifest에
+`phone_home_startup_recovery_test.dart`를 추가했고, AuthGate 프로필 전환 테스트는
+약관 복원 비동기 프레임을 명시적으로 pump한다. Functions build와 관련 72개,
+선택 Flutter 33개 및 LIAR 추가 흐름 7개는 PASS/exit0. FULL·실기기·배포는
+실행하지 않았다.
+
+후속 CI 동일 `flutter test --no-pub`는 587개 PASS/exit0으로 기존
+584 PASS/2 FAIL을 해소했다. Project CLI session은 Flutter231개·Functions233개,
+auth는 Functions38개를 포함해 각각 5/5단계·mutation PASS/exit0이다.
+Functions lint/build과 ASCII 임시 검증본의 변경 Dart 6파일 분석도 PASS/exit0이다.
+원본 한글 경로의 분석은 기존 SDK LSP JSON 절단으로 exit255였고,
+동일 소스 ASCII 경로에서 `No issues found`를 확인했다. FULL은 승인 대기다.

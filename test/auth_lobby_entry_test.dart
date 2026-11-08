@@ -203,6 +203,9 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
+    // ProfileSetupScreen이 최초 프레임에서 약관 동의 상태를
+    // 비동기로 복원한 다음 프레임에 완료 버튼을 그립니다.
+    await tester.pump();
     expect(find.text('가입 완료'), findsOneWidget);
     expect(observer.pushes, 1);
     expect(tester.element(find.byType(Scaffold)), same(scaffold));

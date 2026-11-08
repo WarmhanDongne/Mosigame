@@ -31,30 +31,6 @@ import {
 const REGION = "asia-northeast3";
 const DATABASE_REGION = "asia-southeast1";
 const ROOM_CODE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
-const CONTROLLER_RECONNECT_GRACE_MS = 3 * 60 * 1000;
-
-/**
- * 진행 중인 게임의 방을 태블릿 heartbeat가 끊긴 뒤에도 유지하는 시간입니다.
- *
- * 대기 방(3분)과 **일부러 다른 값**입니다. 대기 방이 사라지면 다시 만들면
- * 되지만, 진행 중인 판이 사라지면 되돌릴 방법이 없습니다. 되돌릴 수 없는
- * 손해가 훨씬 비싸므로 넉넉한 쪽으로 잡습니다.
- *
- * 15분인 근거:
- * - 복구 가치가 있는 최장 태블릿 장애(OS 업데이트 후 재부팅 5~15분)를 덮습니다.
- *   앱 크래시 10~30초, 기기·공유기 재부팅 1~3분, 배터리 방전 후 충전 3~10분은
- *   모두 그 안입니다.
- * - 정리 스케줄이 5분 주기라 실제 삭제는 15~20분입니다. 게임 한 판(15~30분)
- *   안쪽이라, 이 시간을 넘겼으면 그 그룹은 이미 해산했다고 봐도 됩니다.
- * - 길게 잡는 비용이 거의 없습니다. `playing` 방은 신규 참가가 이미 차단이고
- *   (room-join-policy.ts), 태블릿의 명시적 `방 종료`는 status를 보지 않아
- *   언제든 즉시 가능합니다.
- *
- * ⚠️ 이 값은 휴대폰의 **표시** 유예(20초, `controller_presence.dart`)와 아무
- * 관계가 없습니다. 표시는 빠르고 삭제는 느려야 합니다.
- */
-const PLAYING_ROOM_RETENTION_MS = 15 * 60 * 1000;
-
 /**
  * 게임이 끝난 방을 보존하는 시간입니다.
  *
@@ -617,12 +593,9 @@ export function shouldDeleteRoom(room: RealtimeRoom, now: number): boolean {
     // heartbeat 시각이 없는 방은 나이를 증명할 수 없으므로 보수적으로 보존합니다.
     return lastSeen > 0 && lastSeen + FINISHED_ROOM_RETENTION_MS <= now;
   }
-  // 진행 중인 판은 대기 방보다 오래 붙잡습니다. 태블릿이 3분 백그라운드에
-  // 있었다는 이유로 게임이 통째로 사라지는 것이 '그룹 폭파'의 직접 원인이었습니다.
-  const grace = room.status === "playing" ?
-    PLAYING_ROOM_RETENTION_MS :
-    CONTROLLER_RECONNECT_GRACE_MS;
-  return lastSeen + grace <= now;
+  // 종료가 확인되지 않은 방은 heartbeat 단절만으로 삭제하지
+  // 않습니다. 동일 roomInstanceId/membershipId를 보존해 나중에라도 복귀합니다.
+  return false;
 }
 
 /** 서로 다른 정리 인덱스에서 찾은 후보를 순서를 유지하며 중복 제거합니다. */

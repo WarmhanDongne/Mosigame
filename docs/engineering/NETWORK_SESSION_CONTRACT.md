@@ -249,7 +249,8 @@ lastSeen·카드·ready·profile 변화는 계획 revision을 바꾸지 않는�
 failure를 비교해 더 새 작업과 backoff를 덮어쓰지 않는다. 최종 삭제는 현재 root CAS에서 판정한다.
 현재 leaf만 fresh인 참가자·controller를 frozen 요약 때문에 삭제하지 않는다.
 B1 canonical이 없으면 파괴적 정리는 보류하며 legacy 방만 요약 fallback을 사용한다.
-controller true라도 3/15분 시각 기한은 적용하고 closed cleanupAt/finished retainUntil을 우선한다.
+waiting/seating/playing은 heartbeat 단절 시간만으로 참가자나 방을 삭제하지 않는다.
+finished retainUntil, closed cleanupAt, terminal pending처럼 종료가 확인된 기한만 파괴적 정리에 사용한다.
 100개 cursor 순회는 누락된 false projection을 현재 root CAS로 보완한다.
 
 신규 create는 capability 2를 요구하고 room presenceProtocol=2를 server seed한다.
@@ -262,8 +263,10 @@ legacy 활성 방을 강제 전환하지 않는다. 기존 APK 호환은 보장�
 roomCreateSlots/roomCreateRequests의 reserved/created/terminal, generation CAS와 tombstone이
 늦은 생성 부활과 새 generation의 삭제를 막는다. 부분 매핑 실패는 자신의 방만 terminal로 보상한다.
 syncRoomCleanupQueue는 현재 cleanupSignal만 재조회한다. cleanupStaleRealtimeRooms는 due index 최대 300개와
-지속 key cursor 100개를 함께 처리한다. waiting 유예는 heartbeat 후 3분, playing/finished는 15분,
-명시 close의 물리 정리는 cleanupAt을 따른다. 매핑·예약·slot은 원래 room/generation일 때만 정리한다.
+지속 key cursor 100개를 함께 처리한다. 살아 있는 방은 deadline이 없으며 예전 세대의
+3/15분 due job이 남아 있어도 signal trigger 또는 due root CAS가 방을 보존하고 job만 제거한다.
+finished는 retainUntil(구형은 확인된 lastSeen+15분), 명시 close는 cleanupAt을 따른다.
+매핑·예약·slot은 원래 room/generation일 때만 정리한다.
 새 생성은 기존 controller 매핑/방의 UID·instance·generation·closed/terminal을 확인한 경우
 그 방의 creationOperationId/generation과 일치하는 created 슬롯만 기존 슬롯 CAS에서 교체한다.
 미확정 reserved 슬롯과 다른 generation은 유지한다. 종료 방의 보존 기간은 줄이지 않는다.
@@ -277,7 +280,7 @@ transaction update 예외는 첫 예외를 보관하고 undefined로 abort한다
 2026-10-12 정리 후보: 같은 allocation의 실패 backoff를 trigger/순회가 앞당기지 않는다.
 두 순회 cursor는 읽은 값과 같을 때만 갱신한다. 유령 참가자는 별도
 `roomCleanupScan/ghostCursor`로 회당 500개 방을 순회하고 최대 10개 transaction을 병행한다.
-기존 5분 주기·유예와 playing 보호는 유지하고 transaction에서 최신 연결·게임 상태를
+기존 5분 주기·유예는 종료 확인 후에만 적용하고 transaction에서 최신 연결·게임 상태를
 재판정한다. 일부 실패는 요약하고 다음 전체 순회에서 재처리한다.
 
 같은 terminal allocation이 확인된 created/terminal 생성 요청은 roomCode·instance·generation·

@@ -38,6 +38,7 @@ void main() {
         'test/room_leave_state_test.dart',
         'test/room_restore_to_waiting_test.dart',
         'test/session_return_prompt_test.dart',
+        'test/phone_home_startup_recovery_test.dart',
         'packages/game_kit/test/mosi_ui/mosi_connection_band_test.dart',
       ]);
       expect(sessionTestSuite.functionsTests, const <String>[

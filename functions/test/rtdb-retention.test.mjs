@@ -30,6 +30,9 @@ function room(overrides = {}) {
       'phone-user': {'phone-current': {connected: false}}}, sessionOperations: {saved: {result: {status: 'applied'}}},
     ...overrides};
 }
+function ghostRoom(overrides = {}) {
+  return room({game: {public: {status: 'finished'}}, ...overrides});
+}
 function terminalRecords(database, status = 'created') {
   const target = {roomInstanceId: 'original-room', allocationGeneration: 1, status: 'terminal',
     controllerUid: 'tablet-user', creationOperationId: 'create-operation', terminalAt: NOW, cleanupPending: true};
@@ -44,7 +47,7 @@ function terminalRecords(database, status = 'created') {
 test('ghost scan reaches rooms after 500 terminal prefixes, then wraps without touching connections or ledger', async t => {
   const {database, logs} = setup(t);
   for (let n = 0; n < 500; n++) database.put('rooms/A' + String(n).padStart(4, '0'), {status: 'terminal'});
-  const original = room();
+  const original = ghostRoom();
   database.put('rooms/Z9999', original);
   await cleanupGhostRoomPlayers.run({});
   assert.ok(database.value('rooms/Z9999/players/phone-user'));
@@ -62,7 +65,7 @@ test('ghost scan reaches rooms after 500 terminal prefixes, then wraps without t
 for (const transition of ['reconnect', 'start-game', 'new-allocation']) {
   test('ghost cleanup rechecks current state after ' + transition, async t => {
     const {database} = setup(t);
-    database.put('rooms/ABCDE', room());
+    database.put('rooms/ABCDE', ghostRoom());
     database.beforeTransaction = path => {
       if (path !== 'rooms/ABCDE') return;
       database.beforeTransaction = null;
@@ -85,9 +88,9 @@ for (const transition of ['reconnect', 'start-game', 'new-allocation']) {
 
 test('a failed ghost transaction does not starve the tail and is retried after wrap', async t => {
   const {database, logs} = setup(t);
-  database.put('rooms/A0000', room());
+  database.put('rooms/A0000', ghostRoom());
   for (let n = 1; n < 500; n++) database.put('rooms/A' + String(n).padStart(4, '0'), {status: 'terminal'});
-  database.put('rooms/Z9999', room());
+  database.put('rooms/Z9999', ghostRoom());
   database.failures.add('rooms/A0000');
   await cleanupGhostRoomPlayers.run({});
   assert.equal(logs.at(-1).counters.failed, 1);
@@ -100,8 +103,8 @@ test('a failed ghost transaction does not starve the tail and is retried after w
 test('cursor removal and inserted keys are covered after the next wrap', async t => {
   const {database} = setup(t);
   database.put('roomCleanupScan/ghostCursor', 'M0000');
-  database.put('rooms/A0000', room());
-  database.put('rooms/Z9999', room());
+  database.put('rooms/A0000', ghostRoom());
+  database.put('rooms/Z9999', ghostRoom());
   await cleanupGhostRoomPlayers.run({});
   assert.equal(database.value('rooms/Z9999/players/phone-user'), null);
   assert.ok(database.value('rooms/A0000/players/phone-user'));
@@ -111,7 +114,7 @@ test('cursor removal and inserted keys are covered after the next wrap', async t
 
 test('an overlapping scan cannot overwrite another run cursor and logs only aggregate counts', async t => {
   const {database, logs} = setup(t);
-  database.put('rooms/ABCDE', room());
+  database.put('rooms/ABCDE', ghostRoom());
   database.beforeTransaction = path => {
     if (path === 'roomCleanupScan/ghostCursor') database.put(path, 'ZZZZZ');
   };
@@ -124,7 +127,7 @@ test('an overlapping scan cannot overwrite another run cursor and logs only aggr
 
 test('ghost transactions are bounded and callback retries do not double-count removal', async t => {
   const {database, logs} = setup(t);
-  for (let n = 0; n < 25; n++) database.put('rooms/A' + String(n).padStart(4, '0'), room());
+  for (let n = 0; n < 25; n++) database.put('rooms/A' + String(n).padStart(4, '0'), ghostRoom());
   database.rerunTransaction = () => {};
   await cleanupGhostRoomPlayers.run({});
   assert.ok(database.maxActive <= 10);
@@ -231,7 +234,7 @@ test('room cleanup failure retries with backoff and does not lose terminal state
   assert.equal(database.value('roomCleanupQueue/ABCDE'), null);
 });
 
-test('cleanup preserves a failed job backoff across trigger refreshes and resets it only for a new allocation', async t => {
+test('cleanup preserves failed backoff and removes it when a new live allocation has no deadline', async t => {
   const {database} = setup(t);
   const target = terminalRecords(database);
   database.put('roomCleanupQueue/ABCDE', {...target, failures: 2, nextCheckAt: NOW + 120_000});
@@ -242,8 +245,7 @@ test('cleanup preserves a failed job backoff across trigger refreshes and resets
     controllerPresence: {lastSeen: NOW}});
   database.put('rooms/ABCDE', refreshCleanupSignal(database.value('rooms/ABCDE')));
   await syncRoomCleanupQueue.run({params: {roomCode: 'ABCDE'}});
-  assert.equal(database.value('roomCleanupQueue/ABCDE/failures'), 0);
-  assert.equal(database.value('roomCleanupQueue/ABCDE/nextCheckAt'), NOW + 180_000);
+  assert.equal(database.value('roomCleanupQueue/ABCDE'), null);
 });
 
 test('room scans process 100 records without counting the lookahead and cover the remainder', async t => {

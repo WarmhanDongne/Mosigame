@@ -151,13 +151,13 @@ vote_to_continue/finish_now는 현재 index export와 소비자에서 제거했�
 | game_common_interruption_on_connection_changed | players/{uid}/isConnected, 현재 phone 단절 cause의 멱등 안전망 |
 | game_common_controller_presence_changed | controllerPresence/connected, controller 단절 cause의 멱등 안전망 |
 | syncRealtimeRoomGameStatus | game/public/status, 현재 game 상태를 방에 반영 |
-| syncRoomCleanupQueue | rooms/{room}/cleanupSignal, 소형 현재 signal만 재조회 후 세대·revision을 확인해 due queue 갱신 |
+| syncRoomCleanupQueue | rooms/{room}/cleanupSignal, 소형 현재 signal만 재조회 후 세대·revision을 확인해 종료 due queue를 갱신. live deadline이 사라지면 이전 job 제거 |
 
 | schedule 함수 (서울·Asia/Seoul) | 주기·역할 |
 | --- | --- |
 | cleanupExpiredGameInterruptions | 1분, 만료를 결정 대기로 표시 |
-| cleanupGhostRoomPlayers | 5분, 별도 cursor로 회당 500방 순회·최대 10개 transaction, 현재 상태 재검증 후 유령 참가자 정리 |
-| cleanupStaleRealtimeRooms | 5분, due index + 지속 cursor, generation 조건부 방/예약/매핑 정리 |
+| cleanupGhostRoomPlayers | 5분, 별도 cursor로 회당 500방 순회·최대 10개 transaction, finished/closed/terminal 또는 game finished가 확인된 방의 유령 참가자만 정리 |
+| cleanupStaleRealtimeRooms | 5분, due index + 지속 cursor, generation 조건부 종료 방/예약/매핑 정리. waiting/seating/playing은 시간 경과로 종료하지 않음 |
 | cleanupIncompleteAccounts | 매일 03:30, 현재 삭제 비활성·보고만 수행 |
 
 2026-10-12 정리 후보는 확정 종료된 생성 요청의 transport 정보를 축약하고 terminal

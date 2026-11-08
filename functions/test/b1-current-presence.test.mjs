@@ -39,13 +39,13 @@ function room() {
 test('P1: fresh current leaf protects ghost and room despite frozen false summary', () => {
   const r = room();
   assert.deepEqual(findGhostPlayers({room:r,roomStatus:r.status,players:r.players,now}), []);
-  assert.equal(roomCleanupDeadline(r), now + 180000);
+  assert.equal(roomCleanupDeadline(r), null);
   r.status = 'playing';
-  assert.equal(roomCleanupDeadline(r), now + 900000);
+  assert.equal(roomCleanupDeadline(r), null);
 });
-test('P1: connected=true cannot permanently exempt controller expiry; explicit deadlines win', () => {
+test('P1: live rooms have no expiry and explicit terminal deadlines win', () => {
   const r = room(); r.connections.tablet.c1.lastSeen = 1;
-  assert.equal(roomCleanupDeadline(r), 180001);
+  assert.equal(roomCleanupDeadline(r), null);
   r.status='closed'; r.cleanupAt=42;
   assert.equal(roomCleanupDeadline(r), 42);
   r.status='finished'; r.retainUntil=43;
@@ -99,16 +99,18 @@ test('P1 scheduler retry sees current-only reconnect and preserves membership', 
   await cleanupGhostRoomPlayers.run({});
   assert.equal(db.value('rooms/ABCDE/players/phone/membershipId'),'member-1');
 });
-test('P1 due root CAS sees only a new controller heartbeat and defers the old job', async t => {
+test('P1 due root CAS preserves a live room and removes its obsolete job', async t => {
   const db=setup(t),r=room(); r.connections.tablet.c1.lastSeen=1;
   db.put('rooms/ABCDE',r);
-  db.beforeTransaction=path=>{if(path==='rooms/ABCDE') db.put('rooms/ABCDE/connections/tablet/c1/lastSeen',now);};
+  db.put('roomCleanupQueue/ABCDE',{roomInstanceId:r.roomInstanceId,allocationGeneration:1,
+    nextCheckAt:now-1,failures:0});
   await cleanupStaleRealtimeRooms.run({});
   assert.equal(db.value('rooms/ABCDE/status'),'waiting');
-  assert.equal(db.value('roomCleanupQueue/ABCDE/nextCheckAt'),now+180000);
+  assert.equal(db.value('roomCleanupQueue/ABCDE'),null);
 });
 test('signal handler reads only signal, preserves backoff and rejects older revision', async t => {
-  const db=setup(t),r=room(); refreshCleanupSignal(r);db.put('rooms/ABCDE',r);
+  const db=setup(t),r=room();r.status='finished';r.retainUntil=now+60000;
+  refreshCleanupSignal(r);db.put('rooms/ABCDE',r);
   await syncRoomCleanupQueue.run({params:{roomCode:'ABCDE'}});
   assert.deepEqual(db.reads,['rooms/ABCDE/cleanupSignal']);
   db.put('roomCleanupQueue/ABCDE',{...db.value('roomCleanupQueue/ABCDE'),signalRevision:10,failures:2,nextCheckAt:now+900000});

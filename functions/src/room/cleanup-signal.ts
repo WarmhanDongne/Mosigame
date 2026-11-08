@@ -12,9 +12,14 @@ type SignalRoom = SessionRoom & {allocationGeneration: number; cleanupSignal?: C
 export function cleanupDeadline(room: SignalRoom): number | null {
   if (room.status === "terminal") return room.cleanupPending ? room.terminalAt ?? 0 : null;
   if (room.status === "closed") return room.cleanupAt ?? 0;
-  if (room.status === "finished" && typeof room.retainUntil === "number") return room.retainUntil;
-  const seen = currentControllerSeen(room);
-  return typeof seen === "number" ? seen + (room.status === "playing" || room.status === "finished" ? 15 : 3) * 60000 : null;
+  if (room.status === "finished") {
+    if (typeof room.retainUntil === "number") return room.retainUntil;
+    const seen = currentControllerSeen(room);
+    return typeof seen === "number" ? seen + 15 * 60000 : null;
+  }
+  // waiting/seating/playing은 heartbeat 단절만으로 종료를 판정할 수
+  // 없습니다. 명시적 퇴장·방 종료 또는 finished 전이를 기다립니다.
+  return null;
 }
 
 /** Called INSIDE every room-root CAS. Timestamp-only changes do not change this plan. */
