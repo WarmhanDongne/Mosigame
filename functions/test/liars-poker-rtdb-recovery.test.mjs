@@ -148,173 +148,60 @@ test('LP completion/end diagnostics use the committed snapshot and expose an old
 });
 
 for (const gameType of ['liars_poker', 'final_call']) {
-  test(`${gameType}: missing failed report still recovers only unready live devices once`, async t => {
+  test(`${gameType}: missing readiness never revokes a healthy connection`, async t => {
     let now = 100000;
     t.mock.method(Date, 'now', () => now);
     const ref = await setup(t, gameType === 'final_call' ? 4 : 3, true, gameType);
-    ref.value.status = 'playing';
-    await report.run(readyRequest(ref, 'player0', 'healthy-ready'));
-    if (gameType === 'final_call') await report.run(readyRequest(ref, 'player3', 'healthy-ready3'));
-    ref.value.connections.player2['connection-player2'].connected = false;
     const pending = structuredClone(ref.value.game.server.pendingHands);
-    const instance = ref.value.game.public.gameInstanceId;
-    now += 89999; refreshHeartbeats(ref, now);
+    assert.equal(ref.value.game.server.startupRecovery, undefined);
+
+    now += 190000;
+    refreshHeartbeats(ref, now);
+    const beforeConnections = structuredClone(ref.value.connections);
     assert.equal(hasStalledStartup(ref.value, now), false);
-    now++; refreshHeartbeats(ref, now);
-    assert.equal(hasStalledStartup(ref.value, now), true);
-    await ref.transaction(room => {
-      assert.equal(recoverStalledStartup(room, 'room-current', instance, now), 2);
-      return room;
-    });
-    assert.equal(ref.value.connections.player0['connection-player0'].connected, true);
-    assert.equal(ref.value.connections.player1['connection-player1'].connected, false);
-    assert.equal(ref.value.controllerPresence.connected, false);
-    assert.equal(ref.value.game.server.preparationReconnects['player:player2'], undefined);
-    assert.equal(ref.value.game.public.phase, 'dealing');
-    assert.equal(ref.value.game.public.recovery.paused, true);
-    assert.equal(ref.value.game.private, undefined);
+    assert.equal(recoverStalledStartup(
+      ref.value,
+      'room-current',
+      ref.value.game.public.gameInstanceId,
+      now,
+    ), 0);
+    assert.deepEqual(ref.value.connections, beforeConnections);
     assert.deepEqual(ref.value.game.server.pendingHands, pending);
-    await resume.run(ref.request('watchdog-tablet-resume', 'tablet', {expectedConnectionSeq: 1}));
-    assert.equal((await report.run(readyRequest(ref, 'tablet', 'watchdog-tablet-ready'))).paused, false);
-    await (gameType === 'final_call' ? completeFinalCall : completeDealing).run(ref.request('actual-animation-complete'));
+
+    assert.equal((await report.run(readyRequest(ref, 'tablet', `${gameType}-controller-ready`))).paused, false);
+    await (gameType === 'final_call' ? completeFinalCall : completeDealing)
+      .run(ref.request(`${gameType}-animation-complete`));
     assert.notEqual(ref.value.game.public.phase, 'dealing');
-    await join.run(ref.request('watchdog-phone-rejoin', 'player1', {
-      expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', reconnectOnly: true,
-    }));
-    assert.equal((await report.run(readyRequest(ref, 'player1', 'watchdog-phone-ready'))).status, 'accepted');
-    const stable = structuredClone(ref.value);
-    assert.equal(recoverStalledStartup(ref.value, 'room-current', instance, now), 0);
-    assert.deepEqual(ref.value, stable);
-    const again = await report.run(ref.request('watchdog-failed-again', 'player1', {state: 'failed', reportSeq: 2}));
-    assert.equal(again.reconnectRequested, false, 'watchdog and failed reports share the same one-shot allowance');
   });
 }
 
-test('healthy startup is permanently removed from the watchdog without changing gameplay', async t => {
-  t.mock.method(Date, 'now', () => 100000);
+test('legacy startup marker is inert and the scheduler does not write it', async t => {
+  t.mock.method(Date, 'now', () => 190000);
   const ref = await independentGame(t);
-  for (const uid of Object.keys(ref.value.players)) await report.run(readyRequest(ref, uid, `healthy-${uid}`));
-  assert.equal(ref.value.game.server.startupRecovery, undefined);
-  refreshHeartbeats(ref, 190000);
-  const before = structuredClone(ref.value);
-  assert.equal(recoverStalledStartup(ref.value, 'room-current', ref.value.game.public.gameInstanceId, 190000), 0);
-  assert.deepEqual(ref.value, before);
-});
-
-test('phone-only startup recovery leaves current hands, deadline and controller untouched', async t => {
-  t.mock.method(Date, 'now', () => 100000);
-  const ref = await independentGame(t);
-  await report.run(readyRequest(ref, 'player0', 'healthy-phone0'));
-  await report.run(readyRequest(ref, 'player2', 'healthy-phone2'));
-  const before = structuredClone(ref.value.game);
-  refreshHeartbeats(ref, 190000);
-  assert.equal(recoverStalledStartup(ref.value, 'room-current', before.public.gameInstanceId, 190000), 1);
-  assert.deepEqual(ref.value.game.public, before.public);
-  assert.deepEqual(ref.value.game.private, before.private);
-  assert.equal(ref.value.connections.tablet['connection-tablet'].connected, true);
-});
-
-const invalidStartupCases = {
-  'old game without opt-in': room => {delete room.game.server.startupRecovery;},
-  'unsupported game': room => {room.game.public.gameType = 'mafia';},
-  'legacy protocol': room => {delete room.presenceProtocol;},
-  'finished game': room => {room.game.public.status = 'finished';},
-  'terminal room': room => {room.status = 'terminal';},
-  'different game instance': room => {room.game.public.gameInstanceId = 'new-game';},
-  'different room instance': room => {room.roomInstanceId = 'new-room';},
-  'expired observation window': room => {room.game.server.startupRecovery.startedAt = -200000;},
-  'backgrounded connection': room => {room.connections.player1['connection-player1'].connected = false;},
-  'stale heartbeat': room => {room.connections.player1['connection-player1'].lastSeen = 169999;},
-  'future heartbeat': room => {room.connections.player1['connection-player1'].lastSeen = 190001;},
-  'new membership': room => {room.players.player1.membershipId = 'replacement-member';},
-  'new connection': room => {room.players.player1.currentConnectionId = 'replacement-connection';},
-  'eliminated player': room => {room.game.public.players.player1.status = 'eliminated';},
-};
-for (const [label, change] of Object.entries(invalidStartupCases)) {
-  test(`startup watchdog makes no change for ${label}`, async t => {
-    t.mock.method(Date, 'now', () => 100000);
-    const ref = await independentGame(t);
-    await report.run(readyRequest(ref, 'player0', 'ready-zero'));
-    await report.run(readyRequest(ref, 'player2', 'ready-two'));
-    const instance = ref.value.game.public.gameInstanceId;
-    refreshHeartbeats(ref, 190000); change(ref.value);
-    const before = structuredClone(ref.value);
-    assert.equal(recoverStalledStartup(ref.value, 'room-current', instance, 190000), 0);
-    assert.deepEqual(ref.value, before);
-  });
-}
-
-test('ready arriving after scan selection prevents reconnect in the transaction', async t => {
-  t.mock.method(Date, 'now', () => 100000);
-  const ref = await independentGame(t);
-  for (const uid of ['player0', 'player2']) await report.run(readyRequest(ref, uid, `early-${uid}`));
-  refreshHeartbeats(ref, 190000);
-  assert.equal(hasStalledStartup(ref.value, 190000), true);
-  await report.run(readyRequest(ref, 'player1', 'just-in-time-ready'));
-  const before = structuredClone(ref.value);
-  assert.equal(recoverStalledStartup(ref.value, 'room-current', ref.value.game.public.gameInstanceId, 190000), 0);
-  assert.deepEqual(ref.value, before);
-});
-
-test('unaccepted ready cannot suppress startup recovery, and a replaced live connection is never revoked', async t => {
-  t.mock.method(Date, 'now', () => 100000);
-  const ref = await independentGame(t);
-  for (const uid of ['player0', 'player2']) await report.run(readyRequest(ref, uid, `valid-${uid}`));
-  delete ref.value.game.private.player1._context;
-  assert.equal((await report.run(readyRequest(ref, 'player1', 'invalid-private'))).status, 'dataMissing');
-  assert.ok(ref.value.game.server.startupRecovery.waiting['player:player1']);
-  refreshHeartbeats(ref, 190000);
-  assert.equal(hasStalledStartup(ref.value, 190000), true);
-  const player = ref.value.players.player1;
-  player.currentConnectionId = 'new-live-connection'; player.connectionSeq = 2;
-  ref.value.connections.player1[player.currentConnectionId] = {
-    roomInstanceId: 'room-current', membershipId: player.membershipId,
-    connectionSeq: 2, connected: true, lastSeen: 190000,
+  ref.value.game.server.startupRecovery = {
+    version: 1,
+    gameInstanceId: ref.value.game.public.gameInstanceId,
+    startedAt: 100000,
+    waiting: {},
   };
   const before = structuredClone(ref.value);
-  assert.equal(recoverStalledStartup(ref.value, 'room-current', ref.value.game.public.gameInstanceId, 190000), 0);
-  assert.deepEqual(ref.value, before);
-});
-
-for (const failedRoom of [false, true]) test(`scheduler limits concurrency and preserves other rooms (one failure=${failedRoom})`, async t => {
-  t.mock.method(Date, 'now', () => 100000);
-  const ref = await independentGame(t);
-  const records = [];
-  t.mock.method(logger, 'info', (event, fields) => records.push({event, fields}));
-  await report.run(readyRequest(ref, 'player0', 'scheduler-ready0'));
-  await report.run(readyRequest(ref, 'player2', 'scheduler-ready2'));
-  refreshHeartbeats(ref, 190000);
-  t.mock.method(Date, 'now', () => 190000);
-  let queries = 0, active = 0, maxActive = 0, writes = 0, healthyWrites = 0;
-  const children = Array.from({length: 12}, (_, index) => {
-    const child = new RoomRef(3); child.value = structuredClone(ref.value);
-    const transaction = child.transaction.bind(child);
-    child.transaction = async update => {
-      active++; maxActive = Math.max(maxActive, active);
-      await new Promise(resolve => setImmediate(resolve));
-      try {
-        writes++;
-        if (failedRoom && index === 0) throw new Error('synthetic transaction failure');
-        return await transaction(update);
-      } finally {active--;}
-    };
-    return {val: () => structuredClone(child.value), ref: child};
-  });
-  const healthy = structuredClone(ref.value); delete healthy.game.server.startupRecovery;
-  children.push({val: () => healthy, ref: {on() {healthyWrites++;}}});
+  let transactionStarts = 0;
+  const child = {
+    val: () => structuredClone(ref.value),
+    ref: {on() {transactionStarts++;}},
+  };
   const query = {
     orderByChild(key) {assert.equal(key, 'status'); return this;},
     equalTo(value) {assert.equal(value, 'playing'); return this;},
-    async get() {queries++; return {forEach: fn => children.forEach(fn)};},
+    async get() {return {forEach: callback => callback(child)};},
   };
-  t.mock.method(database, 'getDatabase', () => ({ref: path => {assert.equal(path, 'rooms'); return query;}}));
-  if (failedRoom) await assert.rejects(scanRecoveries.run({}), /Game recovery transactions failed: 1/);
-  else await scanRecoveries.run({});
-  assert.equal(queries, 1); assert.equal(writes, 12); assert.equal(maxActive, 10); assert.equal(healthyWrites, 0);
-  assert.deepEqual(records.filter(r => r.event === 'game_startup_recovery_scan'), [{
-    event: 'game_startup_recovery_scan', fields: {reconnectedDevices: failedRoom ? 11 : 12, failedRooms: failedRoom ? 1 : 0},
-  }], 'scheduler logs only committed counts, without room identities or game payloads');
-  for (const child of children.slice(failedRoom ? 1 : 0, 12)) assert.equal(child.ref.value.players.player1.isConnected, false);
+  t.mock.method(database, 'getDatabase', () => ({
+    ref: path => {assert.equal(path, 'rooms'); return query;},
+  }));
+
+  await scanRecoveries.run({});
+  assert.equal(transactionStarts, 0);
+  assert.deepEqual(ref.value, before);
 });
 
 test('independent phones disconnect/rejoin without pausing or changing hands/deadline', async t => {

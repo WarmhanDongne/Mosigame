@@ -234,7 +234,7 @@ Map<String, dynamic> _private(String gameId) => {
     'dataSeq': 1,
   },
   'hand': {
-    'card-1': {'rank': 'K'},
+    'card-1': {'rank': 'TRUTH'},
   },
 };
 

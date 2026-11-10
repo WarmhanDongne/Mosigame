@@ -2,7 +2,8 @@
 
 import {PublicGameInterruption, ServerGameInterruption} from "../../game-interruption/types.js";
 
-export const CARD_RANKS = ["A", "K", "Q", "JOKER"] as const;
+/** 라이어스 포커는 오직 진실·거짓 카드만 사용합니다. */
+export const CARD_RANKS = ["TRUTH", "LIE"] as const;
 
 export type CardRank = typeof CARD_RANKS[number];
 
@@ -29,7 +30,8 @@ export interface PublicLastPlay {
   round: number;
   playerUid: string;
   cardCount: number;
-  declaredRank: Exclude<CardRank, "JOKER">;
+  /** 모든 제출은 "진실"이라고 주장합니다. 배포 키는 호환을 위해 유지합니다. */
+  declaredRank: "TRUTH";
   revealed: boolean;
   actualRanks?: CardRank[];
   submittedAt: number;
@@ -50,7 +52,15 @@ export interface PublicGameState {
     "finished";
   round: number;
   revision: number;
-  table: Exclude<CardRank, "JOKER">;
+  /**
+   * 기존 클라이언트의 table 키를 유지한 고정 선언값입니다. 새 규칙에는
+   * 매 라운드 기준 랭크가 없으며, 모든 제출은 진실 카드라고 주장합니다.
+   */
+  table: "TRUTH";
+  /** 이번 라운드 전체 덱의 진실·거짓 수와 분배 후 남겨 둔 카드 수입니다. */
+  truthCardCount: number;
+  lieCardCount: number;
+  unrevealedCardCount: number;
   turnUid: string | null;
   turnDeadlineAt: number | null;
   isFirstTurnReady?: boolean;
@@ -93,6 +103,11 @@ export interface ServerGameState {
   };
   /** 태블릿 배분 연출이 끝나기 전까지 클라이언트에 공개하지 않는 손패입니다. */
   pendingHands?: Record<string, PrivatePlayerState>;
+  /**
+   * 분배하지 않은 3장입니다. 클라이언트가 읽을 수 없는 server 경로에만
+   * 보관하며, 라운드 종료·판정 뒤에도 공개하지 않습니다.
+   */
+  unrevealedCards?: GameCard[];
   interruption?: ServerGameInterruption;
 }
 

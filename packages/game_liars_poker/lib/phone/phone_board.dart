@@ -23,9 +23,7 @@ import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/phone/widgets/result_dialog.dart';
-import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/game_copy.dart';
-import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/phone/screens/game_screen.dart';
 import 'package:game_liars_poker/phone/providers/game_stage.dart';
 import 'package:game_liars_poker/phone/widgets/spectator.dart';
@@ -34,6 +32,7 @@ import 'package:game_liars_poker/shared/providers/game_controller.dart';
 import 'package:game_liars_poker/shared/providers/session_provider.dart';
 import 'package:game_liars_poker/shared/services/asset_preloader.dart';
 import 'package:game_liars_poker/shared/services/game_service.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 // ============================================================
 
 // LiarsPokerPhoneGame
@@ -53,12 +52,6 @@ part 'src/board_state.dart';
 const liarsPokerConnectionLed = GameConnectionLedStyle.classic;
 
 abstract final class LiarsPokerPhoneTiming {
-  /// 휴대폰 ROUND N 문구 유지시간입니다. 태블릿 안내와 별도로 조절합니다.
-  static const roundAnnouncement = Duration(milliseconds: 1900);
-
-  /// GAME START 연출의 총 시간입니다.
-  static const gameStartAnnouncement = Duration(milliseconds: 1700);
-
   /// 손패 공개 후 상단바와 조작부가 등장하는 시간입니다. 값이 클수록 진입이 느려집니다.
   static const phoneControlsEntry = Duration(milliseconds: 920);
 
@@ -103,18 +96,8 @@ GameFlowConfig<LiarsPokerPhoneStage> buildLiarsPokerPhoneFlowConfig({
     ),
     LiarsPokerPhoneStage.gameStart: const GameFlowStep(
       stage: LiarsPokerPhoneStage.gameStart,
-      description: '첫 손패가 준비된 뒤 게임 시작 문구를 표시한다',
+      description: '첫 손패가 준비되면 시작 문구 없이 손패 공개로 진행한다',
       showScreen: true,
-      showAnnouncement: true,
-      announcementId: 'game-start',
-      announcementKind: GameAnnouncementKind.gameStart,
-      announcement: GameFlowCopy.gameStart,
-      announcementDuration: LiarsPokerPhoneTiming.gameStartAnnouncement,
-      animation: GameFlowAnimationConfig(
-        name: 'GameStartAnimation',
-        duration: LiarsPokerPhoneTiming.gameStartAnnouncement,
-      ),
-      blocksInteraction: true,
       phoneRegions: PhoneGameRegions(),
       advancePolicy: GameFlowAdvancePolicy.clientPresentation,
     ),
@@ -125,32 +108,18 @@ GameFlowConfig<LiarsPokerPhoneStage> buildLiarsPokerPhoneFlowConfig({
       phoneRegions: PhoneGameRegions(),
       advancePolicy: GameFlowAdvancePolicy.waitsForServer,
     ),
-    LiarsPokerPhoneStage.roundIntro: GameFlowStep(
+    LiarsPokerPhoneStage.roundIntro: const GameFlowStep(
       stage: LiarsPokerPhoneStage.roundIntro,
-      description: '새 라운드 번호를 표시한다',
+      description: '새 라운드 문구를 생략하고 손패 공개로 진행한다',
       showScreen: true,
-      showAnnouncement: true,
-      announcementId: 'phone-round-$roundNumber',
-      announcementKind: GameAnnouncementKind.round,
-      announcement: GameFlowCopy.round(roundNumber),
-      announcementDuration: LiarsPokerPhoneTiming.roundAnnouncement,
-      animation: const GameFlowAnimationConfig(
-        name: 'FadeHoldFade',
-        duration: LiarsPokerPhoneTiming.roundAnnouncement,
-      ),
-      blocksInteraction: true,
-      phoneRegions: const PhoneGameRegions(showHand: true),
+      phoneRegions: PhoneGameRegions(showHand: true),
       advancePolicy: GameFlowAdvancePolicy.clientPresentation,
     ),
-    LiarsPokerPhoneStage.tableIntro: GameFlowStep(
+    LiarsPokerPhoneStage.tableIntro: const GameFlowStep(
       stage: LiarsPokerPhoneStage.tableIntro,
-      description: '이번 라운드의 기준 카드 값을 표시한다',
+      description: '기준 카드 문구를 생략하고 손패 공개로 진행한다',
       showScreen: true,
-      showAnnouncement: true,
-      announcementId: 'phone-table-$roundNumber-$tableCardValue',
-      announcement: LiarsPokerCopy.table(tableCardValue),
-      blocksInteraction: true,
-      phoneRegions: const PhoneGameRegions(showHand: true),
+      phoneRegions: PhoneGameRegions(showHand: true),
       advancePolicy: GameFlowAdvancePolicy.clientPresentation,
     ),
     LiarsPokerPhoneStage.handReveal: const GameFlowStep(

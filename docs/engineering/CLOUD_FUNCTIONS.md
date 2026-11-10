@@ -140,6 +140,12 @@ heartbeat가 정상인 시작 접속을1회 재연결 유도한다. 정상 ready
 지원 함수 배포 뒤 시작 함수를 갱신한다. 새 스케줄이나 방 조회를 추가하지 않는다.
 상세 조건·한계는 NETWORK_SESSION_CONTRACT의11/5 초기 준비 미보고 절을 따른다.
 
+2026-11-09 후속 후보: 위 startupRecovery 강제 재연결은 활성화하지 않는다.
+화면 준비 미보고는 transport 단절의 증거가 아니므로, 정상 `connected=true`를
+`false`로 바꾸는 시작·스케줄 경로를 제거했다. 기존 스케줄러는 실제 interruption
+만료만 처리하며, 과거 후보의 startupRecovery 표식이 남아 있어도 접속을 변경하지
+않는다. 이 후보는 운영 배포를 수행했다는 뜻이 아니다.
+
 connected=true만으로 타이머를 재개하지 않는다.
 vote_to_continue/finish_now는 현재 index export와 소비자에서 제거했다.
 
@@ -215,9 +221,14 @@ nvm use                          # Node 22
 cd functions && npm install
 npm run lint && npm run build    # predeploy 가 eslint + tsc 를 강제한다
 
-# 사용자 승인 후, 저장소 루트에서
-./functions/node_modules/.bin/firebase deploy --only functions
+# 새 테스트 프로젝트에 전체 Functions 후보를 먼저 배포
+cd functions
+npm run deploy:test -- --project=<test-project-id>
 ```
+
+`deploy:test`는 프로젝트 지정을 필수로 하고 `project0000-ec01e`와 `.firebaserc`의
+`default`를 거부한다. 운영 배포는 테스트 프로젝트의 앱·Functions·Rules·실기기
+검증과 혼합 버전 배포 순서를 고정한 뒤 별도 승인받은 명령으로만 수행한다.
 
 RTDB 트리거를 옮기거나 이름을 바꿀 때는 **구·신 함수가 같은 이벤트를 중복 처리하지
 않게** 해야 한다. 배포 직후 잠깐 둘 다 살아 있는 구간이 생긴다.

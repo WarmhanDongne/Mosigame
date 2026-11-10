@@ -1,0 +1,29 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "mosigame-test",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "\"$RESOURCE_DIR/node_modules/.bin/eslint\" --ext .js,.ts \"$RESOURCE_DIR/src\"",
+        "\"$RESOURCE_DIR/node_modules/.bin/tsc\" --project \"$RESOURCE_DIR/tsconfig.json\""
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  }
+}

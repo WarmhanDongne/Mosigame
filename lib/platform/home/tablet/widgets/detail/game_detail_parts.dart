@@ -21,6 +21,15 @@ Widget? buildGameParts(String gameId, {int? playerCount}) => switch (gameId) {
   _ => null,
 };
 
+/// 구성품 탭에서 상세 상자 바탕을 게임 색으로 칠할 때의 색입니다.
+///
+/// 구성품 판 안쪽에만 색을 깔면 기기 크기에 따라 상자 테두리와 판 사이에
+/// 상자 바탕색 띠가 보입니다. 상자 자체를 칠해 띠가 생기지 않게 합니다.
+Color? gamePartsBackground(String gameId) => switch (gameId) {
+  'liars_poker' => _liarPartsGround,
+  _ => null,
+};
+
 //=======================구성품 공통 틀==============================
 /// 구성품 한 칸입니다. [flex]는 윗줄에서 차지하는 폭의 비율입니다.
 class _Part {
@@ -50,82 +59,106 @@ class _Rule {
 /// 그림은 정해진 크기로 그린 뒤 칸에 맞춰 줄이므로 어느 태블릿에서도 넘치지
 /// 않습니다.
 class _PartsLayout extends StatelessWidget {
-  const _PartsLayout({required this.parts, required this.rules});
+  const _PartsLayout({
+    required this.parts,
+    required this.rules,
+    this.plainParts = false,
+  });
 
   final List<_Part> parts;
   final List<_Rule> rules;
 
+  /// 구성품을 흰 블록 없이 어두운 바탕 위에 바로 놓습니다. 글자는 밝게 씁니다.
+  final bool plainParts;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(20),
-    child: Column(
+  Widget build(BuildContext context) {
+    final partsBody = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          flex: 11,
-          child: _partsCard(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _SectionLabel('구성품'),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final (i, part) in parts.indexed) ...[
-                        if (i > 0) const _CellDivider(),
-                        Expanded(
-                          flex: part.flex,
-                          child: _PartCell(part: part),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+        _SectionLabel(
+          '구성품',
+          color: plainParts ? const Color(0xFFE2C27E) : null,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 6),
         Expanded(
-          flex: 5,
-          child: _partsCard(
-            delay: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _SectionLabel('이렇게 해요'),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final (i, rule) in rules.indexed) ...[
-                        if (i > 0) const SizedBox(width: 16),
-                        Expanded(
-                          child: _RuleCell(number: i + 1, rule: rule),
-                        ),
-                      ],
-                    ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, part) in parts.indexed) ...[
+                if (i > 0)
+                  _CellDivider(
+                    color: plainParts ? const Color(0x55E2C27E) : null,
                   ),
+                Expanded(
+                  flex: part.flex,
+                  child: _PartCell(part: part, onDark: plainParts),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ],
-    ),
-  );
+    );
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 11,
+            child: plainParts
+                ? _EnterIn(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                      child: partsBody,
+                    ),
+                  )
+                : _partsCard(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                    child: partsBody,
+                  ),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            flex: 5,
+            child: _partsCard(
+              delay: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SectionLabel('이렇게 해요'),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final (i, rule) in rules.indexed) ...[
+                          if (i > 0) const SizedBox(width: 16),
+                          Expanded(
+                            child: _RuleCell(number: i + 1, rule: rule),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 카드 위쪽의 작은 제목입니다.
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+  const _SectionLabel(this.text, {this.color});
 
   final String text;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Text(
@@ -134,7 +167,7 @@ class _SectionLabel extends StatelessWidget {
     style: MosiFonts.sans(
       size: 13,
       weight: FontWeight.w700,
-      color: MosiColors.muted,
+      color: color ?? MosiColors.muted,
       letterSpacing: 1,
     ),
   );
@@ -142,21 +175,24 @@ class _SectionLabel extends StatelessWidget {
 
 /// 구성품 칸 사이의 가는 세로선입니다.
 class _CellDivider extends StatelessWidget {
-  const _CellDivider();
+  const _CellDivider({this.color});
+
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Container(
     width: 2,
     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    color: MosiColors.cream,
+    color: color ?? MosiColors.cream,
   );
 }
 
 /// 구성품 한 칸: 그림을 크게, 이름과 수량을 아래에 붙입니다.
 class _PartCell extends StatelessWidget {
-  const _PartCell({required this.part});
+  const _PartCell({required this.part, this.onDark = false});
 
   final _Part part;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -182,7 +218,7 @@ class _PartCell extends StatelessWidget {
               style: MosiFonts.sans(
                 size: 15,
                 weight: FontWeight.w700,
-                color: MosiColors.navy,
+                color: onDark ? const Color(0xFFF3EEE6) : MosiColors.navy,
               ),
             ),
             if (part.count != null) ...[
@@ -304,10 +340,20 @@ Widget _fan(List<Widget> cards, {double overlap = 18, double spread = 7}) {
   );
 }
 
-/// 인원별 카드 수입니다(서버 덱 구성과 같은 값).
-const _liarDecks = [(2, 10), (3, 17), (4, 20), (5, 27), (6, 30)];
+/// 인원별 카드 수입니다(서버 덱 구성과 같은 값: 인원×5 + 숨긴 3장).
+const _liarDecks = [(2, 13), (3, 18), (4, 23), (5, 28), (6, 33)];
+
+/// 라이어스 카드와 같은 판화 색입니다.
+const _liarTruth = Color(0xFF2E6B4E);
+const _liarLie = Color(0xFFB8262B);
+const _liarBone = Color(0xFFF3EEE6);
+const _liarInk = Color(0xFF17110F);
+
+/// 라이어스 구성품 바탕색입니다. 게임 안 월넛 테이블의 기본색과 같습니다.
+const _liarPartsGround = Color(0xFF351707);
 
 //=======================구성품 · 라이어스 포커==============================
+/// 흰 블록 없이 게임 월넛 테이블 위에 구성품을 놓고, 규칙만 흰 블록에 둡니다.
 class _LiarParts extends StatelessWidget {
   const _LiarParts({this.playerCount});
 
@@ -315,224 +361,365 @@ class _LiarParts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const faces = [
-      ('A', '에이스', 6),
-      ('K', '킹', 6),
-      ('Q', '퀸', 6),
-      ('JOKER', '조커', 2),
-    ];
     const wheels = [(16, 4), (15, 5), (12, 11)];
     final buttons = liar.Assets.games.liarsPoker.images.button;
     final current = _liarDecks
         .where((deck) => deck.$1 == playerCount)
         .firstOrNull;
+    final (displayPlayers, displayTotal) = current ?? _liarDecks[2];
+    final truthCount = displayPlayers * 3;
+    final lieCount = displayTotal - truthCount;
 
-    Widget card(String face, String name, {double width = 50}) =>
-        LiarsPokerCardView(
-          face: LiarsCardFace.fromValue(face),
-          rounded: true,
-          width: width,
-        );
-
-    return _PartsLayout(
-      parts: [
-        _Part(
-          label: '카드'.localized,
-          flex: 5,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (i, (face, name, n)) in faces.indexed) ...[
-                if (i > 0) const SizedBox(width: 12),
-                Column(
-                  children: [
-                    _Float(
-                      delay: i * .3,
-                      child: SizedBox(
-                        width: 64,
-                        height: 88,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 8,
-                              top: 0,
-                              child: const LiarsPokerCardView(
-                                face: LiarsCardFace.back,
-                                rounded: true,
-                                width: 56,
-                              ),
-                            ),
-                            Positioned(
-                              left: 0,
-                              top: 8,
-                              child: card(face, name, width: 56),
-                            ),
-                          ],
+    return LiarsPokerWoodTableBackground(
+      child: _PartsLayout(
+        plainParts: true,
+        parts: [
+          _Part(
+            label: GameLocale.select(
+              ko: '진실·거짓 카드',
+              en: 'Truth & Lie cards',
+              zhHans: '真话·谎言牌',
+              zhHant: '真話·謊言牌',
+            ),
+            flex: 5,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LiarFaceStack(
+                  face: LiarsCardFace.truth,
+                  color: _liarTruth,
+                  label: GameLocale.select(
+                    ko: '진실 $truthCount',
+                    en: 'Truth $truthCount',
+                    zhHans: '真话 $truthCount',
+                    zhHant: '真話 $truthCount',
+                  ),
+                ),
+                const SizedBox(width: 14),
+                _LiarFaceStack(
+                  face: LiarsCardFace.lie,
+                  color: _liarLie,
+                  delay: .3,
+                  label: GameLocale.select(
+                    ko: '거짓 $lieCount',
+                    en: 'Lie $lieCount',
+                    zhHans: '谎言 $lieCount',
+                    zhHant: '謊言 $lieCount',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _Part(
+            label: GameLocale.select(
+              ko: '한 판 분배',
+              en: 'Each round',
+              zhHans: '每轮发牌',
+              zhHant: '每輪發牌',
+            ),
+            flex: 5,
+            child: _LiarRoundDeal(
+              players: displayPlayers,
+              total: displayTotal,
+              highlighted: current != null,
+            ),
+          ),
+          _Part(
+            label: '벌칙 룰렛'.localized,
+            flex: 5,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final (i, (all, bad)) in wheels.indexed) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  Column(
+                    children: [
+                      CustomPaint(
+                        size: const Size.square(76),
+                        painter: _WheelPainter(all: all, bad: bad),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '$bad/$all',
+                        style: MosiFonts.grotesk(
+                          size: 14,
+                          color: LiarsPokerColors.pink,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    _CountBadge('×$n'),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        _Part(
-          label: '인원별 카드'.localized,
-          count: current == null
-              ? null
-              : GameLocale.select(
-                  ko: '${current.$1}명 ${current.$2}장',
-                  en: '${current.$1} players · ${current.$2} cards',
-                  zhHans: '${current.$1} 人 · ${current.$2} 张',
-                  zhHant: '${current.$1} 人 · ${current.$2} 張',
-                ),
-          flex: 4,
-          child: _LiarDeckBars(current: current?.$1),
-        ),
-        _Part(
-          label: '벌칙 룰렛'.localized,
-          flex: 5,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (i, (all, bad)) in wheels.indexed) ...[
-                if (i > 0) const SizedBox(width: 12),
-                Column(
-                  children: [
-                    CustomPaint(
-                      size: const Size.square(76),
-                      painter: _WheelPainter(all: all, bad: bad),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$bad/$all',
-                      style: MosiFonts.grotesk(
-                        size: 14,
-                        color: const Color(0xFFA82E40),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        _Part(
-          label: '버튼'.localized,
-          flex: 3,
-          child: Semantics(
-            image: true,
-            label: GameLocale.select(
-              ko: 'Liar, 제출, Fold 버튼',
-              en: 'LIAR, Submit, and Fold buttons',
-              zhHans: 'LIAR、提交与 Fold 按钮',
-              zhHant: 'LIAR、提交與 Fold 按鈕',
-            ),
-            excludeSemantics: true,
-            child: _darkPlate(
-              LiarsPokerColors.night,
-              // 게임 휴대폰과 같은 버튼 그림입니다.
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final (i, (asset, name)) in [
-                    (buttons.buttonLiar, 'Liar'),
-                    (
-                      buttons.buttonSubmit,
-                      GameLocale.select(
-                        ko: '제출',
-                        en: 'Submit',
-                        zhHans: '提交',
-                        zhHant: '提交',
-                      ),
-                    ),
-                    (buttons.buttonFold, 'Fold'),
-                  ].indexed) ...[
-                    if (i > 0) const SizedBox(height: 8),
-                    _partsImage(
-                      asset.game,
-                      GameLocale.select(
-                        ko: '$name 버튼',
-                        en: '$name button',
-                        zhHans: '$name 按钮',
-                        zhHant: '$name 按鈕',
-                      ),
-                      width: 56,
-                      height: 56,
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
+              ],
+            ),
+          ),
+          _Part(
+            label: '버튼'.localized,
+            flex: 3,
+            child: Semantics(
+              image: true,
+              label: GameLocale.select(
+                ko: 'Liar, 제출, Fold 버튼',
+                en: 'LIAR, Submit, and Fold buttons',
+                zhHans: 'LIAR、提交与 Fold 按钮',
+                zhHant: 'LIAR、提交與 Fold 按鈕',
+              ),
+              excludeSemantics: true,
+              child: _darkPlate(
+                LiarsPokerColors.night,
+                // 게임 휴대폰과 같은 버튼 그림입니다.
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final (i, (asset, name)) in [
+                      (buttons.buttonLiar, 'Liar'),
+                      (
+                        buttons.buttonSubmit,
+                        GameLocale.select(
+                          ko: '제출',
+                          en: 'Submit',
+                          zhHans: '提交',
+                          zhHant: '提交',
+                        ),
+                      ),
+                      (buttons.buttonFold, 'Fold'),
+                    ].indexed) ...[
+                      if (i > 0) const SizedBox(height: 8),
+                      _partsImage(
+                        asset.game,
+                        GameLocale.select(
+                          ko: '$name 버튼',
+                          en: '$name button',
+                          zhHans: '$name 按钮',
+                          zhHant: '$name 按鈕',
+                        ),
+                        width: 56,
+                        height: 56,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
+        ],
+        rules: [
+          _Rule(
+            GameLocale.select(
+              ko: '진실이라 주장',
+              en: 'Claim Truth',
+              zhHans: '宣称真话',
+              zhHant: '宣稱真話',
+            ),
+            GameLocale.select(
+              ko: '1~3장을 뒷면으로 내요. 거짓 카드를 섞어도 돼요.',
+              en: 'Play 1–3 cards face down. You may mix in Lies.',
+              zhHans: '背面打出 1–3 张，可以混入谎言牌。',
+              zhHant: '背面打出 1–3 張，可以混入謊言牌。',
+            ),
+          ),
+          _Rule(
+            'LIAR!',
+            GameLocale.select(
+              ko: '거짓이 하나라도 있으면 낸 사람이, 전부 진실이면 외친 사람이 룰렛을 돌려요.',
+              en: 'Any Lie: the player spins. All Truth: the caller spins.',
+              zhHans: '有谎言则出牌者转轮盘，全是真话则质疑者转。',
+              zhHant: '有謊言則出牌者轉輪盤，全是真話則質疑者轉。',
+            ),
+          ),
+          _Rule(
+            '끝까지 생존'.localized,
+            GameLocale.select(
+              ko: '손패를 비워도 이긴 게 아니에요. 마지막까지 살아남은 한 명이 승리해요.',
+              en: 'An empty hand is not a win. The last survivor wins.',
+              zhHans: '出完手牌不算赢，最后存活的人获胜。',
+              zhHant: '出完手牌不算贏，最後存活的人獲勝。',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 진실 또는 거짓 카드 두 장을 겹친 묶음과 장수 알약입니다.
+class _LiarFaceStack extends StatelessWidget {
+  const _LiarFaceStack({
+    required this.face,
+    required this.color,
+    required this.label,
+    this.delay = 0,
+  });
+
+  final LiarsCardFace face;
+  final Color color;
+  final String label;
+  final double delay;
+
+  static const double _card = 58;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _Float(
+        delay: delay,
+        // 기울인 카드 모서리까지 들어가도록 상자를 넉넉히 잡습니다.
+        child: SizedBox(
+          width: 96,
+          height: 118,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.translate(
+                offset: const Offset(-10, 4),
+                child: _rotated(
+                  -9,
+                  LiarsPokerCardView(face: face, rounded: true, width: _card),
+                ),
+              ),
+              Transform.translate(
+                offset: const Offset(8, -2),
+                child: _rotated(
+                  5,
+                  LiarsPokerCardView(face: face, rounded: true, width: _card),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+      const SizedBox(height: 8),
+      _LiarPill(label: label, color: color, textColor: _liarBone),
+    ],
+  );
+}
+
+/// 한 사람 5장과 끝까지 숨기는 3장, 지금 인원의 전체 장수를 보여 줍니다.
+class _LiarRoundDeal extends StatelessWidget {
+  const _LiarRoundDeal({
+    required this.players,
+    required this.total,
+    required this.highlighted,
+  });
+
+  final int players;
+  final int total;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final caption = MosiFonts.sans(
+      size: 14,
+      weight: FontWeight.w600,
+      color: _liarBone,
+    );
+    Widget row(List<Widget> cards, String text) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 92,
+          height: 40,
+          child: Stack(
+            children: [
+              for (final (i, card) in cards.indexed)
+                Positioned(left: i * 14.0, top: 0, child: card),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(text, maxLines: 1, style: caption),
       ],
-      rules: const [
-        _Rule('카드 내기', '기준 카드(A·K·Q)라며 1~3장을 뒷면으로 내요.'),
-        _Rule('LIAR!', '거짓말 같으면 외쳐요. 틀린 쪽이 룰렛을 돌려요.'),
-        _Rule('끝까지 생존', '룰렛은 갈수록 불리해져요. 마지막 한 명이 승리해요.'),
+    );
+    const hand = [
+      LiarsCardFace.truth,
+      LiarsCardFace.lie,
+      LiarsCardFace.truth,
+      LiarsCardFace.truth,
+      LiarsCardFace.lie,
+    ];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row(
+          [
+            for (final face in hand)
+              LiarsPokerCardView(face: face, rounded: true, width: 25),
+          ],
+          GameLocale.select(
+            ko: '한 사람 5장',
+            en: '5 per player',
+            zhHans: '每人 5 张',
+            zhHant: '每人 5 張',
+          ),
+        ),
+        const SizedBox(height: 14),
+        row(
+          [
+            for (var i = 0; i < 3; i++)
+              const LiarsPokerCardView(
+                face: LiarsCardFace.back,
+                rounded: true,
+                width: 25,
+              ),
+          ],
+          GameLocale.select(
+            ko: '3장은 끝까지 숨김',
+            en: '3 stay hidden',
+            zhHans: '3 张全程隐藏',
+            zhHant: '3 張全程隱藏',
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: _LiarPill(
+            key: const Key('liar-round-total'),
+            label: GameLocale.select(
+              ko: '$players명 → $total장',
+              en: '$players players → $total cards',
+              zhHans: '$players 人 → $total 张',
+              zhHant: '$players 人 → $total 張',
+            ),
+            color: highlighted ? MosiColors.sun : _liarBone,
+            textColor: _liarInk,
+          ),
+        ),
       ],
     );
   }
 }
 
-/// 인원이 늘면 카드도 늘어나는 막대입니다. 지금 방 인원의 막대만 노란색입니다.
-class _LiarDeckBars extends StatelessWidget {
-  const _LiarDeckBars({required this.current});
+/// 장수를 적는 둥근 알약입니다.
+class _LiarPill extends StatelessWidget {
+  const _LiarPill({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.textColor,
+  });
 
-  final int? current;
+  final String label;
+  final Color color;
+  final Color textColor;
 
   @override
-  Widget build(BuildContext context) {
-    final most = _liarDecks.last.$2;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        for (final (i, (players, count)) in _liarDecks.indexed) ...[
-          if (i > 0) const SizedBox(width: 6),
-          Builder(
-            builder: (context) {
-              final on = players == current;
-              return Column(
-                key: ValueKey('liar-deck-$players'),
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$count',
-                    style: MosiFonts.grotesk(size: 13, color: MosiColors.navy),
-                  ),
-                  const SizedBox(height: 3),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 240),
-                    width: 30,
-                    height: 24 + 76 * count / most,
-                    decoration: BoxDecoration(
-                      color: on ? MosiColors.sun : MosiColors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: MosiColors.ink, width: 2),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$players명',
-                    style: MosiFonts.sans(
-                      size: 12,
-                      weight: on ? FontWeight.w700 : FontWeight.w400,
-                      color: MosiColors.navy,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: _liarInk, width: 2),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      style: MosiFonts.sans(
+        size: 13,
+        weight: FontWeight.w700,
+        color: textColor,
+      ),
+    ),
+  );
 }
 
 class _WheelPainter extends CustomPainter {

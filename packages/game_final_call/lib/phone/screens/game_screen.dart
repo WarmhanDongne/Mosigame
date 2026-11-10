@@ -231,8 +231,8 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
                       onRevealCompleted: _handleRevealCompleted,
                       onCardSelected: (_) {},
                       onCardsReordered: controller.reorderHand,
-                      // 처음 받는 손패에서만 덱을 눌러 펼치라고 안내합니다.
-                      showTapHint: controller.round == 1,
+                      // 태블릿의 자동 분배 후 휴대폰 손패도 바로 펼칩니다.
+                      autoReveal: true,
                     )
                   : regions.showHand
                   ? _buildBoard(context)

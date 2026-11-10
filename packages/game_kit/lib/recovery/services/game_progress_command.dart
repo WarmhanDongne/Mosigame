@@ -22,7 +22,9 @@ class GameProgressCommand {
   Timer? _timer;
   bool _disposed = false;
   bool _exhausted = false;
+  bool _waitingForAttempt = false;
   void Function()? _retry;
+  void Function()? _resume;
   bool get needsRetry => _exhausted;
   void retry() {
     if (_exhausted) _retry?.call();
@@ -32,19 +34,29 @@ class GameProgressCommand {
     required Object key,
     required bool Function() isCurrent,
     required Future<bool> Function() send,
+    bool Function()? canAttempt,
     Map<String, Map<String, dynamic>>? capturedCommands,
   }) {
-    if (_disposed || !isCurrent() || _key == key) return;
+    if (_disposed || !isCurrent()) return;
+    final attemptAllowed = canAttempt ?? () => true;
+    if (_key == key) {
+      if (_waitingForAttempt && attemptAllowed()) {
+        _waitingForAttempt = false;
+        _resume?.call();
+      }
+      return;
+    }
     cancel();
     _key = key;
     final generation = _generation;
-    final baseline = elapsed?.call() ?? Duration.zero;
-    final batch = GameCommandBatch(
+    var baseline = elapsed?.call() ?? Duration.zero;
+    var batch = GameCommandBatch(
       commands: capturedCommands,
       elapsed: elapsed == null ? null : () => elapsed!() - baseline,
     );
     var attempts = 0;
     _exhausted = false;
+    _waitingForAttempt = false;
     _retry = () {
       if (_disposed) return;
       if (!isCurrent()) {
@@ -56,14 +68,47 @@ class GameProgressCommand {
         key: key,
         isCurrent: isCurrent,
         send: send,
+        canAttempt: canAttempt,
         capturedCommands: batch.commands,
       );
     };
 
-    Future<void> attempt() async {
+    void waitForAttempt() {
+      if (_disposed || generation != _generation) return;
+      _timer?.cancel();
+      _timer = null;
+      _waitingForAttempt = true;
+    }
+
+    late Future<void> Function() attempt;
+    _resume = () {
       if (_disposed || generation != _generation) return;
       if (!isCurrent()) {
         cancel();
+        return;
+      }
+      if (!attemptAllowed()) {
+        waitForAttempt();
+        return;
+      }
+      // Transport/readiness waits are not command failures. Resume with the
+      // same captured command IDs but a fresh active-attempt time window.
+      baseline = elapsed?.call() ?? Duration.zero;
+      batch = GameCommandBatch(
+        commands: batch.commands,
+        elapsed: elapsed == null ? null : () => elapsed!() - baseline,
+      );
+      unawaited(attempt());
+    };
+
+    attempt = () async {
+      if (_disposed || generation != _generation) return;
+      if (!isCurrent()) {
+        cancel();
+        return;
+      }
+      if (!attemptAllowed()) {
+        waitForAttempt();
         return;
       }
       // send는 게임 Controller의 오류 기록/사용자 안내를 거쳐 bool을 반환합니다.
@@ -83,6 +128,10 @@ class GameProgressCommand {
       if (!isCurrent()) {
         cancel();
       } else if (!success) {
+        if (!attemptAllowed()) {
+          waitForAttempt();
+          return;
+        }
         final delay = retryDelay * (1 << (attempts - 1));
         if (attempts >= 4 || batch.remaining <= delay) {
           _exhausted = true;
@@ -90,7 +139,7 @@ class GameProgressCommand {
         }
         _timer = Timer(delay, () => unawaited(attempt()));
       }
-    }
+    };
 
     unawaited(attempt());
   }
@@ -102,6 +151,8 @@ class GameProgressCommand {
     _timer = null;
     _key = null;
     _retry = null;
+    _resume = null;
+    _waitingForAttempt = false;
     _exhausted = false;
   }
 

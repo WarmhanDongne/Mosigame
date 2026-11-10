@@ -38,7 +38,7 @@ class PenaltyRoulette extends StatefulWidget {
 }
 
 class _PenaltyRouletteState extends State<PenaltyRoulette>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// ============================================================
   /// 기준 디자인 사이즈
   ///
@@ -107,6 +107,14 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
   bool _isLeverDragActive = false;
 
   late final AnimationController _leverController;
+  late final AnimationController _leverHintController;
+
+  /// B안 '꿈틀' 안내: 진짜 손잡이를 살짝 내렸다 튕기는 진행률 오프셋입니다.
+  /// 그리기에만 더하고 [_leverController] 값은 바꾸지 않습니다.
+  late final Animation<double> _leverNudge;
+
+  /// 안내 한 바퀴(살짝 두 번 꿈틀 + 쉼) 길이입니다.
+  static const Duration _leverHintPeriod = Duration(milliseconds: 2400);
   late RouletteGroup _group;
 
   /// 서버 응답이 빠를 때의 전체 연출 시간입니다. 효과음 재생 구간도 함께 늘어납니다.
@@ -137,6 +145,11 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
         )..addListener(() {
           setState(() {});
         });
+    _leverHintController = AnimationController(
+      vsync: this,
+      duration: _leverHintPeriod,
+    )..repeat();
+    _leverNudge = _leverHintController.drive(const _LeverNudgeTween());
     _group = _createGroup(_sections);
   }
 
@@ -163,8 +176,16 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
       RouletteWheel.leverHeadTop + RouletteWheel.leverHeadSize / 2,
     );
 
-    _isLeverDragActive =
+    final isActive =
         (details.localPosition - initialHeadCenter).distance <= 200;
+    // 안내가 손잡이를 살짝 내려 둔 순간에 잡으면 그 자리에서 이어 당기도록
+    // 보이는 위치를 실제 값으로 넘깁니다. 위로 튕긴 값(음수)은 0으로 둡니다.
+    if (isActive && _showsLeverHint) {
+      _leverController.value = _leverNudge.value.clamp(0.0, 1.0).toDouble();
+    }
+    setState(() {
+      _isLeverDragActive = isActive;
+    });
   }
 
   void _onLeverDragUpdate(DragUpdateDetails details) {
@@ -184,6 +205,7 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
     }
 
     _isLeverDragActive = false;
+    setState(() {});
 
     if (_leverController.value < 0.75) {
       await _leverController.reverse();
@@ -400,7 +422,16 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
   /// 1300 × 900 기준 디자인 캔버스
   /// ============================================================
 
+  /// 레버를 아직 건드리지 않은 대기 상태에서만 안내를 보입니다.
+  bool get _showsLeverHint =>
+      !_isLeverLocked &&
+      !_isSpinning &&
+      !_isLeverDragActive &&
+      _leverController.value < 0.02;
+
   Widget _buildDesignCanvas() {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -410,9 +441,29 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
             controller: _controller,
             group: _group,
             leverProgress: _leverController.value,
+            leverNudge: _showsLeverHint && !reduceMotion ? _leverNudge : null,
             centerCharacterId: widget.centerCharacterId,
           ),
         ),
+
+        // 처음 룰렛에 들어온 사람이 레버 조작을 바로 이해하도록 진짜 손잡이가
+        // 살짝 내려갔다 튕기고(B안 '꿈틀'), 주위에 고리와 화살표를 띄웁니다.
+        // 실제 드래그 영역은 아래 GestureDetector가 유지하고 이 레이어는 입력을
+        // 받지 않습니다.
+        if (_showsLeverHint)
+          Positioned.fill(
+            key: const Key('roulette-lever-hint'),
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _leverHintController,
+                builder: (context, _) => _LeverPullHint(
+                  phase: _leverHintController.value,
+                  nudge: reduceMotion ? 0 : _leverNudge.value,
+                  reduceMotion: reduceMotion,
+                ),
+              ),
+            ),
+          ),
 
         /// ========================================================
         /// 레버 터치 영역
@@ -450,6 +501,7 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
     // 회전 도중 화면이 사라져도 17초짜리 사운드가 남지 않도록 정지시킵니다.
     _sound?.stopSustainedEffect();
     _leverController.dispose();
+    _leverHintController.dispose();
     _controller.dispose();
 
     super.dispose();
@@ -493,6 +545,7 @@ class RouletteWheel extends StatelessWidget {
     required this.group,
     required this.leverProgress,
     required this.centerCharacterId,
+    this.leverNudge,
   });
 
   /// 원판(금색 테두리 포함)의 지름입니다.
@@ -501,6 +554,7 @@ class RouletteWheel extends StatelessWidget {
 
   static const double leverLeft = 840;
   static const double leverWidth = 120;
+  static const double leverCenterX = leverLeft + leverWidth / 2;
 
   /// 레버 축(받침 한가운데)의 세로 위치입니다. 원판의 세로 중앙입니다.
   static const double leverPivotY = _canvas / 2;
@@ -530,6 +584,10 @@ class RouletteWheel extends StatelessWidget {
   final RouletteGroup group;
   final double leverProgress;
 
+  /// 안내용 진행률 오프셋입니다. 레버 부분만 이 값에 맞춰 다시 그려 원판은
+  /// 매 프레임 다시 만들지 않습니다. null이면 0입니다.
+  final Animation<double>? leverNudge;
+
   /// 이전 디자인의 가운데 얼굴 자리입니다. 새 디자인은 축만 그립니다.
   final String? centerCharacterId;
 
@@ -541,10 +599,6 @@ class RouletteWheel extends StatelessWidget {
     const sectorSize = _rouletteSize - sectorInset * 2;
     const hub = _rouletteSize * 100 / 480;
     const knob = _rouletteSize * 40 / 480;
-    const pivotX = leverLeft + leverWidth / 2;
-    // 손잡이 중심: 맨 위(-200)에서 맨 아래(+200)까지 축을 지나갑니다.
-    final headOffset = -leverTravel / 2 + leverTravel * leverProgress;
-    final headCenterY = leverPivotY + headOffset;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -627,6 +681,29 @@ class RouletteWheel extends StatelessWidget {
             child: CustomPaint(painter: _PointerPainter(_ivory)),
           ),
         ),
+        // 레버(받침 · 막대 · 축 · 손잡이)입니다.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ValueListenableBuilder<double>(
+              valueListenable:
+                  leverNudge ?? const AlwaysStoppedAnimation<double>(0),
+              builder: (context, nudge, _) =>
+                  _buildLever(leverProgress + nudge),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLever(double progress) {
+    const pivotX = leverCenterX;
+    // 손잡이 중심: 맨 위(-200)에서 맨 아래(+200)까지 축을 지나갑니다.
+    final headOffset = -leverTravel / 2 + leverTravel * progress;
+    final headCenterY = leverPivotY + headOffset;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
         // 레버 받침: 세로로 긴 알약입니다. 축이 한가운데에 있습니다.
         Positioned(
           left: pivotX - 44,
@@ -688,6 +765,147 @@ class RouletteWheel extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 진짜 손잡이를 살짝(13%) 내렸다가 튕겨 올리기를 두 번 한 뒤 쉬는 진행률
+/// 오프셋입니다. 2.4초 한 바퀴 기준이며 캔버스 시안 'B · 꿈틀'과 같은 값입니다.
+class _LeverNudgeTween extends Animatable<double> {
+  const _LeverNudgeTween();
+
+  static const List<double> _stops = [0, .10, .18, .24, .34, .42, .48, 1];
+  static const List<double> _values = [0, .13, -.015, 0, .13, -.015, 0, 0];
+  static const Curve _curve = Cubic(.3, 0, .3, 1);
+
+  @override
+  double transform(double t) {
+    for (var i = 1; i < _stops.length; i++) {
+      if (t <= _stops[i]) {
+        final local = (t - _stops[i - 1]) / (_stops[i] - _stops[i - 1]);
+        final eased = _curve.transform(local.clamp(0.0, 1.0).toDouble());
+        return _values[i - 1] + (_values[i] - _values[i - 1]) * eased;
+      }
+    }
+    return 0;
+  }
+}
+
+/// 레버를 처음 조작할 때만 나타나는 시각 안내입니다(B안 '꿈틀').
+///
+/// 룰렛 1000 × 1000 디자인 캔버스 전체를 덮고 같은 좌표로 그려, 태블릿
+/// 크기가 달라도 손잡이와 같은 비율을 유지합니다. 손잡이 자체의 움직임은
+/// [RouletteWheel.leverNudge]가 그리고, 여기서는 손잡이를 따라가는 고리와
+/// 받침 아래 화살표 셋을 그립니다. 글자 안내는 두지 않습니다.
+class _LeverPullHint extends StatelessWidget {
+  const _LeverPullHint({
+    required this.phase,
+    required this.nudge,
+    required this.reduceMotion,
+  });
+
+  /// 2.4초 한 바퀴의 진행(0~1)입니다. 고리와 화살표는 그 두 배 빠르기로 돕니다.
+  final double phase;
+  final double nudge;
+  final bool reduceMotion;
+
+  static const Color _cream = Color(0xFFFFDEA0);
+
+  @override
+  Widget build(BuildContext context) {
+    const headX = RouletteWheel.leverCenterX;
+    const headY0 = RouletteWheel.leverPivotY - RouletteWheel.leverTravel / 2;
+    final headY = headY0 + nudge * RouletteWheel.leverTravel;
+
+    // 숨쉬는 고리: 1.2초마다 124 → 192px로 퍼지며 사라집니다.
+    final ringT = reduceMotion ? 0.0 : (phase * 2) % 1;
+    final ringK = Curves.easeOut.transform((ringT / .7).clamp(0.0, 1.0));
+    final ringSize = 124 * (1 + .55 * ringK);
+    final ringOpacity = reduceMotion ? .6 : .9 * (1 - ringK);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: headX - ringSize / 2,
+          top: headY - ringSize / 2,
+          width: ringSize,
+          height: ringSize,
+          child: Opacity(
+            opacity: ringOpacity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: _cream, width: 6),
+              ),
+            ),
+          ),
+        ),
+        for (var i = 0; i < 3; i++) _chevron(i),
+      ],
+    );
+  }
+
+  /// 받침 아래로 차례로 흘러내리는 화살표입니다(0.15초 간격).
+  Widget _chevron(int index) {
+    double opacity;
+    double drift;
+    if (reduceMotion) {
+      opacity = 1;
+      drift = 0;
+    } else {
+      final t = ((phase * 2 - index * .125) % 1 + 1) % 1;
+      if (t < .35) {
+        opacity = t / .35;
+      } else if (t < .7) {
+        opacity = 1 - (t - .35) / .35;
+      } else {
+        opacity = 0;
+      }
+      drift = -10 + 20 * (t.clamp(0.0, .7) / .7);
+    }
+    return Positioned(
+      left: RouletteWheel.leverCenterX - 24,
+      top: 590 + index * 38 + drift,
+      width: 48,
+      height: 26,
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: const CustomPaint(painter: _ChevronPainter()),
+      ),
+    );
+  }
+}
+
+/// 검은 테두리를 두른 크림색 아래 화살표(∨)입니다.
+class _ChevronPainter extends CustomPainter {
+  const _ChevronPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(6, 6)
+      ..lineTo(24, 20)
+      ..lineTo(42, 6);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas
+      ..drawPath(
+        path,
+        stroke
+          ..color = const Color(0xFF0D0912)
+          ..strokeWidth = 11,
+      )
+      ..drawPath(
+        path,
+        stroke
+          ..color = const Color(0xFFFFE0A3)
+          ..strokeWidth = 6,
+      );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChevronPainter oldDelegate) => false;
 }
 
 class _GoldKnob extends StatelessWidget {

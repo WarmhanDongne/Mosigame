@@ -18,7 +18,7 @@ test("game rules catalog contains the four Firestore game ids", () => {
 
 test("game rules preserve headings and multiline copy", () => {
   assert.match(gameRules.mafia, /\[게임 목표\]/);
-  assert.match(gameRules.liars_poker, /조커 2장/);
+  assert.match(gameRules.liars_poker, /진실 카드와 거짓 카드/);
   assert.match(gameRules.final_call, /\[CALL 선언\]/);
   for (const rules of Object.values(gameRules)) {
     assert.ok(rules.includes("\n"));

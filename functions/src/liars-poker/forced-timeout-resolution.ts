@@ -80,9 +80,7 @@ export function resolveForcedTimeout(
 
   if (canLiar && lastPlay && actualCards) {
     // 2. LIAR — call-liar와 같은 판정·상태 전이입니다.
-    const truthful = actualCards.every(
-      (card) => card.rank === game.public.table || card.rank === "JOKER",
-    );
+    const truthful = actualCards.every((card) => card.rank === "TRUTH");
     const penaltyTargetUid = truthful ? turnUid : lastPlay.playerUid;
     // 마지막 카드 도전 타임아웃은 위에서 FOLD로 처리됩니다.
     // 일반 턴의 자동 LIAR는 생존자 수와 무관하게 추가 상승하지 않습니다.

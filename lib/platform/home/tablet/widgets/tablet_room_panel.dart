@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/widgets/game_exit_route.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
@@ -231,6 +232,12 @@ class _TabletRoomPanelState extends State<TabletRoomPanel>
                       : context.l10n.startWithPlayers(activeCount),
                   onPressed: activeCount == 0 ? null : widget.onStart,
                   loading: widget.startLoading,
+                  busyLabel: GameLocale.select(
+                    ko: '게임 준비 중',
+                    en: 'Getting ready',
+                    zhHans: '游戏准备中',
+                    zhHant: '遊戲準備中',
+                  ),
                   background: widget.startBackground,
                   foreground: widget.startForeground,
                   shadowColor: widget.deep,
@@ -298,6 +305,7 @@ class _StartButtonFeedback extends StatelessWidget {
     required this.label,
     required this.onPressed,
     required this.loading,
+    required this.busyLabel,
     required this.background,
     required this.foreground,
     required this.shadowColor,
@@ -307,6 +315,7 @@ class _StartButtonFeedback extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool loading;
+  final String busyLabel;
   final Color background;
   final Color foreground;
   final Color shadowColor;
@@ -344,6 +353,8 @@ class _StartButtonFeedback extends StatelessWidget {
               semanticLabel: showingFeedback ? insufficientLabel : label,
               onPressed: onPressed,
               loading: loading,
+              // 누른 뒤 서버 준비를 기다리는 동안 눌린 채 진행 문구를 보입니다.
+              busyLabel: busyLabel,
               background: background,
               foreground: foreground.withValues(alpha: 1 - labelStrength),
               borderColor: MosiColors.ink,
@@ -1344,7 +1355,10 @@ class RoomQrCard extends StatelessWidget {
         // 무한 제약은 여유가 없다는 뜻이 아니므로 요청 크기를 그대로 씁니다.
         final available = math.min(constraints.maxWidth, constraints.maxHeight);
         final side = available.isFinite ? math.min(size, available) : size;
-        final badge = side * 0.2;
+        // 가운데 흰 여백 안에 모시겜 심볼을 놓습니다. 여백이 QR 점과 로고를
+        // 떼어 놓아 로고가 또렷하게 보입니다.
+        final clearSpace = side * 0.26;
+        final logo = side * 0.16;
         return SizedBox(
           width: side,
           height: side,
@@ -1373,12 +1387,15 @@ class RoomQrCard extends StatelessWidget {
                 ),
                 // 오류 정정 H 단계라 가운데를 가려도 읽힙니다.
                 Container(
-                  width: badge,
-                  height: badge,
-                  decoration: BoxDecoration(
-                    color: MosiColors.lime,
-                    borderRadius: BorderRadius.circular(badge * 0.2),
-                    border: Border.all(color: MosiColors.ink, width: 2.5),
+                  key: const Key('room-qr-logo'),
+                  width: clearSpace,
+                  height: clearSpace,
+                  color: Colors.white,
+                  alignment: Alignment.center,
+                  child: SvgPicture.asset(
+                    'assets/images/logo/mosigame_symbol.svg',
+                    width: logo,
+                    height: logo,
                   ),
                 ),
               ],

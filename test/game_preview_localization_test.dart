@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/generated/l10n/app_localizations.dart';
 import 'package:project00/platform/home/tablet/widgets/detail/game_detail_previews.dart';
 import 'package:project00/platform/localization/locale_settings.dart';
@@ -60,7 +61,13 @@ void main() {
           await tester.pump();
           final t = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
           final expected = switch (game) {
-            'liars_poker' => t.previewTwoAces,
+            'liars_poker' => GameLocale.selectFor(
+              language.locale,
+              ko: '진실 카드 2장',
+              en: 'Two Truth cards',
+              zhHans: '两张真话牌',
+              zhHant: '兩張真話牌',
+            ),
             'final_call' => t.previewSameColor,
             'mafia' => t.previewNight,
             _ => t.previewRaiseClaim,

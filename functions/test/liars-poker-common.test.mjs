@@ -34,7 +34,10 @@ function gameState(count = 3) {
       phase: "penalty",
       round: 1,
       revision: 1,
-      table: "A",
+      table: "TRUTH",
+      truthCardCount: 9,
+      lieCardCount: 9,
+      unrevealedCardCount: 3,
       turnUid: null,
       turnDeadlineAt: null,
       lastPlay: null,
@@ -53,20 +56,33 @@ function gameState(count = 3) {
   };
 }
 
-test("2~6인 덱은 1인당 5장을 분배할 만큼 크고 카드 ID가 고유하다", () => {
+test("2~6인 덱은 진실 3N장과 거짓 2N+3장으로 구성된다", () => {
   for (let count = 2; count <= 6; count += 1) {
     const deck = createDeck(count);
-    assert.ok(deck.length >= count * 5);
+    assert.equal(deck.length, count * 5 + 3);
+    const truthCount = deck.filter((card) => card.rank === "TRUTH").length;
+    const lieCount = deck.filter((card) => card.rank === "LIE").length;
+    assert.equal(truthCount, count * 3);
+    assert.equal(lieCount, count * 2 + 3);
     assert.equal(new Set(deck.map((card) => card.id)).size, deck.length);
   }
 });
 
-test("카드는 좌석의 모든 생존 플레이어에게 5장씩 분배된다", () => {
-  const gamePlayers = players(3);
-  const hands = dealCards(createDeck(3), gamePlayers, 5);
-  assert.deepEqual(Object.keys(hands).sort(), ["uid1", "uid2", "uid3"]);
-  for (const hand of Object.values(hands)) {
-    assert.equal(Object.keys(hand).length, 5);
+test("카드는 5장씩 분배되고 정확히 3장이 중앙 덱에 남는다", () => {
+  for (let count = 2; count <= 6; count += 1) {
+    const gamePlayers = players(count);
+    const deck = createDeck(count);
+    const hands = dealCards(deck, gamePlayers, 5);
+    assert.equal(Object.keys(hands).length, count);
+    for (const hand of Object.values(hands)) {
+      assert.equal(Object.keys(hand).length, 5);
+    }
+    const remaining = deck.slice(count * 5);
+    assert.equal(remaining.length, 3);
+    const dealtIds = new Set(
+      Object.values(hands).flatMap((hand) => Object.keys(hand)),
+    );
+    assert.equal(remaining.some((card) => dealtIds.has(card.id)), false);
   }
 });
 
@@ -88,6 +104,8 @@ test("새 라운드는 생존자에게만 손패를 재분배한다", () => {
   assert.equal(Object.keys(game.server.pendingHands.uid1.hand).length, 5);
   assert.equal(Object.keys(game.server.pendingHands.uid3.hand).length, 5);
   assert.equal(game.server.pendingHands.uid2, undefined);
+  assert.equal(game.server.unrevealedCards.length, 3);
+  assert.equal(game.public.unrevealedCardCount, 3);
 });
 
 test("게임 종료 시 승자와 종료 상태가 기록된다", () => {

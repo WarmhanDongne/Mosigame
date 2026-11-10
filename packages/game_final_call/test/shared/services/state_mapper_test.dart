@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_final_call/game_sounds.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
@@ -5,6 +6,15 @@ import 'package:game_final_call/shared/services/private_state_mapper.dart';
 import 'package:game_final_call/shared/services/public_state_mapper.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('파이널콜 전용 배경음은 패키지에 포함되고 모바일 용량으로 압축된다', () async {
+    final audio = await rootBundle.load(FinalCallSounds.background);
+
+    expect(audio.lengthInBytes, greaterThan(250 * 1024));
+    expect(audio.lengthInBytes, lessThan(400 * 1024));
+  });
+
   test('세 번째 팀과 승리 팀을 서버 값 그대로 읽는다', () {
     final players = parseFinalCallPlayers({
       'u3': {'seatIndex': 2, 'team': 'green', 'lives': 3},

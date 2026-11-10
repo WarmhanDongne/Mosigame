@@ -16,7 +16,8 @@ import 'package:game_kit/game_assets.dart';
 
 // ============================================================
 
-/// 받은 카드 덱이 중앙으로 들어온 뒤, 사용자의 탭을 기다렸다가 공개됩니다.
+/// 받은 카드 덱이 중앙으로 들어온 뒤, 설정에 따라 사용자의 탭을 기다리거나
+/// 곧바로 공개됩니다.
 ///
 /// 진입 중에는 모든 카드를 뒷면으로 유지합니다. 덱을 누르면 중앙에서
 /// 먼저 왼쪽에서 오른쪽 방향으로 회전한 뒤 좌상단에서 우하단으로 펼쳐집니다.
@@ -39,6 +40,7 @@ class CardReceiveAnimation extends StatefulWidget {
     this.onCompleted,
     this.cardBuilder,
     this.showTapHint = false,
+    this.autoReveal = false,
   }) : assert(
          cardBuilder == null
              ? frontCardAssets.length > 0 && backCardAsset != null
@@ -86,6 +88,12 @@ class CardReceiveAnimation extends StatefulWidget {
   /// 처음 하는 사람이 덱을 누를 때까지 기다린다는 것을 모르고 멈춰 있지 않도록
   /// 게임의 첫 배분에서 켭니다.
   final bool showTapHint;
+
+  /// 중앙 덱의 진입이 끝나면 별도 탭 없이 즉시 앞면을 펼칩니다.
+  ///
+  /// 게임이 손패 확인을 위한 입력을 요구하지 않을 때만 켭니다. 기본값은
+  /// 기존처럼 사용자가 덱을 탭해 공개하는 동작입니다.
+  final bool autoReveal;
 
   @override
   State<CardReceiveAnimation> createState() => _CardReceiveAnimationState();
@@ -160,6 +168,14 @@ class _CardReceiveAnimationState extends State<CardReceiveAnimation>
     setState(() {
       _isEntryCompleted = true;
     });
+    if (widget.autoReveal) {
+      // 첫 공개 프레임이 그려진 다음 시작해 카드 덱의 진입 완료와 펼침 전환이
+      // 한 프레임에 겹치지 않게 합니다.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _revealCards();
+      });
+      return;
+    }
     //=======================미공개 덱 대기 모션==============================
     // 카드가 중앙에 도착한 뒤 사용자가 누를 때까지 아주 작게 떠다닙니다.
     _idleController.repeat();

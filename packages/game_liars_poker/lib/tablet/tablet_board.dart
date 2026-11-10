@@ -8,6 +8,7 @@ library;
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'dart:async';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
@@ -27,9 +28,7 @@ import 'package:game_kit/sound/game_background_music.dart';
 import 'package:game_kit/tablet/animations/card_deal_animation.dart';
 import 'package:game_kit/shared/widgets/game_announcement_layer.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
-import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/game_sounds.dart';
-import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/shared/models/game_state.dart';
 import 'package:game_liars_poker/shared/providers/game_controller.dart';
 import 'package:game_liars_poker/shared/providers/session_provider.dart';
@@ -38,6 +37,7 @@ import 'package:game_liars_poker/shared/services/game_service.dart';
 import 'package:game_liars_poker/tablet/animations/card_play_animation.dart';
 import 'package:game_liars_poker/tablet/animations/submitted_card_pile_animation.dart';
 import 'package:game_liars_poker/tablet/animations/round_start_reveal.dart';
+import 'package:game_liars_poker/tablet/animations/truth_lie_shuffle_animation.dart';
 import 'package:game_liars_poker/tablet/providers/game_stage.dart';
 import 'package:game_liars_poker/tablet/screens/card_presentation.dart';
 import 'package:game_liars_poker/tablet/screens/game_overlay.dart';
@@ -73,7 +73,7 @@ abstract final class LiarsPokerTabletTiming {
   /// ROUND N 안내 문구가 유지되는 시간입니다.
   static const roundAnnouncement = Duration(milliseconds: 1900);
 
-  /// 라운드 테이블·잔여 카드·턴 표시가 등장하는 시간입니다.
+  /// 라운드 잔여 카드·턴 표시가 등장하는 시간입니다.
   static const roundBoardReveal = Duration(milliseconds: 980);
 
   /// 제출한 카드가 좌석에서 중앙 더미로 날아가는 시간입니다.
@@ -277,6 +277,9 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
     required this.playerSeatIndexes,
     required this.dealPlayerSeatIndexes,
     required this.cardsPerPlayer,
+    required this.truthCardCount,
+    required this.lieCardCount,
+    required this.unrevealedCardCount,
     required this.roundNumber,
     required this.cardPileVersion,
     required this.table,
@@ -295,6 +298,9 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
   final List<int> playerSeatIndexes;
   final List<int> dealPlayerSeatIndexes;
   final int cardsPerPlayer;
+  final int truthCardCount;
+  final int lieCardCount;
+  final int unrevealedCardCount;
   final int roundNumber;
   final int cardPileVersion;
   final String table;
@@ -321,6 +327,9 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
         boardSeatCount: playerCount,
         playerSeatIndexes: dealPlayerSeatIndexes,
         cardsPerPlayer: cardsPerPlayer,
+        truthCardCount: truthCardCount,
+        lieCardCount: lieCardCount,
+        unrevealedCardCount: unrevealedCardCount,
         flowStep: flowConfig.stepFor(stage),
         onCompleted: onDealCompleted,
       ),
@@ -329,12 +338,10 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
       LiarsPokerTabletStage.cardsPlaying ||
       LiarsPokerTabletStage.cardsRevealing => RoundStartReveal(
         key: ValueKey('round-$roundNumber'),
-        tableAsset: tableAssetForValue(table),
         playerCount: playerCount,
         playerSeatIndexes: playerSeatIndexes,
         remainingCardCounts: remainingCardCounts,
         activePlayerIndex: currentTurnPlayerIndex,
-        tableWidth: 300,
         // 이 보드는 네 단계가 같은 인스턴스를 공유합니다. 어느 단계에서 그리든
         // 등장 시간은 **주인 단계**(roundStarting) 값을 씁니다. 현재 stage의
         // 카드 이동 시간으로 덮으면 재접속 시 보드 속도가 달라집니다.

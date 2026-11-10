@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>라이어스 · 진실과 거짓 — 게임 흐름</title>
+    <style>
+      :root {
+        --ink: #1b1022;
+        --paper: #f8f5ee;
+        --green: #2e6b4e;
+        --red: #b8262b;
+        --gold: #d8a85e;
+        --night: #140b07;
+        --felt: #281927;
+        --muted: #b7a69d;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-width: 980px;
+        background: #0d0710;
+        color: var(--paper);
+        font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+      }
+
+      .page {
+        min-height: 100vh;
+        padding: 26px;
+        background:
+          radial-gradient(circle at 82% 6%, #4e2b1e 0, transparent 28%),
+          linear-gradient(135deg, #140b07 0%, #211126 54%, #120915 100%);
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 28px;
+        max-width: 1480px;
+        margin: 0 auto 18px;
+      }
+      header h1 { margin: 0; font-size: 25px; letter-spacing: -.04em; }
+      header p { margin: 7px 0 0; color: #d0c3b8; font-size: 14px; }
+      .tag {
+        border: 1px solid #d8a85e88;
+        color: #f8d39a;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .shell {
+        max-width: 1480px;
+        min-height: 760px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 245px 1fr;
+        border: 1px solid #f8f5ee2b;
+        border-radius: 24px;
+        overflow: hidden;
+        background: #1b1022b8;
+        box-shadow: 0 28px 80px #0008;
+      }
+
+      aside { padding: 24px 15px; background: #120a16d9; border-right: 1px solid #f8f5ee1d; }
+      .aside-title { color: #d7c9bd; font-size: 12px; font-weight: 900; letter-spacing: .12em; margin: 0 10px 12px; }
+      .step {
+        width: 100%; display: grid; grid-template-columns: 29px 1fr; gap: 9px;
+        text-align: left; color: #bcaea8; border: 0; border-radius: 14px;
+        background: transparent; padding: 13px 10px; cursor: pointer; transition: .2s ease;
+      }
+      .step:hover { background: #f8f5ee0e; color: var(--paper); }
+      .step.active { color: #211322; background: var(--paper); box-shadow: 0 8px 18px #0003; }
+      .step b { font-size: 17px; line-height: 1.1; }
+      .step span { font-size: 12px; font-weight: 800; line-height: 1.25; }
+      .step small { display: block; margin-top: 4px; font-size: 10px; font-weight: 500; opacity: .72; }
+      .legend { margin: 27px 10px 0; padding-top: 17px; border-top: 1px solid #f8f5ee18; color: #aa9a94; font-size: 11px; line-height: 1.65; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+      .dot.truth { background: #68b787; } .dot.lie { background: #ed736d; } .dot.unknown { background: #91867f; }
+
+      main { position: relative; min-width: 0; padding: 20px; }
+      .stage-head { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .stage-kicker { color: #e5c48d; font-size: 11px; letter-spacing: .14em; font-weight: 900; }
+      .stage-head h2 { margin: 5px 0 0; font-size: 25px; letter-spacing: -.045em; }
+      .stage-head p { max-width: 400px; margin: 0; color: #cfc0b8; font-size: 13px; line-height: 1.5; text-align: right; }
+
+      .board {
+        position: relative; height: 630px; overflow: hidden; border-radius: 20px;
+        background:
+          radial-gradient(ellipse at center, #50355299 0 1%, transparent 38%),
+          radial-gradient(ellipse at center, #4a263c 0%, #271626 56%, #160d19 100%);
+        border: 1px solid #f8f5ee22;
+      }
+      .board::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .23; mix-blend-mode: overlay; background-image: repeating-linear-gradient(90deg, #fff1 0 1px, transparent 1px 5px); }
+      .scene { position: absolute; inset: 0; display: none; opacity: 0; transition: opacity .28s ease; }
+      .scene.active { display: block; opacity: 1; }
+
+      .top-pills { position: absolute; z-index: 5; top: 24px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+      .top-pills span { padding: 6px 12px; border: 1px solid #f8f5ee55; background: #140b07aa; border-radius: 99px; font-size: 11px; color: #f3e5d1; }
+      .top-pills span.on { background: #f8f5ee; color: #1b1022; font-weight: 900; }
+
+      .card {
+        width: 126px; height: 178px; position: relative; border-radius: 12px; background: var(--paper);
+        border: 2px solid #d4c6ad; box-shadow: 0 13px 24px #0007; color: var(--ink); overflow: hidden;
+      }
+      .card .corner { position: absolute; top: 10px; left: 12px; font-size: 24px; line-height: .8; font-weight: 1000; }
+      .card .corner.bottom { top: auto; left: auto; right: 12px; bottom: 10px; transform: rotate(180deg); }
+      .face-icon { position: absolute; inset: 43px 25px 39px; border-radius: 24px; display: grid; place-items: center; color: var(--paper); font-size: 60px; font-weight: 1000; line-height: 1; }
+      .face-icon em { position: absolute; bottom: 11px; font-size: 12px; font-style: normal; letter-spacing: .06em; }
+      .card.truth .face-icon { background: var(--green); }
+      .card.lie .face-icon { background: var(--red); }
+      .card.back { background: #eee6d6; }
+      .card.back::before { content: ""; position: absolute; inset: 9px; border: 1px solid #321f2d; border-radius: 8px; }
+      .card.back::after { content: "◆"; position: absolute; inset: 0; display: grid; place-items: center; color: #211322; font-size: 54px; }
+      .card.mini { width: 68px; height: 96px; border-radius: 8px; border-width: 1px; }
+      .card.mini .corner { top: 6px; left: 7px; font-size: 14px; }
+      .card.mini .corner.bottom { top: auto; left: auto; right: 7px; bottom: 6px; }
+      .card.mini .face-icon { inset: 24px 13px 20px; border-radius: 11px; font-size: 31px; }
+      .card.mini .face-icon em { bottom: 4px; font-size: 7px; }
+
+      .deck-copy { position: absolute; top: 65px; left: 0; right: 0; text-align: center; z-index: 2; }
+      .deck-copy h3 { margin: 0; font-size: 29px; letter-spacing: -.05em; }
+      .deck-copy p { margin: 9px 0; color: #d2c0b6; font-size: 13px; }
+      .count-row { display: flex; justify-content: center; gap: 9px; margin-top: 19px; }
+      .count { min-width: 104px; padding: 9px 14px; border-radius: 999px; color: white; font-size: 14px; font-weight: 900; border: 1px solid #fff6; }
+      .count.truth { background: var(--green); } .count.lie { background: var(--red); } .count.unknown { background: #6e625a; }
+      .fan { position: absolute; width: 620px; height: 270px; left: 50%; bottom: 58px; transform: translateX(-50%); }
+      .fan .card { position: absolute; left: 247px; bottom: 0; transform-origin: 50% 112%; }
+      .fan .card:nth-child(1) { transform: rotate(-32deg) translateY(-6px); }
+      .fan .card:nth-child(2) { transform: rotate(-21deg) translateY(-19px); }
+      .fan .card:nth-child(3) { transform: rotate(-10deg) translateY(-29px); }
+      .fan .card:nth-child(4) { transform: rotate(2deg) translateY(-34px); }
+      .fan .card:nth-child(5) { transform: rotate(14deg) translateY(-28px); }
+      .fan .card:nth-child(6) { transform: rotate(25deg) translateY(-17px); }
+      .fan .card:nth-child(7) { transform: rotate(35deg) translateY(-3px); }
+      .auto .fan .card { animation: cardPop .65s both cubic-bezier(.2,.8,.2,1); }
+      .auto .fan .card:nth-child(2) { animation-delay: .08s; } .auto .fan .card:nth-child(3) { animation-delay: .16s; }
+      .auto .fan .card:nth-child(4) { animation-delay: .24s; } .auto .fan .card:nth-child(5) { animation-delay: .32s; }
+      .auto .fan .card:nth-child(6) { animation-delay: .4s; } .auto .fan .card:nth-child(7) { animation-delay: .48s; }
+      @keyframes cardPop { from { opacity: 0; margin-bottom: -48px; } to { opacity: 1; margin-bottom: 0; } }
+
+      .shuffle-deck { position: absolute; left: 50%; top: 48%; width: 134px; height: 184px; transform: translate(-50%,-50%); }
+      .shuffle-deck .card { position: absolute; width: 126px; height: 178px; }
+      .shuffle-deck .a { transform: translate(-38px,-12px) rotate(-5deg); animation: cutA 2.3s infinite ease-in-out; }
+      .shuffle-deck .b { transform: translate(31px,12px) rotate(5deg); animation: cutB 2.3s infinite ease-in-out; }
+      .shuffle-deck .c { transform: translate(-2px,1px); }
+      @keyframes cutA { 0%,100% { transform: translate(-38px,-12px) rotate(-5deg); } 48% { transform: translate(-69px,-42px) rotate(-13deg); } 73% { transform: translate(-4px,2px) rotate(0); } }
+      @keyframes cutB { 0%,100% { transform: translate(31px,12px) rotate(5deg); } 48% { transform: translate(66px,37px) rotate(13deg); } 73% { transform: translate(8px,4px) rotate(0); } }
+      .shuffle-copy { position: absolute; left: 0; right: 0; bottom: 88px; text-align: center; color: #e7d7c9; font-weight: 800; }
+      .shuffle-copy small { display: block; margin-top: 7px; color: #bfaea5; font-weight: 500; }
+
+      .seat { position: absolute; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; border: 2px solid #f8f5ee66; background: #241024; box-shadow: inset 0 0 0 7px #edc88914; }
+      .seat::before { content: attr(data-name); position: absolute; bottom: -26px; color: #f8f5ee; font-size: 12px; font-weight: 800; white-space: nowrap; }
+      .seat .avatar { width: 59px; height: 59px; border-radius: 50%; background: linear-gradient(135deg,#f9c36b,#965c5d); border: 3px solid #f7ead4; }
+      .seat.s1 { top: 55px; left: 50%; transform: translateX(-50%); } .seat.s2 { top: 48%; right: 90px; } .seat.s3 { bottom: 58px; left: 50%; transform: translateX(-50%); } .seat.s4 { top: 48%; left: 90px; }
+      .deal-stack { position: absolute; top: 50%; left: 50%; width: 86px; height: 120px; transform: translate(-50%,-50%); }
+      .deal-stack .card { width: 78px; height: 110px; position: absolute; }
+      .deal-stack .card:nth-child(2){ transform: translate(5px,4px); }.deal-stack .card:nth-child(3){ transform: translate(9px,8px); }
+      .deal-flight { position: absolute; top: 50%; left: 50%; width: 52px; height: 74px; transform: translate(-50%,-50%); }
+      .deal-flight .card { width: 52px; height: 74px; position: absolute; animation: deal 1.85s infinite cubic-bezier(.3,.9,.2,1); }
+      .deal-flight .card:nth-child(2){ animation-delay:.19s; }.deal-flight .card:nth-child(3){ animation-delay:.38s; }.deal-flight .card:nth-child(4){ animation-delay:.57s; }
+      @keyframes deal { 0%,17% { transform: translate(0,0) scale(1); opacity: 1; } 72%,100% { transform: translate(var(--x),var(--y)) scale(.68); opacity: .3; } }
+      .deal-flight .card:nth-child(1){--x:0px;--y:-215px}.deal-flight .card:nth-child(2){--x:278px;--y:0px}.deal-flight .card:nth-child(3){--x:0px;--y:213px}.deal-flight .card:nth-child(4){--x:-278px;--y:0px}
+
+      .phone { position: absolute; width: 255px; height: 490px; left: 50%; top: 50%; transform: translate(-50%,-50%); border: 9px solid #090609; border-radius: 33px; background: linear-gradient(145deg,#2a172a,#130b16); box-shadow: 0 28px 44px #000a; overflow: hidden; }
+      .phone .status { display: flex; justify-content: space-between; padding: 18px 16px 9px; font-size: 10px; color: #dfcbbc; }
+      .claim { margin: 12px auto; width: max-content; padding: 7px 12px; border-radius: 99px; border: 1px solid #fff8; color: white; background: var(--green); font-size: 12px; font-weight: 900; }
+      .phone-copy { padding: 7px 23px; text-align: center; font-size: 13px; color: #ebded3; line-height: 1.45; }
+      .hand { position: absolute; bottom: 24px; left: 0; right: 0; height: 205px; }
+      .hand .card { position: absolute; width: 84px; height: 120px; bottom: 0; left: 85px; transform-origin: center 190%; cursor: pointer; transition: .25s ease; }
+      .hand .card:nth-child(1){transform:translateX(-65px) rotate(-21deg)}.hand .card:nth-child(2){transform:translateX(-31px) rotate(-10deg)}.hand .card:nth-child(3){transform:translateX(4px) rotate(0)}.hand .card:nth-child(4){transform:translateX(38px) rotate(11deg)}.hand .card:nth-child(5){transform:translateX(69px) rotate(22deg)}
+      .hand .card.selected { margin-bottom: 30px; filter: drop-shadow(0 0 10px #f2c777); }
+      .hand .card .corner { font-size: 15px; top: 7px; left: 7px; }.hand .card .corner.bottom { top:auto;left:auto;right:7px;bottom:7px; }.hand .card .face-icon { inset: 28px 15px 25px; border-radius: 13px; font-size: 37px; }.hand .card .face-icon em { font-size: 7px; bottom: 4px; }
+      .action { position: absolute; left: 24px; right: 24px; bottom: 189px; display: flex; gap: 8px; }.action button { flex: 1; border: 0; border-radius: 12px; padding: 11px 6px; cursor: pointer; color: white; background: #7d343c; font-weight: 900; font-size: 12px; }.action button.submit { background: var(--green); }
+
+      .play-board .seat { transform: scale(.83); }.play-board .s1 { transform: translateX(-50%) scale(.83); }.play-board .s3 { transform: translateX(-50%) scale(.83); }
+      .play-board .table-pile { position: absolute; left: 50%; top: 49%; transform: translate(-50%,-50%); width: 150px; height: 184px; }
+      .table-pile .card { position: absolute; width: 126px; height: 178px; }.table-pile .card:nth-child(2) { transform: translate(8px,4px) rotate(4deg); }.table-pile .card:nth-child(3) { transform: translate(-5px,8px) rotate(-5deg); }
+      .claim-table { position: absolute; left:50%; top: 31%; transform:translateX(-50%); font-size: 17px; font-weight: 900; color:#f5e8d8; }.claim-table b { color:#8ed6a9; }
+      .turn { position: absolute; top: 28px; right: 32px; padding: 8px 11px; border: 1px solid #f8f5ee44; border-radius: 99px; background:#160a17cc; font-size: 12px; }
+      .turn strong { color:#f1c783; }
+
+      .verdict { position: absolute; inset: 0; display: grid; place-items: center; background:#120a16c8; }
+      .reveal { display:flex; gap: 18px; align-items: center; }.reveal .card { animation: reveal .6s both cubic-bezier(.2,.85,.22,1); }.reveal .card:nth-child(2){animation-delay:.12s}.reveal .card:nth-child(3){animation-delay:.24s}
+      @keyframes reveal { from{opacity:0;transform:rotateY(90deg) translateY(35px)}to{opacity:1;transform:rotateY(0) translateY(0)} }
+      .verdict-copy { position:absolute; bottom: 70px; text-align:center; }.verdict-copy h3{margin:0;color:#ff8c80;font-size:32px}.verdict-copy p{margin:9px 0;color:#e4d4cb;font-size:14px}.penalty { display:inline-block; margin-top:3px; color:#f7cb75; font-weight:900; }
+
+      .footer { position:absolute; left:20px; right:20px; bottom: 11px; display:flex; justify-content:space-between; color:#b6a5a0; font-size:11px; }.footer kbd{font-family:inherit;color:#e9d7c8;border:1px solid #ead7c766;padding:2px 5px;border-radius:4px;}
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div><h1>라이어스 · 진실과 거짓</h1><p>태블릿 공유 화면과 휴대폰 개인 화면의 실제 구현 흐름을 확인하는 프런트 프로토타입</p></div>
+        <div class="tag">4인 예시 · 총 23장 · 진실 12 / 거짓 11 / 미확인 3</div>
+      </header>
+      <section class="shell">
+        <aside>
+          <p class="aside-title">GAME FLOW</p>
+          <button class="step active" data-scene="0"><b>01</b><span>전체 구성 공개<small>진실·거짓의 장수만 공개</small></span></button>
+          <button class="step" data-scene="1"><b>02</b><span>부채 · 뒤집기 · 섞기<small>실제 순서는 공개하지 않음</small></span></button>
+          <button class="step" data-scene="2"><b>03</b><span>태블릿 분배<small>5장씩 각 좌석으로 자동 분배</small></span></button>
+          <button class="step" data-scene="3"><b>04</b><span>휴대폰 손패<small>개인 화면에서만 5장 공개</small></span></button>
+          <button class="step" data-scene="4"><b>05</b><span>제출 · 진실 주장<small>1~3장을 뒷면으로 제출</small></span></button>
+          <button class="step" data-scene="5"><b>06</b><span>LIAR 판정<small>거짓이 있으면 낸 사람이 벌칙</small></span></button>
+          <div class="legend"><span class="dot truth"></span>진실 카드 &nbsp; <span class="dot lie"></span>거짓 카드<br /><span class="dot unknown"></span>미확인 3장은 서버 전용 — 끝까지 앞면을 보이지 않습니다.</div>
+        </aside>
+        <main>
+          <div class="stage-head"><div><div class="stage-kicker" id="kicker">ROUND SETUP</div><h2 id="title">카드 구성 공개</h2></div><p id="description">시작할 때 두 종류의 전체 장수만 확인합니다. 누가 어떤 카드를 받는지와 남은 3장의 정체는 아직 아무도 알 수 없습니다.</p></div>
+          <div class="board" id="board">
+            <div class="scene active auto" data-index="0">
+              <div class="top-pills"><span class="on">① 구성 확인</span><span>② 뒤집기</span><span>③ 섞기</span><span>④ 분배</span></div>
+              <div class="deck-copy"><h3>이번 판 카드 구성</h3><p>전체 장수는 공개하지만, 미확인 3장의 앞면은 끝까지 숨깁니다.</p><div class="count-row"><div class="count truth">진실 ×12</div><div class="count lie">거짓 ×11</div><div class="count unknown">미확인 ×3</div></div></div>
+              <div class="fan"><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div></div>
+            </div>
+            <div class="scene" data-index="1"><div class="top-pills"><span>① 구성 확인</span><span>② 뒤집기</span><span class="on">③ 섞기</span><span>④ 분배</span></div><div class="shuffle-deck"><div class="card back a"></div><div class="card back b"></div><div class="card back c"></div></div><div class="shuffle-copy">부채를 닫고 모두 뒷면으로 전환합니다.<small>덱을 나눠 섞은 뒤, 카드의 실제 순서는 서버만 압니다.</small></div></div>
+            <div class="scene" data-index="2"><div class="top-pills"><span>① 구성 확인</span><span>② 뒤집기</span><span>③ 섞기</span><span class="on">④ 분배</span></div><div class="seat s1" data-name="민지"><span class="avatar"></span></div><div class="seat s2" data-name="도윤"><span class="avatar"></span></div><div class="seat s3" data-name="나"><span class="avatar"></span></div><div class="seat s4" data-name="지후"><span class="avatar"></span></div><div class="deal-stack"><div class="card back"></div><div class="card back"></div><div class="card back"></div></div><div class="deal-flight"><div class="card back"></div><div class="card back"></div><div class="card back"></div><div class="card back"></div></div><div class="shuffle-copy">태블릿이 각 좌석으로 <b>5장씩</b> 자동 분배합니다.<small>3장은 중앙에 남기지 않고 서버 전용으로 보관합니다.</small></div></div>
+            <div class="scene" data-index="3"><div class="phone"><div class="status"><span>9:41</span><span>● 연결됨</span></div><div class="claim">모든 제출은 진실을 주장</div><div class="phone-copy">내 손패는 나만 볼 수 있어요.<br />상대는 장수만 압니다.</div><div class="hand"><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div></div></div></div>
+            <div class="scene play-board" data-index="4"><div class="turn"><strong>민지</strong>의 차례 · 22초</div><div class="seat s1" data-name="민지"><span class="avatar"></span></div><div class="seat s2" data-name="도윤"><span class="avatar"></span></div><div class="seat s3" data-name="나"><span class="avatar"></span></div><div class="seat s4" data-name="지후"><span class="avatar"></span></div><div class="claim-table">“이 카드는 모두 <b>진실</b>입니다.”</div><div class="table-pile"><div class="card back"></div><div class="card back"></div><div class="card back"></div></div><div class="shuffle-copy">다음 사람은 카드를 내거나 <b>LIAR</b>를 선언합니다.<small>제출 카드는 판정 전까지 태블릿에서도 뒷면입니다.</small></div></div>
+            <div class="scene play-board" data-index="5"><div class="seat s1" data-name="민지"><span class="avatar"></span></div><div class="seat s2" data-name="도윤"><span class="avatar"></span></div><div class="seat s3" data-name="나"><span class="avatar"></span></div><div class="seat s4" data-name="지후"><span class="avatar"></span></div><div class="verdict"><div class="reveal"><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div><div class="card lie"><div class="corner">×</div><div class="corner bottom">×</div><div class="face-icon">×<em>거짓</em></div></div><div class="card truth"><div class="corner">O</div><div class="corner bottom">O</div><div class="face-icon">O<em>진실</em></div></div></div><div class="verdict-copy"><h3>거짓이 밝혀졌습니다</h3><p>거짓 카드가 하나라도 있으므로, 카드를 낸 민지가 룰렛을 돌립니다.</p><span class="penalty">→ 벌칙 룰렛</span></div></div></div>
+            <div class="footer"><span>단계 버튼을 누르면 각 연출이 처음부터 재생됩니다.</span><span><kbd>←</kbd> <kbd>→</kbd> 단계 이동</span></div>
+          </div>
+        </main>
+      </section>
+    </div>
+    <script>
+      const copy = [
+        ['ROUND SETUP','카드 구성 공개','시작할 때 두 종류의 전체 장수만 확인합니다. 누가 어떤 카드를 받는지와 남은 3장의 정체는 아직 아무도 알 수 없습니다.'],
+        ['ROUND SETUP','부채를 닫고 섞기','진실·거짓 카드를 모두 뒷면으로 바꾼 뒤, 덱을 덩어리로 나눠 섞습니다. 이 시점부터 실제 순서는 서버만 압니다.'],
+        ['TABLET SHARED','태블릿 자동 분배','태블릿의 기존 카드 분배 애니메이션이 이어집니다. 모든 좌석에는 5장씩, 남은 3장은 화면 밖 서버 전용 상태로 유지됩니다.'],
+        ['PHONE PRIVATE','내 5장만 공개','휴대폰은 배분이 끝난 뒤 자동으로 내 카드만 펼칩니다. 상대가 받은 카드의 종류는 계속 알 수 없습니다.'],
+        ['TURN / CLAIM','진실이라고 주장하며 제출','차례인 플레이어는 1~3장을 뒤집어 내고 모두 진실 카드라고 주장합니다. 다른 플레이어는 카드 장수만 봅니다.'],
+        ['LIAR RESOLUTION','LIAR 판정과 벌칙','카드를 뒤집어 거짓 카드가 하나라도 있으면 낸 사람이, 전부 진실이면 LIAR를 외친 사람이 룰렛 벌칙을 받습니다.']
+      ];
+      const scenes = [...document.querySelectorAll('.scene')];
+      const buttons = [...document.querySelectorAll('.step')];
+      let current = 0;
+      function go(index) {
+        current = (index + scenes.length) % scenes.length;
+        scenes.forEach((scene, i) => { scene.classList.toggle('active', i === current); });
+        buttons.forEach((button, i) => button.classList.toggle('active', i === current));
+        const [kicker,title,description] = copy[current];
+        document.querySelector('#kicker').textContent = kicker;
+        document.querySelector('#title').textContent = title;
+        document.querySelector('#description').textContent = description;
+        const active = scenes[current];
+        active.classList.remove('auto');
+        requestAnimationFrame(() => active.classList.add('auto'));
+      }
+      buttons.forEach((button, index) => button.addEventListener('click', () => go(index)));
+      document.addEventListener('keydown', (event) => { if (event.key === 'ArrowRight') go(current + 1); if (event.key === 'ArrowLeft') go(current - 1); });
+      document.querySelectorAll('.hand .card').forEach((card) => card.addEventListener('click', () => card.classList.toggle('selected')));
+    </script>
+  </body>
+</html>

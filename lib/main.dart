@@ -19,7 +19,6 @@ import 'package:project00/games/game_registry.dart';
 import 'package:game_kit/core/diagnostics/crash_reporting.dart';
 import 'package:game_kit/core/diagnostics/dev_error_overlay.dart';
 import 'package:game_kit/core/sound/providers/sound_provider.dart';
-import 'package:game_kit/firebase/firebase_options.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -66,7 +65,7 @@ void main() async {
   // 켜야 구버전 앱과 설정 누락 기기를 한꺼번에 차단하지 않습니다.
   try {
     if (!FirebaseBackend.isLocal) {
-      await FirebaseAppCheck.instance.activate(
+      await FirebaseAppCheck.instanceFor(app: FirebaseBackend.app).activate(
         providerAndroid: kDebugMode
             ? const AndroidDebugProvider()
             : const AndroidPlayIntegrityProvider(),
@@ -97,7 +96,8 @@ void main() async {
   if (!FirebaseBackend.isLocal) {
     try {
       await GoogleSignIn.instance.initialize(
-        clientId: DefaultFirebaseOptions.currentPlatform.iosClientId,
+        clientId: selectedFirebaseOptions.iosClientId,
+        serverClientId: selectedGoogleServerClientId,
       );
     } catch (error, stack) {
       CrashReporting.recordError(error, stack, reason: '구글 로그인 SDK 초기화');

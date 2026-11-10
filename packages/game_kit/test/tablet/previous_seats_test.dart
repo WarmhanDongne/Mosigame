@@ -122,5 +122,37 @@ void main() {
       expect(find.widgetWithText(MosiButton, '이전 자리'), findsNothing);
       expect(find.widgetWithText(MosiButton, '섞기'), findsOneWidget);
     });
+
+    testWidgets('세 글자 닉네임은 자리 카드에서 말줄임 없이 보인다', (tester) async {
+      final threeCharacterPlayers = [
+        const _Player('가나다', 0),
+        const _Player('라마바사', 1),
+      ];
+      final threeCharacterLayout = PlayerLayoutFactory.create(
+        threeCharacterPlayers,
+      );
+      tester.view.physicalSize = const Size(1180, 820);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: PlayerLayoutEditor(
+              initialLayout: threeCharacterLayout,
+              tableColor: Colors.green,
+              onPrepare: (_) async => false,
+              onComplete: (_) {},
+              onCancel: () async => true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('가나다'), findsOneWidget);
+      expect(find.text('라마바사'), findsNothing);
+      expect(find.text('라마바…'), findsOneWidget);
+    });
   });
 }

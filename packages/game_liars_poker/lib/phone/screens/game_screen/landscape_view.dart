@@ -29,7 +29,7 @@ extension _LandscapeGameView on _LiarsPokerPhoneGameScreenState {
               // 않도록 모든 Positioned를 역할별 key로 분리합니다.
               const Positioned.fill(
                 key: ValueKey('landscape-background-slot'),
-                child: _PhoneGameBackground(isLandscape: true),
+                child: _PhoneGameBackground(),
               ),
               if (showHeader)
                 Positioned(
@@ -41,9 +41,6 @@ extension _LandscapeGameView on _LiarsPokerPhoneGameScreenState {
                     bottom: false,
                     child: PhoneGameTopBar(
                       isLandscape: true,
-                      leadingWidget: _tableAsset(
-                        controller.table,
-                      ).image(height: 30, filterQuality: FilterQuality.high),
                       centerWidget:
                           regions.showTimer &&
                               !widget.showSpectatorTopBar &&

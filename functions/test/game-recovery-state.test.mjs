@@ -54,7 +54,7 @@ for (const gameType of ['liars_poker', 'final_call', 'mafia', 'holdem', 'yut', '
     room.game.public.gameType = gameType;
     finalizeGameMutation(room, undefined, 1000, 'independent-game');
     assert.equal(room.game.server.playerRecoveryPolicy, 'independent-v1');
-    assert.equal(!!room.game.server.startupRecovery, ['liars_poker', 'final_call'].includes(gameType));
+    assert.equal(room.game.server.startupRecovery, undefined);
     assert.equal(room.game.public.recovery.paused, true);
     assert.equal(report(room, 't').paused, false);
     const deadline = room.game.public.turnDeadlineAt;
@@ -81,12 +81,13 @@ test('already running protocol-2 games retain the legacy barrier until a new gam
   assert.equal(room.game.server.playerRecoveryPolicy, undefined);
 });
 
-test('startup reconnect allowance survives rounds, resets for a new game, and clears on finish', () => {
+test('startup readiness never revokes a healthy connection and legacy markers clear on lifecycle changes', () => {
   const room = fixture(); room.presenceProtocol = 2;
   finalizeGameMutation(room, undefined, 1000, 'first-game');
   report(room, 't');
   assert.equal(requestPreparationReconnect(room, {uid: 'a', role: 'player',
-    membershipId: 'member-a', connectionId: 'ca', connectionSeq: 1}), true);
+    membershipId: 'member-a', connectionId: 'ca', connectionSeq: 1}), false);
+  assert.equal(room.connections.a.ca.connected, true);
   const marker = structuredClone(room.game.server.preparationReconnects);
   let before = structuredClone(room.game);
   room.game.public.round = 2;

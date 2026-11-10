@@ -6,7 +6,6 @@ import {findGhostPlayers} from "../room/ghost-player-policy.js";
 import {advanceCleanupCursor, cleanupScanPage} from "../room/room-cleanup.js";
 import {runPrimedTransaction} from "../room/room-transaction.js";
 import {expireRecoveryCauses, RecoveryRoom} from "./recovery-state.js";
-import {hasStalledStartup, recoverStalledStartup} from "./startup-recovery.js";
 const REGION = "asia-northeast3";
 
 /** Reuse the existing scan; never exclude players or manufacture game progress. */
@@ -17,23 +16,16 @@ export const cleanupExpiredGameInterruptions = onSchedule({region: REGION,
   const snapshot = await database.ref("rooms").orderByChild("status")
     .equalTo("playing").get();
   const jobs: Array<() => Promise<unknown>> = [];
-  let reconnectedDevices = 0;
   snapshot.forEach((child) => {
     const preview = child.val() as RecoveryRoom;
     if (!Object.values(preview.game?.public.recovery?.causes ?? {}).some((c) =>
-      c.deadlineAt !== undefined && c.deadlineAt <= now && !c.awaitingDecision) && !hasStalledStartup(preview, now)) return;
-    const expectedRoom = preview.roomInstanceId;
-    const expectedGame = preview.game?.public.gameInstanceId;
+      c.deadlineAt !== undefined && c.deadlineAt <= now && !c.awaitingDecision)) return;
     jobs.push(async () => {
-      let requested = 0;
-      const result = await runPrimedTransaction(child.ref, (raw) => {
-        requested = 0;
+      await runPrimedTransaction(child.ref, (raw) => {
         if (!raw) return;
         const room = raw as RecoveryRoom;
-        requested = expectedRoom && expectedGame ? recoverStalledStartup(room, expectedRoom, expectedGame, now) : 0;
-        return expireRecoveryCauses(room, now) || requested ? room : undefined;
+        return expireRecoveryCauses(room, now) ? room : undefined;
       });
-      if (result.committed) reconnectedDevices += requested;
     });
   });
   // Limit transaction concurrency; do not add another room query or schedule.
@@ -42,7 +34,6 @@ export const cleanupExpiredGameInterruptions = onSchedule({region: REGION,
     const results = await Promise.allSettled(jobs.slice(offset, offset + 10).map((job) => job()));
     failed += results.filter((result) => result.status === "rejected").length;
   }
-  if (reconnectedDevices || failed) logger.info("game_startup_recovery_scan", {reconnectedDevices, failedRooms: failed});
   if (failed) throw new Error(`Game recovery transactions failed: ${failed}`);
 });
 export const cleanupGhostRoomPlayers = onSchedule(

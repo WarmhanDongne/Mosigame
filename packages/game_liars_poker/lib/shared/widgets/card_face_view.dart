@@ -1,65 +1,36 @@
-// [card_face_view.dart] 는 라이어스 포커 카드 앞면을 이미지 없이 코드로 그리는 파일이다.
-//
-// - [Package] : 라이어스 포커
-// - [Widget] : A·K·Q·조커 앞면과 뒷면을 같은 크기 규칙으로 그림
-//
-// 즉, 카드 그림 파일 없이도 어느 화면 크기에서나 선명한 카드를 쓰기 위해 필요한 파일이다.
+// 라이어스 포커 카드 앞·뒷면을 벡터 위젯으로 그립니다.
 
-// ========================[ import ]==========================
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:game_kit/localization/game_locale.dart';
 
-// ============================================================
-
-//=======================카드 종류==============================
-/// 카드 한 장의 종류입니다. [back]은 뒷면입니다.
+/// 카드 한 장의 종류입니다. [back]은 공개되지 않은 카드입니다.
 enum LiarsCardFace {
-  ace('A'),
-  king('K'),
-  queen('Q'),
-  joker('JOKER'),
+  truth('TRUTH'),
+  lie('LIE'),
   back('');
 
   const LiarsCardFace(this.value);
 
-  /// 서버가 보내는 카드 값입니다.
   final String value;
 
-  /// 서버의 카드 값을 앞면 종류로 바꿉니다. 모르는 값은 뒷면입니다.
   static LiarsCardFace fromValue(String value) => switch (value.toUpperCase()) {
-    'A' => ace,
-    'K' => king,
-    'Q' => queen,
-    'JOKER' => joker,
+    'TRUTH' => truth,
+    'LIE' => lie,
     _ => back,
   };
 
-  /// 화면 읽기용 이름입니다.
   String get label => switch (this) {
-    ace => GameLocale.select(
-      ko: '에이스 카드',
-      en: 'Ace card',
-      zhHans: 'A 牌',
-      zhHant: 'A 牌',
+    truth => GameLocale.select(
+      ko: '진실 카드',
+      en: 'Truth card',
+      zhHans: '真话牌',
+      zhHant: '真話牌',
     ),
-    king => GameLocale.select(
-      ko: '킹 카드',
-      en: 'King card',
-      zhHans: 'K 牌',
-      zhHant: 'K 牌',
-    ),
-    queen => GameLocale.select(
-      ko: '퀸 카드',
-      en: 'Queen card',
-      zhHans: 'Q 牌',
-      zhHant: 'Q 牌',
-    ),
-    joker => GameLocale.select(
-      ko: '조커 카드',
-      en: 'Joker card',
-      zhHans: '王牌',
-      zhHant: '鬼牌',
+    lie => GameLocale.select(
+      ko: '거짓 카드',
+      en: 'Lie card',
+      zhHans: '谎言牌',
+      zhHant: '謊言牌',
     ),
     back => GameLocale.select(
       ko: '카드 뒷면',
@@ -69,38 +40,29 @@ enum LiarsCardFace {
     ),
   };
 
-  /// 모서리에 쓰는 글자입니다.
   String get corner => switch (this) {
-    ace => 'A',
-    king => 'K',
-    queen => 'Q',
-    joker => 'J',
+    truth => 'O',
+    lie => '×',
     back => '',
   };
 }
 
-//=======================카드 그리기==============================
-/// 카드를 그리는 기준 크기입니다. 실제 크기는 이 판을 통째로 늘이거나 줄입니다.
-const Size liarsCardDesignSize = Size(200, 280);
+/// 첨부된 타로 시안의 200×320 비율입니다.
+const Size liarsCardDesignSize = Size(200, 320);
 
-const Color _ink = Color(0xFF1B1022);
-const Color _ivory = Color(0xFFF8F5EE);
-const Color _edge = Color(0xFFC8C0B4);
+/// 카드 높이 ÷ 너비입니다.
+const double liarsCardAspectRatio = 320 / 200;
+const Color _ink = Color(0xFF17110F);
+const Color _bone = Color(0xFFF2EADB);
+const Color _paper = Color(0xFFE6D8BC);
+const Color _gold = Color(0xFFB9A782);
+const Color _truth = Color(0xFF2E6B4E);
+const Color _lie = Color(0xFFB8262B);
 
-/// Playfair Display 대문자 높이가 글자 크기에서 차지하는 비율입니다.
-const double _capRatio = 0.708;
-
-/// 가운데 요소(A·K·Q 글자, 조커 덩어리)의 높이입니다. 네 카드가 모두 같습니다.
-const double _blockHeight = 112;
-
-/// Q의 꼬리까지 포함한 전체 높이가 몸통의 몇 배인지입니다(측정값).
-const double _qTailRatio = 145 / 112;
-
-/// 앞면 카드를 그립니다.
+/// 고정 타로 비율(5 : 8)로 진실·거짓 카드 또는 뒷면을 표시합니다.
 ///
-/// 폭·높이를 주지 않으면 부모가 주는 칸을 채웁니다(비율 1:1.4 기준).
-/// [rounded]가 true면 둥근 모서리와 테두리까지 그리고, 부모가 이미 잘라 주면
-/// false로 둡니다.
+/// 외부 이미지가 아니라 벡터로 그려서 휴대폰 손패·태블릿 공개·룰북·결과
+/// 화면에서 같은 디자인을 선명하게 공유합니다.
 class LiarsPokerCardView extends StatelessWidget {
   const LiarsPokerCardView({
     super.key,
@@ -117,61 +79,19 @@ class LiarsPokerCardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget content = FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox.fromSize(
-        size: liarsCardDesignSize,
-        child: face == LiarsCardFace.back
-            ? _CardBack(rounded: rounded)
-            : _CardFront(face: face, rounded: rounded),
-      ),
-    );
     return Semantics(
       image: true,
       label: face.label,
       excludeSemantics: true,
       child: SizedBox(
-        width: width ?? (height == null ? null : height! / 1.4),
-        height: height ?? (width == null ? null : width! * 1.4),
-        child: content,
-      ),
-    );
-  }
-}
-
-/// 뒷면: 아이보리 바탕에 잉크색 가는 테두리 한 줄과 가운데 마름모 하나뿐입니다.
-class _CardBack extends StatelessWidget {
-  const _CardBack({required this.rounded});
-
-  final bool rounded;
-
-  @override
-  Widget build(BuildContext context) {
-    const w = 200.0;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _ivory,
-        borderRadius: rounded ? BorderRadius.circular(w * .07) : null,
-        border: rounded ? Border.all(color: _edge, width: 1.5) : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(w * .05),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(w * .035),
-            border: Border.all(color: _ink.withValues(alpha: .7), width: 1.5),
-          ),
-          child: Center(
-            child: Transform.rotate(
-              angle: math.pi / 4,
-              child: Container(
-                width: w * .16,
-                height: w * .16,
-                decoration: BoxDecoration(
-                  color: _ink,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+        width: width ?? (height == null ? null : height! / 1.6),
+        height: height ?? (width == null ? null : width! * 1.6),
+        child: FittedBox(
+          fit: BoxFit.fill,
+          child: SizedBox.fromSize(
+            size: liarsCardDesignSize,
+            child: CustomPaint(
+              painter: _TarotCardPainter(face: face, rounded: rounded),
             ),
           ),
         ),
@@ -180,205 +100,269 @@ class _CardBack extends StatelessWidget {
   }
 }
 
-class _CardFront extends StatelessWidget {
-  const _CardFront({required this.face, required this.rounded});
+/// 모든 제출은 진실 카드라고 주장한다는 고정 규칙을 안내하는 배지입니다.
+class LiarsPokerClaimBadge extends StatelessWidget {
+  const LiarsPokerClaimBadge({super.key, this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = GameLocale.select(
+      ko: '진실을 주장',
+      en: 'CLAIM TRUTH',
+      zhHans: '宣称真话',
+      zhHant: '宣稱真話',
+    );
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 9 : 14,
+        vertical: compact ? 5 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: _truth,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _bone.withValues(alpha: .7)),
+        boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 8)],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: _bone,
+          fontWeight: FontWeight.w800,
+          fontSize: compact ? 12 : 16,
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotCardPainter extends CustomPainter {
+  const _TarotCardPainter({required this.face, required this.rounded});
 
   final LiarsCardFace face;
   final bool rounded;
 
   @override
-  Widget build(BuildContext context) {
-    const w = 200.0;
-    const h = 280.0;
-    Widget corner(bool flip) => Transform.rotate(
-      angle: flip ? math.pi : 0,
-      child: Text(face.corner, style: _style(w * .16, _ink)),
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _ivory,
-        borderRadius: rounded ? BorderRadius.circular(w * .07) : null,
-        border: rounded ? Border.all(color: _edge, width: 1.5) : null,
-      ),
-      child: Stack(
-        children: [
-          Positioned(left: w * .07, top: w * .06, child: corner(false)),
-          Positioned(right: w * .07, bottom: w * .06, child: corner(true)),
-          Positioned.fill(
-            child: face == LiarsCardFace.joker
-                ? const _JokerBlock(width: w, height: h)
-                : CustomPaint(painter: _LetterPainter(face)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-TextStyle _style(double size, Color color, {double? letterSpacing}) =>
-    TextStyle(
-      fontFamily: 'PlayfairDisplay',
-      package: 'game_kit',
-      fontSize: size,
-      fontWeight: FontWeight.w700,
-      color: color,
-      height: 1,
-      letterSpacing: letterSpacing,
-    );
-
-/// 대문자 높이 칸을 카드 정중앙에 맞춰 글자를 그립니다.
-class _LetterPainter extends CustomPainter {
-  const _LetterPainter(this.face);
-
-  final LiarsCardFace face;
-
-  @override
   void paint(Canvas canvas, Size size) {
-    final isQ = face == LiarsCardFace.queen;
-    // Q는 꼬리까지 포함한 전체 높이를 다른 글자와 맞춥니다.
-    final fullSize = _blockHeight / _capRatio;
-    final sizePx = isQ ? fullSize / _qTailRatio : fullSize;
-    final painter = TextPainter(
-      text: TextSpan(text: face.corner, style: _style(sizePx, _ink)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final baseline = painter.computeDistanceToActualBaseline(
-      TextBaseline.alphabetic,
+    canvas.save();
+    canvas.scale(
+      size.width / liarsCardDesignSize.width,
+      size.height / liarsCardDesignSize.height,
     );
-    final capHeight = sizePx * _capRatio;
-    final cy = size.height / 2;
-    // 글자 모양이 좌우 비대칭이라 눈에 보이는 가운데로 조금 보정합니다.
-    final dx = switch (face) {
-      LiarsCardFace.ace => 2.0,
-      LiarsCardFace.king => -3.0,
-      _ => 0.0,
-    };
-    final dy = isQ ? -10.0 : 0.0;
-    painter.paint(
-      canvas,
-      Offset(
-        (size.width - painter.width) / 2 + dx,
-        cy + capHeight / 2 - baseline + dy,
+
+    final outer = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(1, 1, 198, 318),
+      Radius.circular(rounded ? 14 : 7),
+    );
+    canvas.drawRRect(outer, _fill(_paper));
+    canvas.drawRRect(outer, _stroke(_gold, 2));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(7, 7, 186, 306),
+        Radius.circular(rounded ? 10 : 4),
       ),
+      _stroke(_ink.withValues(alpha: .55), 1.2),
     );
+
+    final arch = _archPath();
+    canvas.save();
+    canvas.clipPath(arch);
+    if (face == LiarsCardFace.back) {
+      _paintBack(canvas);
+    } else {
+      _paintFront(canvas, face == LiarsCardFace.truth);
+    }
+    canvas.restore();
+    canvas.drawPath(arch, _stroke(_ink, 2.4));
+    _paintCornerMarks(canvas);
+    _paintPaperGrain(canvas);
+    canvas.restore();
   }
 
-  @override
-  bool shouldRepaint(covariant _LetterPainter old) => old.face != face;
-}
+  Path _archPath() => Path()
+    ..moveTo(20, 238)
+    ..lineTo(20, 82)
+    ..quadraticBezierTo(20, 24, 100, 24)
+    ..quadraticBezierTo(180, 24, 180, 82)
+    ..lineTo(180, 238)
+    ..quadraticBezierTo(180, 296, 100, 296)
+    ..quadraticBezierTo(20, 296, 20, 238)
+    ..close();
 
-/// 조커: 방울 달린 왕관과 JOKER 글자를 합친 덩어리를 A·K·Q와 같은 높이로 둡니다.
-class _JokerBlock extends StatelessWidget {
-  const _JokerBlock({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final fontSize = width * .12;
-    final textCap = fontSize * _capRatio;
-    final gap = width * .04;
-    // J의 꼬리가 기준선 아래로 내려오므로 그만큼 글자를 올려 아래 끝을 맞춥니다.
-    final jDescent = fontSize * .25;
-    final crownInk = _blockHeight - textCap - gap - jDescent;
-    final crownSize = crownInk / .82;
-    final top = height / 2 - _blockHeight / 2;
-    return Stack(
-      children: [
-        Positioned(
-          left: (width - crownSize) / 2 - 1,
-          top: top,
-          child: CustomPaint(
-            size: Size.square(crownSize),
-            painter: const _CrownPainter(),
-          ),
-        ),
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _JokerTextPainter(
-              fontSize: fontSize,
-              letterSpacing: width * .02,
-              centerY: height / 2 + _blockHeight / 2 - jDescent - textCap / 2,
-            ),
-          ),
-        ),
-      ],
+  void _paintFront(Canvas canvas, bool truth) {
+    final color = truth ? _truth : _lie;
+    canvas.drawRect(const Rect.fromLTWH(0, 0, 200, 320), _fill(color));
+    canvas.drawCircle(
+      const Offset(100, 160),
+      120,
+      _fill(_ink.withValues(alpha: .12)),
     );
-  }
-}
-
-class _JokerTextPainter extends CustomPainter {
-  const _JokerTextPainter({
-    required this.fontSize,
-    required this.letterSpacing,
-    required this.centerY,
-  });
-
-  final double fontSize;
-  final double letterSpacing;
-  final double centerY;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: 'JOKER',
-        style: _style(fontSize, _ink, letterSpacing: letterSpacing),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final baseline = painter.computeDistanceToActualBaseline(
-      TextBaseline.alphabetic,
-    );
-    painter.paint(
-      canvas,
-      Offset(
-        (size.width - painter.width + letterSpacing) / 2 - 1,
-        centerY + fontSize * _capRatio / 2 - baseline,
-      ),
-    );
+    if (truth) {
+      canvas.drawCircle(const Offset(100, 160), 49, _stroke(_bone, 20));
+      canvas.drawCircle(
+        const Offset(100, 160),
+        30,
+        _stroke(_ink.withValues(alpha: .18), 2),
+      );
+    } else {
+      final cross = _stroke(_bone, 20)..strokeCap = StrokeCap.square;
+      canvas.drawLine(const Offset(62, 122), const Offset(138, 198), cross);
+      canvas.drawLine(const Offset(138, 122), const Offset(62, 198), cross);
+    }
+    _paintEngraving(canvas);
   }
 
-  @override
-  bool shouldRepaint(covariant _JokerTextPainter old) =>
-      old.fontSize != fontSize ||
-      old.letterSpacing != letterSpacing ||
-      old.centerY != centerY;
-}
-
-/// 방울 달린 광대 왕관입니다(0~1 칸 안).
-class _CrownPainter extends CustomPainter {
-  const _CrownPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width, size.height);
-    final path = Path()
-      ..moveTo(.1, .82)
-      ..quadraticBezierTo(.0, .5, .06, .2)
-      ..quadraticBezierTo(.28, .3, .36, .62)
-      ..quadraticBezierTo(.42, .3, .5, .1)
-      ..quadraticBezierTo(.58, .3, .64, .62)
-      ..quadraticBezierTo(.72, .3, .94, .2)
-      ..quadraticBezierTo(1.0, .5, .9, .82)
+  void _paintBack(Canvas canvas) {
+    canvas.drawRect(const Rect.fromLTWH(0, 0, 200, 320), _fill(_ink));
+    final top = Path()
+      ..moveTo(20, 24)
+      ..lineTo(96, 24)
+      ..lineTo(20, 150)
       ..close();
-    final line = Paint()
-      ..color = _ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 / size.width
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(path, line);
-    for (final center in const [
-      Offset(.06, .16),
-      Offset(.5, .07),
-      Offset(.94, .16),
+    final bottom = Path()
+      ..moveTo(180, 120)
+      ..lineTo(180, 300)
+      ..lineTo(90, 300)
+      ..close();
+    canvas.drawPath(top, _fill(const Color(0xFF2E2926)));
+    canvas.drawPath(bottom, _fill(const Color(0xFF221C19)));
+
+    // 시안의 얼굴 좌표는 카드 중심(100, 160)이 원점입니다.
+    canvas.save();
+    canvas.translate(100, 160);
+    _paintCollar(canvas);
+    _paintFace(canvas);
+    canvas.restore();
+    _paintEngraving(canvas);
+  }
+
+  void _paintCollar(Canvas canvas) {
+    const collarColor = Color(0xFF3E3834);
+    final collar = Path()
+      ..moveTo(-70, 70)
+      ..lineTo(-30, 40)
+      ..lineTo(-8, 92)
+      ..lineTo(10, 44)
+      ..lineTo(40, 96)
+      ..lineTo(52, 42)
+      ..lineTo(90, 74)
+      ..lineTo(80, 140)
+      ..lineTo(-80, 140)
+      ..close();
+    canvas.drawPath(collar, _fill(collarColor));
+    final folds = Path()
+      ..moveTo(-46, 64)
+      ..lineTo(-24, 52)
+      ..lineTo(-14, 100)
+      ..close()
+      ..moveTo(30, 60)
+      ..lineTo(46, 104)
+      ..lineTo(56, 58)
+      ..close();
+    canvas.drawPath(
+      folds,
+      _fill(const Color(0xFF5A524C).withValues(alpha: .8)),
+    );
+  }
+
+  void _paintFace(Canvas canvas) {
+    const mouthColor = Color(0xFF3E3834);
+    final head = Path()
+      ..moveTo(-46, -56)
+      ..cubicTo(-40, -92, 40, -92, 46, -56)
+      ..cubicTo(54, -10, 40, 40, 0, 58)
+      ..cubicTo(-40, 40, -54, -10, -46, -56)
+      ..close();
+    canvas.drawPath(head, _fill(_bone));
+    final shadowHalf = Path()
+      ..moveTo(0, -84)
+      ..cubicTo(34, -84, 44, -70, 46, -56)
+      ..cubicTo(54, -10, 40, 40, 0, 58)
+      ..cubicTo(10, 30, -10, -20, 6, -50)
+      ..cubicTo(12, -62, 4, -76, 0, -84)
+      ..close();
+    canvas.drawPath(shadowHalf, _fill(_ink));
+
+    canvas.drawCircle(const Offset(-20, -22), 10, _stroke(_ink, 5));
+    final cross = _stroke(_bone, 5)..strokeCap = StrokeCap.square;
+    canvas.drawLine(const Offset(12, -32), const Offset(32, -12), cross);
+    canvas.drawLine(const Offset(32, -32), const Offset(12, -12), cross);
+
+    final mouth = Path()
+      ..moveTo(-30, 8)
+      ..quadraticBezierTo(0, 40, 36, 4)
+      ..quadraticBezierTo(30, 30, 0, 34)
+      ..quadraticBezierTo(-22, 30, -30, 8)
+      ..close();
+    canvas.drawPath(mouth, _fill(mouthColor));
+    final teeth = _stroke(_ink, 1.6);
+    for (final (from, to) in const [
+      (Offset(-24, 12), Offset(-20, 22)),
+      (Offset(-14, 16), Offset(-12, 27)),
+      (Offset(-4, 18), Offset(-3, 30)),
+      (Offset(6, 18), Offset(6, 30)),
+      (Offset(16, 15), Offset(15, 27)),
+      (Offset(26, 10), Offset(23, 21)),
     ]) {
-      canvas.drawCircle(center, .07, Paint()..color = _ivory);
-      canvas.drawCircle(center, .07, line);
+      canvas.drawLine(from, to, teeth);
+    }
+    canvas.drawPath(
+      Path()
+        ..moveTo(-30, 8)
+        ..quadraticBezierTo(0, 40, 36, 4),
+      _stroke(_ink, 2.6),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(36, 4)
+        ..quadraticBezierTo(42, -2, 46, -10),
+      _stroke(_bone, 2),
+    );
+  }
+
+  void _paintCornerMarks(Canvas canvas) {
+    final paint = _stroke(_ink.withValues(alpha: .58), 1.4);
+    for (final offset in const [
+      Offset(14, 24),
+      Offset(186, 24),
+      Offset(14, 296),
+      Offset(186, 296),
+    ]) {
+      final sx = offset.dx < 100 ? 1.0 : -1.0;
+      final sy = offset.dy < 100 ? 1.0 : -1.0;
+      canvas.drawLine(offset, offset + Offset(10 * sx, 0), paint);
+      canvas.drawLine(offset, offset + Offset(0, 10 * sy), paint);
+    }
+  }
+
+  void _paintEngraving(Canvas canvas) {
+    final paint = _stroke(_bone.withValues(alpha: .16), 1);
+    for (var y = 36.0; y < 290; y += 11) {
+      canvas.drawLine(Offset(27, y), Offset(173, y - 4), paint);
+    }
+    final shade = _fill(_ink.withValues(alpha: .16));
+    canvas.drawRect(const Rect.fromLTWH(0, 0, 200, 18), shade);
+    canvas.drawRect(const Rect.fromLTWH(0, 302, 200, 18), shade);
+  }
+
+  void _paintPaperGrain(Canvas canvas) {
+    final paint = _stroke(_gold.withValues(alpha: .28), .55);
+    for (var y = 12.0; y < 308; y += 13) {
+      canvas.drawLine(Offset(9, y), Offset(15, y + 1), paint);
+      canvas.drawLine(Offset(185, y + 1), Offset(191, y), paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  bool shouldRepaint(covariant _TarotCardPainter oldDelegate) =>
+      oldDelegate.face != face || oldDelegate.rounded != rounded;
 }
+
+Paint _fill(Color color) => Paint()..color = color;
+
+Paint _stroke(Color color, double width) => Paint()
+  ..color = color
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = width
+  ..strokeJoin = StrokeJoin.round;

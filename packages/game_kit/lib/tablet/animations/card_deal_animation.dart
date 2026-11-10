@@ -37,10 +37,15 @@ class CardDealAnimation extends StatefulWidget {
     this.playerCount = 4,
     this.boardSeatCount,
     this.playerSeatIndexes,
+    this.seatCentersBuilder,
     this.cardsPerPlayer = 5,
+    this.reserveCardCount = 0,
     this.cardAsset,
     this.cardBuilder,
     this.cardWidth = 168,
+    this.cardAspectRatio = kCardAspectRatio,
+    this.cardRadius = 7,
+    this.playDeckEntry = true,
     this.duration = const Duration(milliseconds: 2800),
     this.beforeDelay = Duration.zero,
     this.afterDelay = Duration.zero,
@@ -55,6 +60,7 @@ class CardDealAnimation extends StatefulWidget {
          'playerSeatIndexes의 개수는 playerCount와 같아야 합니다.',
        ),
        assert(cardsPerPlayer > 0),
+       assert(reserveCardCount >= 0),
        assert(cardWidth > 0);
 
   /// 카드를 받는 플레이어 수입니다.
@@ -70,6 +76,13 @@ class CardDealAnimation extends StatefulWidget {
   /// 생략하면 [playerCount]와 같은 값으로 처리합니다.
   final int? boardSeatCount;
 
+  /// 좌석 중심 좌표를 게임이 직접 정할 때 씁니다.
+  ///
+  /// 생략하면 공용 원형 궤도([playerCentersForBoard])를 씁니다. 좌석을
+  /// 화면 가장자리에 붙이는 게임은 같은 좌표로 카드가 날아가게 넘깁니다.
+  final List<Offset> Function(int seatCount, Size boardSize)?
+  seatCentersBuilder;
+
   /// 플레이어 인덱스별 실제 좌석 번호입니다.
   ///
   /// 예: `[2, 0, 1]`
@@ -81,6 +94,9 @@ class CardDealAnimation extends StatefulWidget {
   /// 플레이어 한 명이 받는 카드 수입니다.
   final int cardsPerPlayer;
 
+  /// 모든 플레이어에게 분배한 뒤 중앙 덱에 남겨 둘 카드 수입니다.
+  final int reserveCardCount;
+
   /// [cardBuilder]를 지정하지 않았을 때 표시할 카드 뒷면 에셋입니다.
   final GameImage? cardAsset;
 
@@ -89,6 +105,17 @@ class CardDealAnimation extends StatefulWidget {
 
   /// 카드 너비입니다. 높이는 실제 카드 비율(350:512)에 맞춰 계산됩니다.
   final double cardWidth;
+
+  /// 카드 높이 ÷ 너비입니다. 비율이 다른 카드를 쓰는 게임만 지정합니다.
+  final double cardAspectRatio;
+
+  /// 카드 모서리 반지름입니다.
+  final double cardRadius;
+
+  /// 카드 더미가 화면 위에서 내려오는 연출을 재생할지 여부입니다.
+  ///
+  /// 앞선 연출이 이미 중앙에 덱을 놓아 둔 경우 false로 지정해 이어 붙입니다.
+  final bool playDeckEntry;
 
   /// 카드 분배 시작부터 카드 묶음 퇴장까지의 전체 재생 시간입니다.
   ///
@@ -113,6 +140,15 @@ class CardDealAnimation extends StatefulWidget {
   final Color? backgroundColor;
 
   final VoidCallback? onCompleted;
+
+  /// [boardSize] 보드에서 실제로 쓰이는 카드 너비입니다.
+  ///
+  /// 분배 앞에 연출을 이어 붙이는 게임이 같은 크기로 덱을 그릴 때 사용합니다.
+  static double effectiveCardWidth(Size boardSize, double cardWidth) {
+    return math
+        .min(cardWidth, math.max(76, boardSize.shortestSide * 0.58))
+        .toDouble();
+  }
 
   @override
   CardDealAnimationState createState() => CardDealAnimationState();
@@ -150,6 +186,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
     _deckEntryController = AnimationController(
       vsync: this,
       duration: _deckEntryDuration,
+      value: widget.playDeckEntry ? 0 : 1,
     );
 
     _animation = Listenable.merge([_controller, _deckEntryController]);
@@ -273,13 +310,13 @@ class CardDealAnimationState extends State<CardDealAnimation>
   Widget _buildScene(BuildContext context, Size size) {
     final totalCards = widget.playerCount * widget.cardsPerPlayer;
     final cardWidth = _effectiveCardWidth(size);
-    final cardHeight = cardWidth * kCardAspectRatio;
+    final cardHeight = cardWidth * widget.cardAspectRatio;
     final center = size.center(Offset.zero);
 
     final playerGeometries = _playerGeometries(size: size, center: center);
 
     final flightLength = _flightLength(totalCards);
-    final lastDealStart = math.max(0.0, _dealEnd - flightLength);
+    final lastDealStart = math.max(_dealDelay, _dealEnd - flightLength);
 
     final entryProgress = Curves.easeOutCubic.transform(
       _deckEntryController.value,
@@ -296,25 +333,38 @@ class CardDealAnimationState extends State<CardDealAnimation>
 
     // 카드를 역순으로 쌓아 현재 분배 중인 카드가
     // 항상 중앙 카드 더미의 가장 위에 보이도록 합니다.
-    final cards = List<Widget>.generate(totalCards, (reverseIndex) {
-      final dealIndex = totalCards - reverseIndex - 1;
+    final cards = <Widget>[
+      for (var index = 0; index < widget.reserveCardCount; index++)
+        _buildReservedCard(
+          context,
+          size: size,
+          reserveIndex: index,
+          cardWidth: cardWidth,
+          cardHeight: cardHeight,
+          center: center,
+          entryProgress: entryProgress,
+          dealProgress: _controller.value,
+        ),
+      ...List<Widget>.generate(totalCards, (reverseIndex) {
+        final dealIndex = totalCards - reverseIndex - 1;
 
-      return _buildAnimatedCard(
-        context,
-        size: size,
-        dealIndex: dealIndex,
-        totalCards: totalCards,
-        cardWidth: cardWidth,
-        cardHeight: cardHeight,
-        center: center,
-        playerGeometries: playerGeometries,
-        flightLength: flightLength,
-        lastDealStart: lastDealStart,
-        entryProgress: entryProgress,
-        exitProgress: exitProgress,
-        exitDistance: exitDistance,
-      );
-    });
+        return _buildAnimatedCard(
+          context,
+          size: size,
+          dealIndex: dealIndex,
+          totalCards: totalCards,
+          cardWidth: cardWidth,
+          cardHeight: cardHeight,
+          center: center,
+          playerGeometries: playerGeometries,
+          flightLength: flightLength,
+          lastDealStart: lastDealStart,
+          entryProgress: entryProgress,
+          exitProgress: exitProgress,
+          exitDistance: exitDistance,
+        );
+      }),
+    ];
 
     if (widget.tapToStart && _controller.value == 0) {
       cards.add(
@@ -359,21 +409,30 @@ class CardDealAnimationState extends State<CardDealAnimation>
 
   /// 카드 한 장이 중앙에서 플레이어 위치까지 이동하는 진행도 길이입니다.
   ///
+  /// 남겨 둘 카드를 덱 옆으로 빼는 구간입니다. 이 구간이 끝난 뒤 분배합니다.
+  static const double _setAsideEnd = 0.1;
+
+  /// 첫 카드가 출발하는 진행도입니다. 남겨 둘 카드가 있으면 먼저 빼 둡니다.
+  double get _dealDelay => widget.reserveCardCount > 0 ? _setAsideEnd : 0;
+
   /// 카드 수가 많아져도 마지막 카드가 [_dealEnd] 이전에 도착하도록
   /// 카드 한 장당 비행 구간을 자동으로 압축합니다.
-  static double _flightLength(int totalCards) {
-    return math.min(0.15, _dealEnd / totalCards * 3.2);
+  double _flightLength(int totalCards) {
+    return math.min(0.15, (_dealEnd - _dealDelay) / totalCards * 3.2);
   }
 
   /// [dealIndex]번째 카드가 출발하는 진행도를 계산합니다.
-  static double _dealStartOf(int dealIndex, int totalCards) {
+  double _dealStartOf(int dealIndex, int totalCards) {
     if (totalCards <= 1) {
-      return 0;
+      return _dealDelay;
     }
 
-    final lastStart = math.max(0.0, _dealEnd - _flightLength(totalCards));
+    final lastStart = math.max(
+      _dealDelay,
+      _dealEnd - _flightLength(totalCards),
+    );
 
-    return lastStart * dealIndex / (totalCards - 1);
+    return _dealDelay + (lastStart - _dealDelay) * dealIndex / (totalCards - 1);
   }
 
   /// 카드가 실제로 플레이어 앞에 내려앉았다고 판단하는 시점입니다.
@@ -388,7 +447,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
   static const double _dealLandingFraction = 0.69;
 
   /// [dealIndex]번째 카드가 플레이어 앞에 도착하는 진행도를 계산합니다.
-  static double _dealLandingOf(int dealIndex, int totalCards) {
+  double _dealLandingOf(int dealIndex, int totalCards) {
     return _dealStartOf(dealIndex, totalCards) +
         _flightLength(totalCards) * _dealLandingFraction;
   }
@@ -456,8 +515,9 @@ class CardDealAnimationState extends State<CardDealAnimation>
     final target = playerGeometry.target + stackOffset;
 
     final dealStart = totalCards <= 1
-        ? 0.0
-        : lastDealStart * dealIndex / (totalCards - 1);
+        ? _dealDelay
+        : _dealDelay +
+              (lastDealStart - _dealDelay) * dealIndex / (totalCards - 1);
 
     final dealProgress = intervalProgress(
       _controller.value,
@@ -534,6 +594,66 @@ class CardDealAnimationState extends State<CardDealAnimation>
     );
   }
 
+  /// 분배하지 않는 카드입니다. 분배 전에 덱 옆으로 빼 두었다가, 분배가
+  /// 진행되는 동안 눈에 띄지 않게 흐려지며 사라집니다.
+  Widget _buildReservedCard(
+    BuildContext context, {
+    required Size size,
+    required int reserveIndex,
+    required double cardWidth,
+    required double cardHeight,
+    required Offset center,
+    required double entryProgress,
+    required double dealProgress,
+  }) {
+    final deckPosition = center + Offset(0, reserveIndex * 1.15);
+    // 덱 오른쪽에 살짝 어긋나게 겹쳐 둡니다.
+    final asidePosition =
+        center +
+        Offset(
+          cardWidth * 1.25 + reserveIndex * cardWidth * 0.09,
+          reserveIndex * 2.0 - 2,
+        );
+    final aside = intervalProgress(
+      dealProgress,
+      0,
+      _setAsideEnd,
+      Curves.easeInOutCubic,
+    );
+    var position = Offset.lerp(deckPosition, asidePosition, aside)!;
+    if (entryProgress < 1) {
+      final dropDistance = size.height / 2 + cardHeight;
+      position += Offset(0, -dropDistance * (1 - entryProgress));
+    }
+    final rotation = aside * (0.05 + reserveIndex * 0.04);
+    // 분배가 한창일 때 천천히 흐려져 분배가 끝나기 전에 사라집니다.
+    final vanish = intervalProgress(
+      dealProgress,
+      _setAsideEnd + 0.2,
+      _dealEnd - 0.08,
+      Curves.easeInOut,
+    );
+    return Positioned(
+      key: ValueKey('reserved-card-$reserveIndex'),
+      left: position.dx - cardWidth / 2,
+      top: position.dy - cardHeight / 2,
+      width: cardWidth,
+      height: cardHeight,
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: 1 - vanish,
+          child: Transform.scale(
+            scale: 1 - 0.06 * vanish,
+            child: Transform.rotate(
+              angle: rotation,
+              child: _buildCard(context, 0, reserveIndex),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCard(BuildContext context, int playerIndex, int cardIndex) {
     final asset = widget.cardAsset;
 
@@ -541,7 +661,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
       return DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFF252027),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(widget.cardRadius),
           boxShadow: const [
             BoxShadow(
               color: Color(0x66000000),
@@ -556,7 +676,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
 
     return GameCardFace(
       asset: asset,
-      radius: 7,
+      radius: widget.cardRadius,
       backgroundColor: null,
       shadow: const BoxShadow(
         color: Color(0x66000000),
@@ -568,9 +688,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
   }
 
   double _effectiveCardWidth(Size size) {
-    return math
-        .min(widget.cardWidth, math.max(76, size.shortestSide * 0.58))
-        .toDouble();
+    return CardDealAnimation.effectiveCardWidth(size, widget.cardWidth);
   }
 
   Offset _keepCardInside({
@@ -624,10 +742,10 @@ class CardDealAnimationState extends State<CardDealAnimation>
     required Size size,
     required Offset center,
   }) {
-    final centers = playerCentersForBoard(
-      playerCount: widget.boardSeatCount ?? widget.playerCount,
-      boardSize: size,
-    );
+    final seatCount = widget.boardSeatCount ?? widget.playerCount;
+    final centers =
+        widget.seatCentersBuilder?.call(seatCount, size) ??
+        playerCentersForBoard(playerCount: seatCount, boardSize: size);
 
     return List<_PlayerDealGeometry>.generate(widget.playerCount, (
       playerIndex,

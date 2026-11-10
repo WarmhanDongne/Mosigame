@@ -26,10 +26,8 @@ class LiarsPokerTabletRulebook extends StatelessWidget {
       markdown: LiarsPokerCopy.tabletRules,
       videoUrl: provider.selectedGame?.ruleVideoUrl,
       cards: const [
-        LiarsPokerCardView(face: LiarsCardFace.ace, rounded: true, width: 60),
-        LiarsPokerCardView(face: LiarsCardFace.king, rounded: true, width: 60),
-        LiarsPokerCardView(face: LiarsCardFace.queen, rounded: true, width: 60),
-        LiarsPokerCardView(face: LiarsCardFace.joker, rounded: true, width: 60),
+        LiarsPokerCardView(face: LiarsCardFace.truth, rounded: true, width: 60),
+        LiarsPokerCardView(face: LiarsCardFace.lie, rounded: true, width: 60),
       ],
     );
   }

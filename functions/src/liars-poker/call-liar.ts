@@ -85,9 +85,9 @@ export const game_liars_poker_call_liar = onCall<CallLiarData>(
           );
         }
 
-        const truthful = actualCards.every(
-          (card) => card.rank === game.public.table || card.rank === "JOKER",
-        );
+        // 모든 제출은 진실 카드라고 주장합니다. 거짓 카드가 하나라도 섞이면
+        // 선언은 거짓입니다.
+        const truthful = actualCards.every((card) => card.rank === "TRUTH");
         const penaltyTargetUid = truthful ? uid : lastPlay.playerUid;
         // 잔여카드 보유자가 혼자인 마지막 카드 도전에서만 LIAR 실패 시
         // 이번 룰렛을 한 단계 올립니다. 생존자가 둘이라는 이유로 올리지 않습니다.

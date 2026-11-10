@@ -7,7 +7,12 @@ import {
 
 import {CardRank, GameCard} from "./types.js";
 
-/** 플레이어 수에 맞는 카드를 생성하고 안전하게 섞습니다. */
+/**
+ * 플레이어 수에 맞는 진실·거짓 덱을 생성하고 안전하게 섞습니다.
+ *
+ * 각 생존 플레이어는 5장을 받고, 정확히 3장은 서버에만 남습니다.
+ * 진실 카드는 플레이어당 3장이고 나머지는 모두 거짓 카드입니다.
+ */
 export function createDeck(playerCount: number): GameCard[] {
   const counts = deckCounts(playerCount);
   const deck: GameCard[] = [];
@@ -27,18 +32,10 @@ export function createDeck(playerCount: number): GameCard[] {
 
 /** 플레이어 수별 덱 구성을 반환합니다. */
 function deckCounts(playerCount: number): Record<CardRank, number> {
-  switch (playerCount) {
-  case 2:
-    return {A: 3, K: 3, Q: 3, JOKER: 1};
-  case 3:
-    return {A: 5, K: 5, Q: 5, JOKER: 2};
-  case 4:
-    return {A: 6, K: 6, Q: 6, JOKER: 2};
-  case 5:
-    return {A: 8, K: 8, Q: 8, JOKER: 3};
-  case 6:
-    return {A: 9, K: 9, Q: 9, JOKER: 3};
-  default:
+  if (!Number.isInteger(playerCount) || playerCount < 2 || playerCount > 6) {
     throw new Error("지원하지 않는 플레이어 수입니다.");
   }
+  const totalCards = playerCount * 5 + 3;
+  const truthCount = playerCount * 3;
+  return {TRUTH: truthCount, LIE: totalCards - truthCount};
 }

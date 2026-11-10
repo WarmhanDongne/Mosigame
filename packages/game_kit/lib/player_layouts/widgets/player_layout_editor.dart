@@ -25,6 +25,16 @@ typedef PlayerLayoutPrepared =
 typedef PlayerLayoutCompleted = void Function(PlayerLayoutModel playerLayout);
 typedef PlayerLayoutCancelled = Future<bool> Function();
 
+/// 자리 카드에서는 짧은 닉네임이 한눈에 읽히는 것이 우선입니다. 카드 폭보다
+/// 시스템 글자 배율이 커져도 세 글자 이름이 `글…`처럼 잘리지 않게 하고,
+/// 더 긴 이름만 앞 세 글자 뒤에 줄임표를 붙입니다.
+String _seatCardNickname(String nickname) {
+  final trimmed = nickname.trim();
+  final characters = trimmed.runes.toList(growable: false);
+  if (characters.length <= 3) return trimmed;
+  return '${String.fromCharCodes(characters.take(3))}…';
+}
+
 /// 자리 배치 완료 연출에서 의자가 좌석 순서대로 진입하도록 만든 진행률입니다.
 ///
 /// 각 의자는 전체 타임라인의 24% 동안 이동하고, 남은 의자 구간을 좌석 수에
@@ -1477,15 +1487,19 @@ class _SeatCardState extends State<_SeatCard> with TickerProviderStateMixin {
                         ),
                         SizedBox(width: metrics.gap),
                         Expanded(
-                          child: Text(
-                            widget.player.nickname,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: MosiFonts.sans(
-                              color: MosiColors.navy,
-                              size: metrics.nicknameSize,
-                              weight: FontWeight.w700,
-                              letterSpacing: -0.5,
+                          child: FittedBox(
+                            alignment: Alignment.centerLeft,
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _seatCardNickname(widget.player.nickname),
+                              maxLines: 1,
+                              textScaler: TextScaler.noScaling,
+                              style: MosiFonts.sans(
+                                color: MosiColors.navy,
+                                size: metrics.nicknameSize,
+                                weight: FontWeight.w700,
+                                letterSpacing: -0.5,
+                              ),
                             ),
                           ),
                         ),

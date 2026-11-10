@@ -8,6 +8,7 @@
 // import하지 않아도 같은 디자인을 쓸 수 있습니다.
 
 // ========================[ import ]==========================
+import 'dart:math' as math;
 import 'package:game_kit/mosi_ui/mosi_motion.dart';
 import 'package:flutter/material.dart';
 
@@ -326,6 +327,7 @@ class MosiButton extends StatefulWidget {
     this.loadingDots = false,
     this.success = false,
     this.successLabel,
+    this.busyLabel,
   });
 
   final String label;
@@ -358,6 +360,12 @@ class MosiButton extends StatefulWidget {
   /// [success]일 때 체크 옆에 붙는 문구입니다. 없으면 체크만 그립니다.
   final String? successLabel;
 
+  /// [loading] 중에 보여 줄 진행 문구입니다(예: "게임 준비 중").
+  ///
+  /// 주면 로딩 동안 버튼이 눌린 자리에 머물고, 문구 옆에 점 세 개가 튀며
+  /// 흰 빛이 버튼 위를 지나갑니다. 버튼 크기와 위치는 그대로입니다.
+  final String? busyLabel;
+
   @override
   State<MosiButton> createState() => _MosiButtonState();
 }
@@ -369,8 +377,10 @@ class _MosiButtonState extends State<MosiButton> {
       widget.onPressed != null && !widget.loading && !widget.success;
 
   /// 점 로딩·성공 상태는 버튼 색을 그대로 둡니다(꺼진 것처럼 보이지 않게).
+  bool get _busy => widget.loading && widget.busyLabel != null;
+
   bool get _keepsColor =>
-      (widget.loading && widget.loadingDots) || widget.success;
+      (widget.loading && widget.loadingDots) || widget.success || _busy;
 
   void _setPressed(bool value) {
     if (_pressed == value) return;
@@ -383,7 +393,9 @@ class _MosiButtonState extends State<MosiButton> {
     final ghost = widget.variant == MosiButtonVariant.ghost;
     final lit = _enabled || _keepsColor;
     final shadow = filled && lit ? widget.shadowOffset : 0.0;
-    final shift = _pressed ? shadow : 0.0;
+    // 진행 문구가 있는 로딩은 손을 뗀 뒤에도 눌린 자리에 머뭅니다.
+    final held = _pressed || _busy;
+    final shift = held ? shadow : 0.0;
     final background = !lit && filled
         ? const Color(0xFFE4E2EA)
         : filled
@@ -412,6 +424,29 @@ class _MosiButtonState extends State<MosiButton> {
                   ),
                 ),
               ],
+            ],
+          )
+        : _busy
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.busyLabel!.localized,
+                    maxLines: 1,
+                    style: MosiFonts.sans(
+                      locale: Localizations.maybeLocaleOf(context),
+                      size: widget.fontSize,
+                      weight: FontWeight.w700,
+                      color: foreground,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              MosiLoadingDots(color: foreground, size: 6),
             ],
           )
         : widget.loading && widget.loadingDots
@@ -502,7 +537,7 @@ class _MosiButtonState extends State<MosiButton> {
                         color: filled ? widget.borderColor : foreground,
                         width: borderWidth,
                       ),
-                boxShadow: shadow > 0 && !_pressed
+                boxShadow: shadow > 0 && !held
                     ? [
                         BoxShadow(
                           color: widget.shadowColor,
@@ -513,15 +548,32 @@ class _MosiButtonState extends State<MosiButton> {
               ),
               // Container에 alignment를 주면 가로로 가득 늘어나므로 Center의
               // widthFactor로 내용 폭만 차지하게 합니다.
-              child: Center(
-                widthFactor: widget.expand ? null : 1,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 160),
-                  child: KeyedSubtree(
-                    key: ValueKey((widget.loading, widget.success)),
-                    child: content,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // 진행 중에는 흰 빛이 왼쪽에서 오른쪽으로 계속 지나갑니다.
+                  if (_busy)
+                    Positioned.fill(
+                      left: -widget.padding.horizontal / 2,
+                      right: -widget.padding.horizontal / 2,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          math.max(0, widget.radius - borderWidth),
+                        ),
+                        child: const _MosiBusySweep(),
+                      ),
+                    ),
+                  Center(
+                    widthFactor: widget.expand ? null : 1,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 160),
+                      child: KeyedSubtree(
+                        key: ValueKey((widget.loading, widget.success)),
+                        child: content,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -529,6 +581,53 @@ class _MosiButtonState extends State<MosiButton> {
       ),
     );
   }
+}
+
+/// 진행 중인 버튼 위를 지나가는 흰 빛입니다.
+class _MosiBusySweep extends StatefulWidget {
+  const _MosiBusySweep();
+
+  @override
+  State<_MosiBusySweep> createState() => _MosiBusySweepState();
+}
+
+class _MosiBusySweepState extends State<_MosiBusySweep>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        final x = -1.6 + 3.2 * t;
+        return DecoratedBox(
+          key: const Key('mosi-button-busy-sweep'),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(x - 0.7, -0.4),
+              end: Alignment(x + 0.7, 0.4),
+              colors: [
+                Colors.white.withValues(alpha: 0),
+                Colors.white.withValues(alpha: 0.5),
+                Colors.white.withValues(alpha: 0),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
 
 /// 테두리만 있는 둥근 아이콘 버튼입니다(닫기, 뒤로).

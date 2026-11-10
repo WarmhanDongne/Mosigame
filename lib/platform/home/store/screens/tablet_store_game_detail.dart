@@ -123,7 +123,9 @@ class _TabletStoreGameDetailState extends State<TabletStoreGameDetail> {
                       child: Container(
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          color: theme.deep,
+                          color: _tab == _StoreDetailTab.preview
+                              ? theme.deep
+                              : gamePartsBackground(game.id) ?? theme.deep,
                           border: Border.all(color: MosiColors.ink, width: 3),
                           borderRadius: BorderRadius.circular(14),
                         ),

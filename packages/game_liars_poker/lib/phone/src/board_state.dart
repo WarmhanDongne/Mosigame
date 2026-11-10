@@ -85,7 +85,6 @@ class _LiarsPokerPhoneGameState extends ConsumerState<LiarsPokerPhoneGame> {
     await controller.prepareScreen(
       () => preloadLiarsPokerAssets(
         context,
-        isPhone: true,
         characterIds: controller.players.values.map(
           (player) => player.characterId,
         ),
@@ -498,21 +497,8 @@ class _PhoneGameBackground extends StatelessWidget {
   const _PhoneGameBackground();
 
   @override
-  Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
-    final background = isLandscape
-        ? Assets.games.liarsPoker.images.background.background.game
-        : Assets.games.liarsPoker.images.background.backgroundPhone.game;
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SizedBox.expand(
-        child: background.image(
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: Colors.black,
+    body: LiarsPokerWoodTableBackground(),
+  );
 }

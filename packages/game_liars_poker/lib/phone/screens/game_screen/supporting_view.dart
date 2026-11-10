@@ -155,16 +155,8 @@ class _PortraitGameLayout {
 // 가로·세로 공통 배경 위젯
 // ============================================================================
 class _PhoneGameBackground extends StatelessWidget {
-  const _PhoneGameBackground({required this.isLandscape});
-
-  final bool isLandscape;
+  const _PhoneGameBackground();
 
   @override
-  Widget build(BuildContext context) {
-    final asset = isLandscape
-        ? Assets.games.liarsPoker.images.background.background.game
-        : Assets.games.liarsPoker.images.background.backgroundPhone.game;
-
-    return asset.image(fit: BoxFit.cover, filterQuality: FilterQuality.high);
-  }
+  Widget build(BuildContext context) => const LiarsPokerWoodTableBackground();
 }

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "project0000-ec01e"
+    "default": "project0000-ec01e",
+    "mosigame-test": "ban-pick-simulator"
   }
 }

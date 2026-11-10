@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/phone/animations/card_receive_animation.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/services/game_interruption_command_service.dart';
 import 'package:game_liars_poker/phone/phone_board.dart';
@@ -62,7 +63,7 @@ Map<String, Object?> _public(
   'status': 'playing',
   'phase': phase,
   'gameType': 'liars_poker',
-  'table': 'K',
+  'table': 'TRUTH',
   'round': 2,
   'turnUid': turnUid,
   'turnDeadlineAt': DateTime.now().millisecondsSinceEpoch + 24000,
@@ -85,11 +86,11 @@ final _private = {
     'dataSeq': 3,
   },
   'hand': {
-    'c1': {'rank': 'K'},
-    'c2': {'rank': 'Q'},
-    'c3': {'rank': 'A'},
-    'c4': {'rank': 'A'},
-    'c5': {'rank': 'JOKER'},
+    'c1': {'rank': 'TRUTH'},
+    'c2': {'rank': 'LIE'},
+    'c3': {'rank': 'TRUTH'},
+    'c4': {'rank': 'TRUTH'},
+    'c5': {'rank': 'LIE'},
   },
 };
 
@@ -106,7 +107,7 @@ final _cases = <String, Map<String, Object?>>{
         'playerUid': 'phone',
         'revealed': true,
         'cardCount': 3,
-        'actualRanks': ['K', 'Q', 'A'],
+        'actualRanks': ['TRUTH', 'LIE', 'TRUTH'],
       },
     },
   ),
@@ -150,6 +151,41 @@ List<int> _cardCounts(int count) => [
 ];
 
 void main() {
+  testWidgets('시작·라운드 문구 없이 손패 공개를 바로 시작한다', (tester) async {
+    final (game, container, query) = await _controller(
+      tester,
+      _cases['내 차례 3명']!,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ScreenUtilInit(
+          designSize: const Size(390, 844),
+          builder: (_, _) => MaterialApp(
+            home: LiarsPokerPhoneGameScreen(
+              controller: game,
+              flowConfig: buildLiarsPokerPhoneFlowConfig(
+                roundNumber: 2,
+                tableCardValue: 'TRUTH',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('GAME START'), findsNothing);
+    expect(find.text('ROUND 2'), findsNothing);
+    expect(find.byType(CardReceiveAnimation), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    container.dispose();
+    await query.close();
+    await tester.pump();
+  });
+
   testWidgets('라이어스 포커 휴대폰 화면은 모든 휴대폰 크기·방향에서 넘치지 않는다', (tester) async {
     await loadSweepFonts(tester);
     addTearDown(tester.view.reset);
@@ -171,14 +207,14 @@ void main() {
                   controller: game,
                   flowConfig: buildLiarsPokerPhoneFlowConfig(
                     roundNumber: 2,
-                    tableCardValue: 'K',
+                    tableCardValue: 'TRUTH',
                   ),
                 ),
               ),
             ),
           ),
         );
-        // 게임 시작·라운드 안내가 끝난 뒤에 손패를 누를 수 있습니다.
+        // 서버 준비 후 사전 안내 대기 없이 손패를 누를 수 있습니다.
         for (var i = 0; i < 48; i++) {
           await tester.pump(const Duration(milliseconds: 250));
         }
@@ -213,7 +249,7 @@ void main() {
                         seatIndex: i,
                       ),
                 ],
-                table: 'K',
+                table: 'TRUTH',
                 provider: _Room(),
                 onExitRoom: () async => true,
               ),
@@ -245,9 +281,12 @@ void main() {
         playerSeatIndexes: const [0, 1, 2, 3, 4, 5],
         dealPlayerSeatIndexes: const [0, 1, 2, 4, 5],
         cardsPerPlayer: 5,
+        truthCardCount: 17,
+        lieCardCount: 16,
+        unrevealedCardCount: 3,
         roundNumber: 2,
         cardPileVersion: 1,
-        table: 'K',
+        table: 'TRUTH',
         remainingCardCounts: _cardCounts(6),
         currentTurnPlayerIndex: 4,
         onDealCompleted: () {},
@@ -263,9 +302,12 @@ void main() {
         playerSeatIndexes: const [0, 1, 2, 3, 4, 5],
         dealPlayerSeatIndexes: const [0, 1, 2, 4, 5],
         cardsPerPlayer: 5,
+        truthCardCount: 17,
+        lieCardCount: 16,
+        unrevealedCardCount: 3,
         roundNumber: 2,
         cardPileVersion: 1,
-        table: 'K',
+        table: 'TRUTH',
         remainingCardCounts: _cardCounts(6),
         currentTurnPlayerIndex: 4,
         onDealCompleted: () {},

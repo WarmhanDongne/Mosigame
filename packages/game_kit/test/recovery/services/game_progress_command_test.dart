@@ -1,6 +1,7 @@
 // recovery/service의 진행 명령 재시도와 무효화 동작을 검증합니다.
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/recovery/services/game_command_batch.dart';
 import 'package:game_kit/recovery/services/game_progress_command.dart';
 
 void main() {
@@ -118,5 +119,81 @@ void main() {
     response.completeError(StateError('late failure'));
     await tester.pump(const Duration(seconds: 10));
     expect(calls, 1);
+  });
+
+  testWidgets('connection readiness waits do not consume attempt budget', (
+    tester,
+  ) async {
+    var elapsed = Duration.zero;
+    var ready = false;
+    var calls = 0;
+    final command = GameProgressCommand(elapsed: () => elapsed);
+    addTearDown(command.dispose);
+
+    void run() => command.run(
+      key: 'dealing',
+      isCurrent: () => true,
+      canAttempt: () => ready,
+      send: () async {
+        calls++;
+        return true;
+      },
+    );
+
+    run();
+    await tester.pump();
+    expect(calls, 0);
+    elapsed = const Duration(seconds: 30);
+    await tester.pump(const Duration(seconds: 30));
+    expect(calls, 0);
+    expect(command.needsRetry, false);
+
+    ready = true;
+    run();
+    await tester.pump();
+    expect(calls, 1);
+    expect(command.needsRetry, false);
+  });
+
+  testWidgets('disconnect during send resumes with the captured command ID', (
+    tester,
+  ) async {
+    var ready = true;
+    var calls = 0;
+    Map<String, dynamic>? firstPayload;
+    final command = GameProgressCommand();
+    addTearDown(command.dispose);
+
+    void run() => command.run(
+      key: 'dealing',
+      isCurrent: () => true,
+      canAttempt: () => ready,
+      send: () async {
+        calls++;
+        final payload = GameCommandBatch.current!.commands.putIfAbsent(
+          'complete',
+          () => {'commandId': 'same-command'},
+        );
+        firstPayload ??= payload;
+        if (calls == 1) {
+          ready = false;
+          return false;
+        }
+        expect(identical(payload, firstPayload), true);
+        return true;
+      },
+    );
+
+    run();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(calls, 1);
+    expect(command.needsRetry, false);
+
+    ready = true;
+    run();
+    await tester.pump();
+    expect(calls, 2);
+    expect(command.needsRetry, false);
   });
 }

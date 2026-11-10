@@ -14,7 +14,7 @@ import {
 import {gameRules, localizedGameRules} from "./update-game-rules.mjs";
 import {yutGameCatalog} from "./yut-game-catalog.mjs";
 
-const PROJECT = "project0000-ec01e";
+export const PRODUCTION_PROJECT = "project0000-ec01e";
 
 export const minimalGameCatalog = Object.freeze({
   liars: Object.freeze({
@@ -94,7 +94,11 @@ const catalogIds = Object.freeze(Object.keys(minimalGameCatalog));
 
 export async function rebuildGameCatalog(
   firestore,
-  {apply = false, writeBackup: saveBackup} = {},
+  {
+    apply = false,
+    projectId = PRODUCTION_PROJECT,
+    writeBackup: saveBackup,
+  } = {},
 ) {
   const snapshot = await firestore.collection("games").get();
   const existing = snapshot.docs;
@@ -140,7 +144,7 @@ export async function rebuildGameCatalog(
   }
   if (saveBackup) {
     await saveBackup({
-      projectId: PROJECT,
+      projectId,
       exportedAt: new Date().toISOString(),
       documents: existing.map((document) => ({
         id: document.id,
@@ -160,6 +164,30 @@ export async function rebuildGameCatalog(
   return result;
 }
 
+export function catalogCommand(args) {
+  let apply = false;
+  let projectId = PRODUCTION_PROJECT;
+  let confirmation;
+  for (const argument of args) {
+    if (argument === "--apply") {
+      apply = true;
+    } else if (argument.startsWith("--project=")) {
+      projectId = argument.slice("--project=".length);
+    } else if (argument.startsWith("--confirm-project=")) {
+      confirmation = argument.slice("--confirm-project=".length);
+    } else {
+      throw new Error(`Unknown argument: ${argument}`);
+    }
+  }
+  if (!projectId || projectId === "default") {
+    throw new Error("An explicit Firebase project ID is required.");
+  }
+  if (apply && confirmation !== projectId) {
+    throw new Error(`Apply requires --confirm-project=${projectId}.`);
+  }
+  return {apply, projectId};
+}
+
 function backupWriter(path) {
   return async (value) => {
     await mkdir(dirname(path), {recursive: true});
@@ -168,18 +196,12 @@ function backupWriter(path) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const args = process.argv.slice(2);
-  const apply = args.includes("--apply");
-  const confirmation = `--confirm-project=${PROJECT}`;
   try {
-    if (args.some((arg) => arg !== "--apply" && arg !== confirmation)) {
-      throw new Error("Unknown argument.");
+    const {apply, projectId} = catalogCommand(process.argv.slice(2));
+    const app = getApps()[0] ?? initializeApp({projectId});
+    if (app.options.projectId !== projectId) {
+      throw new Error("Wrong Firebase project.");
     }
-    if (apply && !args.includes(confirmation)) {
-      throw new Error(`Apply requires ${confirmation}.`);
-    }
-    const app = getApps()[0] ?? initializeApp({projectId: PROJECT});
-    if (app.options.projectId !== PROJECT) throw new Error("Wrong Firebase project.");
     const stamp = new Date().toISOString().replaceAll(":", "-");
     const backupPath = resolve(
       process.cwd(),
@@ -187,6 +209,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     );
     const result = await rebuildGameCatalog(getFirestore(app), {
       apply,
+      projectId,
       writeBackup: apply ? backupWriter(backupPath) : undefined,
     });
     console.log(JSON.stringify({...result, backupPath: apply ? backupPath : null}));

@@ -76,6 +76,7 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
     this.combinationCardIds = const {},
     this.combinationLabel,
     this.showTapHint = false,
+    this.autoReveal = false,
   });
 
   final List<FinalCallCard> cards;
@@ -100,6 +101,9 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
 
   /// 받은 덱을 눌러 펼치라는 안내를 보여 줄지입니다(게임 첫 배분).
   final bool showTapHint;
+
+  /// 받은 덱을 자동으로 펼칠지 여부입니다.
+  final bool autoReveal;
   final VoidCallback onRevealStarted;
   final VoidCallback onRevealCompleted;
   final ValueChanged<String> onCardSelected;
@@ -118,6 +122,7 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
         onRevealStarted: onRevealStarted,
         onCompleted: onRevealCompleted,
         showTapHint: showTapHint,
+        autoReveal: autoReveal,
       );
     }
 

@@ -73,7 +73,7 @@ class GameService {
         .where(include)
         .toList(growable: false);
 
-    games.sort((left, right) => left.order.compareTo(right.order));
+    games.sort(_compareShelfPosition);
     return games;
   }
 
@@ -128,7 +128,7 @@ class GameService {
         .toList(growable: false);
 
     // 순서에 맞게 정렬 후 반환
-    games.sort((left, right) => left.order.compareTo(right.order));
+    games.sort(_compareShelfPosition);
     return games;
   }
 
@@ -167,4 +167,11 @@ class GameService {
   Set<String> _ownedGameIds(Object? value) => value is List
       ? value.whereType<String>().map(runtimeGameId).toSet()
       : const <String>{};
+}
+
+/// Firestore가 같은 `order`의 문서를 다른 순서로 반환해도 책의 좌우 위치가
+/// 바뀌지 않도록 게임 ID를 보조 정렬 키로 사용합니다.
+int _compareShelfPosition(GameInfo left, GameInfo right) {
+  final order = left.order.compareTo(right.order);
+  return order != 0 ? order : left.id.compareTo(right.id);
 }

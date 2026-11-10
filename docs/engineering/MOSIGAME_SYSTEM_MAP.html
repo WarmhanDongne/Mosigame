@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>모시겜 · 코드 구조와 함수</title>
+  <style>
+    :root{--bg:#0b101b;--panel:#111a2a;--panel2:#162137;--edge:#2d3c55;--text:#f5f6fb;--muted:#a8b5c9;--blue:#81b5ff;--mint:#72e3c4;--gold:#f8cf88;--pink:#ffa6b5;--violet:#c2a6ff;--shadow:0 22px 65px #02081277}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 15% -4%,#23416e70,transparent 28rem),radial-gradient(circle at 93% 6%,#40295862,transparent 25rem),var(--bg);color:var(--text);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+    button,input{font:inherit}button{cursor:pointer}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:3px}code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}code{font-size:.91em;color:#c4e1ff}small{font-size:.82em}.shell{max-width:1500px;margin:auto;padding:34px 28px 90px}.topline{display:flex;justify-content:space-between;gap:14px;align-items:center;color:var(--muted);font-size:.83rem;letter-spacing:.11em;text-transform:uppercase}.mark{display:flex;gap:10px;align-items:center;color:var(--text);font-weight:900}.mark b{display:inline-grid;place-items:center;width:31px;height:31px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--violet));color:#0b1425;letter-spacing:0}.hero{padding:74px 0 54px;max-width:940px}.eyebrow{color:var(--mint);font-size:.78rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.hero h1{font-size:clamp(2.6rem,6vw,5.8rem);line-height:1.1;letter-spacing:-.075em;margin:15px 0 21px}.hero h1 span{color:var(--blue)}.hero p{font-size:clamp(1rem,1.5vw,1.22rem);color:var(--muted);max-width:760px;margin:0}.meta{display:flex;flex-wrap:wrap;gap:9px;margin-top:28px}.pill{border:1px solid var(--edge);background:#172137a6;padding:7px 12px;border-radius:100px;color:#d0dcf0;font-size:.8rem}
+    .tabs{position:sticky;top:0;z-index:20;display:flex;gap:4px;overflow:auto;padding:10px;background:#0b101bec;backdrop-filter:blur(18px);border:1px solid #ffffff12;border-radius:17px;box-shadow:0 12px 34px #0003}.tabs button{white-space:nowrap;border:0;background:transparent;border-radius:10px;color:var(--muted);padding:10px 15px;font-weight:700}.tabs button[aria-selected="true"]{background:#253651;color:var(--text)}main{padding-top:45px}.page[hidden]{display:none}.section-title{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:0 0 23px}.section-title h2{font-size:clamp(1.8rem,3.2vw,2.7rem);line-height:1.22;letter-spacing:-.045em;margin:5px 0 0}.section-title p{color:var(--muted);margin:0;max-width:570px}.kicker{font-size:.74rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mint)}.panel{background:linear-gradient(150deg,#16243a,#101928);border:1px solid var(--edge);border-radius:23px;box-shadow:var(--shadow)}.pad{padding:25px}.soft{background:#101a2a;border:1px solid #35455c;border-radius:16px;padding:18px}.label{color:var(--muted);font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.title{font-size:1.18rem;font-weight:850;line-height:1.3;letter-spacing:-.02em}.sub{color:var(--muted);font-size:.88rem}.accent-blue{color:var(--blue)}.accent-mint{color:var(--mint)}.accent-gold{color:var(--gold)}.accent-pink{color:var(--pink)}.accent-violet{color:var(--violet)}
+    .overview-map{display:grid;grid-template-columns:1fr 72px 1.08fr 72px 1.16fr;gap:14px;align-items:stretch}.stack{display:grid;gap:14px}.device{padding:20px;border-radius:16px;border:1px solid #89b8ff58;background:linear-gradient(145deg,#1c3554,#142439)}.device.phone{border-color:#77e4c45e;background:linear-gradient(145deg,#164138,#142b32)}.device .title{margin:5px 0}.device .sub{line-height:1.5}.middle{background:#161b35;border:1px solid #bba5ff61;border-radius:18px;padding:21px;display:flex;flex-direction:column;justify-content:center}.middle .title{font-size:1.4rem}.middle ul{padding-left:18px;color:#ccd5e3}.middle li+li{margin-top:6px}.bridge{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;text-align:center;color:var(--muted);font-size:.75rem;font-weight:700}.bridge strong{font-size:2.2rem;color:var(--blue);line-height:1}.firebase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.firebase-grid .mini{background:#17212f;border:1px solid #566078;border-radius:13px;padding:13px;min-height:78px}.firebase-grid .mini strong{display:block;font-size:.86rem}.firebase-grid .mini span{display:block;color:var(--muted);font-size:.75rem;margin-top:4px}.firebase-grid .wide{grid-column:1/-1}.note{color:var(--muted);font-size:.87rem;line-height:1.6}.note strong{color:var(--text)}.callout{border-left:3px solid var(--gold);background:#302b244f;padding:15px 18px;border-radius:0 13px 13px 0;color:#eedfca}.below-map{margin-top:15px}.roundtrip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;margin:23px 0 40px}.step{position:relative;background:#131e30;border:1px solid var(--edge);border-radius:16px;padding:15px}.step:not(:last-child):after{content:'›';position:absolute;right:-14px;top:35%;font-size:1.75rem;color:var(--blue);z-index:1}.step b{display:block;font-size:.8rem;color:var(--mint);margin-bottom:8px}.step strong{display:block;font-size:.95rem}.step span{display:block;color:var(--muted);font-size:.79rem;margin-top:4px}
+    .explorer{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.nodegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.node{background:#1c2940;border:1px solid #3a4d69;border-radius:13px;padding:15px;text-align:left;color:var(--text);transition:transform .18s,background .18s}.node:hover{transform:translateY(-2px);background:#243755}.node[aria-pressed="true"]{border-color:var(--mint);box-shadow:0 0 0 1px var(--mint)}.node span{display:block;color:var(--mint);font-size:.71rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.node strong{display:block;margin-top:4px}.detailbox{min-height:230px}.detailbox h3{margin:6px 0 9px;font-size:1.45rem}.detailbox p{color:#d0d9e8;margin:0 0 15px}.sources{display:flex;flex-wrap:wrap;gap:7px}.source{display:inline-flex;align-items:center;gap:5px;background:#243954;border:1px solid #496284;border-radius:9px;padding:6px 9px;font-size:.75rem;max-width:100%;overflow-wrap:anywhere}.source:before{content:'↗';color:var(--mint)}
+    .journey{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.journey-card{background:linear-gradient(180deg,#1b2941,#101c2d);border:1px solid var(--edge);border-radius:17px;padding:18px;position:relative;min-height:188px}.journey-card:not(:last-child):after{content:'→';position:absolute;right:-13px;top:43%;z-index:1;color:var(--blue);font-size:1.5rem}.journey-card .num{color:var(--gold);font-size:.75rem;font-weight:850;letter-spacing:.14em}.journey-card h3{font-size:1.02rem;line-height:1.35;margin:10px 0 7px}.journey-card p{font-size:.78rem;color:var(--muted);margin:0}.journey-card .tag{display:inline-block;margin-top:13px;padding:3px 7px;background:#243852;border-radius:6px;color:#bfd6ff;font-size:.69rem}.branch{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:16px}.branch .panel{padding:21px}.branch h3{margin:4px 0 8px}.branch p{margin:0;color:var(--muted)}.branch .tag{font-size:.72rem;color:var(--mint);letter-spacing:.1em;font-weight:800}.journey-links{margin-top:15px}.journey-links a{display:inline-block;margin:4px 7px 0 0}
+    .game-controls{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 19px}.game-controls button{background:#172239;border:1px solid var(--edge);border-radius:100px;padding:9px 15px;color:#c6d1e4;font-weight:700}.game-controls button[aria-pressed="true"]{background:#385177;color:white;border-color:var(--blue)}.game-head{display:grid;grid-template-columns:1.4fr .6fr;gap:15px}.game-intro{padding:27px}.game-intro h3{margin:4px 0 11px;font-size:2rem;letter-spacing:-.04em}.game-intro p{color:var(--muted);margin:0}.game-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}.game-meta span{padding:5px 9px;border:1px solid #53647d;border-radius:7px;font-size:.75rem;color:#d1e0f4}.game-files{padding:22px;display:flex;flex-direction:column;justify-content:center;gap:9px}.game-files strong{font-size:.78rem;color:var(--muted);letter-spacing:.1em}.game-files a{font-size:.78rem}.stages{display:flex;gap:9px;overflow:auto;padding:22px 2px 16px}.stage{flex:0 0 226px;min-height:290px;border:1px solid var(--edge);border-radius:17px;padding:17px;background:#16233a;position:relative}.stage:not(:last-child):after{content:'›';position:absolute;right:-14px;top:42%;z-index:1;color:var(--mint);font-size:1.8rem}.stage .index{color:var(--gold);font-size:.73rem;font-weight:800}.stage h4{margin:9px 0 3px;font-size:1rem}.stage .status{font-size:.72rem;color:var(--blue);font-family:ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}.stage dl{margin:13px 0 0}.stage dt{color:#a6b5ca;font-size:.69rem;letter-spacing:.1em;text-transform:uppercase;font-weight:800;margin-top:10px}.stage dd{margin:2px 0 0;color:#e3eaf5;font-size:.76rem;line-height:1.45}.stage dd a{font-size:.72rem}.hint{color:var(--muted);font-size:.82rem}.scrolltip{color:var(--muted);font-size:.75rem;text-align:right;margin:0 0 15px}
+    .inventory-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:28px 0 12px}.inventory-head h3{margin:0;font-size:1.28rem}.search{width:min(100%,420px);background:#111a2a;color:var(--text);border:1px solid #50627e;border-radius:11px;padding:10px 13px}.function-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.func{border:1px solid var(--edge);background:#152139;border-radius:12px;padding:11px 13px;min-width:0}.func a{display:block;color:#d9e8ff;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.func span{display:block;color:var(--muted);font-size:.72rem;margin-top:3px}.func[hidden]{display:none}
+    .data-layout{display:grid;grid-template-columns:1fr .9fr;gap:15px}.tree{padding:24px;overflow:auto}.tree h3{margin:0 0 12px}.tree pre{color:#d5e5f9;font:13px/1.8 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;min-width:460px}.tree .dim{color:#8597b1}.rules{display:grid;gap:12px}.rules .soft{padding:17px}.rules h3{margin:0 0 5px;font-size:1rem}.rules p{margin:0;color:var(--muted);font-size:.82rem}.recovery-flow{display:flex;gap:8px;overflow:auto}.recovery-flow span{flex:1 0 145px;background:#1a2940;border:1px solid #4b6181;border-radius:12px;padding:14px;font-size:.79rem}.recovery-flow b{display:block;color:var(--mint);font-size:.72rem;margin-bottom:4px}.recovery-flow span:not(:last-child):after{content:'→';float:right;color:var(--gold)}.runtime{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.runtime .soft strong{display:block;margin:5px 0}.runtime .soft p{color:var(--muted);margin:0;font-size:.8rem}
+    .files-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.file-group{padding:20px}.file-group h3{margin:0 0 10px}.file-group p{color:var(--muted);font-size:.82rem;margin:0 0 14px}.file-group .source{display:flex;margin:6px 0}.footer{border-top:1px solid var(--edge);margin-top:65px;padding-top:20px;color:var(--muted);font-size:.78rem}.footer code{color:#c1d7f7}
+    .bookmarks{position:sticky;top:0;z-index:30;display:flex;align-items:end;gap:8px;overflow-x:auto;padding:8px 22px 0;background:linear-gradient(180deg,#0b101bf9 70%,#0b101b00);scrollbar-width:thin}.bookmarks button{flex:none;min-height:48px;border:1px solid #516784;border-bottom:0;border-radius:14px 14px 0 0;padding:10px 21px 13px;background:#192840;color:#c6d4e8;font-weight:800;letter-spacing:-.02em;transform:translateY(5px);transition:transform .2s,background .2s}.bookmarks button span{font:700 .72rem ui-monospace,SFMono-Regular,monospace;margin-right:8px;opacity:.72}.bookmarks button:nth-child(2){background:#243445;border-color:#728da0}.bookmarks button:nth-child(3){background:#2e2b3d;border-color:#8c789c}.bookmarks button[aria-selected="true"]{color:white;background:#29486c;transform:translateY(0);box-shadow:0 -8px 25px #70a7ff20}.bookmarks button:nth-child(2)[aria-selected="true"]{background:#31625e}.bookmarks button:nth-child(3)[aria-selected="true"]{background:#594c6e}
+    .book-stack{position:relative;isolation:isolate;margin:0 21px 28px 0;padding-top:0}.book-stack:before,.book-stack:after{content:"";position:absolute;border:1px solid #5c7192;border-radius:25px;box-shadow:var(--shadow)}.book-stack:before{inset:12px -10px -12px 10px;background:#1c2d41;z-index:-1}.book-stack:after{inset:24px -20px -24px 20px;background:#172335;border-color:#40526d;z-index:-2}.book-stack[data-active="backend"]:before{background:#244146}.book-stack[data-active="backend"]:after{background:#172c34}.book-stack[data-active="other"]:before{background:#3c3550}.book-stack[data-active="other"]:after{background:#29283c}.book-sheet{position:relative;z-index:1;background:linear-gradient(160deg,#142238,#101928 450px);border:1px solid #526d90;border-radius:24px;padding:35px 34px 60px;min-height:520px;box-shadow:0 20px 60px #05091591}.book-sheet[hidden]{display:none}.book-stack[data-active="backend"] .book-sheet{border-color:#5c9e9c;background:linear-gradient(160deg,#142d32,#101b27 450px)}.book-stack[data-active="other"] .book-sheet{border-color:#8b78a1;background:linear-gradient(160deg,#272338,#141927 450px)}.book-sheet>section+section{margin-top:65px;padding-top:48px;border-top:1px solid var(--edge)}.sheet-heading{display:flex;gap:24px;align-items:start;margin-bottom:45px;padding-bottom:24px;border-bottom:1px solid #59708a68}.sheet-heading>span{display:inline-block;flex:none;border:1px solid #6381a4;border-radius:8px;padding:5px 8px;color:var(--gold);font:700 .7rem ui-monospace,SFMono-Regular,monospace}.sheet-heading h2{font-size:clamp(1.9rem,3.4vw,3.2rem);letter-spacing:-.065em;line-height:1.2;margin:0 0 5px}.sheet-heading p{margin:0;color:var(--muted)}
+    .scope-toggle{display:flex;gap:8px;margin:11px 0}.scope-toggle button{background:#19283b;color:#bfd0e5;border:1px solid #52647a;border-radius:9px;padding:8px 12px;font-size:.79rem;font-weight:750}.scope-toggle button[aria-pressed="true"]{background:#315e5c;color:white;border-color:var(--mint)}.function-browser{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);align-items:start;gap:15px}.function-browser .function-list{display:grid;grid-template-columns:1fr;gap:8px}.func{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#e3edfc}.func strong{display:block;font-size:.89rem;line-height:1.35}.func code{display:block;color:#a8bfd8;font-size:.69rem;margin-top:4px;overflow-wrap:anywhere}.func:after{content:'›';color:var(--mint);font-size:1.4rem}.func[aria-pressed="true"]{border-color:var(--mint);background:#21413f}.function-detail{position:sticky;top:85px;padding:23px;min-height:330px}.function-detail h4{font-size:1.4rem;line-height:1.3;margin:7px 0 4px;letter-spacing:-.04em}.function-detail .api-name{font:600 .78rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--blue);overflow-wrap:anywhere}.function-detail .intro{color:#cfdbeb;margin:14px 0}.design-flow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:17px 0}.design-flow .soft{padding:12px}.design-flow b{color:var(--mint);display:block;font-size:.69rem;letter-spacing:.1em;margin-bottom:4px}.design-flow p{color:#dce5f1;font-size:.78rem;line-height:1.5;margin:0}.function-detail .source{margin-top:7px}.stage-action{border:1px solid #4a7285;background:#203b45;color:#d6fff6;border-radius:8px;padding:5px 8px;font-size:.7rem;margin-top:7px}
+    .stage-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.stage-action{margin-top:0}
+    @media(max-width:1100px){.overview-map{grid-template-columns:1fr 55px 1fr}.overview-map .firebase-holder{grid-column:1/-1}.overview-map .bridge.second{display:none}.journey{grid-template-columns:repeat(3,1fr)}.journey-card:nth-child(3):after{display:none}.files-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:740px){.shell{padding:18px 14px 65px}.hero{padding:45px 0 34px}.topline{font-size:.7rem}.bookmarks{padding-left:8px;padding-right:8px}.bookmarks button{padding:8px 11px 12px;font-size:.76rem}.bookmarks button span{margin-right:3px}.book-stack{margin-right:11px}.book-stack:before{inset:8px -5px -8px 5px}.book-stack:after{inset:16px -10px -16px 10px}.book-sheet{padding:22px 15px 44px;border-radius:16px}.sheet-heading{gap:11px;margin-bottom:32px}.sheet-heading>span{font-size:.6rem;padding:4px}.sheet-heading p{font-size:.79rem}.section-title{display:block}.section-title p{margin-top:10px}.overview-map,.explorer,.branch,.game-head,.data-layout,.function-browser{display:grid;grid-template-columns:1fr}.function-detail{position:static;min-height:0}.bridge{flex-direction:row;padding:3px}.bridge strong{transform:rotate(90deg);font-size:1.5rem}.firebase-grid{grid-template-columns:repeat(2,1fr)}.roundtrip{grid-template-columns:1fr 1fr}.roundtrip .step:after{display:none}.journey{grid-template-columns:1fr 1fr}.journey-card{min-height:150px}.journey-card:nth-child(3):after{display:block}.journey-card:nth-child(even):after{display:none}.files-grid,.runtime{grid-template-columns:1fr}.inventory-head{display:block}.search{margin-top:10px}.stage{flex-basis:205px}.callout{font-size:.82rem}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+    /* 로비의 violet / navy / lime 색과 책 선반, MosiBox의 굵은 테두리를 문서에 옮겼습니다. */
+    :root{--bg:#5a3ff0;--panel:#fff;--panel2:#f7f4ec;--edge:#0e0a3d;--text:#0e0a3d;--muted:#55527a;--blue:#3a22c8;--mint:#216447;--gold:#805a00;--pink:#b8262b;--violet:#5a3ff0;--shadow:6px 6px 0 #0e0a3d}
+    body{background:radial-gradient(circle at 84% 5%,#8a78f88a,transparent 28rem),linear-gradient(145deg,#5a3ff0 0%,#4b31dd 56%,#3924b6 100%);background-attachment:fixed;color:var(--text)}
+    a{color:#3822b3}code{color:#3927a4}
+    .shell{max-width:1500px;padding-top:25px}
+    .topline{color:#fff;letter-spacing:.035em;text-transform:none;font-weight:700}
+    .mark{gap:12px;color:#fff;font-size:1.12rem;letter-spacing:-.035em}
+    .mark .brand-symbol{display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center}
+    .mark svg{width:34px;height:34px;fill:#fff}
+    .mark small{font-size:.68rem;opacity:.7;letter-spacing:.1em;margin-left:5px}
+    .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,410px);align-items:center;gap:40px;max-width:none;padding:52px 3px 56px}
+    .hero-copy{min-width:0}
+    .hero .eyebrow{color:#c9ed88;letter-spacing:.12em}
+    .hero h1{font-size:clamp(2.8rem,5.4vw,5rem);color:white;margin:15px 0 18px;line-height:1.13}
+    .hero h1 span{color:#c7f48d}
+    .hero p{color:#f4efff;max-width:780px}
+    .pill{background:#ffffff1c;border:1.5px solid #ffffff9c;color:white;font-weight:700;padding:7px 13px}
+    .shelf-scene{position:relative;height:315px;filter:drop-shadow(0 19px 22px #1709615e)}
+    .shelf-books{position:absolute;left:9px;right:102px;bottom:72px;display:flex;align-items:flex-end;justify-content:center;gap:11px;height:217px}
+    .shelf-cover{position:relative;width:31%;max-width:95px;aspect-ratio:3/4;border:3px solid #0e0a3d;border-radius:5px 8px 4px 4px;box-shadow:5px 7px 0 #0e0a3db0;display:flex;flex-direction:column;justify-content:space-between;padding:11px 8px 10px;color:#fff;font-size:.55rem;font-weight:900;letter-spacing:.06em;overflow:hidden}
+    .shelf-cover:after{content:"";position:absolute;inset:7px;border:1px solid currentColor;opacity:.42;pointer-events:none}
+    .shelf-cover b{font-size:clamp(.78rem,1.2vw,1rem);line-height:1.02;letter-spacing:-.05em;z-index:1}
+    .shelf-cover span{z-index:1;opacity:.75}
+    .shelf-cover.liar{background:linear-gradient(155deg,#3d2220,#181012);transform:rotate(-7deg) translateY(11px);color:#f0d9b8}
+    .shelf-cover.final{background:linear-gradient(155deg,#fffaf0,#e8e5d7);color:#16121e;transform:translateY(-11px);box-shadow:7px 12px 0 #0e0a3d}
+    .shelf-cover.mafia{background:linear-gradient(155deg,#252b36,#090c12);transform:rotate(6deg) translateY(10px);color:#fff}
+    .shelf-plank{position:absolute;left:-6px;right:8px;bottom:57px;height:14px;background:#0e0a3d;border-top:3px solid #05031f;box-shadow:0 7px 0 #25177a}
+    .room-ticket{position:absolute;right:0;bottom:5px;width:177px;padding:15px 13px;background:white;color:#0e0a3d;border:3px solid #111;border-radius:9px;box-shadow:8px 9px 0 #0e0a3d;transform:rotate(4deg);font-size:.74rem;line-height:1.4}
+    .room-ticket small,.room-ticket strong{display:block}
+    .room-ticket small{color:#55527a;font-weight:800;letter-spacing:.06em}
+    .room-ticket strong{font-size:1.25rem;letter-spacing:.08em;margin:4px 0 11px}
+    .room-ticket em{display:block;border-radius:7px;background:#a4d65e;padding:7px 9px;color:#0e0a3d;font-style:normal;font-weight:900;text-align:center}
+    .bookmarks{background:transparent;gap:9px;padding:8px 19px 0}
+    .bookmarks button,.bookmarks button:nth-child(2),.bookmarks button:nth-child(3){background:#0e0a3d;border:2px solid #0e0a3d;border-bottom:0;color:#fff;border-radius:9px 9px 0 0;box-shadow:4px 0 0 #211266;min-height:53px;padding:11px 22px 14px}
+    .bookmarks button:hover{transform:translateY(0);background:#2f2185}
+    .bookmarks button[aria-selected="true"],.bookmarks button:nth-child(2)[aria-selected="true"],.bookmarks button:nth-child(3)[aria-selected="true"]{background:#a4d65e;color:#0e0a3d;box-shadow:4px 0 0 #0e0a3d}
+    .book-stack{margin:0 17px 30px 0}
+    .book-stack:before,.book-stack:after{border:3px solid #0e0a3d;border-radius:12px;box-shadow:none}
+    .book-stack:before,.book-stack[data-active="backend"]:before,.book-stack[data-active="other"]:before{inset:12px -9px -12px 9px;background:#ece6ff}
+    .book-stack:after,.book-stack[data-active="backend"]:after,.book-stack[data-active="other"]:after{inset:24px -18px -24px 18px;background:#c5b8fb;border-color:#0e0a3d}
+    .book-sheet,.book-stack[data-active="backend"] .book-sheet,.book-stack[data-active="other"] .book-sheet{background:#fffdf8;border:3px solid #0e0a3d;border-radius:12px;color:#0e0a3d;box-shadow:12px 15px 0 #0e0a3d;padding:36px 36px 64px}
+    .book-sheet>section+section{border-top:2px solid #ddd7ef}
+    .sheet-heading{border-bottom:2px solid #ddd7ef}
+    .sheet-heading>span{border:2px solid #0e0a3d;color:#0e0a3d;background:#a4d65e;border-radius:5px}
+    .sheet-heading h2,.section-title h2{font-weight:900}
+    .kicker,.label{color:#3a22c8}
+    .panel{background:#fff;border:2px solid #0e0a3d;border-radius:11px;box-shadow:5px 5px 0 #0e0a3d}
+    .soft{background:#f7f4ec;border:1.5px solid #bbb5d2;border-radius:8px}
+    .device,.device.phone,.middle{border:2px solid #0e0a3d;background:#f7f4ec;border-radius:10px}
+    .device.phone{background:#eff7e5}.middle{background:#ede8fc}.middle ul{color:#363052}
+    .bridge{color:#55527a}.bridge strong{color:#5a3ff0}
+    .firebase-grid .mini{background:#f7f4ec;border:1.5px solid #bbb5d2;border-radius:8px}
+    .callout{background:#ecf6dc;color:#263b21;border-left:5px solid #a4d65e}
+    .step,.journey-card,.stage,.recovery-flow span{background:#fff;border:2px solid #0e0a3d;border-radius:10px}
+    .step:after,.journey-card:after{color:#5a3ff0!important}
+    .step b,.journey-card .num,.branch .tag,.stage .index,.recovery-flow b{color:#3a22c8}
+    .journey-card .tag{background:#e8e1fb;color:#3321a1}
+    .node,.func,.game-controls button,.scope-toggle button{background:#fff;border:2px solid #0e0a3d;border-radius:8px;color:#0e0a3d}
+    .node:hover,.func:hover,.game-controls button:hover,.scope-toggle button:hover{background:#f0eafb}
+    .node span{color:#3a22c8}
+    .node[aria-pressed="true"],.func[aria-pressed="true"],.game-controls button[aria-pressed="true"],.scope-toggle button[aria-pressed="true"]{background:#a4d65e;border-color:#0e0a3d;color:#0e0a3d;box-shadow:3px 3px 0 #0e0a3d}
+    .detailbox p,.function-detail .intro,.design-flow p,.stage dd{color:#34304b}
+    .source{background:#eae4fa;border:1px solid #c3b9e2;border-radius:6px;color:#34229a}
+    .source:before,.func:after{color:#3a22c8}
+    .game-intro p,.game-meta span,.game-files strong,.stage dt,.stage .status,.func code,.func span{color:#55527a}
+    .game-meta span{border-color:#bdb6d3}
+    .search{background:#fff;color:#0e0a3d;border:2px solid #0e0a3d}
+    .tree pre{color:#201b48}.tree .dim{color:#756c97}
+    .footer code{color:#3a22c8}
+    .recovery-flow span:not(:last-child):after{color:#5a3ff0}
+    .stage-action{background:#eae4fa;border:1px solid #b8a9dc;color:#332194}
+    .design-flow b{color:#3a22c8}
+    /* 책 위의 원래 책갈피는 제자리에 두고, 지나간 뒤에는 작은 탐색 목록을 띄웁니다. */
+    .bookmarks{position:relative;top:auto;z-index:2}
+    .quick-nav[hidden]{display:none}
+    .quick-nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;gap:5px;padding:6px;background:#0e0a3d;border:2px solid #0e0a3d;border-radius:12px;box-shadow:5px 6px 0 #33239b,0 12px 28px #120a4180}
+    .quick-nav button{white-space:nowrap;border:0;border-radius:7px;background:transparent;color:#fff;font-size:.77rem;font-weight:800;padding:10px 12px;min-height:40px;transition:background .18s,color .18s}
+    .quick-nav button:hover{background:#35259d}
+    .quick-nav button[aria-current="page"]{background:#a4d65e;color:#0e0a3d}
+    .quick-nav .quick-num{font:800 .67rem ui-monospace,SFMono-Regular,monospace;margin-right:5px;opacity:.7}
+    /* 개발 문서는 제목·본문·코드 경로를 분리하고, 보조 구조는 접어서 보여 줍니다. */
+    .hero{grid-template-columns:minmax(0,1fr) 220px;gap:20px;padding:29px 3px 32px}
+    .hero h1{font-size:clamp(2rem,4vw,3.45rem);letter-spacing:-.055em;margin:10px 0 13px}
+    .hero p{font-size:1.02rem;line-height:1.58;max-width:850px}
+    .shelf-scene{width:310px;height:205px;transform:scale(.64);transform-origin:left center;margin-left:-12px}
+    .book-sheet>section+section{margin-top:21px;padding-top:0;border:0}
+    .sheet-heading{margin-bottom:25px;padding-bottom:18px}
+    .section-title{margin-bottom:17px}
+    .section-title h2{font-size:clamp(1.45rem,2.3vw,2.2rem)}
+    .section-title p,.sheet-heading p{color:#4a4766}
+    .developer-note{margin:17px 0 0;padding:12px 16px;border-left:4px solid #5a3ff0;background:#f2effc;color:#34304b;line-height:1.65;border-radius:0 7px 7px 0}
+    .detail-section{margin-top:15px;border:1.5px solid #b7b0d0;border-radius:9px;background:#f8f6fc;padding:0 18px 18px}
+    .detail-section:not([open]){padding-bottom:0}
+    .detail-section summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;min-height:52px;color:#251d65;font-weight:800;font-size:.94rem}
+    .detail-section summary::-webkit-details-marker{display:none}
+    .detail-section summary:after{content:'＋';font-size:1.25rem;color:#5a3ff0;line-height:1}
+    .detail-section[open] summary:after{content:'−'}
+    .detail-section summary:hover{color:#5a3ff0}
+    .detail-section summary:focus-visible{outline:3px solid #5a3ff0;outline-offset:3px}
+    .detail-section[open] summary{border-bottom:1px solid #d5d0e7;margin-bottom:17px}
+    .detail-section .overview-map{margin-top:17px}
+    .detail-section .roundtrip{margin-bottom:0}
+    .secondary-section{margin-top:17px!important}
+    .function-browser .function-list{max-height:530px;overflow-y:auto;padding:2px 7px 7px 2px;align-content:start}
+    .function-detail{min-height:0}
+    .function-detail .api-name{display:block;margin-top:3px;color:#3a22c8}
+    .function-steps{margin:20px 0 16px;border-top:1px solid #d7d1e8}
+    .function-steps div{display:grid;grid-template-columns:100px minmax(0,1fr);gap:18px;padding:13px 0;border-bottom:1px solid #d7d1e8}
+    .function-steps dt{font-weight:800;color:#3822b3;font-size:.84rem}
+    .function-steps dd{margin:0;color:#302c48;line-height:1.65;font-size:.91rem}
+    .function-detail .label{color:#55527a}
+    .function-detail .source{margin-top:10px}
+    .game-flow-detail .game-head{margin-top:17px}
+    .game-flow-detail .game-intro p{color:#48435e}
+    .inventory-head{margin-top:25px}
+    .edit-guide{border-top:2px solid #0e0a3d}
+    .edit-guide>div{display:grid;grid-template-columns:minmax(170px,.32fr) 1fr;gap:18px;align-items:start;padding:17px 7px;border-bottom:1px solid #d5d0e7}
+    .edit-guide strong{color:#0e0a3d}
+    .edit-guide p{margin:0;color:#34304b;line-height:1.6}
+    .edit-guide code{background:#efeafa;border-radius:4px;padding:2px 4px;color:#3927a4;overflow-wrap:anywhere}
+    .topline{position:relative;z-index:70}
+    .meta-control{position:relative;flex:none}
+    #meta-trigger{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#ffffff1a;color:#fff;border:1.5px solid #ffffffa6;border-radius:8px;font-size:.78rem;font-weight:800;letter-spacing:0;text-transform:none}
+    #meta-trigger:hover{background:#ffffff30}
+    #meta-trigger span+span{border-left:1px solid #ffffff75;padding-left:10px}
+    #meta-form[hidden]{display:none}
+    #meta-form{position:absolute;right:0;top:calc(100% + 10px);width:min(330px,calc(100vw - 26px));padding:18px;background:#fffdf8;color:#0e0a3d;border:2px solid #0e0a3d;border-radius:10px;box-shadow:7px 8px 0 #0e0a3d;letter-spacing:0;text-transform:none;display:grid;gap:12px}
+    #meta-form label{display:grid;gap:5px;font-size:.8rem;font-weight:800}
+    #meta-form input{width:100%;padding:9px 10px;background:#fff;border:1.5px solid #8b82ad;border-radius:6px;color:#0e0a3d}
+    #meta-form p{font-size:.74rem;line-height:1.5;color:#55527a;margin:0}
+    .meta-actions{display:flex;justify-content:flex-end;gap:7px}
+    .meta-actions button{padding:8px 13px;border:1.5px solid #0e0a3d;border-radius:6px;background:#fff;color:#0e0a3d;font-weight:800;font-size:.78rem}
+    .meta-actions button[type=submit]{background:#a4d65e}
+    .developer-note .source{margin:7px 0 0 6px;vertical-align:middle;font-weight:800}
+    .code-inspector{width:min(1020px,calc(100vw - 28px));max-height:calc(100dvh - 26px);overflow:auto;background:#fffdf8;color:#0e0a3d;border:3px solid #0e0a3d;border-radius:13px;box-shadow:12px 14px 0 #0e0a3d;padding:27px}
+    .code-inspector::backdrop{background:#0e0a3dc9;backdrop-filter:blur(3px)}
+    .inspector-header{display:flex;align-items:start;justify-content:space-between;gap:16px}
+    .inspector-header h2{font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;margin:5px 0 4px;letter-spacing:-.045em}
+    #inspector-path{display:block;color:#3927a4;overflow-wrap:anywhere;font-size:.77rem}
+    #inspector-close{width:38px;height:38px;flex:none;border:2px solid #0e0a3d;border-radius:7px;background:#fff;color:#0e0a3d;font-size:1.5rem;line-height:1}
+    #inspector-summary{color:#34304b;margin:17px 0 19px;line-height:1.65}
+    .inspector-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border-top:1px solid #d4cee5;margin-top:22px;padding-top:17px}
+    .inspector-actions a{display:inline-block;padding:9px 13px;background:#0e0a3d;color:#fff;border-radius:6px;font-weight:800;font-size:.83rem}
+    .inspector-actions span{font-size:.77rem;color:#55527a}
+    .inspector-file-info{background:#f2effb;border-left:4px solid #5a3ff0;padding:13px 15px;margin:10px 0 17px;color:#302c48}
+    .inspector-file-info strong{display:block;color:#0e0a3d;margin-bottom:4px}
+    .inspector-functions{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 12px}
+    .inspector-functions button{background:#fff;border:1.5px solid #0e0a3d;border-radius:7px;color:#0e0a3d;padding:7px 10px;font-size:.77rem;font-weight:800}
+    .inspector-functions button[aria-pressed=true]{background:#a4d65e}
+    .inspector-function-detail{padding:13px 17px;border:1px solid #d5d0e7;border-radius:8px;background:#faf8fd}
+    .inspector-function-detail h3{margin:0 0 3px;font-size:1rem}
+    .inspector-function-detail code{font-size:.72rem}
+    .inspector-function-detail dl{margin:11px 0 0}
+    .inspector-function-detail dl div{display:grid;grid-template-columns:85px 1fr;gap:8px;border-top:1px solid #ddd7ed;padding:9px 0;font-size:.82rem}
+    .inspector-function-detail dt{font-weight:800;color:#3927a4}
+    .inspector-function-detail dd{margin:0;color:#34304b}
+    .roulette-demo{border:1.5px solid #bfb5d5;border-radius:10px;background:#f8f6fc;padding:17px}
+    .roulette-options{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .roulette-options label{display:grid;gap:4px;font-weight:800;font-size:.83rem}
+    .roulette-options select{border:1.5px solid #0e0a3d;border-radius:6px;background:#fff;color:#0e0a3d;padding:8px 10px}
+    .roulette-options p{margin:0;color:#55527a;font-size:.79rem}
+    .roulette-layout{display:grid;grid-template-columns:350px minmax(0,1fr);gap:18px;align-items:start;margin-top:16px}
+    .roulette-stage{position:relative;height:360px;overflow:hidden;border-radius:10px;background:radial-gradient(circle at 48% 46%,#2d1c3d,#10091a 70%);border:2px solid #0e0a3d;cursor:pointer}
+    .roulette-ring{position:absolute;left:22px;top:25px;width:270px;height:270px;border-radius:50%;padding:13px;background:#c9a25b;box-shadow:0 10px 23px #0008}
+    .roulette-wheel{position:relative;width:100%;height:100%;border:7px solid #0d0912;border-radius:50%;background:var(--sectors,#24152e);box-shadow:inset 0 0 0 2px #c9a25b}
+    .roulette-wheel:after{content:"";position:absolute;left:50%;top:50%;width:54px;height:54px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#f3eee6 0 12%,#c9a25b 14% 31%,#0d0912 36%);border:5px solid #c9a25b}
+    .roulette-pointer{position:absolute;left:139px;top:9px;z-index:2;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:33px solid #f3eee6;filter:drop-shadow(0 2px 2px #000a)}
+    .roulette-lever{position:absolute;right:18px;top:71px;width:48px;height:155px;border:3px solid #c9a25b;border-radius:25px;background:#3a2350;cursor:pointer}
+    .roulette-lever:before{content:"";position:absolute;left:20px;top:18px;width:5px;height:115px;background:#c9a25b}
+    .roulette-lever .knob{position:absolute;left:4px;top:12px;width:34px;height:34px;background:radial-gradient(circle at 35% 32%,#ffb1b9,#e0243a 54%,#850e1e);border:2px solid #0d0912;border-radius:50%;box-shadow:0 3px 4px #0008;transition:transform .25s}
+    .roulette-hit{position:absolute;display:block;border:0;background:transparent;cursor:pointer;padding:0;z-index:3}
+    .roulette-hit:hover,.roulette-hit:focus-visible,.roulette-lever:hover,.roulette-lever:focus-visible{outline:3px solid #bdaaff;outline-offset:3px}
+    .roulette-wheel-hit{left:22px;top:25px;width:270px;height:270px;border-radius:50%}
+    .roulette-hub-hit{left:125px;top:128px;width:64px;height:64px;border-radius:50%;z-index:4}
+    .roulette-pointer-hit{left:136px;top:5px;width:42px;height:44px;z-index:5}
+    .roulette-lever{z-index:6}
+    .roulette-stage[data-part="wheel"] .roulette-wheel-hit,.roulette-stage[data-part="hub"] .roulette-hub-hit,.roulette-stage[data-part="pointer"] .roulette-pointer-hit,.roulette-stage[data-part="lever"] .roulette-lever{outline:3px solid #bdaaff;outline-offset:3px}
+    .roulette-stage.is-spinning .roulette-lever .knob{transform:translateY(93px)}
+    .roulette-lever:disabled{cursor:wait;opacity:.85}
+    .roulette-instruction{position:absolute;left:18px;right:18px;bottom:12px;margin:0;color:#f3eee6;font-size:.76rem;line-height:1.45;text-align:center}
+    .roulette-trace[hidden]{display:none}
+    .roulette-part-detail{border:1px solid #d7d1e8;border-radius:9px;background:#fff;padding:13px;margin-bottom:12px}
+    .roulette-part-detail h3{margin:0 0 6px;color:#0e0a3d;font-size:1rem}
+    .roulette-part-detail p{margin:0 0 9px;color:#48435e;font-size:.8rem;line-height:1.5}
+    .roulette-status{min-height:40px;margin:0 0 12px;font-size:.89rem;font-weight:800;color:#3822b3}
+    .roulette-steps{display:grid;gap:6px;margin:0 0 14px;padding:0;list-style:none;counter-reset:step}
+    .roulette-steps li{counter-increment:step;padding:7px 10px;border-left:3px solid #c8c0de;background:#fff;color:#55527a;font-size:.78rem}
+    .roulette-steps li:before{content:counter(step,decimal-leading-zero)'  ';font-weight:800;color:#3822b3}
+    .roulette-steps li.active{border-left-color:#5a3ff0;background:#eee9fb;color:#0e0a3d;font-weight:800}
+    .roulette-steps li.done{border-left-color:#a4d65e;color:#34304b}
+    .roulette-code{display:grid;grid-template-columns:1fr;gap:10px}
+    .roulette-code section{background:#fff;border:1px solid #d7d1e8;border-radius:8px;padding:12px;min-width:0}
+    .roulette-code h3{font-size:.9rem;margin:0 0 5px}
+    .roulette-code p{font-size:.77rem;line-height:1.45;color:#48435e;margin:0 0 9px}
+    .roulette-code pre{max-height:320px;overflow:auto;white-space:pre;background:#0e0a3d;color:#f7f4ec;border-radius:6px;padding:10px;font:12px/1.55 ui-monospace,SFMono-Regular,monospace;margin:0 0 8px}
+    .roulette-code pre code{color:inherit;font-size:inherit}
+    .roulette-code .source{font-size:.71rem}
+    @media(max-width:800px){.roulette-layout{grid-template-columns:1fr}.roulette-stage{width:min(100%,350px);margin:auto}.roulette-code{grid-template-columns:1fr}}
+    @media(max-width:740px){.meta-control #meta-trigger{gap:5px;padding:6px;font-size:.65rem}.meta-control #meta-trigger span+span{padding-left:5px}.code-inspector{padding:15px;box-shadow:none}.inspector-function-detail dl div{grid-template-columns:1fr;gap:2px}.roulette-demo{padding:10px}}
+    @media(max-width:480px){.topline{flex-wrap:wrap}.meta-control{margin-left:auto}.roulette-stage{height:300px}.roulette-ring,.roulette-wheel-hit{left:10px;top:29px;width:220px;height:220px}.roulette-ring{padding:10px}.roulette-hub-hit{left:89px;top:118px;width:62px;height:62px}.roulette-pointer{left:101px;top:12px;border-left-width:14px;border-right-width:14px;border-top-width:26px}.roulette-pointer-hit{left:98px;top:8px;width:35px;height:36px}.roulette-lever{right:8px;top:60px;width:36px;height:137px}.roulette-lever:before{left:14px;top:15px;height:100px}.roulette-lever .knob{left:2px;top:9px;width:26px;height:26px}.roulette-stage.is-spinning .roulette-lever .knob{transform:translateY(90px)}}
+    @media(max-width:390px){.roulette-ring,.roulette-wheel-hit{left:8px;top:30px;width:190px;height:190px}.roulette-ring{padding:8px}.roulette-hub-hit{left:73px;top:95px}.roulette-pointer{left:89px;top:14px}.roulette-pointer-hit{left:85px;top:10px}.roulette-lever{right:6px;width:32px}.roulette-lever:before{left:12px}.roulette-lever .knob{left:1px;width:24px;height:24px}}
+    @media(min-width:1650px){.shell{max-width:1380px}.quick-nav{left:auto;right:20px;top:50%;transform:translateY(-50%);width:140px;display:grid;gap:5px;padding:8px}.quick-nav:before{content:"PAGES";display:block;color:#c9ed88;font:800 .66rem ui-monospace,SFMono-Regular,monospace;letter-spacing:.14em;padding:8px 10px 5px}.quick-nav button{text-align:left;white-space:normal;line-height:1.35;padding:11px 10px}.quick-nav .quick-num{display:block;margin:0 0 3px}}
+    @media(max-width:960px){.hero{grid-template-columns:minmax(0,1fr) 300px;gap:12px}.shelf-scene{transform:scale(.84);transform-origin:right center}}
+    @media(max-width:740px){.shell{padding:17px 13px 105px}.topline{font-size:.68rem}.mark{font-size:.98rem}.mark small{display:none}.hero{display:block;padding:35px 0 24px}.hero h1{font-size:clamp(2.6rem,10vw,4rem)}.shelf-scene{height:240px;width:min(100%,350px);transform:scale(.82);transform-origin:left top;margin-top:20px;margin-bottom:-34px}.bookmarks{padding-left:4px;padding-right:4px}.bookmarks button,.bookmarks button:nth-child(2),.bookmarks button:nth-child(3){padding:9px 11px 12px;font-size:.75rem;min-height:45px}.book-stack{margin-right:10px}.book-stack:before{inset:8px -5px -8px 5px}.book-stack:after{inset:16px -10px -16px 10px}.book-sheet,.book-stack[data-active="backend"] .book-sheet,.book-stack[data-active="other"] .book-sheet{padding:21px 14px 43px;border-radius:10px;box-shadow:6px 8px 0 #0e0a3d}.panel{box-shadow:3px 3px 0 #0e0a3d}.quick-nav{top:auto;bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 26px);max-width:460px;justify-content:space-between}.quick-nav button{flex:1;min-width:0;font-size:.72rem;padding:9px 5px}.quick-nav .quick-num{display:none}}
+    @media(max-width:740px){.hero{padding:27px 0 22px}.hero h1{font-size:clamp(2.1rem,9vw,3.2rem)}.shelf-scene{display:none}.function-steps div{grid-template-columns:1fr;gap:3px}.edit-guide>div{grid-template-columns:1fr;gap:3px}.function-browser .function-list{max-height:360px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-expanded="false" aria-controls="meta-form"><span id="meta-date-label">확인일 2026.11.10</span><span id="meta-version-label">앱 1.0.0+7</span><span aria-hidden="true">✎</span></button><form id="meta-form" hidden><label>코드 확인일<input id="meta-date" type="date" required value="2026-11-10"></label><label>표시할 앱 버전<input id="meta-version" type="text" required maxlength="40" value="1.0.0+7"></label><p>이 문서의 표시만 바뀝니다. 실제 앱 버전은 <code>pubspec.yaml</code>에서 관리합니다.</p><div class="meta-actions"><button type="button" id="meta-reset">기본값</button><button type="submit">저장</button></div></form></div></div>
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">개발자 참고 문서</div>
+        <h1>코드 구조와 <span>함수 찾기</span></h1>
+        <p>화면을 수정할 파일, 서버 함수를 찾을 경로, 상태가 저장되는 위치를 정리했습니다. 탭을 고르고 필요한 항목을 선택하면 관련 코드와 처리 순서를 볼 수 있습니다.</p>
+      </div>
+      <div class="shelf-scene" aria-hidden="true">
+        <div class="shelf-books"><div class="shelf-cover liar"><span>MOSIGAME</span><b>LIAR'S<br>POKER</b><span>01 · CARD GAME</span></div><div class="shelf-cover final"><span>MOSIGAME</span><b>FINAL<br>CALL</b><span>02 · TEAM GAME</span></div><div class="shelf-cover mafia"><span>MOSIGAME</span><b>MAFIA</b><span>03 · ROLE GAME</span></div></div>
+        <div class="shelf-plank"></div>
+        <div class="room-ticket"><small>GROUP ROOM</small><strong>BOOK → PLAY</strong><em>게임 선택하기</em></div>
+      </div>
+    </header>
+    <nav class="bookmarks" role="tablist" aria-label="책갈피로 페이지 선택">
+      <button id="tab-front" role="tab" type="button" data-sheet="front" aria-controls="front" aria-selected="true"><span>01</span> 프론트</button>
+      <button id="tab-backend" role="tab" type="button" data-sheet="backend" aria-controls="backend" aria-selected="false"><span>02</span> 백엔드·파이어베이스</button>
+      <button id="tab-other" role="tab" type="button" data-sheet="other" aria-controls="other" aria-selected="false"><span>03</span> 기타</button>
+    </nav>
+    <nav class="quick-nav" aria-label="스크롤 중 페이지 전환" hidden>
+      <button type="button" data-sheet="front" aria-controls="front" aria-current="page"><span class="quick-num">01</span>프론트</button>
+      <button type="button" data-sheet="backend" aria-controls="backend"><span class="quick-num">02</span>백엔드·파이어베이스</button>
+      <button type="button" data-sheet="other" aria-controls="other"><span class="quick-num">03</span>기타</button>
+    </nav>
+    <main class="book-stack" data-active="front">
+      <article id="front" class="book-sheet" role="tabpanel" aria-labelledby="tab-front">
+      <div class="sheet-heading"><span>01 / 03</span><div><h2>프론트</h2><p>화면이나 로비 동작을 바꿀 때 열 파일을 찾습니다.</p></div></div>
+      <section id="overview">
+        <div class="section-title"><div><h2>수정 위치 찾기</h2></div><p>영역을 선택하면 해당 코드의 역할과 파일 경로가 나옵니다.</p></div>
+        <div class="explorer"><div class="nodegrid" id="node-grid"></div><div class="panel pad detailbox" id="node-detail" aria-live="polite"></div></div>
+        <p class="developer-note">화면 문구와 애니메이션은 각 게임의 <code>phone_board.dart</code> 또는 <code>tablet_board.dart</code>부터 확인하세요. 카드·턴·승패 규칙은 Cloud Functions에 있습니다. <a class="source" href="../../packages/game_kit/lib/penalty/roulette.dart">룰렛 동작 시각화·코드 보기</a></p>
+        <details class="detail-section"><summary>휴대폰 입력이 서버 상태와 화면에 반영되는 순서</summary>
+        <div class="overview-map">
+          <div class="stack">
+            <div class="device"><div class="label accent-blue">Flutter / controller</div><div class="title">태블릿 · 공용 게임판</div><div class="sub">책 선택, 방·자리·역할 시작 설정, 카드 연출, 진행·결과 표시</div></div>
+            <div class="device phone"><div class="label accent-mint">Flutter / player</div><div class="title">휴대폰 · 개인 화면</div><div class="sub">QR 입장, 내 카드·역할, 행동 입력, 개인 결과·재접속</div></div>
+          </div>
+          <div class="bridge"><span>callable<br>요청</span><strong>⇄</strong><span>RTDB<br>구독</span></div>
+          <div class="middle"><div class="label accent-violet">Node.js / Cloud Functions</div><div class="title">서버 검증·규칙</div><ul><li>방 만들기·참가·선택·종료 권한 검사</li><li>카드·역할 배정, 턴 검증, 승패 판정</li><li>중단·재접속·오래된 방 정리</li></ul><div class="sub">구현: <a href="../../functions/src/index.ts">functions/src/index.ts ↗</a></div></div>
+          <div class="bridge second"><span>검증 후<br>쓰기</span><strong>⇄</strong><span>상태<br>읽기</span></div>
+          <div class="panel pad firebase-holder"><div class="label accent-gold">Firebase / 데이터와 운영</div><div class="firebase-grid" style="margin-top:14px"><div class="mini"><strong>Auth</strong><span>사용자 인증</span></div><div class="mini"><strong>Firestore</strong><span>게임 카탈로그·프로필</span></div><div class="mini wide"><strong>Realtime Database</strong><span>방·접속·게임 public / private / server</span></div><div class="mini"><strong>Storage</strong><span>프로필·게임 에셋</span></div><div class="mini"><strong>Crashlytics</strong><span>오류 보고</span></div></div></div>
+        </div>
+        <p class="callout below-map"><strong>상태 변경 위치</strong> · Flutter는 게임 상태 변경을 Functions에 요청합니다. 서버가 검증하고 RTDB를 갱신하면 두 기기의 구독이 새 상태를 받아 화면을 그립니다. 접속 신호처럼 제한적으로 허용된 클라이언트 RTDB 쓰기는 예외입니다.</p>
+        <div class="roundtrip"><div class="step"><b>01 / INPUT</b><strong>휴대폰 행동</strong><span>예: 카드 제출, CALL, 투표</span></div><div class="step"><b>02 / COMMAND</b><strong>GameCommandService</strong><span>callable 전송·재시도 ID</span></div><div class="step"><b>03 / SERVER</b><strong>Cloud Function</strong><span>권한·단계·턴 확인 후 transaction</span></div><div class="step"><b>04 / STATE</b><strong>RTDB 갱신</strong><span>public / 개인 private / server</span></div><div class="step"><b>05 / VIEW</b><strong>양쪽 화면 갱신</strong><span>query → controller → board</span></div></div>
+        </details>
+      </section>
+      <section id="journey" class="secondary-section">
+        <details class="detail-section"><summary>로비에서 게임 시작까지의 코드 흐름</summary>
+        <p class="developer-note">방은 게임을 선택하기 전에 만들어질 수 있습니다. 게임 선택, 자리 또는 역할 설정, 서버 시작 요청 순서로 확인하세요.</p>
+        <div class="journey">
+          <article class="journey-card"><div class="num">01 / TABLET</div><h3>책 표지·상세</h3><p>Firestore 카탈로그에서 보여 줄 게임을 조회하고, 패키지의 책 아트로 표지를 렌더링합니다.</p><span class="tag">games/{id}</span></article>
+          <article class="journey-card"><div class="num">02 / ROOM</div><h3>방·QR·입장</h3><p>태블릿 controller가 방을 만들고 휴대폰 player가 QR 또는 코드로 들어옵니다.</p><span class="tag">create / join callable</span></article>
+          <article class="journey-card"><div class="num">03 / SELECT</div><h3>게임 선택</h3><p>선택한 책의 gameId를 방에 저장합니다. 실제 실행 가능 여부를 앱 registry와 서버에서 확인합니다.</p><span class="tag">selectRealtimeRoomGame</span></article>
+          <article class="journey-card"><div class="num">04 / SETUP</div><h3>자리 또는 역할 구성</h3><p>보통 좌석을 배치합니다. 마피아는 시작 화면에서 역할 구성을 먼저 고릅니다.</p><span class="tag">Mafia: 역할 화면</span></article>
+          <article class="journey-card"><div class="num">05 / START</div><h3>서버가 게임 시작</h3><p>각 게임의 start_game callable이 규칙을 검증하고 공개·개인·서버 상태를 생성합니다.</p><span class="tag">game_*_start_game</span></article>
+          <article class="journey-card"><div class="num">06 / PLAY</div><h3>판정·종료·복구</h3><p>휴대폰 입력과 태블릿 연출이 서버 phase를 따라갑니다. 종료·단절도 서버 상태로 처리합니다.</p><span class="tag">RTDB streams</span></article>
+        </div>
+        <div class="branch">
+          <div class="panel"><div class="tag">일반 카드/보드 게임</div><h3>책 → 좌석 배치 → 게임</h3><p>태블릿의 시작 흐름이 참가자 수·에셋·게임 ID를 확인하고 좌석을 준비합니다. 게임 패키지가 제공한 화면과 서버 시작 함수를 호출합니다.</p><div class="journey-links"><a class="source" href="../../lib/platform/home/tablet/tablet_game_launcher.dart">태블릿 시작 조율</a><a class="source" href="../../packages/game_kit/lib/player_layouts/widgets/player_layout_editor.dart">좌석 배치</a></div></div>
+          <div class="panel"><div class="tag">마피아 예외</div><h3>책 → 역할 구성 → 역할 배정</h3><p><code>MafiaGame.buildStartSetupScreen</code>이 역할 구성 화면을 반환합니다. 선택한 구성을 <code>startGame(options)</code>으로 전달하고 서버가 각자 역할을 배정합니다.</p><div class="journey-links"><a class="source" href="../../packages/game_mafia/lib/game_mafia.dart">시작 화면 연결</a><a class="source" href="../../packages/game_mafia/lib/tablet/screens/role_setup_screen.dart">역할 구성 UI</a><a class="source" href="../../functions/src/mafia/start-game.ts">마피아 시작 함수</a></div></div>
+        </div>
+        <div class="panel pad" style="margin-top:16px"><div class="label">표지와 규칙의 출처</div><p class="note">게임 이름·설명·규칙·공개 상태는 Firestore <code>games/{catalogId}</code>를 읽습니다. 책 표지·책등·미리보기 연출은 앱/게임 패키지의 이미지와 코드가 그립니다. 라이어스의 카탈로그 문서 ID <code>liars</code>와 런타임 ID <code>liars_poker</code>는 호환 매핑이 있습니다.</p><div class="sources"><a class="source" href="../../lib/platform/home/gamelist/service/game_list_service.dart">카탈로그 조회</a><a class="source" href="../../lib/platform/home/gamelist/models/game_catalog_id.dart">ID 매핑</a><a class="source" href="../../lib/platform/home/tablet/widgets/tablet_book_carousel.dart">책 UI</a><a class="source" href="../../packages/game_kit/lib/mosi_ui/mosi_game_art.dart">책 아트</a></div></div>
+        </details>
+      </section>
+      </article>
+      <article id="backend" class="book-sheet" role="tabpanel" aria-labelledby="tab-backend" hidden>
+      <div class="sheet-heading"><span>02 / 03</span><div><h2>백엔드·파이어베이스</h2><p>게임 함수의 실행 조건, 상태 변경, 저장 위치를 확인합니다.</p></div></div>
+      <section id="games">
+        <div class="section-title"><div><h2>게임 함수 찾기</h2></div><p>게임과 함수를 선택하면 실행 시점, 검사 내용, 상태 변경을 볼 수 있습니다.</p></div>
+        <div class="game-controls" id="game-controls" aria-label="게임 선택"></div>
+        <details class="detail-section game-flow-detail"><summary>선택한 게임의 단계·화면·시작 파일 보기</summary>
+        <div class="game-head"><div class="panel game-intro" id="game-intro"></div><div class="panel game-files" id="game-files"></div></div>
+        <div class="stages" id="game-stages"></div><p class="scrolltip">← 단계 카드를 가로로 스크롤 →</p>
+        <div class="panel pad" id="game-note"></div>
+        </details>
+        <div class="inventory-head" id="functions-section"><div><h3>함수 목록</h3></div><input id="function-search" class="search" type="search" placeholder="함수명 또는 동작 검색" aria-label="함수 검색"></div>
+        <div class="scope-toggle" id="function-scope" aria-label="함수 범위"><button type="button" data-scope="game" aria-pressed="true">선택한 게임 함수</button><button type="button" data-scope="shared" aria-pressed="false">방·인증·복구 함수</button></div>
+        <p class="hint" id="function-count"></p>
+        <div class="function-browser"><div class="function-list" id="function-list"></div><aside class="function-detail panel" id="function-detail" aria-live="polite"></aside></div>
+      </section>
+      <section id="data" class="secondary-section">
+        <details class="detail-section"><summary>Firebase 저장 위치와 재접속 처리</summary>
+        <p class="developer-note">Auth는 사용자 인증, Firestore는 게임 목록과 프로필, RTDB는 방과 현재 게임 상태, Storage는 파일을 담당합니다.</p>
+        <div class="data-layout"><div class="panel tree"><h3>Realtime Database · 방 한 개의 개념도</h3><pre>rooms/{roomCode}/
+├─ controllerUid
+├─ controllerSessionId  <span class="dim"># 서버가 controller 명령 검증</span>
+├─ status / selectedGame / roomInstanceId
+├─ controllerPresence  <span class="dim"># 연결·lastSeen</span>
+├─ players/{uid}/      <span class="dim"># 닉네임·좌석·접속 상태</span>
+├─ connections/{uid}/{connectionId}/
+│  └─ connected / lastSeen
+└─ game/
+   ├─ public/          <span class="dim"># 양쪽 화면의 공개 상태</span>
+   │  └─ status / phase / revision / ...
+   ├─ private/{uid}/   <span class="dim"># 해당 휴대폰의 카드·역할</span>
+   └─ server/          <span class="dim"># 덱·정답·명령 기록</span></pre><div class="sources" style="margin-top:18px"><a class="source" href="../../database.rules.json">RTDB 규칙</a><a class="source" href="../../packages/game_kit/lib/services/game_query_service.dart">게임 조회 서비스</a></div></div>
+        <div class="rules"><div class="soft"><div class="label accent-blue">Auth</div><h3>누가 요청했는가</h3><p>로그인 UID를 Functions가 확인합니다. controller 명령은 세션 ID도 검사합니다.</p></div><div class="soft"><div class="label accent-gold">Firestore</div><h3>무엇을 보여줄 것인가</h3><p><code>games/{id}</code> 목록·규칙·공개 여부, <code>users/{uid}</code> 프로필·보유 게임, 온보딩. 게임 진행 상태는 두지 않습니다.</p></div><div class="soft"><div class="label accent-mint">RTDB</div><h3>지금 무엇이 일어나는가</h3><p>방, 현재 참가자, 게임 상태와 접속 상태를 실시간으로 전달합니다. 공개·개인·서버 정보의 읽기 경계가 다릅니다.</p></div><div class="soft"><div class="label accent-violet">Storage</div><h3>파일은 어디에서 오나</h3><p>프로필 사진과 선택적으로 다운로드하는 게임 에셋을 보관합니다. 번들 에셋은 앱 패키지에 포함됩니다.</p></div></div></div>
+        <div class="section-title" style="margin-top:45px"><div><h2>재접속 처리 순서</h2></div></div>
+        <div class="recovery-flow"><span><b>01 / SIGNAL</b>controller·player의 연결 및 lastSeen 변화</span><span><b>02 / SERVER</b>중단 원인을 public recovery 상태로 기록</span><span><b>03 / UI</b>공용 GameRecoveryLayer가 대기·중단 안내</span><span><b>04 / RETURN</b>기존 방·게임 인스턴스를 확인하고 재접속</span><span><b>05 / DECISION</b>준비 확인 후 재개, 제외 또는 종료</span></div>
+        <p class="callout" style="margin:18px 0 0">접속 <code>connected=true</code>만으로 게임을 재개하지 않습니다. 화면과 서버 상태가 준비됐다는 복구 확인을 별도로 처리합니다. 또한 앱이 잠깐 백그라운드로 갔다고 방을 즉시 삭제하지 않습니다.</p>
+        <div class="sources" style="margin-top:14px"><a class="source" href="../../functions/src/game-interruption/functions.ts">공통 복구 함수</a><a class="source" href="../../functions/src/game-interruption/recovery-state.ts">복구 상태</a><a class="source" href="../../functions/src/room/room-cleanup.ts">오래된 방 정리</a><a class="source" href="../../packages/game_kit/lib/recovery/widgets/game_recovery_layer.dart">공용 복구 UI</a><a class="source" href="../../lib/platform/home/room/services/room_service.dart">방 클라이언트 서비스</a></div>
+        </details>
+      </section>
+      </article>
+      <article id="other" class="book-sheet" role="tabpanel" aria-labelledby="tab-other" hidden>
+      <div class="sheet-heading"><span>03 / 03</span><div><h2>기타</h2><p>수정 목적에 따라 파일을 찾고, 코드 배포 경계를 확인합니다.</p></div></div>
+      <section id="files">
+        <div class="section-title"><div><h2>수정할 파일 찾기</h2></div><p>하고 싶은 변경에 해당하는 경로부터 열어 보세요.</p></div>
+        <div class="edit-guide">
+          <div><strong>게임 화면·문구·연출</strong><p>해당 게임의 <code>phone/phone_board.dart</code> 또는 <code>tablet/tablet_board.dart</code>를 확인합니다.</p></div>
+          <div><strong>공용 위젯·게임 흐름</strong><p><code>packages/game_kit/lib/</code>에서 공용 UI, 흐름 설정, 명령 서비스를 확인합니다.</p></div>
+          <div><strong>카드·턴·승패 규칙</strong><p><code>functions/src/&lt;game&gt;/</code>에서 서버 검증과 상태 변경을 확인합니다.</p></div>
+          <div><strong>방·재접속</strong><p><code>lib/platform/home/room/</code>, <code>packages/game_kit/lib/recovery/</code>, <code>functions/src/game-interruption/</code>를 함께 확인합니다.</p></div>
+        </div>
+        <details class="detail-section"><summary>영역별 실제 파일 링크</summary>
+        <div class="files-grid">
+          <div class="panel file-group"><div class="label accent-blue">App shell</div><h3>앱 시작·게임 연결</h3><p>Firebase 초기화, 인증 게이트, 게임 등록, 기기별 진입</p><a class="source" href="../../lib/main.dart">lib/main.dart</a><a class="source" href="../../lib/app.dart">lib/app.dart</a><a class="source" href="../../lib/games/game_registry.dart">lib/games/game_registry.dart</a><a class="source" href="../../packages/game_kit/lib/template_game.dart">TemplateGame 계약</a></div>
+          <div class="panel file-group"><div class="label accent-gold">Lobby / books</div><h3>책·목록·선택</h3><p>Firestore 정보와 앱의 시각 에셋을 조합합니다.</p><a class="source" href="../../lib/platform/home/tablet/screens/tablet_home.dart">태블릿 홈</a><a class="source" href="../../lib/platform/home/tablet/widgets/tablet_book_carousel.dart">책 캐러셀</a><a class="source" href="../../lib/platform/home/gamelist/service/game_list_service.dart">게임 목록 조회</a><a class="source" href="../../packages/game_kit/lib/mosi_ui/mosi_game_art.dart">책 아트</a></div>
+          <div class="panel file-group"><div class="label accent-mint">Room / session</div><h3>방·QR·자리</h3><p>방 상태 구독과 callable, 태블릿 시작 조율</p><a class="source" href="../../lib/platform/home/room/services/room_service.dart">RoomService</a><a class="source" href="../../lib/platform/home/room/providers/room_provider.dart">RoomProvider</a><a class="source" href="../../lib/platform/home/tablet/tablet_game_launcher.dart">게임 시작</a><a class="source" href="../../functions/src/room/realtime-room-lifecycle.ts">방 서버 함수</a></div>
+          <div class="panel file-group"><div class="label accent-violet">Game kit</div><h3>공용 화면·통신</h3><p>흐름 설정, 문구, 분배 애니메이션, 명령과 조회</p><a class="source" href="../../packages/game_kit/lib/game_flow/game_flow_config.dart">GameFlowConfig</a><a class="source" href="../../packages/game_kit/lib/shared/widgets/game_announcement_layer.dart">안내 레이어</a><a class="source" href="../../packages/game_kit/lib/tablet/animations/card_deal_animation.dart">카드 분배</a><a class="source" href="../../packages/game_kit/lib/services/game_command_service.dart">공용 명령</a></div>
+          <div class="panel file-group"><div class="label accent-pink">Game package</div><h3>게임별 수정 지점</h3><p>game_*.dart → phone/tablet board → shared state/service</p><a class="source" href="../../packages/game_liars_poker/lib/phone/phone_board.dart">라이어스 휴대폰</a><a class="source" href="../../packages/game_final_call/lib/tablet/tablet_board.dart">파이널콜 태블릿</a><a class="source" href="../../packages/game_mafia/lib/tablet/screens/role_setup_screen.dart">마피아 역할 구성</a><a class="source" href="../../packages/game_template/lib/README.md">새 게임 템플릿</a></div>
+          <div class="panel file-group"><div class="label accent-gold">Server / rules</div><h3>서버 규칙·상태 변경</h3><p>함수 export, 게임별 규칙, 데이터 읽기 경계</p><a class="source" href="../../functions/src/index.ts">서버 함수 목록</a><a class="source" href="../../functions/src/game-interruption/functions.ts">중단·재접속</a><a class="source" href="../../database.rules.json">RTDB 보안 규칙</a><a class="source" href="../../firestore.rules">Firestore 규칙</a></div>
+        </div>
+        </details>
+      </section>
+      <section id="delivery" class="secondary-section">
+        <details class="detail-section"><summary>앱 코드와 에셋 배포 방식</summary>
+        <div class="runtime"><div class="soft"><div class="label accent-blue">앱 바이너리</div><strong>Flutter + 게임 패키지</strong><p>모든 게임의 Dart 코드가 앱에 조립됩니다. 새 네이티브 기능은 새 스토어 빌드가 필요합니다.</p></div><div class="soft"><div class="label accent-violet">Shorebird</div><strong>Dart 코드 패치</strong><p>기존 릴리스의 Dart 수정에 사용합니다. 앱 시작 시 패치 확인 게이트가 있습니다.</p></div><div class="soft"><div class="label accent-mint">Firebase Storage</div><strong>선택적 게임 파일</strong><p>소유한 게임의 다운로드 에셋 경로입니다. 번들 이미지는 패키지 안에 있습니다.</p></div></div>
+        </details>
+      </section>
+      </article>
+    </main>
+    <footer class="footer">이 문서는 로컬 코드 기준입니다. 함수나 파일 구조를 바꾸면 내용을 다시 확인하세요. <a href="ARCHITECTURE.md">상세 구조 문서</a> · <a href="NEW_GAME_GUIDE.md">새 게임 가이드</a></footer>
+  </div>
+  <dialog id="code-inspector" class="code-inspector" aria-labelledby="inspector-title">
+    <div class="inspector-header"><div><span class="label">코드 설명</span><h2 id="inspector-title"></h2><code id="inspector-path"></code></div><button id="inspector-close" type="button" aria-label="코드 설명 닫기">×</button></div>
+    <p id="inspector-summary"></p>
+    <div id="inspector-content"></div>
+    <div class="inspector-actions"><a id="inspector-original" target="_blank" rel="noopener">원본 파일 열기 ↗</a><span>로컬 HTML의 설명입니다. 원본 코드가 최종 기준입니다.</span></div>
+  </dialog>
+  <script id="function-data" type="application/json">[{"name":"createRealtimeRoom","file":"functions/src/room/realtime-room-functions.ts","group":"room"},{"name":"joinRealtimeRoom","file":"functions/src/room/realtime-room-functions.ts","group":"room"},{"name":"saveRealtimePlayerSeatIndexes","file":"functions/src/room/realtime-room-functions.ts","group":"room"},{"name":"validateRealtimeRoom","file":"functions/src/room/realtime-room-functions.ts","group":"room"},{"name":"beginRealtimeRoomSeating","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"syncRoomCleanupQueue","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"cleanupStaleRealtimeRooms","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"closeRoom","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"fetchRealtimeRoomGroupEntitlements","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"leaveRealtimeRoom","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"removeRealtimeRoomPlayer","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"resumeRealtimeControllerRoom","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"selectRealtimeRoomGame","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"syncRealtimeRoomGameStatus","file":"functions/src/room/realtime-room-lifecycle.ts","group":"room"},{"name":"fetchRealtimeRoomSession","file":"functions/src/room/session-functions.ts","group":"room"},{"name":"game_common_operation_status","file":"functions/src/room/session-functions.ts","group":"room"},{"name":"syncRealtimeRoomConnection","file":"functions/src/room/session-functions.ts","group":"room"},{"name":"deleteAccount","file":"functions/src/auth/delete-account.ts","group":"auth"},{"name":"syncGoogleUserProfile","file":"functions/src/auth/sync-google-profile.ts","group":"auth"},{"name":"syncAppleUserProfile","file":"functions/src/auth/sync-apple-profile.ts","group":"auth"},{"name":"completeGuestOnboarding","file":"functions/src/auth/complete-guest-onboarding.ts","group":"auth"},{"name":"advanceOnboarding","file":"functions/src/auth/onboarding.ts","group":"auth"},{"name":"beginOnboarding","file":"functions/src/auth/onboarding.ts","group":"auth"},{"name":"completeOnboardingProfile","file":"functions/src/auth/onboarding.ts","group":"auth"},{"name":"recoverLegacyOnboarding","file":"functions/src/auth/onboarding.ts","group":"auth"},{"name":"cleanupIncompleteAccounts","file":"functions/src/auth/cleanup-incomplete-accounts.ts","group":"auth"},{"name":"game_liars_poker_start_game","file":"functions/src/liars-poker/start-game.ts","group":"liars"},{"name":"game_liars_poker_complete_dealing","file":"functions/src/liars-poker/complete-dealing.ts","group":"liars"},{"name":"game_liars_poker_ready_turn","file":"functions/src/liars-poker/ready-turn.ts","group":"liars"},{"name":"game_liars_poker_submit_cards","file":"functions/src/liars-poker/submit-card.ts","group":"liars"},{"name":"game_liars_poker_call_liar","file":"functions/src/liars-poker/call-liar.ts","group":"liars"},{"name":"game_liars_poker_pass_challenge","file":"functions/src/liars-poker/pass-challenge.ts","group":"liars"},{"name":"game_liars_poker_prepare_penalty","file":"functions/src/liars-poker/finish-penalty.ts","group":"liars"},{"name":"game_liars_poker_resolve_penalty","file":"functions/src/liars-poker/finish-penalty.ts","group":"liars"},{"name":"game_liars_poker_force_timeout","file":"functions/src/liars-poker/force-timeout.ts","group":"liars"},{"name":"game_liars_poker_end_game","file":"functions/src/liars-poker/end-game.ts","group":"liars"},{"name":"game_liars_poker_leave_game","file":"functions/src/liars-poker/leave-game.ts","group":"liars"},{"name":"game_holdem_start_game","file":"functions/src/holdem/start-game.ts","group":"holdem"},{"name":"game_holdem_complete_dealing","file":"functions/src/holdem/complete-dealing.ts","group":"holdem"},{"name":"game_holdem_act","file":"functions/src/holdem/act.ts","group":"holdem"},{"name":"game_holdem_timeout_turn","file":"functions/src/holdem/timeout-turn.ts","group":"holdem"},{"name":"game_holdem_complete_result","file":"functions/src/holdem/complete-result.ts","group":"holdem"},{"name":"game_holdem_end_game","file":"functions/src/holdem/end-game.ts","group":"holdem"},{"name":"game_holdem_leave_game","file":"functions/src/holdem/leave-game.ts","group":"holdem"},{"name":"game_final_call_start_game","file":"functions/src/final-call/start-game.ts","group":"final"},{"name":"game_final_call_complete_dealing","file":"functions/src/final-call/complete-dealing.ts","group":"final"},{"name":"game_final_call_draw_card","file":"functions/src/final-call/draw-card.ts","group":"final"},{"name":"game_final_call_complete_turn","file":"functions/src/final-call/complete-turn.ts","group":"final"},{"name":"game_final_call_timeout_turn","file":"functions/src/final-call/timeout-turn.ts","group":"final"},{"name":"game_final_call_declare","file":"functions/src/final-call/call.ts","group":"final"},{"name":"game_final_call_submit_hand","file":"functions/src/final-call/submit-final-hand.ts","group":"final"},{"name":"game_final_call_complete_result_reveal","file":"functions/src/final-call/complete-result-reveal.ts","group":"final"},{"name":"game_final_call_start_next_round","file":"functions/src/final-call/next-round.ts","group":"final"},{"name":"game_final_call_end_game","file":"functions/src/final-call/end-game.ts","group":"final"},{"name":"game_final_call_clear_game","file":"functions/src/final-call/clear-game.ts","group":"final"},{"name":"game_final_call_leave_game","file":"functions/src/final-call/leave-game.ts","group":"final"},{"name":"game_mafia_start_game","file":"functions/src/mafia/start-game.ts","group":"mafia"},{"name":"game_mafia_confirm_role","file":"functions/src/mafia/role-reveal.ts","group":"mafia"},{"name":"game_mafia_complete_role_reveal","file":"functions/src/mafia/role-reveal.ts","group":"mafia"},{"name":"game_mafia_submit_night_action","file":"functions/src/mafia/night.ts","group":"mafia"},{"name":"game_mafia_timeout_night","file":"functions/src/mafia/night.ts","group":"mafia"},{"name":"game_mafia_complete_morning","file":"functions/src/mafia/morning.ts","group":"mafia"},{"name":"game_mafia_end_discussion","file":"functions/src/mafia/day.ts","group":"mafia"},{"name":"game_mafia_timeout_day","file":"functions/src/mafia/day.ts","group":"mafia"},{"name":"game_mafia_submit_vote","file":"functions/src/mafia/vote.ts","group":"mafia"},{"name":"game_mafia_timeout_vote","file":"functions/src/mafia/vote.ts","group":"mafia"},{"name":"game_mafia_complete_vote_result","file":"functions/src/mafia/vote.ts","group":"mafia"},{"name":"game_mafia_end_game","file":"functions/src/mafia/end-game.ts","group":"mafia"},{"name":"game_mafia_leave_game","file":"functions/src/mafia/end-game.ts","group":"mafia"},{"name":"game_yut_start_game","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_roll","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_submit_choice","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_move_piece","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_timeout_turn","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_end_game","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_yut_leave_game","file":"functions/src/yut/callables.ts","group":"yut"},{"name":"game_common_interruption_exclude_player","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_interruption_expire","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_interruption_on_connection_changed","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_interruption_report_stale_controller","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_interruption_report_stale_player","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_interruption_wait_more","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"game_common_recovery_report","file":"functions/src/game-interruption/functions.ts","group":"recovery"},{"name":"cleanupExpiredGameInterruptions","file":"functions/src/game-interruption/expire-scheduler.ts","group":"recovery"},{"name":"cleanupGhostRoomPlayers","file":"functions/src/game-interruption/expire-scheduler.ts","group":"recovery"},{"name":"game_common_controller_presence_changed","file":"functions/src/game-interruption/controller-presence.ts","group":"recovery"}]</script>
+  <script>
+    const root='../../';
+    const source=(path,label)=>`<a class="source" href="${root}${path}">${label||path.split('/').pop()}</a>`;
+    const nodes=[
+      {type:'앱',title:'앱 시작·인증',text:'main.dart에서 Firebase를 초기화합니다. app.dart는 로그인 상태에 따라 화면을 열고, 기기에 맞는 게임 화면으로 연결합니다.',files:['lib/main.dart','lib/app.dart','lib/platform/auth/widgets/auth_gate.dart']},
+      {type:'로비',title:'책·게임 목록',text:'게임 목록은 Firestore에서 읽습니다. 태블릿 로비는 목록과 게임별 표지 정보를 사용해 책을 표시합니다.',files:['lib/platform/home/tablet/screens/tablet_home.dart','lib/platform/home/gamelist/service/game_list_service.dart','lib/platform/home/tablet/widgets/tablet_book_carousel.dart']},
+      {type:'방',title:'방·자리·참가',text:'태블릿은 방을 관리하고 휴대폰은 참가합니다. RoomService가 서버 함수에 변경을 요청하고, RTDB 구독으로 새 방 상태를 받습니다.',files:['lib/platform/home/room/services/room_service.dart','functions/src/room/realtime-room-functions.ts','functions/src/room/realtime-room-lifecycle.ts']},
+      {type:'공용',title:'공용 게임 부품',text:'게임 흐름 설정, 카드 분배, 안내 문구, 명령 전송, 재접속 화면처럼 여러 게임이 쓰는 코드를 game_kit에 둡니다.',files:['packages/game_kit/lib/template_game.dart','packages/game_kit/lib/game_flow/game_flow_config.dart','packages/game_kit/lib/recovery/widgets/game_recovery_layer.dart']},
+      {type:'게임',title:'게임별 화면',text:'각 게임의 phone_board.dart와 tablet_board.dart가 서버 상태에 맞는 화면·문구·애니메이션을 고릅니다. shared 코드는 상태와 명령을 관리합니다.',files:['packages/game_liars_poker/lib/phone/phone_board.dart','packages/game_final_call/lib/tablet/tablet_board.dart','packages/game_mafia/lib/game_mafia.dart']},
+      {type:'서버',title:'게임 규칙·함수',text:'Cloud Functions가 호출 권한과 현재 게임 단계를 검사합니다. 카드·턴·승패 결과를 계산한 뒤 RTDB 상태를 변경합니다.',files:['functions/src/index.ts','functions/src/room/controller-session.ts','functions/src/liars-poker/submit-card.ts']},
+      {type:'데이터',title:'Firebase 저장소',text:'Auth는 인증, Firestore는 게임 목록과 프로필, RTDB는 방과 게임 진행, Storage는 파일을 관리합니다. 각 rules 파일이 접근 범위를 정합니다.',files:['database.rules.json','firestore.rules','storage.rules']},
+      {type:'복구',title:'연결·재접속',text:'연결 상태와 마지막 접속 시간을 서버가 확인합니다. 연결이 끊기면 복구 상태를 기록하고, 게임 공용 화면이 대기·복귀 과정을 표시합니다.',files:['functions/src/game-interruption/functions.ts','functions/src/game-interruption/recovery-state.ts','packages/game_kit/lib/recovery/widgets/game_recovery_layer.dart']}
+    ];
+    const games={
+      liars:{name:'라이어스 포커',id:'liars_poker',family:'카드 심리전',count:'인원: 카탈로그·서버 계약',orientation:'휴대폰 가로·세로',description:'기준 카드에 맞춘 제출과 LIAR/FOLD 도전, 판정과 벌칙 룰렛으로 이어집니다. 첫 카드 분배는 태블릿 연출 완료를 서버에 알려 다음 phase로 넘어갑니다.',entry:'packages/game_liars_poker/lib/game_liars_poker.dart',phone:'packages/game_liars_poker/lib/phone/phone_board.dart',tablet:'packages/game_liars_poker/lib/tablet/tablet_board.dart',shared:'packages/game_liars_poker/lib/shared/providers/game_controller.dart',server:'functions/src/liars-poker/',note:'태블릿은 공용 카드 분배·룰렛 연출을 조율하고, 휴대폰은 손패와 LIAR/FOLD 선택을 보여 줍니다. 게임의 진실 여부와 벌칙 결과는 서버가 정합니다.',stages:[['시작','status: playing · phase: dealing','게임 시작·대기','분배 화면 준비','game_liars_poker_start_game','functions/src/liars-poker/start-game.ts'],['카드 분배','phase: dealing','손패 도착 대기','좌석으로 카드 분배','game_liars_poker_complete_dealing','functions/src/liars-poker/complete-dealing.ts'],['턴·제출','phase: playing','카드 선택·제출','테이블·제출 더미','game_liars_poker_ready_turn / submit_cards','functions/src/liars-poker/submit-card.ts'],['도전','phase: playing / lastCardChallenge','LIAR 또는 FOLD','공개·판정 연출','game_liars_poker_call_liar / pass_challenge','functions/src/liars-poker/call-liar.ts'],['벌칙','phase: penalty','벌칙 결과 확인','룰렛 연출','game_liars_poker_prepare_penalty / resolve_penalty','functions/src/liars-poker/finish-penalty.ts'],['다음/결과','phase: dealing / finished','다음 손패 또는 결과','다음 라운드·승자','start_game(restart) / end_game','functions/src/liars-poker/restart-round.ts']]},
+      final:{name:'파이널콜',id:'final_call',family:'팀 카드 게임',count:'4명 또는 6명',orientation:'휴대폰 가로',description:'팀별 하트와 손패를 두고 카드 교체·CALL·최종 제출·공개 판정을 진행합니다. 4명과 6명 구성을 지원합니다.',entry:'packages/game_final_call/lib/game_final_call.dart',phone:'packages/game_final_call/lib/phone/phone_board.dart',tablet:'packages/game_final_call/lib/tablet/tablet_board.dart',shared:'packages/game_final_call/lib/shared/providers/game_controller.dart',server:'functions/src/final-call/',note:'파이널콜의 서버 phase는 dealing → playing → callerSubmit/finalTurns/finalSubmit → roundResult → 다음 라운드 또는 finished로 이어집니다. 태블릿의 공개 연출 완료는 별도 callable로 서버에 알립니다.',stages:[['시작','phase: dealing','손패 준비 대기','카드 분배','game_final_call_start_game','functions/src/final-call/start-game.ts'],['분배 완료','phase: dealing → playing','라운드 안내·손패','중앙·자리 카드','game_final_call_complete_dealing','functions/src/final-call/complete-dealing.ts'],['플레이','phase: playing','새 카드 선택·교체','하트·중앙 카드','game_final_call_draw_card / complete_turn','functions/src/final-call/draw-card.ts'],['CALL','phase: callerSubmit / finalTurns','CALL·최종 선택','CALL·버리기 연출','game_final_call_declare / submit_hand','functions/src/final-call/call.ts'],['결과 공개','phase: roundResult','공개 결과 대기','점수·하트 연출','game_final_call_complete_result_reveal','functions/src/final-call/complete-result-reveal.ts'],['다음/종료','phase: dealing / finished','다음 라운드 또는 결과','팀 승리·HOME','game_final_call_start_next_round / end_game','functions/src/final-call/next-round.ts']]},
+      mafia:{name:'마피아',id:'mafia',family:'역할 추리',count:'4~12명 · 서버 구성표',orientation:'휴대폰 세로',description:'책을 고른 다음 일반 좌석 조정 대신 태블릿 역할 구성 화면을 거칩니다. 개인 역할은 각 휴대폰에만 보여 주며 밤·낮·토론·투표가 순환합니다.',entry:'packages/game_mafia/lib/game_mafia.dart',phone:'packages/game_mafia/lib/phone/phone_board.dart',tablet:'packages/game_mafia/lib/tablet/tablet_board.dart',shared:'packages/game_mafia/lib/shared/providers/game_controller.dart',server:'functions/src/mafia/',note:'마피아만 buildStartSetupScreen으로 역할 구성을 입력받습니다. 시작 함수는 composition/rules를 받아 역할을 배정하며, 역할별 비밀 정보는 private에 둡니다.',stages:[['역할 구성','게임 시작 전','대기실','역할 구성 화면','buildStartSetupScreen → start_game','packages/game_mafia/lib/tablet/screens/role_setup_screen.dart'],['역할 공개','phase: roleReveal','내 역할 확인','역할 카드 배분','game_mafia_confirm_role / complete_role_reveal','functions/src/mafia/role-reveal.ts'],['밤','phase: night','역할별 밤 행동','밤 진행·마감','game_mafia_submit_night_action / timeout_night','functions/src/mafia/night.ts'],['아침·낮','phase: morning → day','사망 발표·토론','아침 공개·토론','game_mafia_complete_morning / end_discussion','functions/src/mafia/morning.ts'],['투표·개표','phase: voting → voteResult','투표·발표','개표·처형 연출','game_mafia_submit_vote / complete_vote_result','functions/src/mafia/vote.ts'],['결말','phase: finished','승패·관전 결과','최종 결과','game_mafia_end_game','functions/src/mafia/end-game.ts']]},
+      holdem:{name:'텍사스 홀덤',id:'holdem',family:'베팅 카드 게임',count:'2~8명',orientation:'휴대폰 세로',description:'프리플롭부터 리버까지 베팅 라운드를 진행하고, 쇼다운과 팟 판정으로 손의 결과를 결정합니다.',entry:'packages/game_holdem/lib/game_holdem.dart',phone:'packages/game_holdem/lib/phone/phone_board.dart',tablet:'packages/game_holdem/lib/tablet/tablet_board.dart',shared:'packages/game_holdem/lib/shared/providers/game_controller.dart',server:'functions/src/holdem/',note:'홀덤은 베팅 phase와 핸드 결과를 구분합니다. 베팅·팟·핸드 평가 규칙은 functions/src/holdem에 모여 있습니다. 등록 코드 존재와 실제 카탈로그 공개 여부는 별개입니다.',stages:[['시작·분배','phase: dealing','개인 홀카드','좌석 카드 분배','game_holdem_start_game / complete_dealing','functions/src/holdem/complete-dealing.ts'],['프리플롭','phase: preflop','콜·레이즈·폴드','테이블 베팅','game_holdem_act','functions/src/holdem/act.ts'],['플롭','phase: flop','베팅 선택','공용 카드 3장','game_holdem_act','functions/src/holdem/game.ts'],['턴·리버','phase: turn → river','베팅 선택','공용 카드 추가','game_holdem_act / timeout_turn','functions/src/holdem/timeout-turn.ts'],['핸드 결과','phase: handResult','결과 확인','팟·승자 표시','game_holdem_complete_result','functions/src/holdem/complete-result.ts'],['다음/종료','phase: dealing / finished','다음 손패 또는 종료','다음 판·마감','game_holdem_end_game','functions/src/holdem/end-game.ts']]},
+      yut:{name:'윷놀이 계열',id:'yut / strategy_yut / strategy_yut_edition',family:'공유 패키지 · 3개 ID',count:'일반 2~4명 · 전략 4명',orientation:'휴대폰 세로',description:'세 카탈로그 ID가 game_yut 패키지의 화면·서비스를 공유합니다. 일반 윷놀이는 굴리기, 전략형은 선택 단계가 먼저 옵니다.',entry:'packages/game_yut/lib/game_yut.dart',phone:'packages/game_yut/lib/src/phone.dart',tablet:'packages/game_yut/lib/src/tablet.dart',shared:'packages/game_yut/lib/src/service.dart',server:'functions/src/yut/',note:'윷 계열은 다른 게임의 phone_board/tablet_board 구조와 달리 src/phone.dart, src/tablet.dart에 화면을 둡니다. 이 지도는 현재 코드 구조 그대로 표시합니다.',stages:[['시작','phase: rolling / selecting','순서·선택 표시','윷판 준비','game_yut_start_game','functions/src/yut/callables.ts'],['전략 선택','phase: selecting (전략형)','선택 제출','선택 대기','game_yut_submit_choice','functions/src/yut/callables.ts'],['윷 굴리기','phase: rolling','굴리기 조작','윷 결과 표시','game_yut_roll','functions/src/yut/callables.ts'],['말 이동','phase: moving','말 선택·이동','말·판 상태','game_yut_move_piece','functions/src/yut/callables.ts'],['다음 턴','phase: rolling / selecting','다음 순서','판 갱신','game_yut_timeout_turn','functions/src/yut/callables.ts'],['종료','phase: finished','최종 결과','승자·종료','game_yut_end_game','functions/src/yut/callables.ts']]}
+    };
+    const functionData=JSON.parse(document.getElementById('function-data').textContent);
+    const friendly={
+      createRealtimeRoom:'태블릿 방 생성',joinRealtimeRoom:'휴대폰 참가',saveRealtimePlayerSeatIndexes:'좌석 번호 저장',validateRealtimeRoom:'방 코드 검사',
+      beginRealtimeRoomSeating:'자리 배치 시작',syncRoomCleanupQueue:'방 정리 대기열 동기화',cleanupStaleRealtimeRooms:'오래된 방 정기 정리',closeRoom:'명시적 방 종료',
+      fetchRealtimeRoomGroupEntitlements:'그룹 보유 게임 확인',leaveRealtimeRoom:'방 참가자 퇴장',removeRealtimeRoomPlayer:'플레이어 제거',resumeRealtimeControllerRoom:'태블릿 기존 방 복구',
+      selectRealtimeRoomGame:'방의 게임 선택',syncRealtimeRoomGameStatus:'게임 상태를 방 상태에 반영',fetchRealtimeRoomSession:'현재 방 세션 조회',
+      game_common_operation_status:'요청 처리 결과 조회',syncRealtimeRoomConnection:'접속 신호를 방 상태에 반영',
+      deleteAccount:'계정 삭제',syncGoogleUserProfile:'Google 계정 프로필 동기화',syncAppleUserProfile:'Apple 계정 프로필 동기화',
+      completeGuestOnboarding:'게스트 가입 완료',advanceOnboarding:'온보딩 다음 단계',beginOnboarding:'온보딩 시작',completeOnboardingProfile:'프로필 설정 완료',
+      recoverLegacyOnboarding:'기존 계정 온보딩 복구',cleanupIncompleteAccounts:'미완료 계정 정기 정리',
+      game_liars_poker_start_game:'게임 생성 또는 재시작',game_liars_poker_complete_dealing:'태블릿 카드 분배 완료',game_liars_poker_ready_turn:'첫 턴 활성화',
+      game_liars_poker_submit_cards:'선택 카드 제출',game_liars_poker_call_liar:'LIAR 도전·진위 판정',game_liars_poker_pass_challenge:'마지막 카드 도전 FOLD',
+      game_liars_poker_prepare_penalty:'벌칙 결과 선결정',game_liars_poker_resolve_penalty:'룰렛 연출 후 벌칙 적용',
+      game_liars_poker_force_timeout:'만료된 턴 강제 처리',game_liars_poker_end_game:'게임 종료',game_liars_poker_leave_game:'플레이어 게임 퇴장',
+      game_holdem_start_game:'홀덤 시작',game_holdem_complete_dealing:'카드 분배 완료',game_holdem_act:'베팅·체크·폴드 행동',
+      game_holdem_timeout_turn:'턴 시간 초과 처리',game_holdem_complete_result:'핸드 결과 연출 완료',game_holdem_end_game:'홀덤 종료',game_holdem_leave_game:'플레이어 퇴장',
+      game_final_call_start_game:'팀 게임 시작',game_final_call_complete_dealing:'태블릿 카드 분배 완료',game_final_call_draw_card:'새 카드 받기',
+      game_final_call_complete_turn:'카드 교체 턴 완료',game_final_call_timeout_turn:'턴 시간 초과 처리',game_final_call_declare:'CALL 선언',
+      game_final_call_submit_hand:'최종 손패 제출',game_final_call_complete_result_reveal:'결과 공개 연출 완료',
+      game_final_call_start_next_round:'다음 라운드 시작',game_final_call_end_game:'게임 종료',game_final_call_clear_game:'종료된 게임 노드만 정리',
+      game_final_call_leave_game:'플레이어 퇴장',
+      game_mafia_start_game:'구성표·규칙 검증 후 역할 배정',game_mafia_confirm_role:'개인 역할 확인',game_mafia_complete_role_reveal:'전원 역할 확인 후 다음 단계',
+      game_mafia_submit_night_action:'밤 역할 행동 제출',game_mafia_timeout_night:'밤 마감 처리',game_mafia_complete_morning:'아침 발표 완료',
+      game_mafia_end_discussion:'낮 토론 종료',game_mafia_timeout_day:'낮 토론 시간 초과',game_mafia_submit_vote:'처형 투표 제출',
+      game_mafia_timeout_vote:'투표 시간 초과',game_mafia_complete_vote_result:'개표 발표 완료',game_mafia_end_game:'마피아 게임 종료',
+      game_mafia_leave_game:'플레이어 퇴장',
+      game_yut_start_game:'윷놀이 시작',game_yut_roll:'윷 던지기',game_yut_submit_choice:'전략 선택 제출',game_yut_move_piece:'말 이동',
+      game_yut_timeout_turn:'턴 시간 초과 처리',game_yut_end_game:'윷놀이 종료',game_yut_leave_game:'플레이어 퇴장',
+      game_common_interruption_exclude_player:'이탈자를 제외하고 진행',game_common_interruption_expire:'중단 대기 만료 확인',
+      game_common_interruption_on_connection_changed:'플레이어 연결 변화 감지',game_common_interruption_report_stale_controller:'태블릿 접속 시간 확인',
+      game_common_interruption_report_stale_player:'플레이어 접속 시간 확인',game_common_interruption_wait_more:'재접속 대기 연장',
+      game_common_recovery_report:'화면·상태 준비 보고',cleanupExpiredGameInterruptions:'만료된 중단 정기 처리',
+      cleanupGhostRoomPlayers:'유령 참가자 정기 정리',game_common_controller_presence_changed:'태블릿 접속 변화 감지'
+    };
+    const groups={room:'방·세션',auth:'인증·프로필',liars:'라이어스 포커',final:'파이널콜',mafia:'마피아',holdem:'홀덤',yut:'윷놀이',recovery:'중단·재접속'};
+    // index.ts가 다른 파일에서 다시 export하는 함수는 실제 정의 파일을 엽니다.
+    const functionFileOverrides={
+      createRealtimeRoom:'functions/src/room/create-room.ts',
+      syncRoomCleanupQueue:'functions/src/room/room-cleanup.ts',
+      cleanupStaleRealtimeRooms:'functions/src/room/room-cleanup.ts'
+    };
+    // [실행 시점, 핵심 검사, 서버 처리] 순서. 세부 payload와 예외는 링크한 정의 파일이 기준입니다.
+    const gameDesign={
+      game_liars_poker_start_game:['태블릿이 자리 확정 후 시작하거나 결과 화면에서 재시작','controller 세션·선택 게임·유효한 좌석을 확인','덱과 기준 카드, 개인 손패를 만들고 공개 phase를 dealing으로 기록'],
+      game_liars_poker_complete_dealing:['태블릿 카드 분배 연출이 끝난 뒤','controller 세션과 현재 dealing phase를 확인','보관한 손패를 개인 상태에 반영하고 phase를 playing으로 전환'],
+      game_liars_poker_ready_turn:['첫 턴 플레이어가 손패를 펼친 뒤','현재 턴·생존 여부와 playing phase, 중복 명령을 확인','첫 턴의 제한시간을 시작하고 공개 상태를 갱신'],
+      game_liars_poker_submit_cards:['현재 턴 플레이어가 카드 선택 후 제출','소유한 카드·제출 장수·턴·phase와 중복 명령을 확인','손패에서 카드를 빼고 테이블 제출 기록과 다음 턴 또는 마지막 카드 도전을 갱신'],
+      game_liars_poker_call_liar:['현재 턴 플레이어가 LIAR를 누른 뒤','현재 제출 기록과 도전 가능한 phase·턴을 확인','마지막 제출의 진실을 서버 카드로 판정하고 벌칙 대상과 공개 phase를 정함'],
+      game_liars_poker_pass_challenge:['마지막 카드 도전자가 FOLD를 선택한 뒤','lastCardChallenge phase와 현재 도전자·중복 명령을 확인','도전을 포기한 플레이어를 벌칙 대상으로 정하고 penalty phase로 이동'],
+      game_liars_poker_prepare_penalty:['태블릿이 벌칙 룰렛을 시작하기 전','controller 세션·penalty phase·대상 생존 여부를 확인','서버가 룰렛 결과를 먼저 뽑아 저장하여 재호출에도 같은 결과를 반환'],
+      game_liars_poker_resolve_penalty:['태블릿의 룰렛 연출이 끝난 뒤','저장된 벌칙 결과 ID와 controller 세션을 확인','보관된 벌칙 결과를 적용하고 생존 인원에 따라 후속 라운드 또는 종료로 전환'],
+      game_liars_poker_force_timeout:['태블릿이 만료된 플레이어 턴을 확인했을 때','현재 턴 deadline이 실제 지났는지 서버 시각으로 확인','미응답 턴을 규칙에 따라 해결하여 진행 정지를 방지'],
+      game_liars_poker_end_game:['태블릿이 현재 게임 종료를 요청했을 때','controller 세션과 현재 게임 인스턴스를 확인','게임을 finished로 바꾸고 방 자체는 유지'],
+      game_liars_poker_leave_game:['플레이어가 게임에서 직접 나갈 때','현재 방 참가자와 게임 인스턴스를 확인','이탈을 반영하고 남은 인원에 대한 중단·종료 판단으로 연결'],
+      game_final_call_start_game:['태블릿이 좌석 확정 뒤 게임을 시작할 때','controller 세션·선택 게임·4명 또는 6명 구성을 확인','팀·하트·덱·손패를 준비하고 공개 phase를 dealing으로 기록'],
+      game_final_call_complete_dealing:['태블릿 분배 연출이 끝난 뒤','controller 세션과 현재 dealing phase를 확인','대기 중인 손패를 전달하고 phase를 playing으로 전환'],
+      game_final_call_draw_card:['현재 턴 플레이어가 새 카드를 누를 때','턴·phase·덱/공개 카드의 선택 가능 여부를 확인','선택 출처의 카드를 전달하거나 카드가 없으면 규칙에 따라 CALL로 전환'],
+      game_final_call_complete_turn:['카드 교체를 확정한 플레이어가 턴을 마칠 때','현재 턴과 카드 교체 상태·중복 명령을 확인','손패와 공개 카드를 반영한 후 다음 턴 또는 최종 제출 단계로 이동'],
+      game_final_call_timeout_turn:['진행 중인 턴이 서버 마감시간을 넘겼을 때','서버 시각·현재 phase·턴 대상이 여전히 같은지 확인','규칙에 맞게 미응답 턴을 처리하고 다음 상태로 이동'],
+      game_final_call_declare:['현재 턴 플레이어가 CALL을 선언할 때','playing phase·현재 턴·카드 교체 대기 여부를 확인','CALL 선언자를 기록하고 최종 손패 제출 흐름을 시작'],
+      game_final_call_submit_hand:['CALL 이후 최종 손패를 낼 때','callerSubmit/finalSubmit phase·제출자·카드 소유를 확인','최종 선택을 저장하고 남은 턴 또는 결과 공개 단계로 진행'],
+      game_final_call_complete_result_reveal:['태블릿의 라운드 결과 공개 연출이 끝난 뒤','controller 세션·현재 결과 공개 상태를 확인','공개 완료 시각을 기록해 휴대폰 결과 화면 진입을 허용'],
+      game_final_call_start_next_round:['결과 확인 후 다음 라운드로 갈 때','controller 세션과 roundResult·playing 상태를 확인','생존 참가자의 새 라운드 손패·턴·dealing 상태를 준비'],
+      game_final_call_end_game:['태블릿이 현재 게임 종료를 요청할 때','controller 세션과 게임 인스턴스를 확인','공개 상태를 finished로 바꾸고 방과 참가자는 유지'],
+      game_final_call_clear_game:['끝난 게임 정보를 대기실에서 정리할 때','controller 세션과 finished 상태를 확인','game 노드만 삭제하고 방·플레이어·선택 게임은 보존'],
+      game_final_call_leave_game:['플레이어가 직접 게임을 나갈 때','현재 방 참가·게임 상태를 확인','이탈 상태와 남은 팀의 계속 가능 여부를 처리'],
+      game_mafia_start_game:['태블릿이 역할 구성과 규칙을 확정할 때','controller 세션·인원·역할 구성표를 확인','역할을 배정하고 개인 private 역할과 공개 roleReveal phase를 생성'],
+      game_mafia_confirm_role:['휴대폰에서 자신의 역할을 확인했을 때','해당 플레이어·roleReveal phase·중복 확인 여부를 검사','개인 확인 상태를 기록해 전원 준비 여부를 판단할 수 있게 함'],
+      game_mafia_complete_role_reveal:['태블릿이 역할 공개 절차를 마칠 때','controller 세션과 역할 확인 진행 상태를 검사','역할 공개를 끝내고 첫 밤 단계로 넘어감'],
+      game_mafia_submit_night_action:['밤에 역할을 가진 플레이어가 대상을 고를 때','생존·역할·night phase·대상 유효성을 확인','비공개 밤 행동을 저장하고 밤 결과 판정에 사용'],
+      game_mafia_timeout_night:['밤 제한시간이 끝났을 때','서버 시각과 아직 night 단계인지 확인','미응답 밤 행동을 정리하고 아침 공개 상태로 진행'],
+      game_mafia_complete_morning:['태블릿 아침 사망 발표가 끝난 뒤','controller 세션과 morning phase를 확인','밤 결과를 반영한 뒤 승패가 없으면 낮 토론으로 이동'],
+      game_mafia_end_discussion:['낮 토론을 끝내기로 결정했을 때','생존 플레이어·day phase·중복 명령을 확인','낮 토론을 마치고 투표 단계로 전환'],
+      game_mafia_timeout_day:['낮 토론 시간이 만료됐을 때','서버 시각과 현재 day phase를 확인','토론을 끝내고 투표 단계로 전환'],
+      game_mafia_submit_vote:['생존 플레이어가 처형 대상을 선택했을 때','voting phase·투표자 생존·대상과 중복 투표를 확인','투표를 저장하고 전원 제출 여부를 반영'],
+      game_mafia_timeout_vote:['투표 제한시간이 끝났을 때','서버 시각과 현재 voting phase를 확인','남은 투표를 마감하고 개표 결과로 전환'],
+      game_mafia_complete_vote_result:['태블릿 개표·처형 발표가 끝난 뒤','controller 세션과 voteResult phase를 확인','처형 후 승패를 판정하고 끝나지 않았으면 다음 밤으로 이동'],
+      game_mafia_end_game:['태블릿이 마피아 게임을 수동 종료할 때','controller 세션과 현재 게임 상태를 확인','게임을 종료하고 공개 결과 상태를 갱신'],
+      game_mafia_leave_game:['플레이어가 직접 게임을 나갈 때','현재 참가와 게임 인스턴스를 확인','이탈을 반영하고 살아남은 진영의 진행 가능 여부를 다시 판정'],
+      game_holdem_start_game:['태블릿이 좌석 확정 뒤 홀덤을 시작할 때','controller 세션·선택 게임·참가 인원과 좌석을 확인','덱·칩·첫 핸드와 dealing phase를 준비'],
+      game_holdem_complete_dealing:['태블릿 카드 분배가 끝났을 때','controller 세션과 dealing phase를 확인','개인 홀카드를 반영하고 preflop 베팅을 시작'],
+      game_holdem_act:['현재 턴 플레이어가 체크·콜·레이즈·폴드할 때','턴 소유자·허용 행동·금액·베팅 phase를 확인','칩·팟·현재 베팅과 다음 플레이어 또는 다음 스트리트를 갱신'],
+      game_holdem_timeout_turn:['베팅 턴 제한시간이 지났을 때','서버 시각과 현재 턴·베팅 phase를 확인','미응답 행동을 규칙대로 처리해 다음 턴으로 진행'],
+      game_holdem_complete_result:['태블릿이 핸드 결과를 다 보여 준 뒤','controller 세션과 handResult 상태를 확인','결과 연출을 마치고 다음 핸드 또는 게임 종료로 연결'],
+      game_holdem_end_game:['태블릿이 홀덤 종료를 요청할 때','controller 세션·현재 게임을 확인','공개 상태를 finished로 변경'],
+      game_holdem_leave_game:['플레이어가 게임에서 나갈 때','현재 참가자·게임 상태를 확인','퇴장을 반영하고 남은 인원의 진행 가능 여부를 판단'],
+      game_yut_start_game:['태블릿이 윷놀이를 시작할 때','controller 세션·선택한 윷 버전·참가 인원을 확인','말·팀·턴을 만들고 일반형은 rolling, 전략형은 selecting으로 시작'],
+      game_yut_roll:['현재 플레이어가 윷을 던질 때','턴·rolling phase와 허용된 던지기 횟수를 확인','윷 결과를 서버에서 계산하고 이동 가능 상태를 갱신'],
+      game_yut_submit_choice:['전략형 플레이어가 윷 선택을 제출할 때','선택 권한·selecting phase와 제출 값을 확인','선택을 반영하고 윷 굴리기 단계로 이동'],
+      game_yut_move_piece:['현재 턴 플레이어가 말을 이동할 때','턴·moving phase·가능한 말과 목적지를 확인','말 위치·잡기·추가 턴·승리 여부를 갱신'],
+      game_yut_timeout_turn:['윷놀이 턴 제한시간이 끝났을 때','서버 시각과 여전히 같은 턴인지 확인','미응답 턴을 정리하고 다음 플레이어에게 넘김'],
+      game_yut_end_game:['태블릿이 윷놀이를 종료할 때','controller 세션과 현재 게임 상태를 확인','게임을 finished로 전환'],
+      game_yut_leave_game:['플레이어가 윷놀이에서 나갈 때','현재 방 참가·게임 상태를 확인','퇴장을 반영하고 남은 인원·팀으로 계속 가능 여부를 판정']
+    };
+    const sharedDesign={
+      createRealtimeRoom:['태블릿 controller가 새 방을 요청','로그인·기존 세션·중복 생성 요청을 확인','방 코드·controller 세션·초기 방 상태를 만들고 복구 위치를 기록'],
+      joinRealtimeRoom:['휴대폰이 방 코드로 입장','방 상태·참가 자격·인원과 중복 입장을 확인','플레이어 membership과 연결 세션을 방에 등록'],
+      saveRealtimePlayerSeatIndexes:['태블릿이 좌석 배치를 확정','controller 세션과 현재 참가자 구성을 확인','각 플레이어의 좌석 번호를 방에 기록'],
+      validateRealtimeRoom:['휴대폰이 방 코드를 확인','요청한 방의 존재와 참가 가능한 상태를 확인','입장 화면에 필요한 검증 결과를 반환'],
+      beginRealtimeRoomSeating:['태블릿이 게임 시작 준비로 이동','controller 세션·선택 게임·참가 상태를 확인','방 상태를 자리 배치 단계로 전환'],
+      syncRoomCleanupQueue:['방 cleanupSignal이 바뀐 자동 이벤트','방 인스턴스와 신호 세대가 일치하는지 다시 확인','서버 정리 대기열을 추가·제거·갱신'],
+      cleanupStaleRealtimeRooms:['서버의 정기 스케줄','정리 대상 방을 다시 읽고 세션·보존 기한을 확인','오래된 방을 단계적으로 정리하고 다음 검색 위치를 기록'],
+      closeRoom:['태블릿이 명시적으로 방 종료','controller UID·session ID와 대상 방을 확인','방을 종료 상태로 바꾸고 참가자 화면에 종료를 알림'],
+      fetchRealtimeRoomGroupEntitlements:['태블릿이 그룹의 보유 게임을 조회','현재 방 참가자와 controller 권한을 서버에서 확인','참가자들의 보유 게임 ID만 집계하여 반환'],
+      leaveRealtimeRoom:['휴대폰이 방에서 직접 퇴장','현재 membership과 방 인스턴스를 확인','참가자를 방에서 제거하고 남은 방 상태를 갱신'],
+      removeRealtimeRoomPlayer:['태블릿이 참가자를 내보낼 때','controller 세션과 대상 membership을 확인','대상 참가자를 방에서 제거'],
+      resumeRealtimeControllerRoom:['태블릿이 기존 방으로 돌아올 때','controller UID와 기존 방·세션 상태를 확인','새 controller 세션을 연결하고 기존 방을 복구'],
+      selectRealtimeRoomGame:['태블릿이 책에서 게임을 선택','controller 세션·게임 카탈로그·방 상태를 확인','selectedGame을 저장하여 입장 기기에 전파'],
+      syncRealtimeRoomGameStatus:['게임 공개 상태가 바뀐 자동 이벤트','현재 방·게임 인스턴스의 상태인지 확인','방 status와 게임 진행/종료 상태를 동기화'],
+      fetchRealtimeRoomSession:['휴대폰 또는 태블릿이 세션 복구를 요청','로그인·현재 membership 또는 controller 세션을 확인','현재 roomInstanceId와 connection 정보를 반환'],
+      game_common_operation_status:['전송 결과를 놓친 클라이언트가 조회','방 인스턴스·operationId·호출자를 확인','이미 처리된 명령인지 서버 기록으로 답함'],
+      syncRealtimeRoomConnection:['연결 노드가 바뀐 자동 이벤트','현재 connectionId·방 인스턴스와 일치하는지 확인','controller 또는 player의 접속 상태를 방에 반영'],
+      deleteAccount:['사용자가 계정 삭제를 요청','로그인 UID와 삭제 대상·연결 방을 확인','계정 관련 프로필·방 연결을 정리하고 삭제 절차 진행'],
+      syncGoogleUserProfile:['Google 계정 로그인 뒤 프로필 동기화','인증 UID와 제공된 계정 정보를 확인','서버 프로필 정보를 최신 상태로 반영'],
+      syncAppleUserProfile:['Apple 계정 로그인 뒤 프로필 동기화','인증 UID와 제공된 계정 정보를 확인','서버 프로필 정보를 최신 상태로 반영'],
+      completeGuestOnboarding:['게스트 가입 화면 완료','인증·입력값·기존 온보딩 상태를 확인','게스트 프로필과 완료 상태를 저장'],
+      advanceOnboarding:['회원가입 단계 이동','현재 단계와 요청한 다음 단계를 확인','서버 온보딩 상태를 다음 단계로 기록'],
+      beginOnboarding:['회원가입 시작','인증 사용자와 기존 진행 기록을 확인','온보딩 진행 상태를 생성'],
+      completeOnboardingProfile:['닉네임·프로필 확정','계정·입력값·중복/정책을 확인','Firestore 프로필과 완료 상태를 기록'],
+      recoverLegacyOnboarding:['이전 버전 사용자 상태 복구','Auth·기존 프로필과 온보딩 기록을 대조','호환 가능한 완료 상태로 복원'],
+      cleanupIncompleteAccounts:['서버의 정기 스케줄','오래된 미완료 계정을 다시 확인','정책에 맞는 정리 작업 수행'],
+      game_common_interruption_exclude_player:['태블릿이 이탈자를 제외하고 계속하기 선택','controller 세션·중단 ID·최소 인원을 확인','이탈자를 제외하고 게임 규칙별로 상태를 재계산'],
+      game_common_interruption_expire:['중단 대기 시간이 끝났다는 보고','서버 시각과 해당 중단 ID를 확인','자동 제외 대신 결정 대기 상태로 표시'],
+      game_common_interruption_on_connection_changed:['플레이어 연결 끊김 자동 이벤트','현재 connection 신호와 플레이어 상태를 재확인','게임 복구 원인에 단절을 기록'],
+      game_common_interruption_report_stale_controller:['휴대폰이 태블릿 heartbeat 정지를 보고','관측한 lastSeen과 현재 연결 세션을 비교','실제 오래된 controller 연결이면 단절로 기록'],
+      game_common_interruption_report_stale_player:['태블릿이 플레이어 heartbeat 정지를 보고','관측한 lastSeen과 현재 연결 세션을 비교','실제 오래된 player 연결이면 단절로 기록'],
+      game_common_interruption_wait_more:['태블릿이 재접속을 더 기다리기로 선택','controller 세션과 해당 중단 ID를 확인','중단 대기 기한을 연장'],
+      game_common_recovery_report:['재접속 기기가 화면 준비 결과를 제출','방·게임 인스턴스와 현재 연결 신원을 확인','ready 또는 failed를 기록해 재개 판단에 사용'],
+      cleanupExpiredGameInterruptions:['서버의 정기 스케줄','만료된 중단 상태를 서버 시각으로 재확인','결정 대기 상태를 보완하고 오래된 중단을 정리'],
+      cleanupGhostRoomPlayers:['서버의 정기 스케줄','방·플레이어 접속 상태를 다시 확인','더 이상 유효하지 않은 참가자를 정리'],
+      game_common_controller_presence_changed:['태블릿 연결 상태 변경 자동 이벤트','현재 방과 controller 연결을 재검사','태블릿 단절을 게임 준비·중단 상태에 반영']
+    };
+    let selectedGame='liars';
+    let functionScope='game';
+    let selectedFunctionName=null;
+    function renderNode(i){const item=nodes[i];document.querySelectorAll('.node').forEach((el,j)=>el.setAttribute('aria-pressed',String(i===j)));document.getElementById('node-detail').innerHTML=`<div class="label accent-mint">${item.type}</div><h3>${item.title}</h3><p>${item.text}</p><div class="sources">${item.files.map(f=>source(f)).join('')}</div>`}
+    document.getElementById('node-grid').innerHTML=nodes.map((n,i)=>`<button class="node" type="button" data-node="${i}" aria-pressed="false"><span>${n.type}</span><strong>${n.title}</strong></button>`).join('');
+    document.getElementById('node-grid').addEventListener('click',e=>{const n=e.target.closest('[data-node]');if(n)renderNode(Number(n.dataset.node))});renderNode(0);
+    function openSheet(id){
+      if(!['front','backend','other'].includes(id))return;
+      document.querySelectorAll('.bookmarks button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.sheet===id)));
+      document.querySelectorAll('.quick-nav button').forEach(b=>{
+        if(b.dataset.sheet===id)b.setAttribute('aria-current','page');
+        else b.removeAttribute('aria-current');
+      });
+      document.querySelectorAll('.book-sheet').forEach(sheet=>sheet.hidden=sheet.id!==id);
+      document.querySelector('.book-stack').dataset.active=id;
+    }
+    document.querySelector('.bookmarks').addEventListener('click',e=>{
+      const button=e.target.closest('[data-sheet]');
+      if(!button)return;
+      openSheet(button.dataset.sheet);
+      location.hash=button.dataset.sheet;
+      document.querySelector('.bookmarks').scrollIntoView({block:'start'});
+    });
+    const quickNav=document.querySelector('.quick-nav');
+    new IntersectionObserver(([entry])=>{
+      quickNav.hidden=entry.isIntersecting||entry.boundingClientRect.bottom>0;
+    }).observe(document.querySelector('.bookmarks'));
+    quickNav.addEventListener('click',e=>{
+      const button=e.target.closest('[data-sheet]');
+      if(!button)return;
+      openSheet(button.dataset.sheet);
+      location.hash=button.dataset.sheet;
+      document.querySelector('.book-stack').scrollIntoView({block:'start'});
+    });
+    window.addEventListener('hashchange',()=>openSheet(location.hash.slice(1)));
+    const gameLabels={liars:'라이어스 포커',final:'파이널콜',mafia:'마피아',holdem:'홀덤',yut:'윷놀이 계열'};
+    document.getElementById('game-controls').innerHTML=Object.keys(games).map(k=>`<button type="button" data-game="${k}" aria-pressed="false">${gameLabels[k]}</button>`).join('');
+    document.getElementById('game-controls').addEventListener('click',e=>{const b=e.target.closest('[data-game]');if(b)renderGame(b.dataset.game)});
+    function stageFunctions(key,label){
+      const prefix={liars:'game_liars_poker_',final:'game_final_call_',mafia:'game_mafia_',holdem:'game_holdem_',yut:'game_yut_'}[key];
+      return label.split('/').map(part=>{
+        const shortName=part.split('→').pop().replace(/\([^)]*\)/g,'').trim();
+        return shortName.startsWith('game_')?shortName:prefix+shortName;
+      }).filter(name=>functionData.some(f=>f.name===name));
+    }
+    function renderGame(key){
+      selectedGame=key;
+      functionScope='game';
+      selectedFunctionName=null;
+      document.getElementById('function-search').value='';
+      document.querySelectorAll('[data-game]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.game===key)));
+      const g=games[key];
+      document.getElementById('game-intro').innerHTML=`<div class="label accent-mint">${g.family}</div><h3>${g.name}</h3><p>${g.description}</p><div class="game-meta"><span>runtime ID · ${g.id}</span><span>${g.count}</span><span>${g.orientation}</span></div>`;
+      document.getElementById('game-files').innerHTML=`<strong>코드 시작점</strong>${source(g.entry,'게임 등록 · '+g.entry.split('/').pop())}${source(g.phone,'휴대폰 화면')}${source(g.tablet,'태블릿 화면')}${source(g.shared,'상태·서비스')}`;
+      document.getElementById('game-stages').innerHTML=g.stages.map((s,i)=>{
+        const actions=stageFunctions(key,s[4]).map(name=>`<button class="stage-action" type="button" data-function="${name}">${friendly[name]} ↗</button>`).join('');
+        return `<article class="stage"><div class="index">${String(i+1).padStart(2,'0')} / ${String(g.stages.length).padStart(2,'0')}</div><h4>${s[0]}</h4><div class="status">${s[1]}</div><dl><dt>휴대폰</dt><dd>${s[2]}</dd><dt>태블릿</dt><dd>${s[3]}</dd><dt>서버 함수</dt><dd>${s[4]}<div class="stage-actions">${actions}</div></dd><dt>코드</dt><dd>${source(s[5],'열기')}</dd></dl></article>`;
+      }).join('');
+      document.getElementById('game-note').innerHTML=`<div class="label accent-gold">게임별 처리</div><p class="note">${g.note}</p>`;
+      document.getElementById('game-stages').scrollLeft=0;
+      renderFunctions();
+    }
+    function functionKind(name){
+      if(['cleanupStaleRealtimeRooms','cleanupIncompleteAccounts','cleanupExpiredGameInterruptions','cleanupGhostRoomPlayers'].includes(name))return '서버 정기 실행';
+      if(['syncRoomCleanupQueue','syncRealtimeRoomGameStatus','syncRealtimeRoomConnection','game_common_interruption_on_connection_changed','game_common_controller_presence_changed'].includes(name))return 'RTDB 변화 자동 감지';
+      return '요청 함수 · callable';
+    }
+    function showFunction(name,jump=false){
+      const f=functionData.find(item=>item.name===name);
+      if(!f)return;
+      selectedFunctionName=name;
+      document.querySelectorAll('[data-func]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.func===name)));
+      const steps=gameDesign[name]||sharedDesign[name];
+      const result=f.group==='auth'?'관련 프로필·온보딩 화면이 서버 결과를 다시 읽습니다.':f.group==='room'?'방 상태 구독 또는 함수 응답으로 태블릿·휴대폰 화면이 갱신됩니다.':f.group==='recovery'?'공개 복구 상태를 구독하는 기기와 공용 복구 레이어가 변경을 표시합니다.':'RTDB public/private 구독과 game controller가 새 상태를 각 기기 board에 반영합니다.';
+      const file=functionFileOverrides[name]||f.file;
+      document.getElementById('function-detail').innerHTML=`<div class="label">${groups[f.group]} · ${functionKind(name)}</div><h4>${friendly[name]}</h4><code class="api-name">${name}</code><dl class="function-steps"><div><dt>실행 시점</dt><dd>${steps[0]}</dd></div><div><dt>서버 확인</dt><dd>${steps[1]}</dd></div><div><dt>상태 변경</dt><dd>${steps[2]}</dd></div><div><dt>화면 반영</dt><dd>${result}</dd></div></dl><div class="label">함수 정의</div>${source(file,file)}`;
+      if(jump&&window.innerWidth<=740)document.getElementById('function-detail').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    function renderFunctions(){
+      document.querySelectorAll('[data-scope]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scope===functionScope)));
+      const term=document.getElementById('function-search').value.trim().toLowerCase();
+      const matches=functionData.filter(f=>{
+        const inScope=functionScope==='game'?f.group===selectedGame:['room','auth','recovery'].includes(f.group);
+        return inScope&&(!term||`${f.name} ${f.group} ${friendly[f.name]}`.toLowerCase().includes(term));
+      });
+      document.getElementById('function-count').textContent=`${functionScope==='game'?games[selectedGame].name:'방·인증·복구'} · ${matches.length}개 함수`;
+      document.getElementById('function-list').innerHTML=matches.map(f=>`<button class="func" type="button" data-func="${f.name}" aria-pressed="false"><span><strong>${friendly[f.name]}</strong><code>${f.name}</code></span></button>`).join('')||'<p class="hint">검색 결과가 없습니다.</p>';
+      if(matches.length)showFunction(matches.some(f=>f.name===selectedFunctionName)?selectedFunctionName:matches[0].name);
+      else document.getElementById('function-detail').innerHTML='<p class="note">검색 결과가 없습니다. 다른 함수명을 입력해 주세요.</p>';
+    }
+    document.getElementById('function-scope').addEventListener('click',e=>{
+      const b=e.target.closest('[data-scope]');if(!b)return;
+      functionScope=b.dataset.scope;selectedFunctionName=null;document.getElementById('function-search').value='';renderFunctions();
+    });
+    document.getElementById('function-list').addEventListener('click',e=>{
+      const b=e.target.closest('[data-func]');if(b)showFunction(b.dataset.func,true);
+    });
+    document.getElementById('game-stages').addEventListener('click',e=>{
+      const b=e.target.closest('[data-function]');if(!b)return;
+      functionScope='game';document.getElementById('function-search').value='';selectedFunctionName=b.dataset.function;
+      renderFunctions();
+      if(window.innerWidth<=740)document.getElementById('function-detail').scrollIntoView({behavior:'smooth',block:'start'});
+      else document.getElementById('functions-section').scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    document.getElementById('function-search').addEventListener('input',renderFunctions);
+
+    // 이 값은 문서 표시용입니다. pubspec.yaml이나 실제 배포 버전을 수정하지 않습니다.
+    const metaDefaults={date:'2026-11-10',version:'1.0.0+7'};
+    const metaKey='mosigame-system-map-metadata-v1';
+    const metaForm=document.getElementById('meta-form');
+    const metaTrigger=document.getElementById('meta-trigger');
+    const metaControl=document.querySelector('.meta-control');
+    function setMeta(date,version){
+      document.getElementById('meta-date').value=date;
+      document.getElementById('meta-version').value=version;
+      document.getElementById('meta-date-label').textContent=`확인일 ${date.replaceAll('-','.')}`;
+      document.getElementById('meta-version-label').textContent=`앱 ${version}`;
+    }
+    try{
+      const saved=JSON.parse(localStorage.getItem(metaKey)||'null');
+      if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&typeof saved.version==='string'&&saved.version.trim()){
+        setMeta(saved.date,saved.version.trim());
+      }
+    }catch(_){/* file:// 저장소가 막힌 브라우저에서는 기본값만 표시합니다. */}
+    function closeMeta(){metaForm.hidden=true;metaTrigger.setAttribute('aria-expanded','false')}
+    metaTrigger.addEventListener('click',()=>{
+      metaForm.hidden=!metaForm.hidden;
+      metaTrigger.setAttribute('aria-expanded',String(!metaForm.hidden));
+      if(!metaForm.hidden)document.getElementById('meta-date').focus();
+    });
+    metaForm.addEventListener('submit',e=>{
+      e.preventDefault();
+      const date=document.getElementById('meta-date').value;
+      const version=document.getElementById('meta-version').value.trim();
+      if(!date||!version)return;
+      setMeta(date,version);
+      try{localStorage.setItem(metaKey,JSON.stringify({date,version}))}catch(_){}
+      closeMeta();
+      metaTrigger.focus();
+    });
+    document.getElementById('meta-reset').addEventListener('click',()=>{
+      setMeta(metaDefaults.date,metaDefaults.version);
+      try{localStorage.removeItem(metaKey)}catch(_){}
+      closeMeta();
+      metaTrigger.focus();
+    });
+    document.addEventListener('click',e=>{if(!metaControl.contains(e.target))closeMeta()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMeta()});
+
+    // 모든 로컬 코드 링크는 먼저 파일의 책임을 설명합니다. 원본 열기는 별도 버튼입니다.
+    const inspector=document.getElementById('code-inspector');
+    const inspectorContent=document.getElementById('inspector-content');
+    const roulettePath='packages/game_kit/lib/penalty/roulette.dart';
+    const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const fileNotes={
+      'lib/main.dart':['앱 시작','Firebase와 Crashlytics 등 앱 시작에 필요한 서비스를 초기화합니다.','초기화 순서와 실패 처리 후 runApp()을 호출하는 부분을 확인합니다.'],
+      'lib/app.dart':['앱 화면 연결','인증 상태, 네트워크 안내, 기기별 화면 진입을 앱 루트에서 연결합니다.','화면 전체에 적용되는 가드와 게임 진입 경로를 확인합니다.'],
+      'lib/games/game_registry.dart':['게임 등록','게임 ID와 게임 패키지의 실행 객체를 연결합니다.','게임을 추가할 때 ID와 등록 항목이 일치하는지 확인합니다.'],
+      'lib/platform/home/tablet/screens/tablet_home.dart':['태블릿 로비','책 선택과 방 패널을 표시하고 선택한 게임을 시작 흐름으로 보냅니다.','책 선택 이후 호출되는 시작·상세 화면 연결을 확인합니다.'],
+      'lib/platform/home/tablet/widgets/tablet_book_carousel.dart':['게임 책 UI','게임별 표지를 책처럼 배치하고 선택·상세 열기 입력을 전달합니다.','책 배치와 선택 애니메이션을 확인합니다.'],
+      'lib/platform/home/room/services/room_service.dart':['방 요청 서비스','방 생성·참가·선택·종료 같은 변경을 Cloud Functions에 요청합니다.','클라이언트 요청과 서버 응답 처리를 확인합니다.'],
+      'lib/platform/home/room/providers/room_provider.dart':['방 화면 상태','RTDB에서 받은 방 정보를 로비와 참가 화면에서 쓰는 상태로 관리합니다.','방 구독과 화면 갱신 시점을 확인합니다.'],
+      'packages/game_kit/lib/game_flow/game_flow_config.dart':['게임 흐름 설정','게임 단계별 화면, 문구, 애니메이션 시간과 입력 차단 설정을 담습니다.','단계별 표시 여부와 Duration 값을 확인합니다.'],
+      'packages/game_kit/lib/penalty/roulette.dart':['룰렛 UI·연출','레버 드래그, 회전 애니메이션, 서버 결과 칸 선택을 담당하는 공용 Flutter 위젯입니다.','확률 판정은 이 파일에서 하지 않습니다. 아래 시연의 원판·축·포인터·레버를 눌러 각 Flutter 코드를 확인하세요.'],
+      'packages/game_liars_poker/lib/tablet/screens/game_penalty.dart':['라이어스 룰렛 화면','공용 PenaltyRoulette를 태블릿 벌칙 단계에 놓고 결과 반영 중 입력을 막습니다.','onPrepareResult와 onResult가 게임 controller에 연결되는 부분을 확인합니다.'],
+      'packages/game_liars_poker/lib/shared/providers/penalty_coordinator.dart':['룰렛 서버 요청 순서','prepare()로 서버 결과를 받고 complete()로 같은 결과의 연출 완료를 알립니다.','resolutionId를 보관했다가 resolve 요청에 다시 전달합니다.'],
+      'packages/game_liars_poker/lib/shared/providers/game_controller.dart':['라이어스 게임 상태','서버 스냅샷을 화면 상태로 옮기고 카드 제출·벌칙·복구 명령을 조율합니다.','prepareRoulette()와 resolveRoulette()의 재시도·복구 조건을 확인합니다.'],
+      'packages/game_kit/lib/services/game_command_service.dart':['게임 명령 전송','게임 행동을 callable로 보내고 중복 요청과 일시 오류 처리를 공통화합니다.','명령 ID와 재시도 정책을 확인합니다.'],
+      'packages/game_kit/lib/recovery/widgets/game_recovery_layer.dart':['게임 복구 화면','연결 중단이나 복구 상태를 게임 화면 위에 공통으로 표시합니다.','중단 상태별 안내와 입력 차단 범위를 확인합니다.'],
+      'functions/src/index.ts':['배포 함수 목록','Cloud Functions의 외부 함수 이름을 export합니다.','클라이언트가 호출하는 이름과 실제 정의 파일을 대조합니다.'],
+      'functions/src/liars-poker/finish-penalty.ts':['라이어스 벌칙 서버 처리','prepare_penalty가 결과를 먼저 추첨·보관하고 resolve_penalty가 연출 완료 뒤 결과를 반영합니다.','drawPenaltyResult()의 회차별 확률과 pendingPenaltyResolution 재사용을 확인합니다.'],
+      'database.rules.json':['RTDB 접근 규칙','방과 게임 데이터의 읽기·쓰기 범위를 정합니다.','public/private/server 경계와 참가자 권한을 확인합니다.'],
+      'firestore.rules':['Firestore 접근 규칙','게임 카탈로그와 사용자 문서의 접근 권한을 정합니다.','프로필과 게임 목록의 읽기 조건을 확인합니다.'],
+      'pubspec.yaml':['앱 버전·의존성','Flutter 앱 버전과 패키지 의존성을 선언합니다.','version 값은 문서 상단의 표시값과 별도로 관리합니다.']
+    };
+    function fileDescription(path,related){
+      if(fileNotes[path])return fileNotes[path];
+      if(path.startsWith('functions/src/'))return [path.split('/').pop(),'Cloud Functions 서버 파일입니다. 요청 검증과 게임 상태 변경을 이곳에서 확인합니다.',related.length?`이 파일에서 설명하는 함수 ${related.length}개를 아래에서 선택할 수 있습니다.`:'호출 지점과 트랜잭션 결과를 원본에서 확인합니다.'];
+      if(path.includes('/phone/'))return [path.split('/').pop(),'휴대폰에 보이는 화면 또는 그 상태를 담당합니다.','서버 phase에 따라 보여 주는 위젯과 사용자 입력 연결을 확인합니다.'];
+      if(path.includes('/tablet/'))return [path.split('/').pop(),'태블릿에 보이는 화면 또는 연출을 담당합니다.','서버 phase에 따른 화면 전환과 연출 완료 콜백을 확인합니다.'];
+      if(path.includes('/shared/'))return [path.split('/').pop(),'게임의 휴대폰·태블릿이 함께 쓰는 모델 또는 서비스입니다.','서버 스냅샷을 해석하는 코드와 명령 호출을 확인합니다.'];
+      if(path.startsWith('packages/game_kit/'))return [path.split('/').pop(),'여러 게임이 함께 쓰는 부품입니다.','수정할 때 이 위젯이나 서비스의 모든 게임 사용처를 확인합니다.'];
+      return [path.split('/').pop(),'앱 구조와 연결된 소스 파일입니다.','아래 원본 링크에서 실제 선언과 호출 위치를 확인합니다.'];
+    }
+    function renderInspectorFunction(name){
+      const steps=gameDesign[name]||sharedDesign[name];
+      const target=document.getElementById('inspector-function-detail');
+      if(!steps||!target)return;
+      document.querySelectorAll('[data-inspector-function]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.inspectorFunction===name)));
+      target.innerHTML=`<h3>${escapeHtml(friendly[name]||name)}</h3><code>${escapeHtml(name)}</code><dl><div><dt>실행</dt><dd>${escapeHtml(steps[0])}</dd></div><div><dt>검사</dt><dd>${escapeHtml(steps[1])}</dd></div><div><dt>변경</dt><dd>${escapeHtml(steps[2])}</dd></div></dl>`;
+    }
+    function openCodeInspector(path,href){
+      rouletteRunId+=1;
+      if(activeRouletteAnimation){activeRouletteAnimation.cancel();activeRouletteAnimation=null}
+      const related=functionData.filter(f=>(functionFileOverrides[f.name]||f.file)===path);
+      const [title,summary,focus]=fileDescription(path,related);
+      document.getElementById('inspector-title').textContent=title;
+      document.getElementById('inspector-path').textContent=path;
+      document.getElementById('inspector-summary').textContent=summary;
+      document.getElementById('inspector-original').href=href;
+      if(path===roulettePath){
+        renderRouletteInspector();
+      }else{
+        const relatedButtons=related.map(f=>`<button type="button" data-inspector-function="${escapeHtml(f.name)}" aria-pressed="false">${escapeHtml(friendly[f.name]||f.name)}</button>`).join('');
+        const rouletteLink=path==='functions/src/liars-poker/finish-penalty.ts'||path==='packages/game_liars_poker/lib/tablet/screens/game_penalty.dart'?`<button type="button" class="inspector-roulette-link" data-open-roulette>룰렛 시각 설명 열기</button>`:'';
+        inspectorContent.innerHTML=`<div class="inspector-file-info"><strong>이 파일에서 확인할 부분</strong>${escapeHtml(focus)}</div>${related.length?`<h3>이 파일의 서버 함수</h3><div class="inspector-functions">${relatedButtons}</div><div id="inspector-function-detail" class="inspector-function-detail"></div>`:''}${rouletteLink}`;
+        if(related.length)renderInspectorFunction(related[0].name);
+      }
+      if(!inspector.open)inspector.showModal();
+    }
+    document.addEventListener('click',e=>{
+      const link=e.target.closest('a[href]');
+      if(!link||link.id==='inspector-original'||link.hasAttribute('data-direct'))return;
+      const href=link.getAttribute('href');
+      if(!href.startsWith('../../'))return;
+      e.preventDefault();
+      openCodeInspector(href.slice(6).split('#')[0],href);
+    });
+    inspectorContent.addEventListener('click',e=>{
+      const functionButton=e.target.closest('[data-inspector-function]');
+      if(functionButton)renderInspectorFunction(functionButton.dataset.inspectorFunction);
+      if(e.target.closest('[data-open-roulette]'))openCodeInspector(roulettePath,`../../${roulettePath}`);
+    });
+    document.getElementById('inspector-close').addEventListener('click',()=>inspector.close());
+    inspector.addEventListener('click',e=>{if(e.target===inspector)inspector.close()});
+    let activeRouletteAnimation=null;
+    let rouletteRunId=0;
+    inspector.addEventListener('close',()=>{
+      rouletteRunId+=1;
+      if(activeRouletteAnimation){activeRouletteAnimation.cancel();activeRouletteAnimation=null}
+    });
+    const rouletteAttempts=[
+      {sections:[true,false,false,false,true,false,false,false,true,false,false,false,true,false,false,false],odds:'4 / 16 · 탈락 25%'},
+      {sections:[true,false,false,true,false,false,true,false,false,true,false,false,true,false,false],odds:'5 / 15 · 탈락 약 33%'},
+      {sections:[false,true,true,true,true,true,true,true,true,true,true,true],odds:'11 / 12 · 탈락 약 92%'}
+    ];
+    function renderRouletteInspector(){
+      const rouletteParts={
+        layout:{title:'배경·배치 · Flutter',description:'1000×1000 기준 캔버스에 룰렛 위젯을 놓고 FittedBox로 태블릿 크기에 맞춰 축소합니다. 이 문서의 어두운 배경은 설명용으로 간략히 재현했습니다.',code:`static const double _designWidth = 1000;
+static const double _designHeight = 1000;
+
+child: FittedBox(
+  fit: BoxFit.contain,
+  alignment: Alignment.center,
+  child: SizedBox(
+    width: _designWidth,
+    height: _designHeight,
+    child: _buildDesignCanvas(),
+  ),
+),
+
+// _buildDesignCanvas()는 Stack에 RouletteWheel과
+// 레버 터치 영역을 겹쳐 배치합니다.`},
+        wheel:{title:'룰렛 본체 · Flutter',description:'금색 테두리와 검은 고리 안에 회전하는 Roulette 위젯을 놓습니다. 원판을 누르면 그리기 코드만 확인하며 회전하지 않습니다.',code:`// 금색 외곽 테두리와 안쪽 검은 고리
+Positioned(
+  left: wheelInset,
+  top: wheelInset,
+  width: _rouletteSize,
+  height: _rouletteSize,
+  child: IgnorePointer(
+    child: Container(
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: _gold),
+      padding: const EdgeInsets.all(rim),
+      child: const DecoratedBox(
+        decoration: BoxDecoration(shape: BoxShape.circle, color: _abyss),
+      ),
+    ),
+  ),
+),
+
+// 회전하는 원판
+Positioned(
+  left: wheelInset + sectorInset,
+  top: wheelInset + sectorInset,
+  width: sectorSize,
+  height: sectorSize,
+  child: Roulette(
+    group: group,
+    controller: controller,
+    style: const RouletteStyle(
+      dividerThickness: 2,
+      dividerColor: Color(0x59F3EEE6),
+      centerStickSizePercent: 0,
+      centerStickerColor: Colors.transparent,
+    ),
+  ),
+)`},
+        hub:{title:'중앙 축 · Flutter',description:'회전하는 칸 위에 고정된 어두운 원과 금색 테두리, 금색 손잡이를 겹칩니다.',code:`const Positioned(
+  left: (_canvas - hub) / 2,
+  top: (_canvas - hub) / 2,
+  width: hub,
+  height: hub,
+  child: IgnorePointer(
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _abyss,
+        border: Border.fromBorderSide(BorderSide(color: _gold, width: 9)),
+      ),
+    ),
+  ),
+),
+// 그 위에 _GoldKnob()을 한 번 더 배치합니다.`},
+        pointer:{title:'상단 포인터 · Flutter',description:'포인터는 원판과 함께 회전하지 않습니다. 삼각형 Path를 그려 현재 칸을 가리킵니다.',code:`const Positioned(
+  left: (_canvas - 64) / 2,
+  top: wheelInset - 26,
+  width: 64,
+  height: 76,
+  child: IgnorePointer(child: CustomPaint(painter: _PointerPainter(_ivory))),
+),
+
+// _PointerPainter.paint()
+final path = Path()
+  ..moveTo(0, 0)
+  ..lineTo(size.width, 0)
+  ..lineTo(size.width / 2, size.height)
+  ..close();
+canvas.drawShadow(path, Colors.black, 6, false);
+canvas.drawPath(path, Paint()..color = color);`},
+        sectors:{title:'벌칙 횟수·색상 칸 · Flutter',description:'벌칙 횟수에 따라 탈락 칸 수가 달라집니다. 빨강은 탈락, 어두운 보라색은 생존입니다. 위 선택 상자는 문서용 시연 조작입니다.',code:`List<bool> get _sections => switch (widget.attemptCount) {
+  0 => _firstAttemptSections,   // 탈락 4 / 전체 16
+  1 => _secondAttemptSections,  // 탈락 5 / 전체 15
+  _ => _finalAttemptSections,   // 탈락 11 / 전체 12
+};
+
+RouletteGroup.uniform(
+  sections.length,
+  colorBuilder: (index) {
+    if (sections[index]) return const Color(0xFFE0243A);
+    return index.isEven ? const Color(0xFF24152E) : const Color(0xFF34204A);
+  },
+  textBuilder: (_) => '',
+);`},
+        lever:{title:'레버 · Flutter',description:'실제 게임에서는 레버를 아래로 75% 이상 드래그해야 회전합니다. 문서에서는 클릭으로 같은 흐름을 짧게 시연합니다. _buildLever()가 손잡이 위치와 색을 그립니다.',code:`// _buildLever(): 진행률에 따라 빨간 손잡이를 이동합니다.
+final headOffset = -leverTravel / 2 + leverTravel * progress;
+final headCenterY = leverPivotY + headOffset;
+Positioned(
+  left: pivotX - leverHeadSize / 2,
+  top: headCenterY - leverHeadSize / 2,
+  width: leverHeadSize,
+  height: leverHeadSize,
+  child: const IgnorePointer(child: _LeverBall(color: _red)),
+),
+
+// GestureDetector에서 세로 드래그를 받습니다.
+onVerticalDragStart: _onLeverDragStart,
+onVerticalDragUpdate: _onLeverDragUpdate,
+onVerticalDragEnd: _onLeverDragEnd,
+
+if (_leverController.value < 0.75) {
+  await _leverController.reverse();
+  return;
+}
+// 레버 잠금·효과음·당김 연출 뒤 회전합니다.
+await _spin();
+
+// _spin(): 서버가 결정한 결과를 받은 뒤 해당 색의 칸으로 감속합니다.
+final result = await widget.onPrepareResult();
+widget.onResult(result);`}
+      };
+      const serverCode=`const [eliminatedSections, totalSections] =
+  attemptCount <= 0 ? [4, 16] :
+  attemptCount === 1 ? [5, 15] : [11, 12];
+return nextInt(totalSections) < eliminatedSections ?
+  "eliminated" : "safe";`;
+      inspectorContent.innerHTML=`<div class="roulette-demo">
+        <div class="roulette-options"><label>벌칙 횟수<select id="roulette-attempt"><option value="0">첫 번째 벌칙</option><option value="1">두 번째 벌칙</option><option value="2">세 번째 이후</option></select></label><p id="roulette-odds"></p></div>
+        <div class="roulette-layout"><div class="roulette-stage" id="roulette-stage" aria-label="룰렛 배경과 배치. 빈 배경을 누르면 배치 코드를 표시합니다.">
+          <div class="roulette-pointer" aria-hidden="true"></div>
+          <div class="roulette-ring"><div class="roulette-wheel" id="roulette-wheel" role="img" aria-label="생존과 탈락 칸이 있는 룰렛"></div></div>
+          <button class="roulette-hit roulette-wheel-hit" id="roulette-wheel-hit" type="button" aria-label="룰렛 본체 Flutter 코드 보기"></button>
+          <button class="roulette-hit roulette-hub-hit" id="roulette-hub-hit" type="button" aria-label="룰렛 중앙 축 Flutter 코드 보기"></button>
+          <button class="roulette-hit roulette-pointer-hit" id="roulette-pointer-hit" type="button" aria-label="룰렛 포인터 Flutter 코드 보기"></button>
+          <button class="roulette-lever" id="roulette-lever" type="button" aria-label="레버 Flutter 코드 보기 및 회전 시연"><span class="knob"></span></button>
+          <p class="roulette-instruction">원판·중앙 축·포인터·레버를 눌러 각 코드를 확인하세요. 빈 배경은 배치 코드입니다.</p>
+        </div><div><div id="roulette-part-detail" class="roulette-part-detail" aria-live="polite"></div>
+          <div id="roulette-trace" class="roulette-trace" hidden><p id="roulette-status" class="roulette-status" role="status" aria-live="polite"></p>
+            <ol class="roulette-steps"><li>레버 입력 · Flutter</li><li>벌칙 추첨 · 서버 함수</li><li>목표 칸으로 감속 · Flutter</li><li>결과 반영 · 서버 함수</li></ol>
+            <div class="roulette-code"><section><h3>백엔드 · Cloud Functions</h3><p>서버가 결과를 먼저 뽑아 보관합니다. 연출이 끝난 뒤 같은 결과를 게임 상태에 반영합니다.</p><pre><code>${escapeHtml(serverCode)}</code></pre>${source('functions/src/liars-poker/finish-penalty.ts','finish-penalty.ts 설명')}</section></div>
+          </div></div></div><p class="hint">이 룰렛은 설명용 로컬 시연입니다. 실제 서버에 요청하지 않으며, 시연은 2.6초로 줄였습니다. 앱은 기본 6초 회전하고 서버가 늦으면 더 오래 걸릴 수 있습니다.</p></div>`;
+      const select=document.getElementById('roulette-attempt');
+      const wheel=document.getElementById('roulette-wheel');
+      const lever=document.getElementById('roulette-lever');
+      const stage=document.getElementById('roulette-stage');
+      const status=document.getElementById('roulette-status');
+      const partDetail=document.getElementById('roulette-part-detail');
+      let wheelAngle=0;
+      function showRoulettePart(part){
+        const item=rouletteParts[part];
+        stage.dataset.part=part;
+        partDetail.innerHTML=`<div class="roulette-code"><section><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p><pre><code>${escapeHtml(item.code)}</code></pre>${source(roulettePath,'roulette.dart 파일 설명')}</section></div>`;
+      }
+      function updateWheel(){
+        const current=rouletteAttempts[Number(select.value)];
+        const size=current.sections.length;
+        const sectors=current.sections.map((eliminated,i)=>{
+          const color=eliminated?'#e0243a':i%2===0?'#24152e':'#34204a';
+          return `${color} ${i*360/size}deg ${(i+1)*360/size}deg`;
+        });
+        wheel.style.setProperty('--sectors',`conic-gradient(${sectors.join(',')})`);
+        wheel.setAttribute('aria-label',`${size}칸 중 탈락 ${current.sections.filter(Boolean).length}칸인 룰렛`);
+        document.getElementById('roulette-odds').textContent=current.odds;
+        wheelAngle=0;
+        wheel.style.transform='rotate(0deg)';
+      }
+      function showStep(step){
+        document.querySelectorAll('.roulette-steps li').forEach((li,index)=>{
+          li.className=index+1<step?'done':index+1===step?'active':'';
+        });
+      }
+      select.addEventListener('change',()=>{updateWheel();showRoulettePart('sectors')});
+      for(const part of ['wheel','hub','pointer']){
+        document.getElementById(`roulette-${part}-hit`).addEventListener('click',()=>showRoulettePart(part));
+      }
+      stage.addEventListener('click',(event)=>{
+        if(event.target===stage||event.target.classList.contains('roulette-instruction'))showRoulettePart('layout');
+      });
+      lever.addEventListener('click',()=>{
+        if(lever.disabled)return;
+        showRoulettePart('lever');
+        const current=rouletteAttempts[Number(select.value)];
+        // 설명용 로컬 추첨입니다. 앱에서는 서버가 result를 정하고 Flutter는 칸만 선택합니다.
+        const selectedIndex=Math.floor(Math.random()*current.sections.length);
+        const eliminated=current.sections[selectedIndex];
+        const run=++rouletteRunId;
+        lever.disabled=true;select.disabled=true;stage.classList.add('is-spinning');
+        document.getElementById('roulette-trace').hidden=false;
+        status.textContent='레버 입력 → 원판 회전 시작';
+        showStep(1);
+        const active=()=>run===rouletteRunId&&inspector.open&&document.getElementById('inspector-path').textContent===roulettePath;
+        let finished=false;
+        setTimeout(()=>{if(active()&&!finished){status.textContent='서버 추첨 단계: 결과를 먼저 저장합니다.';showStep(2)}},330);
+        setTimeout(()=>{if(active()&&!finished){status.textContent='서버 결과를 받은 뒤 해당 색의 칸으로 감속합니다.';showStep(3)}},760);
+        const desired=-((selectedIndex+0.5)*360/current.sections.length);
+        const offset=((desired-wheelAngle)%360+360)%360;
+        const target=wheelAngle+4*360+offset;
+        const finish=()=>{
+          if(!active()||finished)return;
+          finished=true;
+          wheelAngle=target;
+          wheel.style.transform=`rotate(${target}deg)`;
+          stage.classList.remove('is-spinning');
+          lever.disabled=false;select.disabled=false;
+          status.textContent=`시연 결과: ${eliminated?'탈락':'생존'} · 실제 게임에서는 서버가 결정한 결과를 반영합니다.`;
+          showStep(4);
+          activeRouletteAnimation?.cancel();
+          activeRouletteAnimation=null;
+        };
+        if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return}
+        activeRouletteAnimation=wheel.animate([{transform:`rotate(${wheelAngle}deg)`},{transform:`rotate(${target}deg)`}],{duration:2600,easing:'cubic-bezier(.12,.68,.12,1)',fill:'forwards'});
+        activeRouletteAnimation.onfinish=finish;
+        // 숨겨진 탭에서 Web Animations 완료 이벤트가 늦어져도 시연은 끝냅니다.
+        setTimeout(finish,2800);
+      });
+      updateWheel();
+      showRoulettePart('layout');
+    }
+    renderGame('liars');
+    openSheet(location.hash.slice(1)||'front');
+  </script>
+</body>
+</html>

@@ -27,6 +27,9 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
     required this.finishReason,
     required this.phase,
     required this.table,
+    this.truthCardCount = 0,
+    this.lieCardCount = 0,
+    this.unrevealedCardCount = 3,
     required this.turnUid,
     required this.winnerUid,
     required this.penaltyTargetUid,
@@ -63,7 +66,7 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
     status: 'waiting',
     finishReason: null,
     phase: 'playing',
-    table: 'K',
+    table: 'TRUTH',
     turnUid: null,
     winnerUid: null,
     penaltyTargetUid: null,
@@ -102,6 +105,10 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
   final String? finishReason; // 게임 종료 이유
   final String phase; // 현재 게임 진행 단계
   final String table; // 현재 테이블의 기준 카드 값
+  /// 이번 라운드 전체 덱의 공개된 구성입니다. 미확인 3장의 실제 종류는 공개하지 않습니다.
+  final int truthCardCount;
+  final int lieCardCount;
+  final int unrevealedCardCount;
   final int round; // 현재 라운드
   final int revision; // 서버 게임 상태 버전
 
@@ -181,6 +188,9 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
     Object? finishReason = _notProvided,
     String? phase,
     String? table,
+    int? truthCardCount,
+    int? lieCardCount,
+    int? unrevealedCardCount,
     Object? turnUid = _notProvided,
     Object? winnerUid = _notProvided,
     Object? penaltyTargetUid = _notProvided,
@@ -219,6 +229,9 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
 
       phase: phase ?? this.phase,
       table: table ?? this.table,
+      truthCardCount: truthCardCount ?? this.truthCardCount,
+      lieCardCount: lieCardCount ?? this.lieCardCount,
+      unrevealedCardCount: unrevealedCardCount ?? this.unrevealedCardCount,
 
       turnUid: identical(turnUid, _notProvided)
           ? this.turnUid
@@ -314,6 +327,9 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
         finishReason == other.finishReason &&
         phase == other.phase &&
         table == other.table &&
+        truthCardCount == other.truthCardCount &&
+        lieCardCount == other.lieCardCount &&
+        unrevealedCardCount == other.unrevealedCardCount &&
         turnUid == other.turnUid &&
         winnerUid == other.winnerUid &&
         penaltyTargetUid == other.penaltyTargetUid &&
@@ -354,6 +370,9 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
     finishReason,
     phase,
     table,
+    truthCardCount,
+    lieCardCount,
+    unrevealedCardCount,
     turnUid,
     winnerUid,
     penaltyTargetUid,

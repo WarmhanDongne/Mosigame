@@ -5,7 +5,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/localization/game_locale.dart';
-import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_liars_poker/phone/phone_board.dart';
 import 'package:game_liars_poker/tablet/tablet_board.dart';
@@ -14,7 +13,6 @@ import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
-import 'package:game_liars_poker/game_theme.dart';
 
 // ============================================================
 
@@ -44,16 +42,17 @@ class LiarsPokerGame extends TemplateGame {
   PhoneGameOrientation get phoneOrientation =>
       PhoneGameOrientation.portraitAndLandscape;
   @override
-  Color get tableColor => LiarsPokerColors.primary;
+  Color get tableColor => const Color(0xFF351707);
   @override
-  ImageProvider get tableBackgroundImage =>
-      Assets.games.liarsPoker.images.background.background.game.provider();
+  ImageProvider? get tableBackgroundImage => null;
+  // 기존 보라색 카지노 테이블·의자 에셋은 자리배치와 게임 입장 사이의
+  // 분위기를 끊었습니다. 최근의 월넛 테이블 콘셉트는 코드로 그린 배경을
+  // 사용하므로, 자리배치에서는 같은 월넛 색의 플랫 테이블로 이어집니다.
   @override
-  ImageProvider get layoutTableImage =>
-      Assets.games.liarsPoker.images.layout.layoutTable.game.provider();
+  ImageProvider? get layoutTableImage => null;
+
   @override
-  ImageProvider get layoutChairImage =>
-      Assets.games.liarsPoker.images.layout.layoutChair.game.provider();
+  ImageProvider? get layoutChairImage => null;
 
   // ---------------------------------------------------------------------------
   // 서버 게임 시작과 상태 구독

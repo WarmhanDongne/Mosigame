@@ -64,23 +64,23 @@ export const localizedGameGenres = Object.freeze({
 // Korean remains in update-game-rules.mjs as the legacy Firestore value.
 export const translatedGameRules = Object.freeze({
   liars_poker: Object.freeze({
-    en: `- Components: 20 cards—six Kings, six Queens, six Aces, and two Jokers. Each player receives five cards at the start.
-- Play: Place a card face down that matches the key rank for the round.
-- Bluffing: If you do not have the key rank, you may play another card as a bluff. Jokers are wild.
-- Challenge: Call LIAR when you believe the previous player lied, then reveal the card.
-- If it was a bluff, the player who played the card spins the roulette. If it was truthful, the challenger spins.
+    en: `- Components: The deck uses only Truth and Lie cards. Every living player receives five cards each round, while three cards remain hidden for the entire round. Before dealing, only the total count of each card type is shown.
+- Play: On your turn, place 1–3 cards face down and claim they are all Truth cards.
+- Bluffing: You may play Lie cards while claiming they are Truth cards.
+- Challenge: Call LIAR when you believe the previous player lied, then reveal the cards.
+- If even one card is a Lie, the player who played the cards spins the roulette. If every card is Truth, the challenger spins.
 - Landing on black means survival; landing on red means death. Each player gets up to three chances. The red area grows after every attempt, and on the third attempt every space except one is red.`,
-    "zh-Hans": `- 牌组：使用6张K、6张Q、6张A和2张Joker，共20张牌。游戏开始时每人获得5张牌。
-- 出牌：按照本轮指定的关键点数，盖着打出一张牌。
-- 诈唬：没有关键点数时可以用其他牌冒充；Joker可作为任意牌。
-- 质疑：认为上一位玩家在说谎时喊出 LIAR，并翻开该牌。
-- 如果确实是诈唬，出牌者转动轮盘；如果说的是真话，质疑者转动轮盘。
+    "zh-Hans": `- 牌组：只使用真话牌和谎言牌。每轮每位存活玩家获得5张牌，另有3张牌全程不公开。发牌前只显示两种牌的总数。
+- 出牌：轮到你时盖着打出1~3张牌，并宣称它们都是真话牌。
+- 诈唬：你可以把谎言牌当作真话牌打出。
+- 质疑：认为上一位玩家在说谎时喊出 LIAR，并翻开这些牌。
+- 只要有一张谎言牌，出牌者转动轮盘；全部是真话牌时，质疑者转动轮盘。
 - 停在黑色区域即可生存，停在红色区域则死亡。每人最多有三次机会；每次尝试后红色区域都会扩大，第三次只剩一个黑色格。`,
-    "zh-Hant": `- 牌組：使用6張K、6張Q、6張A和2張Joker，共20張牌。遊戲開始時每人獲得5張牌。
-- 出牌：依照本輪指定的關鍵點數，蓋著打出一張牌。
-- 詐唬：沒有關鍵點數時可以用其他牌冒充；Joker可作為任意牌。
-- 質疑：認為上一位玩家在說謊時喊出 LIAR，並翻開該牌。
-- 如果確實是詐唬，出牌者轉動輪盤；如果說的是真話，質疑者轉動輪盤。
+    "zh-Hant": `- 牌組：只使用真話牌和謊言牌。每輪每位存活玩家獲得5張牌，另有3張牌全程不公開。發牌前只顯示兩種牌的總數。
+- 出牌：輪到你時蓋著打出1~3張牌，並宣稱它們都是真話牌。
+- 詐唬：你可以把謊言牌當作真話牌打出。
+- 質疑：認為上一位玩家在說謊時喊出 LIAR，並翻開這些牌。
+- 只要有一張謊言牌，出牌者轉動輪盤；全部是真話牌時，質疑者轉動輪盤。
 - 停在黑色區域即可生存，停在紅色區域則死亡。每人最多有三次機會；每次嘗試後紅色區域都會擴大，第三次只剩一個黑色格。`,
   }),
   holdem: Object.freeze({

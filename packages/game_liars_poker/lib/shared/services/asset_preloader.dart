@@ -20,13 +20,13 @@ import 'package:game_kit/core/constants/room_character.dart';
 /// 실제 규칙과 어긋나면 안내가 아니라 혼란이 되므로, 규칙이 바뀌면 태블릿
 /// 룰북(`tablet/widgets/rulebook.dart`)의 대표 카드 목록과 함께 고칩니다.
 const liarsPokerLoadingTips = <String>[
-  '기준 카드는 라운드마다 바뀝니다. 새 라운드가 시작되면 먼저 확인하세요.',
-  '조커는 어떤 기준 카드로든 인정됩니다. 아껴 두면 위기에서 진실이 됩니다.',
+  '모든 제출은 진실 카드라고 주장합니다. 거짓 카드를 섞을 수 있습니다.',
+  '각자 5장을 받고, 3장은 끝까지 공개하지 않습니다.',
   '한 번에 3장까지 낼 수 있습니다. 많이 낼수록 들켰을 때 잃는 것도 커집니다.',
   '룰렛에서 살아남아도 다음 룰렛은 더 불리해집니다. 두 번은 피하세요.',
   '세 번째 룰렛은 12칸 중 11칸이 탈락입니다. 그 전에 승부를 보세요.',
   'LIAR는 확신이 들 때만 외치세요. 틀리면 내가 룰렛을 돌립니다.',
-  '내가 기준 카드를 많이 들고 있다면, 상대의 주장은 거짓일 확률이 높습니다.',
+  '진실·거짓 카드의 전체 장수와 내 손패를 함께 보면 상대를 의심할 근거가 생깁니다.',
   '상대가 낸 장수를 세어 두면 손패가 언제 바닥나는지 보입니다.',
   '카드가 남은 사람이 나 혼자가 되면 FOLD로 의심을 접을 수 있습니다.',
   '남은 사람이 둘뿐일 때 LIAR 판정에 실패하면 룰렛이 한 단계 불리해집니다.',
@@ -39,7 +39,6 @@ const liarsPokerLoadingTips = <String>[
 /// 게임 화면에서 최초 표시될 게임 이미지와 방 캐릭터를 미리 디코딩합니다.
 Future<void> preloadLiarsPokerAssets(
   BuildContext context, {
-  required bool isPhone,
   required Iterable<String> characterIds,
 }) async {
   // 서버 에셋 도입 대비 훅입니다. 지금은 아무것도 하지 않지만, 도입 후에는
@@ -77,25 +76,12 @@ Future<void> preloadLiarsPokerAssets(
 
   final images = Assets.games.liarsPoker.images;
   final localAssets = <GameImage>[
-    // Liar's Poker 휴대폰은 세로·가로 회전을 모두 허용합니다. 현재 방향의
-    // 배경만 준비하면 관전 진입이나 회전 시 반대 방향 배경을 처음 디코딩하며
-    // 한 프레임 번쩍일 수 있으므로 휴대폰에서는 두 배경을 모두 준비합니다.
-    if (isPhone) ...[
-      images.background.backgroundPhone.game,
-      images.background.background.game,
-    ] else
-      images.background.background.game,
-    images.background.a.game,
-    images.background.k.game,
-    images.background.q.game,
+    // 테이블은 캔버스로 직접 그리므로 큰 배경 비트맵을 디코딩하지 않습니다.
     ...images.cards.values.game,
     ...images.button.values.game,
     ...images.icons.values.game,
     ...images.modal.values.game,
     ...images.other.values.game,
-    images.table.tableAceWhite.game,
-    images.table.tableKingWhite.game,
-    images.table.tableQueenWhite.game,
   ];
 
   // 한꺼번에 모든 대형 PNG를 디코딩해 메모리가 튀지 않도록 작은 묶음으로 준비합니다.

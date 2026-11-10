@@ -305,9 +305,9 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
 
   void _sendCompletedDealing() {
     final game = controller;
-    if (game == null || !game.recoverySession.canSend) return;
+    if (game == null) return;
     final key = (game.gameStartedAt, game.round);
-    if (_completedDealing != key || game.interruption != null) return;
+    if (_completedDealing != key) return;
     _dealingCommand.run(
       key: key,
       isCurrent: () =>
@@ -316,9 +316,9 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
           !game.isFinished &&
           game.phase == 'dealing' &&
           (game.gameStartedAt, game.round) == key,
-      send: () => !game.recoverySession.canSend || game.interruption != null
-          ? Future.value(false)
-          : game.completeDealing(),
+      canAttempt: () =>
+          game.recoverySession.canSend && game.interruption == null,
+      send: game.completeDealing,
     );
   }
 

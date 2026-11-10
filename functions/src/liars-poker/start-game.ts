@@ -11,7 +11,6 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 
 import {createDeck} from "./common/deck.js";
 import {dealCards} from "./common/deal-card.js";
-import {createTable} from "./common/table.js";
 import {
   LiarsPokerGameState,
   PublicGamePlayer,
@@ -111,6 +110,13 @@ export const game_liars_poker_start_game =
         players,
         CARDS_PER_PLAYER,
       );
+      const unrevealedCards = deck.slice(playerCount * CARDS_PER_PLAYER);
+      if (unrevealedCards.length !== 3) {
+        throw new Error("분배 후 남은 카드 수가 올바르지 않습니다.");
+      }
+      const truthCardCount = deck.filter(
+        (card) => card.rank === "TRUTH",
+      ).length;
 
       const orderedPlayers =
         Object.values(players).sort(
@@ -140,7 +146,10 @@ export const game_liars_poker_start_game =
           phase: "dealing",
           round: 1,
           revision: 1,
-          table: createTable(),
+          table: "TRUTH",
+          truthCardCount,
+          lieCardCount: deck.length - truthCardCount,
+          unrevealedCardCount: unrevealedCards.length,
           turnUid: firstPlayer.uid,
           turnDeadlineAt: null,
           lastPlay: null,
@@ -158,6 +167,7 @@ export const game_liars_poker_start_game =
           processedCommands: {},
           roundStarterUid: firstPlayer.uid,
           pendingHands: privateStates,
+          unrevealedCards,
         },
       };
 

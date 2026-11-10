@@ -16,6 +16,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/errors/widgets/leave_failure_notice.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_liars_poker/shared/providers/game_controller.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 import 'package:game_liars_poker/phone/widgets/hand_card_stack.dart';
 import 'package:game_liars_poker/phone/widgets/liar_accusation.dart';
 import 'package:game_liars_poker/phone/widgets/penalty_status.dart';
@@ -81,11 +82,18 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
       PhoneHandCardStackController();
   bool _wasDealing = false;
   bool _isRevealInProgress = false;
-  bool _hasCompletedGameStart = false;
+  late bool _hasCompletedGameStart;
 
   @override
   void initState() {
     super.initState();
+    // 시작 안내가 꺼진 구성은 문구 완료 콜백을 기다리지 않고
+    // 서버 준비가 되자마자 손패 공개 단계를 열도록 간주합니다.
+    _hasCompletedGameStart =
+        widget.flowConfig
+            .stepFor(LiarsPokerPhoneStage.gameStart)
+            .buildAnnouncement() ==
+        null;
     _controlsEntryController = AnimationController(
       vsync: this,
       duration: LiarsPokerPhoneTiming.phoneControlsEntry,
@@ -99,6 +107,13 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   @override
   void didUpdateWidget(LiarsPokerPhoneGameScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!_hasCompletedGameStart &&
+        widget.flowConfig
+                .stepFor(LiarsPokerPhoneStage.gameStart)
+                .buildAnnouncement() ==
+            null) {
+      _hasCompletedGameStart = true;
+    }
     if (!oldWidget.showSpectatorTopBar && widget.showSpectatorTopBar) {
       _controlsEntryController.value = 1;
     }
@@ -479,16 +494,5 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
         style: const TextStyle(color: Colors.white70, fontSize: 17),
       ),
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // 테이블 카드 자산
-  // ---------------------------------------------------------------------------
-  GameImage _tableAsset(String cardValue) {
-    return switch (cardValue.toUpperCase()) {
-      'A' => Assets.games.liarsPoker.images.table.tableAceWhite.game,
-      'Q' => Assets.games.liarsPoker.images.table.tableQueenWhite.game,
-      _ => Assets.games.liarsPoker.images.table.tableKingWhite.game,
-    };
   }
 }

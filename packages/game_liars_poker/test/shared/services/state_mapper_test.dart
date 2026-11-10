@@ -12,23 +12,30 @@ void main() {
       'playerUid': 'u1',
       'revealed': true,
       'cardCount': 2,
-      'actualRanks': ['q', 'JOKER'],
+      'actualRanks': ['truth', 'LIE'],
     });
 
     expect(players['u1']?.nickname, '민호');
     expect(players['u1']?.seatIndex, 2);
     expect(lastPlay.playId, 'play-1');
-    expect(lastPlay.actualCardValues, ['Q', 'JOKER']);
+    expect(lastPlay.actualCardValues, ['TRUTH', 'LIE']);
   });
 
-  test('개인 손패는 잘못된 카드를 제외하고 ID 순서로 고정한다', () {
+  test('개인 손패는 잘못된 카드를 제외하고 같은 종류끼리 정렬한다', () {
     final hand = parseLiarsPokerHand({
-      'b': {'rank': 'k'},
+      'd': {'rank': 'lie'},
       'invalid': {'id': 'x'},
-      'a': {'rank': 'a'},
+      'c': {'rank': 'truth'},
+      'b': {'rank': 'lie'},
+      'a': {'rank': 'truth'},
     });
 
-    expect(hand.map((card) => card.id), ['a', 'b']);
-    expect(hand.map((card) => card.cardValue), ['A', 'K']);
+    expect(hand.map((card) => card.id), ['a', 'c', 'b', 'd']);
+    expect(hand.map((card) => card.cardValue), [
+      'TRUTH',
+      'TRUTH',
+      'LIE',
+      'LIE',
+    ]);
   });
 }

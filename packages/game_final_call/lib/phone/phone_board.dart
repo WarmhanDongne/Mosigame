@@ -73,15 +73,10 @@ abstract final class FinalCallPhoneTiming {
   static const phoneCardReplace = Duration(milliseconds: 460);
 }
 
-/// 표시 시간만 조절합니다. 서버의 round/phase/마감은 바꾸지 않습니다.
-abstract final class FinalCallPhoneAnnouncements {
-  static const startDuration = Duration(milliseconds: 1700);
-  static const roundDuration = Duration(milliseconds: 1900);
-}
-
-/// 연결 → 시작 안내 → 라운드 안내 → 플레이 → 결과/종료.
+/// 연결 → 서버 준비 → 손패 공개 → 플레이 → 결과/종료.
 /// showScreen은 같은 화면 인스턴스를 유지하면서 표시만 제어합니다.
-/// 문구를 끄더라도 셸의 완료 콜백으로 다음 로컬 단계가 열립니다.
+/// 시작·라운드 문구는 표시하지 않지만, 셸의 완료 콜백은 유지해
+/// 서버의 round/phase/마감 상태를 바꾸지 않고 다음 로컬 단계로 진행합니다.
 GameFlowConfig<FinalCallPhoneStage> buildFinalCallPhoneFlowConfig({
   required int roundNumber,
   String closingMessage = GameFlowCopy.insufficientPlayers,
@@ -103,42 +98,20 @@ GameFlowConfig<FinalCallPhoneStage> buildFinalCallPhoneFlowConfig({
       phoneRegions: PhoneGameRegions(),
       advancePolicy: GameFlowAdvancePolicy.waitsForServer,
     ),
-    // 2. GAME START: 문구/연출 ON/OFF와 시간을 아래에서 조절합니다.
-    // 입력 차단, Scrim 없음. 완료 콜백은 로컬 안내 완료값만 바꿉니다.
+    // 2. GAME START 문구 없이 공용 셸의 로컬 완료 콜백만 실행합니다.
     FinalCallPhoneStage.gameStart: const GameFlowStep(
       stage: FinalCallPhoneStage.gameStart,
-      description: '게임 시작 안내',
+      description: '게임 시작 문구를 생략하고 손패 공개로 진행한다',
       showScreen: false,
-      showAnnouncement: true,
-      announcementId: 'game-start',
-      announcementKind: GameAnnouncementKind.gameStart,
-      announcement: GameFlowCopy.gameStart,
-      announcementDuration: FinalCallPhoneAnnouncements.startDuration,
-      animation: GameFlowAnimationConfig(
-        name: 'GameStartAnimation',
-        duration: FinalCallPhoneAnnouncements.startDuration,
-      ),
-      blocksInteraction: true,
       phoneRegions: PhoneGameRegions(),
       advancePolicy: GameFlowAdvancePolicy.clientPresentation,
     ),
-    // 3. 새 라운드: 서버 분배 완료와 새 손패를 확인한 뒤 표시합니다.
-    // 안내시간이 길면 조작 화면이 늦게 열립니다. 서버 round는 변경하지 않습니다.
-    FinalCallPhoneStage.roundIntro: GameFlowStep(
+    // 3. 새 라운드도 ROUND N 문구 없이 손패 공개로 진행합니다.
+    FinalCallPhoneStage.roundIntro: const GameFlowStep(
       stage: FinalCallPhoneStage.roundIntro,
-      description: '라운드 시작 안내',
+      description: '라운드 문구를 생략하고 손패 공개로 진행한다',
       showScreen: false,
-      showAnnouncement: true,
-      announcementId: 'round-$roundNumber',
-      announcementKind: GameAnnouncementKind.round,
-      announcement: GameFlowCopy.round(roundNumber),
-      announcementDuration: FinalCallPhoneAnnouncements.roundDuration,
-      animation: const GameFlowAnimationConfig(
-        name: 'FadeHoldFade',
-        duration: FinalCallPhoneAnnouncements.roundDuration,
-      ),
-      blocksInteraction: true,
-      phoneRegions: const PhoneGameRegions(),
+      phoneRegions: PhoneGameRegions(),
       advancePolicy: GameFlowAdvancePolicy.clientPresentation,
     ),
     // 손패 카드팩을 펼치는 동안에는 손패만 표시하고 상단 조작부는 감춥니다.

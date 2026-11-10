@@ -39,7 +39,7 @@ Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 | [LIARS-CATALOG-01](tasks/LIARS-CATALOG-01.md#liars-catalog-01) | 라이어스 Firebase 문서 ID 이전 | 검증 대기 — 호환 reader·이전 스크립트 회귀/session PASS | 사용자 승인 FULL, 사용 앱 배포 범위 확인 → 서버 두 함수/앱 반영 → 문서 원자 이전 및 실제 게임 확인 |
 | [MAFIA-RULES-03](tasks/MAFIA-RULES-03.md#mafia-rules-03) | 마피아 규칙·역할·룰북 개선 | 검증 대기 | 사용자 명시 승인 후 FULL, 양 기기 실제 게임 흐름 확인 |
 | [MAFIA-ROLE-SETUP-02](tasks/MAFIA-ROLE-SETUP-02.md#mafia-role-setup-02) | 마피아 신분카드 구성 화면 개선 | 검증 대기 | 사용자 승인 후 FULL, 실제 태블릿 터치·전환 확인 |
-| [GAME-DEVICE-BOARD-01](tasks/GAME-DEVICE-BOARD-01.md#game-device-board-01) | 게임 패키지 기기별 화면·흐름 구조 정리 | 검증 대기 | 사용자 승인 후 FULL, 회귀 테스트는 TEST-REGRESSION-01에서 관리 |
+| [GAME-DEVICE-BOARD-01](tasks/GAME-DEVICE-BOARD-01.md#game-device-board-01) | 게임 패키지 기기별 화면·흐름 구조 정리 | 검증 대기 — LP/FC 사전 문구 제거 targeted PASS | [11/9 휴대폰 시작 문구 제거](tasks/GAME-DEVICE-BOARD-01.md#phone-start-copy-removal-20261109) 후 사용자 승인 FULL, 실기기 확인 |
 | [YUT-GAMEPLAY-01](tasks/YUT-GAMEPLAY-01.md#yut-gameplay-01) | 윷놀이 3종 서버 게임·휴대폰/태블릿 플레이 화면 | 구현 완료, 개별 검사 PASS/최종 FULL 확인 대기 | [통합 검증](DEVELOP1_WAIT_REDUCTION_INTEGRATION_20261020.md)의 Draft PR 검토·CI 확인, 4인 실제 플레이 검증. 카탈로그 공개·Functions 배포는 별도 출시 승인 |
 
 ## 출시 전 필수

@@ -24,6 +24,7 @@ class FinalCallCardReceiveAnimation extends StatelessWidget {
     required this.onRevealStarted,
     required this.onCompleted,
     this.showTapHint = false,
+    this.autoReveal = false,
   });
 
   final List<FinalCallCard> cards;
@@ -33,6 +34,9 @@ class FinalCallCardReceiveAnimation extends StatelessWidget {
 
   /// 덱을 눌러 펼치라는 안내를 보여 줄지입니다. 첫 라운드에서만 켭니다.
   final bool showTapHint;
+
+  /// 덱 진입 직후 별도 탭 없이 손패를 펼칠지 여부입니다.
+  final bool autoReveal;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,7 @@ class FinalCallCardReceiveAnimation extends StatelessWidget {
           onRevealStarted: onRevealStarted,
           onCompleted: onCompleted,
           showTapHint: showTapHint,
+          autoReveal: autoReveal,
           cardBuilder: (context, index, front) => front
               ? FinalCallCardFace(card: cards[index], width: cardWidth)
               : FinalCallCardBack(width: cardWidth),

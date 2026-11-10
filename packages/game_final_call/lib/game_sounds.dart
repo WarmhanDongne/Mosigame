@@ -6,7 +6,6 @@
 // 즉, 화면 전환과 서버 상태에 맞춰 소리를 한 번만 재생하기 위해 필요한 파일이다.
 
 // ========================[ import ]==========================
-import 'package:game_kit/sound/app_sounds.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
 
 // ============================================================
@@ -15,12 +14,12 @@ import 'package:game_final_call/shared/models/game_models.dart';
 ///
 /// 두 게임 이상이 함께 쓰는 소리는 `core/sound/app_sounds.dart`에 둡니다.
 abstract final class FinalCallSounds {
-  /// 게임 진행 중 반복 재생하는 배경음악입니다(라이어스 포커와 같은 곡, 확정).
+  /// 게임 진행 중 반복 재생하는 파이널콜 전용 배경음악입니다.
   ///
   /// 효과음이 아니라 BGM 전용 플레이어로 재생합니다. 반복 재생이므로 게임
   /// 화면을 떠날 때 반드시 멈춰야 합니다([GameBackgroundMusic] 사용).
-  /// 파이널콜 전용 곡이 생기면 이 상수만 새 파일 경로로 바꾸세요.
-  static const background = AppSounds.background;
+  static const background =
+      'packages/game_final_call/assets/games/final_call/sounds/background.m4a';
 
   /// 라운드 결과에서 하트가 네 조각으로 갈라지는 순간 재생합니다.
   static const heartbreak =

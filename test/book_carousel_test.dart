@@ -101,7 +101,7 @@ void main() {
     expect(cover.englishName, 'Liars');
   });
 
-  testWidgets('무한 순환 선반은 같은 게임 책을 한 권만 그린다', (tester) async {
+  testWidgets('선반은 중복 게임 책을 한 권만 그린다', (tester) async {
     final books = [..._books, _books.first, _books[1]];
     var selected = books.first;
     await tester.pumpWidget(
@@ -245,7 +245,7 @@ void main() {
     expect(nextRect.height, 288);
     expect(
       tester.getRect(find.byKey(const ValueKey('shelf-spine-mafia'))).left,
-      lessThan(selectedRect.left),
+      greaterThan(nextRect.left),
     );
 
     Future<void> slowlySwipe(double dx) async {
@@ -264,11 +264,11 @@ void main() {
     await slowlySwipe(80);
     expect(selected.id, 'liars_poker');
     await slowlySwipe(80);
-    expect(selected.id, 'mafia');
-    await slowlySwipe(-80);
     expect(selected.id, 'liars_poker');
     await slowlySwipe(-80);
     expect(selected.id, 'final_call');
+    await slowlySwipe(-80);
+    expect(selected.id, 'mafia');
     await slowlySwipe(-80);
     expect(selected.id, 'mafia');
     await tester.tap(find.byKey(const ValueKey('shelf-spine-final_call')));
@@ -276,6 +276,47 @@ void main() {
     expect(selected.id, 'final_call');
     await tester.tap(find.byKey(const Key('shelf-selected-cover')));
     expect(opened?.id, 'final_call');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('책을 선택해도 게임의 좌우 순서는 바뀌지 않는다', (tester) async {
+    var selected = _books.first;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => SizedBox(
+              width: 700,
+              child: TabletBookCarousel(
+                games: _books,
+                selected: selected,
+                coverWidth: 200,
+                deep: Colors.black,
+                onSelect: (game) => setState(() => selected = game),
+                onOpenDetail: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    double leftOf(String id, int index) => tester
+        .widget<Positioned>(find.byKey(ValueKey('book-$id-$index')))
+        .left!;
+
+    void expectFixedOrder() {
+      expect(leftOf('liars_poker', 0), lessThan(leftOf('final_call', 1)));
+      expect(leftOf('final_call', 1), lessThan(leftOf('mafia', 2)));
+    }
+
+    expectFixedOrder();
+    await tester.tap(find.byKey(const ValueKey('shelf-spine-final_call')));
+    await tester.pumpAndSettle();
+    expectFixedOrder();
+    await tester.tap(find.byKey(const ValueKey('shelf-spine-mafia')));
+    await tester.pumpAndSettle();
+    expectFixedOrder();
     expect(tester.takeException(), isNull);
   });
 
@@ -419,22 +460,25 @@ void main() {
           ),
         );
       }
-      // 애니메이션 도중 다시 밀어도 마지막 선택으로 수렴합니다.
+      // 애니메이션 도중 반대 방향으로 다시 밀어도 유효한 선형 위치에
+      // 수렴하며, 끝 책이 반대편으로 순환하지 않습니다.
       await tester.drag(carousel, const Offset(-100, 0));
       await tester.pump(const Duration(milliseconds: 40));
       await tester.drag(carousel, const Offset(100, 0));
       await tester.pumpAndSettle();
-      expect(selected.id, books[count == 1 ? 0 : 1].id);
+      expect(selected.id, books[count <= 2 ? 0 : 1].id);
       if (count > 1) {
-        await tester.drag(carousel, const Offset(100, 0));
-        await tester.pumpAndSettle();
+        for (var index = 0; index < count; index++) {
+          await tester.drag(carousel, const Offset(100, 0));
+          await tester.pumpAndSettle();
+        }
         expect(selected.id, books.first.id);
         await tester.drag(carousel, const Offset(100, 0));
         await tester.pumpAndSettle();
-        expect(selected.id, books.last.id);
+        expect(selected.id, books.first.id);
         await tester.drag(carousel, const Offset(-100, 0));
         await tester.pumpAndSettle();
-        expect(selected.id, books.first.id);
+        expect(selected.id, books[1].id);
       }
       expect(tester.takeException(), isNull);
     });

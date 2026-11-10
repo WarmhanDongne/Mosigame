@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  catalogCommand,
   minimalGameCatalog,
+  PRODUCTION_PROJECT,
   rebuildGameCatalog,
 } from "../scripts/rebuild-game-catalog.mjs";
 
@@ -78,6 +80,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
   let backup;
   const result = await rebuildGameCatalog(db, {
     apply: true,
+    projectId: "mosigame-test-project",
     writeBackup: async (value) => backup = value,
   });
   assert.equal(result.status, "rebuilt");
@@ -89,6 +92,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
     ],
   );
   assert.equal(backup.documents.length, 3);
+  assert.equal(backup.projectId, "mosigame-test-project");
   for (const id of ["yut", "strategy_yut", "strategy_yut_edition"]) {
     assert.deepEqual(db.records.get(`games/${id}`), minimalGameCatalog[id]);
     assert.equal(db.records.get(`games/${id}`).enabled, false);
@@ -114,6 +118,33 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
     "accessType",
     "storeVisible",
   ]);
+});
+
+test("catalog command requires a matching confirmation for every write target", () => {
+  assert.deepEqual(catalogCommand([]), {
+    apply: false,
+    projectId: PRODUCTION_PROJECT,
+  });
+  assert.deepEqual(catalogCommand(["--project=mosigame-test-project"]), {
+    apply: false,
+    projectId: "mosigame-test-project",
+  });
+  assert.deepEqual(catalogCommand([
+    "--apply",
+    "--project=mosigame-test-project",
+    "--confirm-project=mosigame-test-project",
+  ]), {
+    apply: true,
+    projectId: "mosigame-test-project",
+  });
+  assert.throws(
+    () => catalogCommand(["--apply", "--project=mosigame-test-project"]),
+    /Apply requires --confirm-project=mosigame-test-project/,
+  );
+  assert.throws(
+    () => catalogCommand(["--apply", "--project=default", "--confirm-project=default"]),
+    /explicit Firebase project ID/,
+  );
 });
 
 test("nested collections stop the destructive rebuild", async () => {

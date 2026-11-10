@@ -40,6 +40,16 @@ const REGION = "asia-northeast3";
 const ROOM_CODE_PATTERN =
   /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
 
+/**
+ * `나`는 화면에서 현재 사용자를 가리키는 공용 표기이므로, 방 참가 닉네임으로
+ * 쓰면 다른 참가자의 이름과 구별할 수 없습니다.
+ * @param {string} nickname Normalized room nickname.
+ * @return {boolean} Whether the nickname may be used in a room.
+ */
+export function isValidRoomNickname(nickname: string): boolean {
+  return nickname.length >= 1 && nickname.length <= 12 && nickname !== "나";
+}
+
 // 마피아가 최대 12명이라 방 상한을 12로 올렸습니다. 게임별 인원 제한은 각
 // 게임의 start_game이 따로 확인합니다(예: 파이널콜은 4인 또는 6인).
 const DEFAULT_MAX_PLAYERS = 12;
@@ -174,10 +184,10 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
     const rawNickname = request.data?.nickname;
     const nickname = typeof rawNickname === "string" ?
       rawNickname.trim() : "";
-    if (nickname.length < 1 || nickname.length > 12) {
+    if (!isValidRoomNickname(nickname)) {
       throw new HttpsError(
         "invalid-argument",
-        "닉네임은 1~12자로 입력해주세요.",
+        "닉네임은 1~12자로 입력하고 '나'는 사용할 수 없습니다.",
       );
     }
 

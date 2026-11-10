@@ -32,11 +32,14 @@ import 'package:game_kit/core/diagnostics/dev_error_log.dart';
 /// 개발 중에 Crashlytics로 보내지 않는 이유는, 개발 오류가 실제 사용자 오류와
 /// 섞이면 정작 출시 뒤 문제를 찾기 어려워지기 때문입니다.
 abstract final class CrashReporting {
+  static FirebaseCrashlytics? get _crashlytics =>
+      FirebaseBackend.isLocal || FirebaseBackend.isTest
+      ? null
+      : FirebaseCrashlytics.instance;
+
   /// 앱 시작 때 한 번 부릅니다. Firebase 초기화 **뒤**에 불러야 합니다.
   static Future<void> initialize() async {
-    final crashlytics = FirebaseBackend.isLocal
-        ? null
-        : FirebaseCrashlytics.instance;
+    final crashlytics = _crashlytics;
     // 개발 중 오류는 보내지 않습니다.
     await crashlytics?.setCrashlyticsCollectionEnabled(!kDebugMode);
 
@@ -95,17 +98,13 @@ abstract final class CrashReporting {
       context: reason ?? '직접 기록',
       time: DateTime.now(),
     );
-    if (kDebugMode) {
+    final crashlytics = _crashlytics;
+    if (kDebugMode || crashlytics == null) {
       // DevErrorLog.add가 원문 없이 구조화된 한 줄을 출력합니다.
       return;
     }
     unawaited(
-      FirebaseCrashlytics.instance.recordError(
-        error,
-        stack,
-        reason: reason,
-        fatal: fatal,
-      ),
+      crashlytics.recordError(error, stack, reason: reason, fatal: fatal),
     );
   }
 
@@ -114,10 +113,11 @@ abstract final class CrashReporting {
   /// 예: `CrashReporting.log('마피아 밤 제출: 방 ABCD')`. 크래시 리포트에
   /// 마지막 동작들이 함께 붙어 재현 경로를 알 수 있습니다.
   static void log(String message) {
-    if (kDebugMode) {
+    final crashlytics = _crashlytics;
+    if (kDebugMode || crashlytics == null) {
       debugPrint('기록: $message');
       return;
     }
-    unawaited(FirebaseCrashlytics.instance.log(message));
+    unawaited(crashlytics.log(message));
   }
 }

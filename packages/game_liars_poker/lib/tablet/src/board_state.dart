@@ -21,6 +21,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
   Timer? _nonResultExitTimer;
   bool _isExitingToLobby = false;
   final _dealingCommand = GameProgressCommand();
+  (int?, int)? _completedDealing;
   final _timeoutCommand = GameProgressCommand();
   int? _previousGameStartedAt;
 
@@ -105,6 +106,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
       }
     });
     _controller = ref.read(provider.notifier);
+    _controller!.recoverySession.addListener(_handleRecoveryChanged);
     unawaited(_warmUpAssets());
   }
 
@@ -124,11 +126,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
     }
     if (!mounted) return;
     await controller.prepareScreen(
-      () => preloadLiarsPokerAssets(
-        context,
-        isPhone: false,
-        characterIds: _characterIds,
-      ),
+      () => preloadLiarsPokerAssets(context, characterIds: _characterIds),
     );
   }
 
@@ -171,6 +169,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
     if (_previousGameStartedAt != game.gameStartedAt) {
       _previousGameStartedAt = game.gameStartedAt;
       _dealingCommand.cancel();
+      _completedDealing = null;
       _nonResultExitTimer?.cancel();
       _nonResultExitTimer = null;
       _hasReceivedFirstState = false;
@@ -410,6 +409,23 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
       return;
     }
     final key = (game.gameStartedAt, game.round);
+    _completedDealing = key;
+    _sendCompletedDealing();
+  }
+
+  void _handleRecoveryChanged() {
+    // Readiness can recover without a new game snapshot. Keep the completed
+    // animation pending and resume its existing command ID when sending is safe.
+    scheduleMicrotask(() {
+      if (mounted) _sendCompletedDealing();
+    });
+  }
+
+  void _sendCompletedDealing() {
+    final game = _controller;
+    if (game == null) return;
+    final key = (game.gameStartedAt, game.round);
+    if (_completedDealing != key) return;
     _dealingCommand.run(
       key: key,
       isCurrent: () =>
@@ -418,9 +434,9 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
           !game.isFinished &&
           game.phase == 'dealing' &&
           (game.gameStartedAt, game.round) == key,
-      send: () => game.interruption != null
-          ? Future.value(false)
-          : game.completeDealing(),
+      canAttempt: () =>
+          game.recoverySession.canSend && game.interruption == null,
+      send: game.completeDealing,
     );
   }
 
@@ -634,6 +650,9 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
                     playerSeatIndexes: _seatIndexes,
                     dealPlayerSeatIndexes: _activeSeatIndexes,
                     cardsPerPlayer: cardsPerPlayer,
+                    truthCardCount: game.truthCardCount,
+                    lieCardCount: game.lieCardCount,
+                    unrevealedCardCount: game.unrevealedCardCount,
                     roundNumber: game.round,
                     cardPileVersion: _cardPileVersion,
                     table: game.table,
@@ -825,6 +844,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
 
   @override
   void dispose() {
+    _controller?.recoverySession.removeListener(_handleRecoveryChanged);
     _dealingCommand.dispose();
     _timeoutCommand.dispose();
     // 배경음악은 반복 재생이라 화면을 떠날 때 반드시 멈춥니다.
@@ -847,13 +867,5 @@ class _GameBackground extends StatelessWidget {
   const _GameBackground();
 
   @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Assets.games.liarsPoker.images.background.background.game.image(
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const LiarsPokerWoodTableBackground();
 }

@@ -7,13 +7,20 @@ import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/firebase/firebase_backend.dart';
+import 'package:game_kit/firebase/firebase_options_test.dart';
 import 'package:game_kit/firebase/services/realtime_database_service.dart';
+import 'package:project00/firebase_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_Core());
   setUpAll(() async {
+    // Native Android/iOS builds can already contain the production [DEFAULT]
+    // app. Reproduce that state before the isolated backend is initialized.
     await Firebase.initializeApp();
+    if (FirebaseBackend.isTest) {
+      await initializeFirebaseBackend();
+    }
     await Firebase.initializeApp(
       name: FirebaseBackend.appName,
       options: const FirebaseOptions(
@@ -29,6 +36,8 @@ void main() {
   test('all SDK accessors and the shared database use the selected app', () {
     final expected = FirebaseBackend.isLocal
         ? FirebaseBackend.appName
+        : FirebaseBackend.isTest
+        ? 'mosigame-test'
         : '[DEFAULT]';
     expect(FirebaseBackend.auth.app.name, expected);
     expect(FirebaseBackend.firestore.app.name, expected);
@@ -51,6 +60,29 @@ void main() {
     );
   });
 
+  test(
+    'test backend stays isolated from an existing production default app',
+    () {
+      if (!FirebaseBackend.isTest) return;
+
+      expect(Firebase.app().name, '[DEFAULT]');
+      expect(FirebaseBackend.app.name, 'mosigame-test');
+      expect(
+        FirebaseBackend.app.options.projectId,
+        TestFirebaseOptions.projectId,
+      );
+      for (final app in [
+        FirebaseBackend.auth.app,
+        FirebaseBackend.firestore.app,
+        FirebaseBackend.functions.app,
+        FirebaseBackend.database.app,
+      ]) {
+        expect(app.name, 'mosigame-test');
+        expect(app.options.projectId, TestFirebaseOptions.projectId);
+      }
+    },
+  );
+
   test('invalid modes and non-debug local builds fail closed', () {
     expect(
       () => FirebaseBackend.validate(backend: 'locla'),
@@ -68,6 +100,10 @@ void main() {
       () => FirebaseBackend.validate(backend: 'local', debug: true),
       returnsNormally,
     );
+    expect(
+      () => FirebaseBackend.validate(backend: 'test', debug: false),
+      returnsNormally,
+    );
     for (final host in [
       'http://localhost',
       'localhost:9000',
@@ -80,6 +116,25 @@ void main() {
         throwsArgumentError,
       );
     }
+  });
+
+  test('test backend selects only the isolated Firebase project', () {
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final android = firebaseOptionsForBackend('test');
+    expect(android.projectId, TestFirebaseOptions.projectId);
+    expect(android.appId, TestFirebaseOptions.android.appId);
+    expect(android.databaseURL, contains('ban-pick-simulator-default-rtdb'));
+    expect(
+      selectedGoogleServerClientId,
+      FirebaseBackend.isTest ? TestFirebaseOptions.googleWebClientId : isNull,
+    );
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    final ios = firebaseOptionsForBackend('test');
+    expect(ios.projectId, TestFirebaseOptions.projectId);
+    expect(ios.iosBundleId, 'com.warmhandongne.msg');
+    expect(TestFirebaseOptions.googleWebClientId, startsWith('127477049099-'));
   });
 
   test(

@@ -80,7 +80,7 @@ class _RevealedTableState extends State<_RevealedTable> {
           46.0,
           math.min(seatCardLimit, boardSize.shortestSide * 0.12),
         );
-        final centers = playerCentersForBoard(
+        final centers = finalCallSeatCenters(
           playerCount: seatCount,
           boardSize: boardSize,
         );
@@ -473,10 +473,10 @@ class _FinalCallTurnPill extends StatelessWidget {
   }
 }
 
-/// 테이블 둘레의 좌석 이름표입니다. 각 이름표는 앉은 사람 쪽을 향합니다.
+/// 화면 가장자리의 좌석 프로필입니다. 각 프로필은 앉은 사람 쪽을 향합니다.
 ///
-/// 얼굴·이름·하트를 보여 주고, 차례인 사람은 팀 색 테두리, CALL한 사람은
-/// 노란 이름표로 강조합니다.
+/// 이름표 판 없이 팀 색 굵은 테두리의 프로필과 하트만 보여 줍니다. 차례인
+/// 사람은 팀 색 고리와 꼬리표, CALL한 사람은 노란 CALL 꼬리표로 표시합니다.
 class _FinalCallSeatPlates extends StatelessWidget {
   const _FinalCallSeatPlates({
     required this.players,
@@ -497,20 +497,19 @@ class _FinalCallSeatPlates extends StatelessWidget {
       builder: (context, constraints) {
         final boardSize = constraints.biggest;
         final scale = finalCallTabletScale(boardSize);
-        final centers = playerCentersForBoard(
+        final centers = finalCallSeatCenters(
           playerCount: players.length,
           boardSize: boardSize,
         );
-        final sixSeats = players.length > 4;
-        final plateSize = sixSeats ? const Size(240, 80) : const Size(320, 88);
+        const seatSize = _SeatProfile.size;
         return Stack(
           children: [
             for (final player in players)
               Positioned(
-                left: centers[player.seatIndex].dx - plateSize.width / 2,
-                top: centers[player.seatIndex].dy - plateSize.height / 2,
-                width: plateSize.width,
-                height: plateSize.height,
+                left: centers[player.seatIndex].dx - seatSize.width / 2,
+                top: centers[player.seatIndex].dy - seatSize.height / 2,
+                width: seatSize.width,
+                height: seatSize.height,
                 child: Transform.rotate(
                   angle: finalCallSeatRotationForCenter(
                     center: centers[player.seatIndex],
@@ -518,22 +517,12 @@ class _FinalCallSeatPlates extends StatelessWidget {
                   ),
                   child: Transform.scale(
                     scale: scale,
-                    child: _SeatPlate(
+                    child: _SeatProfile(
                       player: player,
-                      partner: sixSeats
-                          ? null
-                          : players
-                                .where(
-                                  (other) =>
-                                      other.team == player.team &&
-                                      other.uid != player.uid,
-                                )
-                                .firstOrNull,
                       isTurn: player.uid == turnUid,
                       isCaller: player.uid == callerUid,
                       isSwapping:
                           player.uid == turnUid && player.uid == pendingDrawUid,
-                      compact: sixSeats,
                     ),
                   ),
                 ),
@@ -545,22 +534,22 @@ class _FinalCallSeatPlates extends StatelessWidget {
   }
 }
 
-class _SeatPlate extends StatelessWidget {
-  const _SeatPlate({
+class _SeatProfile extends StatelessWidget {
+  const _SeatProfile({
     required this.player,
-    required this.partner,
     required this.isTurn,
     required this.isCaller,
     required this.isSwapping,
-    required this.compact,
   });
 
+  /// 꼬리표·프로필·하트를 담는 논리 크기입니다(태블릿 배율 적용 전).
+  static const Size size = Size(150, 172);
+  static const double _avatar = 88;
+
   final FinalCallPlayer player;
-  final FinalCallPlayer? partner;
   final bool isTurn;
   final bool isCaller;
   final bool isSwapping;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -569,10 +558,10 @@ class _SeatPlate extends StatelessWidget {
     final tag = isCaller
         ? const FinalCallPopTag(
             label: 'CALL',
-            color: FinalCallColors.ink,
-            textColor: FinalCallColors.yellow,
+            color: FinalCallColors.yellow,
+            textColor: FinalCallColors.ink,
             fontSize: 14,
-            borderWidth: 0,
+            borderWidth: 2.5,
           )
         : isTurn
         ? FinalCallPopTag(
@@ -582,69 +571,60 @@ class _SeatPlate extends StatelessWidget {
             color: teamColor,
             textColor: Colors.white,
             fontSize: 13,
-            borderWidth: 0,
+            borderWidth: 2.5,
           )
         : null;
-    final partner = this.partner;
-    return Opacity(
-      opacity: eliminated ? 0.6 : 1,
-      child: FinalCallPopBox(
-        color: isCaller ? FinalCallColors.yellow : Colors.white,
-        radius: compact ? 20 : 22,
-        borderWidth: isTurn && !isCaller ? 5 : 4,
-        shadowDepth: isTurn && !isCaller ? 9 : 5,
-        ringColor: isTurn && !isCaller ? teamColor : null,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
+    final highlight = isCaller
+        ? FinalCallColors.yellow
+        : isTurn
+        ? teamColor
+        : null;
+    return Semantics(
+      label: player.nickname,
+      child: Opacity(
+        opacity: eliminated ? 0.5 : 1,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            FinalCallPopAvatar(
-              characterId: player.characterId,
-              color: teamColor,
-              size: compact ? 46 : 56,
+            // 꼬리표는 가운데 테이블 쪽(위)에 둡니다. 자리가 없어도 높이를
+            // 남겨 차례가 바뀔 때 프로필이 흔들리지 않게 합니다.
+            SizedBox(
+              height: 28,
+              child: tag == null
+                  ? null
+                  : FittedBox(fit: BoxFit.scaleDown, child: tag),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 이름표가 좁아도 닉네임을 자르지 않고 칸에 맞춰 줄입니다.
-                  Row(
-                    children: [
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            player.nickname,
-                            maxLines: 1,
-                            style: finalCallPopText(compact ? 20 : 22),
-                          ),
+            const SizedBox(height: 4),
+            Container(
+              key: ValueKey('final-call-seat-${player.uid}'),
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: highlight ?? Colors.transparent,
+                boxShadow: highlight == null
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: highlight.withValues(alpha: .55),
+                          blurRadius: 14,
+                          spreadRadius: 2,
                         ),
-                      ),
-                      if (tag != null) ...[const SizedBox(width: 6), tag],
-                    ],
-                  ),
-                  if (partner != null)
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        FinalCallCopy.teamWithPartner(
-                          finalCallTeamLabel(player.team),
-                          partner.nickname,
-                        ),
-                        maxLines: 1,
-                        style: finalCallPopText(
-                          13,
-                          color: FinalCallColors.muted,
-                        ),
-                      ),
-                    ),
-                ],
+                      ],
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: FinalCallColors.ink, width: 3),
+                ),
+                child: FinalCallPopAvatar(
+                  characterId: player.characterId,
+                  color: eliminated ? FinalCallColors.muted : teamColor,
+                  size: _avatar,
+                  borderWidth: 8,
+                ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(height: 6),
             _FinalCallLifeRow(
               player: player,
               loss: 0,

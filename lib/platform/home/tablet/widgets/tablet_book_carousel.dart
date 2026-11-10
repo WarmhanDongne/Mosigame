@@ -7,8 +7,9 @@ import 'package:game_kit/mosi_ui/mosi_game_art.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
 
-/// 방 상태와 무관하게 실제 책을 탐색합니다. 위치와 회전을 하나의 진행 값으로
-/// 그려, 책이 이동하며 펼쳐질 때 간격과 속도가 어긋나지 않게 합니다.
+/// 방 상태와 무관하게 실제 책을 고정된 좌우 순서로 탐색합니다.
+/// 위치와 회전을 하나의 진행 값으로 그려, 책이 이동하며 펼쳐질 때 간격과
+/// 속도가 어긋나지 않게 합니다. 양 끝 책은 반대편으로 순환하지 않습니다.
 class TabletBookCarousel extends StatefulWidget {
   const TabletBookCarousel({
     super.key,
@@ -61,7 +62,6 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
   /// 마지막으로 그린 선반 위치입니다. 목록이 바뀔 때 책의 이전 자리를 잽니다.
   double _drawnPosition = 0;
   Map<String, double> _fromOffsets = const {};
-  int _fromCount = 0;
   Set<String> _appearing = const {};
   List<({GameInfo game, double offset})> _leaving = const [];
 
@@ -74,20 +74,6 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
     0,
     _uniqueGames(widget).indexWhere((game) => game.id == widget.selected.id),
   );
-
-  int _nearestVirtualPosition(int index, double reference, int count) {
-    if (count < 1) return 0;
-    final lower = index + ((reference - index) / count).floor() * count;
-    final upper = lower + count;
-    return (reference - lower).abs() <= (upper - reference).abs()
-        ? lower
-        : upper;
-  }
-
-  double _wrappedOffset(double offset, int count) {
-    if (count < 1) return offset;
-    return (offset + count / 2) % count - count / 2;
-  }
 
   String _catalogKey(TabletBookCarousel widget) =>
       _uniqueGames(widget).map((game) => game.id).join('/');
@@ -110,48 +96,33 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
         for (var i = 0; i < oldGames.length; i++)
           oldGames[i].id: i - _drawnPosition,
       };
-      _fromCount = oldGames.length;
       _leaving = [
         for (var i = 0; i < oldGames.length; i++)
           if (!nextIds.contains(oldGames[i].id))
-            (
-              game: oldGames[i],
-              offset: _wrappedOffset(i - _drawnPosition, oldGames.length),
-            ),
+            (game: oldGames[i], offset: i - _drawnPosition),
       ];
       _appearing = {
         for (final game in games)
           if (!oldIds.contains(game.id)) game.id,
       };
-      _position = _nearestVirtualPosition(
-        _selectedIndex(widget),
-        _drawnPosition,
-        games.length,
-      ).toDouble();
+      _position = _selectedIndex(widget).toDouble();
       if (MediaQuery.disableAnimationsOf(context)) {
         _morph.value = 1;
       } else {
         _morph.forward(from: 0);
       }
     } else if (oldWidget.selected.id != widget.selected.id) {
-      _position =
-          (_pendingPosition ??
-                  _nearestVirtualPosition(
-                    _selectedIndex(widget),
-                    _drawnPosition,
-                    widget.games.length,
-                  ))
-              .toDouble();
+      _position = (_pendingPosition ?? _selectedIndex(widget)).toDouble();
       _pendingPosition = null;
     }
   }
 
-  void _selectAt(GameInfo game, int virtualIndex) {
+  void _selectAt(GameInfo game, int index) {
     if (game.id == widget.selected.id) {
       widget.onOpenDetail(game);
       return;
     }
-    _pendingPosition = virtualIndex.toDouble();
+    _pendingPosition = index.toDouble();
     widget.onSelect(game);
   }
 
@@ -166,14 +137,10 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
     _dragDistance = 0;
     if (direction == 0 || games.length < 2) return;
     final directionStep = direction < 0 ? 1 : -1;
-    final currentVirtual = _nearestVirtualPosition(
-      _selectedIndex(widget),
-      _position,
-      games.length,
-    );
-    final nextVirtual = currentVirtual + directionStep;
-    final next = nextVirtual % games.length;
-    _pendingPosition = nextVirtual.toDouble();
+    final current = _selectedIndex(widget);
+    final next = (current + directionStep).clamp(0, games.length - 1);
+    if (next == current) return;
+    _pendingPosition = next.toDouble();
     widget.onSelect(games[next]);
   }
 
@@ -239,25 +206,12 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
                             )
                               () {
                                 final game = games[gameIndex];
-                                final virtualIndex = count == 1
-                                    ? position.round()
-                                    : _nearestVirtualPosition(
-                                        gameIndex,
-                                        position,
-                                        count,
-                                      );
-                                final offset = virtualIndex - position;
+                                final offset = gameIndex - position;
                                 final fromOffset = _fromOffsets[game.id];
-                                final startOffset =
-                                    fromOffset == null || _fromCount < 1
-                                    ? offset
-                                    : fromOffset +
-                                          ((offset - fromOffset) / _fromCount)
-                                                  .round() *
-                                              _fromCount;
+                                final startOffset = fromOffset ?? offset;
                                 return (
                                   game: game,
-                                  virtualIndex: virtualIndex,
+                                  index: gameIndex,
                                   offset: morphing
                                       ? startOffset +
                                             (offset - startOffset) * morph
@@ -296,12 +250,11 @@ class _TabletBookCarouselState extends State<TabletBookCarousel>
                               entry.offset,
                               stageWidth,
                               sideCount,
-                              virtualIndex: entry.virtualIndex,
-                              selected: entry.virtualIndex == position.round(),
-                              onTap: () =>
-                                  entry.virtualIndex == position.round()
+                              virtualIndex: entry.index,
+                              selected: entry.index == position.round(),
+                              onTap: () => entry.index == position.round()
                                   ? widget.onOpenDetail(entry.game)
-                                  : _selectAt(entry.game, entry.virtualIndex),
+                                  : _selectAt(entry.game, entry.index),
                               canonicalOccurrence: true,
                               fade:
                                   morphing && _appearing.contains(entry.game.id)

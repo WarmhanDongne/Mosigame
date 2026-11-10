@@ -253,10 +253,13 @@ void main() {
       ),
     );
     await tester.pump();
+    expect(find.widgetWithText(MosiButton, '수정'), findsNothing);
+    await tester.enterText(find.byType(TextField), '방전용닉네임');
     final button = find.widgetWithText(MosiButton, '입장하기');
     await tester.tap(button);
     await tester.pump();
     expect(service.calls, 1);
+    expect(service.sentNickname, '방전용닉네임');
     expect(
       roomCharacters.map((character) => character.id),
       contains(service.sentCharacterId),
@@ -283,6 +286,31 @@ void main() {
     expect(errorRect.top, greaterThan(0));
     expect(errorRect.bottom, lessThan(buttonRect.top));
     expect(buttonRect.bottom, lessThanOrEqualTo(844));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
+  testWidgets('방 입장 닉네임으로 나를 사용할 수 없다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService();
+    final provider = _RoomProvider(service);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), '나');
+    await tester.tap(find.widgetWithText(MosiButton, '입장하기'));
+    await tester.pump();
+
+    expect(service.calls, 0);
+    expect(find.text('닉네임으로 “나”는 사용할 수 없어요.'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();
@@ -334,6 +362,7 @@ class _RoomProvider extends RoomProvider {
 
 class _RoomService implements RoomService {
   int calls = 0;
+  String? sentNickname;
   String? sentCharacterId;
   final response = Completer<void>();
   @override
@@ -344,6 +373,7 @@ class _RoomService implements RoomService {
     bool preserveProfile = false,
   }) {
     calls++;
+    sentNickname = nickname;
     sentCharacterId = characterId;
     return response.future;
   }

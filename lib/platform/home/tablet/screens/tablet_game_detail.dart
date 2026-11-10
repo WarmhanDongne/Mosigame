@@ -98,7 +98,10 @@ class _TabletGameDetailContentState extends State<TabletGameDetailContent> {
             child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: theme.deep,
+                // 구성품 탭은 게임 색 바탕을 상자 끝까지 칠합니다.
+                color: _tab == _DetailTab.parts
+                    ? gamePartsBackground(widget.game.id) ?? theme.deep
+                    : theme.deep,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: MosiColors.ink, width: 3),
               ),

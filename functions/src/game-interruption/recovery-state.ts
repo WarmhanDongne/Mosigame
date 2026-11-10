@@ -1,7 +1,6 @@
 /* eslint-disable require-jsdoc, valid-jsdoc, max-len */
 import {HttpsError} from "firebase-functions/v2/https";
-import {applyRoomPresence, assertRoomTarget, SessionRoom} from "../room/session-contract.js";
-import {currentPresence} from "../room/current-presence.js";
+import {assertRoomTarget, SessionRoom} from "../room/session-contract.js";
 import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/common/types.js";
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
@@ -261,38 +260,19 @@ export function assertRecoveryConnection(room: RecoveryRoom, input: {
   }
 }
 
-/** A received failed report may request ONE fresh connection per game/member.
- * Existing apps already observe their current connected leaf and reconnect.
- * Never allocate identity here, remove membership, or repeatedly revoke a retry.
- */
+/** Legacy input retained while the forced-disconnect watchdog is phased out. */
 export interface PreparationReconnectTarget {
   uid: string; role: "player" | "controller"; membershipId?: string;
   connectionId: string; connectionSeq: number;
 }
 
 export function requestPreparationReconnect(room: RecoveryRoom, input: PreparationReconnectTarget): boolean {
-  const game = room.game;
-  const key = `${input.role}:${input.uid}`;
-  if (!game || !hasIndependentPlayerRecovery(room) || !requiredRecoveryKeys(room).includes(key)) return false;
-  const previous = game.server.preparationReconnects?.[key];
-  if (previous && (input.role === "controller" || previous.membershipId === input.membershipId)) return false;
-  const connection = currentPresence(room, input.uid, input.role);
-  if (!connection || !connection.connected) return false;
-  // Scheduler callers must not revoke a replacement connection or membership.
-  const controller = input.role === "controller";
-  if ((controller ? room.controllerCurrentConnectionId : room.players?.[input.uid]?.currentConnectionId) !== input.connectionId ||
-      connection.connectionSeq !== input.connectionSeq ||
-      (!controller && room.players?.[input.uid]?.membershipId !== input.membershipId)) return false;
-  game.server.preparationReconnects ??= {};
-  game.server.preparationReconnects[key] = {
-    connectionId: input.connectionId, connectionSeq: input.connectionSeq,
-    ...(input.role === "player" ? {membershipId: input.membershipId!} : {}),
-  };
-  connection.connected = false;
-  // Update the current leaf and its legacy summary atomically. Late disconnect
-  // triggers re-check the current identity and cannot revoke the replacement.
-  applyRoomPresence(room, input.uid, input.connectionId);
-  return true;
+  // Screen readiness is not proof of transport failure. The former startup
+  // watchdog used this helper to set a healthy connection false, which could
+  // strand released clients when their automatic reconnect also failed.
+  void room;
+  void input;
+  return false;
 }
 
 /** Failed reports deliberately do not require current public/private data. */

@@ -206,7 +206,7 @@ void main() {
           expect(names.any((p) => p.endsWith('white $face.webp')), isFalse);
         }
         expect(find.bySemanticsLabel('카드 뒷면'), findsWidgets);
-        for (final label in ['에이스', '킹', '퀸', '조커']) {
+        for (final label in ['진실', '거짓']) {
           expect(find.bySemanticsLabel('$label 카드'), findsWidgets);
         }
         // 휴대폰 버튼은 게임과 같은 퍽 위젯으로 그립니다.
@@ -237,14 +237,17 @@ void main() {
     });
   }
 
-  testWidgets('라이어스 포커 구성품은 지금 방 인원의 카드 수만 노란색으로 표시한다', (tester) async {
-    Color? barColor(int players) {
-      final bar = find.descendant(
-        of: find.byKey(ValueKey('liar-deck-$players')),
-        matching: find.byType(AnimatedContainer),
+  testWidgets('라이어스 포커 구성품은 지금 방 인원의 진실·거짓·전체 장수를 보여 준다', (tester) async {
+    Color? totalColor() {
+      final pill = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byKey(const Key('liar-round-total')),
+              matching: find.byType(Container),
+            )
+            .first,
       );
-      final box = tester.widget<AnimatedContainer>(bar).decoration;
-      return (box! as BoxDecoration).color;
+      return (pill.decoration! as BoxDecoration).color;
     }
 
     Future<void> pump(int? players) async {
@@ -267,24 +270,24 @@ void main() {
     }
 
     await pump(4);
-    expect(barColor(4), MosiColors.sun);
-    for (final other in [2, 3, 5, 6]) {
-      expect(barColor(other), MosiColors.white);
-    }
-    expect(find.text('4명 20장'), findsOneWidget);
+    expect(find.text('진실 12'), findsOneWidget);
+    expect(find.text('거짓 11'), findsOneWidget);
+    expect(find.text('4명 → 23장'), findsOneWidget);
+    expect(find.text('3장은 끝까지 숨김'), findsOneWidget);
+    expect(totalColor(), MosiColors.sun);
 
     await pump(6);
-    expect(barColor(6), MosiColors.sun);
-    expect(barColor(4), MosiColors.white);
-    expect(find.text('6명 30장'), findsOneWidget);
+    expect(find.text('진실 18'), findsOneWidget);
+    expect(find.text('거짓 15'), findsOneWidget);
+    expect(find.text('6명 → 33장'), findsOneWidget);
 
-    // 방이 없거나 인원이 덱 범위 밖이면 어느 칸도 강조하지 않습니다.
+    // 방이 없거나 인원이 덱 범위 밖이면 4명 기준을 강조 없이 보여 줍니다.
     for (final players in [null, 7]) {
       await pump(players);
-      for (final count in [2, 3, 4, 5, 6]) {
-        expect(barColor(count), MosiColors.white);
-      }
+      expect(find.text('4명 → 23장'), findsOneWidget);
+      expect(totalColor(), isNot(MosiColors.sun));
     }
+    expect(find.textContaining('×'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

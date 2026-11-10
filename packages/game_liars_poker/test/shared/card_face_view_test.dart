@@ -45,17 +45,12 @@ Future<({int top, int bottom, int left, int right})> _inkBounds(
 }
 
 void main() {
-  testWidgets('A·K·Q·조커는 가운데 요소의 높이가 같고 정중앙에 놓인다', (tester) async {
+  testWidgets('진실·거짓 카드는 가운데 요소의 높이가 같고 정중앙에 놓인다', (tester) async {
     await loadSweepFonts(tester);
     tester.view.physicalSize = const Size(1000, 400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final faces = [
-      LiarsCardFace.ace,
-      LiarsCardFace.king,
-      LiarsCardFace.queen,
-      LiarsCardFace.joker,
-    ];
+    final faces = [LiarsCardFace.truth, LiarsCardFace.lie];
     final keys = {for (final face in faces) face: GlobalKey()};
     await tester.pumpWidget(
       MaterialApp(
@@ -86,10 +81,14 @@ void main() {
       final bounds = results[face]!;
       final centerY = (bounds.top + bounds.bottom) / 2;
       final centerX = (bounds.left + bounds.right) / 2;
-      expect(centerY, closeTo(140, 3), reason: '$face 세로 중앙');
+      expect(
+        centerY,
+        closeTo(liarsCardDesignSize.height / 2, 3),
+        reason: '$face 세로 중앙',
+      );
       expect(centerX, closeTo(100, 3), reason: '$face 가로 중앙');
     }
-    // 네 카드의 가운데 요소 높이가 서로 거의 같습니다.
+    // 두 카드의 가운데 요소 높이가 서로 거의 같습니다.
     final heights = [for (final r in results.values) r.bottom - r.top + 1];
     expect(
       heights.reduce(math.max) - heights.reduce(math.min),
@@ -99,15 +98,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('카드는 크기를 바꿔도 같은 모양으로 그려지고 뒷면은 이미지를 쓴다', (tester) async {
+  testWidgets('카드는 크기를 바꿔도 같은 타로 비율로 그려지고 뒷면을 표시한다', (tester) async {
     await loadSweepFonts(tester);
     await tester.pumpWidget(
       const MaterialApp(
         home: Material(
           child: Row(
             children: [
-              LiarsPokerCardView(face: LiarsCardFace.queen, width: 60),
-              LiarsPokerCardView(face: LiarsCardFace.queen, width: 240),
+              LiarsPokerCardView(face: LiarsCardFace.truth, width: 60),
+              LiarsPokerCardView(face: LiarsCardFace.truth, width: 240),
             ],
           ),
         ),
@@ -116,10 +115,10 @@ void main() {
     await tester.pump();
     final small = tester.getSize(find.byType(LiarsPokerCardView).first);
     final large = tester.getSize(find.byType(LiarsPokerCardView).last);
-    expect(small.height / small.width, closeTo(1.4, .001));
-    expect(large.height / large.width, closeTo(1.4, .001));
-    expect(find.bySemanticsLabel('퀸 카드'), findsNWidgets(2));
-    expect(LiarsCardFace.fromValue('joker'), LiarsCardFace.joker);
+    expect(small.height / small.width, closeTo(1.6, .001));
+    expect(large.height / large.width, closeTo(1.6, .001));
+    expect(find.bySemanticsLabel('진실 카드'), findsNWidgets(2));
+    expect(LiarsCardFace.fromValue('lie'), LiarsCardFace.lie);
     expect(LiarsCardFace.fromValue('?'), LiarsCardFace.back);
     expect(find.bySemanticsLabel('카드 뒷면'), findsNothing);
     expect(tester.takeException(), isNull);

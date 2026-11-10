@@ -5,7 +5,13 @@ import 'package:game_kit/phone/animations/card_receive_animation.dart';
 void main() {
   const hint = '카드를 눌러 펼쳐 보세요';
 
-  Future<void> pumpDeck(WidgetTester tester, {required bool showTapHint}) {
+  Future<void> pumpDeck(
+    WidgetTester tester, {
+    required bool showTapHint,
+    bool autoReveal = false,
+    VoidCallback? onRevealStarted,
+    VoidCallback? onCompleted,
+  }) {
     tester.view.physicalSize = const Size(844, 390);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -17,6 +23,9 @@ void main() {
             cardWidth: 100,
             totalDuration: const Duration(milliseconds: 1000),
             showTapHint: showTapHint,
+            autoReveal: autoReveal,
+            onRevealStarted: onRevealStarted,
+            onCompleted: onCompleted,
             cardBuilder: (context, index, front) =>
                 ColoredBox(color: front ? Colors.white : Colors.blue),
           ),
@@ -49,5 +58,25 @@ void main() {
     expect(find.bySemanticsLabel('카드 확인'), findsOneWidget);
     expect(find.text(hint), findsNothing);
     expect(find.byIcon(Icons.touch_app_rounded), findsNothing);
+  });
+
+  testWidgets('자동 공개를 켜면 덱을 누르지 않아도 손패를 펼친다', (tester) async {
+    var started = 0;
+    var completed = 0;
+    await pumpDeck(
+      tester,
+      showTapHint: false,
+      autoReveal: true,
+      onRevealStarted: () => started += 1,
+      onCompleted: () => completed += 1,
+    );
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    expect(started, 1);
+    expect(find.bySemanticsLabel('카드 확인'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(completed, 1);
   });
 }

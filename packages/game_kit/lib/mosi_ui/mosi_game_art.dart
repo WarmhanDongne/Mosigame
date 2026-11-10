@@ -47,9 +47,9 @@ class MosiGameArt {
     koreanName: '라이어스 포커',
     englishName: "LIAR'S POKER",
     shelfTheme: MosiShelfTheme.violet,
-    spineColor: Color(0xFF4A1A5E),
-    spineText: Color(0xFFF8F4FA),
-    accent: MosiColors.lime,
+    spineColor: Color(0xFF2A1D18),
+    spineText: Color(0xFFE6D8BC),
+    accent: Color(0xFFB8262B),
   );
 
   static const finalCall = MosiGameArt(
@@ -684,109 +684,149 @@ void _withTransform(
 
 //=======================라이어스 포커 · 세 장의 거짓말==============================
 void _paintLiar(Canvas canvas, String displayName, String englishName) {
+  const ink = Color(0xFF17110F);
+  const bone = Color(0xFFF2EADB);
+  const red = Color(0xFFB8262B);
+  // HTML 시안의 전면은 책등이 아니라 200×320 판화 한 장입니다. 선반에서
+  // 전면을 볼 때 왼쪽 책등이 섞여 보이지 않도록 이 캔버스에는 그리지 않습니다.
+  canvas.drawRect(const Rect.fromLTWH(0, 0, 300, 400), _fill(ink));
+  final redCorner = Path()
+    ..moveTo(0, 0)
+    ..lineTo(225, 0)
+    ..lineTo(0, 312.5)
+    ..close();
+  final brownCorner = Path()
+    ..moveTo(300, 150)
+    ..lineTo(300, 400)
+    ..lineTo(90, 400)
+    ..close();
+  canvas.drawPath(redCorner, _fill(red));
+  canvas.drawPath(brownCorner, _fill(const Color(0xFF2B1F1B)));
+
+  _text(
+    canvas,
+    displayName,
+    24,
+    62,
+    const TextStyle(
+      fontFamily: 'DoHyeon',
+      fontSize: 42,
+      height: 1,
+      color: bone,
+    ),
+    maxWidth: 190,
+  );
+  _text(
+    canvas,
+    'THE LIARS',
+    27,
+    82,
+    _grotesk(8.5, bone.withValues(alpha: .85), 4.5),
+    maxWidth: 180,
+  );
+  _paintLiarMask(canvas);
+  _paintLiarGrain(canvas);
   canvas.drawRect(
     const Rect.fromLTWH(0, 0, 300, 400),
-    _fill(MosiGameArt.liarsPoker.spineColor),
+    Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(.05, -.12),
+        radius: 1.08,
+        colors: [Color(0x00000000), Color(0x99000000)],
+        stops: [.48, 1],
+      ).createShader(const Rect.fromLTWH(0, 0, 300, 400)),
   );
-  canvas.drawCircle(
-    const Offset(150, 300),
-    190,
-    _fill(const Color(0xFF5A2272)),
-  );
-  _text(
-    canvas,
-    englishName.toUpperCase(),
-    24,
-    88,
-    _playfair(44, const Color(0xFFF8F4FA)),
-    maxWidth: 252,
-  );
-  if (displayName.toUpperCase() != englishName.toUpperCase()) {
-    _text(canvas, displayName, 26, 118, _plex(14, const Color(0xFFC7B8CC)));
-  }
-  canvas.drawOval(
-    Rect.fromCenter(center: const Offset(150, 352), width: 236, height: 24),
-    _fill(const Color(0xFF1B1022)),
-  );
+}
 
-  void backCard() {
-    final rect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(0, 0, 110, 154),
-      const Radius.circular(8),
+/// 원본 SVG의 `translate(104 196) scale(1.38)` 가면·왕관을 300×400
+/// 표지 비율로 옮긴 것입니다. 왕관 하단은 시안처럼 표지 아래에서 잘립니다.
+void _paintLiarMask(Canvas canvas) {
+  const ink = Color(0xFF17110F);
+  const bone = Color(0xFFF2EADB);
+  const red = Color(0xFFB8262B);
+  canvas.save();
+  canvas.translate(156, 245);
+  canvas.scale(2.07, 1.725);
+  final crown = Path()
+    ..moveTo(-70, 70)
+    ..lineTo(-30, 40)
+    ..lineTo(-8, 92)
+    ..lineTo(10, 44)
+    ..lineTo(40, 96)
+    ..lineTo(52, 42)
+    ..lineTo(90, 74)
+    ..lineTo(80, 140)
+    ..lineTo(-80, 140)
+    ..close();
+  canvas.drawPath(crown, _fill(red));
+  canvas.drawPath(crown, _stroke(const Color(0xFFD9473F), 1.8));
+  canvas.drawPath(
+    Path()
+      ..moveTo(-46, 64)
+      ..lineTo(-24, 52)
+      ..lineTo(-14, 100)
+      ..close(),
+    _fill(const Color(0xFFD9473F).withValues(alpha: .8)),
+  );
+  canvas.drawPath(
+    Path()
+      ..moveTo(30, 60)
+      ..lineTo(46, 104)
+      ..lineTo(56, 58)
+      ..close(),
+    _fill(const Color(0xFFD9473F).withValues(alpha: .8)),
+  );
+  final head = Path()
+    ..moveTo(-46, -56)
+    ..cubicTo(-40, -92, 40, -92, 46, -56)
+    ..cubicTo(54, -10, 40, 40, 0, 58)
+    ..cubicTo(-40, 40, -54, -10, -46, -56)
+    ..close();
+  canvas.drawPath(head, _fill(bone));
+  canvas.save();
+  canvas.clipRect(const Rect.fromLTWH(0, -86, 54, 148));
+  canvas.drawPath(head, _fill(ink));
+  canvas.restore();
+  canvas.drawCircle(const Offset(-20, -22), 10, _stroke(ink, 5));
+  final cross = _stroke(bone, 5)..strokeCap = StrokeCap.square;
+  canvas.drawLine(const Offset(12, -32), const Offset(32, -12), cross);
+  canvas.drawLine(const Offset(32, -32), const Offset(12, -12), cross);
+  final smile = Path()
+    ..moveTo(-30, 8)
+    ..quadraticBezierTo(0, 40, 36, 4)
+    ..quadraticBezierTo(30, 30, 0, 34)
+    ..quadraticBezierTo(-22, 30, -30, 8)
+    ..close();
+  canvas.drawPath(smile, _fill(red));
+  canvas.drawPath(smile, _stroke(ink, 2.6));
+  for (var x = -24.0; x <= 26; x += 10) {
+    canvas.drawLine(
+      Offset(x, 12 + (x + 24) * .12),
+      Offset(x - 2, 22 + (x + 24) * .12),
+      _stroke(ink, 1.5),
     );
-    canvas.drawRRect(rect, _fill(MosiColors.white));
-    canvas.drawRRect(rect, _stroke(MosiColors.ink, 2.5));
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(7, 7, 96, 140),
-        const Radius.circular(4),
+  }
+  canvas.restore();
+}
+
+/// SVG turbulence의 종이·잉크 입자를 외부 이미지 없이 고정된 판화 질감으로
+/// 바꿉니다. 좌표가 고정되어 표지가 리빌드되어도 깜빡이지 않습니다.
+void _paintLiarGrain(Canvas canvas) {
+  const light = Color(0xFFF2EADB);
+  const dark = Color(0xFF080504);
+  for (var index = 0; index < 300; index++) {
+    final x = ((index * 47.3) % 300) + ((index % 4) * .19);
+    final y = ((index * 71.7) % 400) + ((index % 7) * .13);
+    final length = 1 + (index % 5) * .75;
+    canvas.drawLine(
+      Offset(x, y),
+      Offset(x + length, y + (index.isEven ? .2 : -.2)),
+      _stroke(
+        (index % 3 == 0 ? light : dark).withValues(alpha: .045),
+        index % 11 == 0 ? 1.1 : .55,
       ),
-      _stroke(MosiColors.ink, 1),
-    );
-    final outer = Path()
-      ..moveTo(55, 52)
-      ..lineTo(80, 77)
-      ..lineTo(55, 102)
-      ..lineTo(30, 77)
-      ..close();
-    canvas.drawPath(outer, _stroke(MosiColors.ink, 1.2));
-    final inner = Path()
-      ..moveTo(55, 62)
-      ..lineTo(70, 77)
-      ..lineTo(55, 92)
-      ..lineTo(40, 77)
-      ..close();
-    canvas.drawPath(inner, _stroke(MosiColors.ink, 1));
-    canvas.drawRect(
-      const Rect.fromLTWH(50, 72, 10, 10),
-      _stroke(MosiColors.ink, 1),
-    );
-    canvas.drawLine(
-      const Offset(55, 28),
-      const Offset(55, 48),
-      _stroke(MosiColors.ink, 1),
-    );
-    canvas.drawLine(
-      const Offset(55, 106),
-      const Offset(55, 126),
-      _stroke(MosiColors.ink, 1),
     );
   }
-
-  _withTransform(canvas, 95, 182, -17, 55, 154, backCard);
-  _withTransform(canvas, 95, 182, 17, 55, 154, backCard);
-  _withTransform(canvas, 95, 172, 0, 0, 0, () {
-    final rect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(0, 0, 110, 154),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(rect, _fill(MosiColors.white));
-    canvas.drawRRect(rect, _stroke(MosiColors.ink, 2.5));
-    _text(canvas, 'A', 11, 24, _playfair(16, MosiColors.ink));
-    _text(
-      canvas,
-      'A',
-      55,
-      102,
-      _playfair(66, MosiColors.ink),
-      align: TextAlign.center,
-    );
-    _text(
-      canvas,
-      'A',
-      99,
-      142,
-      _playfair(16, MosiColors.ink),
-      align: TextAlign.right,
-    );
-  });
-  _text(
-    canvas,
-    'MOSIGAME',
-    24,
-    386,
-    _grotesk(10, const Color(0xFFC7B8CC), 2.5),
-  );
 }
 
 //=======================파이널콜 · 네 장의 손패==============================
@@ -1495,16 +1535,19 @@ class MosiSeatTheme {
   final double tableDy;
 
   static const liarsPoker = MosiSeatTheme(
-    ground: Color(0xFF4A1A5E),
-    deep: Color(0xFF1B1022),
-    table: Color(0xFF6E2A82),
-    dots: Color(0x14FFFFFF),
-    pill: Color(0x991B1022),
-    pillLine: Color(0x99F2C14E),
-    button: Color(0xFFF2C14E),
-    buttonFg: Color(0xFF1B1022),
-    selected: Color(0xFFF2C14E),
-    ring: Color(0x99F2C14E),
+    // 라이어스의 카드·게임 배경과 같은 어두운 월넛, 양피지, 황동 팔레트입니다.
+    // 자리 배치에서 설정 완료 후 게임 화면으로 확대될 때 보라색 카지노
+    // 에셋이 끼어들지 않도록 게임별 색상도 같은 콘셉트로 맞춥니다.
+    ground: Color(0xFF1A0906),
+    deep: Color(0xFF140805),
+    table: Color(0xFF351707),
+    dots: Color(0x12E6D8BC),
+    pill: Color(0xB321100B),
+    pillLine: Color(0xAAB9A782),
+    button: Color(0xFFB9A782),
+    buttonFg: Color(0xFF17110F),
+    selected: Color(0xFFF2EADB),
+    ring: Color(0xAAB9A782),
     tableFit: 0.921,
     tableDy: -0.0144,
   );

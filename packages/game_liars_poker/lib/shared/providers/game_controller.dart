@@ -181,6 +181,9 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
   String? get finishReason => state.finishReason;
   String get phase => state.phase;
   String get table => state.table;
+  int get truthCardCount => state.truthCardCount;
+  int get lieCardCount => state.lieCardCount;
+  int get unrevealedCardCount => state.unrevealedCardCount;
   String? get turnUid => state.turnUid;
   String? get winnerUid => state.winnerUid;
   String? get penaltyTargetUid => state.penaltyTargetUid;
@@ -203,9 +206,7 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     if (play == null || !play.revealed || play.actualCardValues.isEmpty) {
       return null;
     }
-    return play.actualCardValues.any(
-      (value) => value.toUpperCase() != table && value.toUpperCase() != 'JOKER',
-    );
+    return play.actualCardValues.any((value) => value.toUpperCase() != 'TRUTH');
   }
 
   String? get lastPlayId => state.lastPlayId;
@@ -416,10 +417,16 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     final nextStatus = liarsPokerString(data['status'], fallback: 'playing');
     final nextFinishReason = liarsPokerNullableString(data['finishReason']);
     final nextPhase = liarsPokerString(data['phase'], fallback: 'playing');
+    // 기존 table 키는 고정 "TRUTH" 선언으로 유지합니다. 이전 방의 남은
+    // 상태를 열어도 새 UI가 K/Q/A를 다시 노출하지 않도록 기본값도 TRUTH입니다.
     final nextTable = liarsPokerString(
       data['table'],
-      fallback: 'K',
+      fallback: 'TRUTH',
     ).toUpperCase();
+    final nextTruthCardCount = liarsPokerInteger(data['truthCardCount']) ?? 0;
+    final nextLieCardCount = liarsPokerInteger(data['lieCardCount']) ?? 0;
+    final nextUnrevealedCardCount =
+        liarsPokerInteger(data['unrevealedCardCount']) ?? 3;
     final nextTurnUid = liarsPokerNullableString(data['turnUid']);
     final nextWinnerUid = liarsPokerNullableString(data['winnerUid']);
     final nextPenaltyTargetUid = liarsPokerNullableString(
@@ -477,7 +484,7 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
         nextLastPlayRevealed &&
         (lastPlayId != nextLastPlayId || !lastPlayRevealed);
     final declarationWasFalse = nextActualCardValues.any(
-      (cardValue) => cardValue != nextTable && cardValue != 'JOKER',
+      (cardValue) => cardValue != 'TRUTH',
     );
     // ---------------------------------------------------------------------------
     // 플레이어별 판정 문구
@@ -516,6 +523,9 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
         finishReason != nextFinishReason ||
         phase != nextPhase ||
         table != nextTable ||
+        truthCardCount != nextTruthCardCount ||
+        lieCardCount != nextLieCardCount ||
+        unrevealedCardCount != nextUnrevealedCardCount ||
         turnUid != nextTurnUid ||
         winnerUid != nextWinnerUid ||
         penaltyTargetUid != nextPenaltyTargetUid ||
@@ -586,6 +596,9 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
           finishReason: nextFinishReason,
           phase: nextPhase,
           table: nextTable,
+          truthCardCount: nextTruthCardCount,
+          lieCardCount: nextLieCardCount,
+          unrevealedCardCount: nextUnrevealedCardCount,
           turnUid: nextTurnUid,
           winnerUid: nextWinnerUid,
           penaltyTargetUid: nextPenaltyTargetUid,

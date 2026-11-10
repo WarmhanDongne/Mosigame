@@ -1,5 +1,5 @@
 // [round_start_reveal.dart] 라운드 시작 시 태블릿에
-// 기준 테이블·플레이어별 잔여 카드·현재 턴 표시를 등장시키는 파일이다.
+// 플레이어별 잔여 카드·현재 턴 표시를 등장시키는 파일이다.
 
 // ========================[ import ]==========================
 import 'dart:math' as math;
@@ -8,19 +8,19 @@ import 'package:game_kit/tablet/animations/board_element_entrance.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/game_assets.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 
 // ============================================================
 
-/// 라운드 시작 시 중앙 테이블과 플레이어별 잔여 카드 수를 동시에 띄웁니다.
+/// 라운드 시작 시 플레이어별 잔여 카드 수와 현재 턴을 띄웁니다.
 class RoundStartReveal extends StatefulWidget {
   const RoundStartReveal({
     super.key,
-    required this.tableAsset,
+    @Deprecated('새 라이어스 규칙에는 중앙 테이블 카드가 없습니다.') this.tableWidget,
     required this.playerCount,
     required this.remainingCardCounts,
     this.activePlayerIndex,
     this.playerSeatIndexes,
-    this.tableWidth = 200,
     this.duration = const Duration(milliseconds: 980),
     this.onCompleted,
   }) : assert(playerCount > 0),
@@ -35,13 +35,14 @@ class RoundStartReveal extends StatefulWidget {
          'playerSeatIndexes의 개수는 playerCount와 같아야 합니다.',
        );
 
-  final GameImage tableAsset;
+  /// 이전 라운드 화면 호출과의 호환을 위해서만 남긴 값입니다.
+  /// 새 규칙 화면에서는 렌더링하지 않습니다.
+  final Widget? tableWidget;
   final int playerCount;
   final List<int> remainingCardCounts;
   final int? activePlayerIndex;
   final List<int>? playerSeatIndexes;
 
-  final double tableWidth;
   final Duration duration;
 
   final VoidCallback? onCompleted;
@@ -112,19 +113,6 @@ class _RoundStartRevealState extends State<RoundStartReveal>
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Center(
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Transform.scale(
-                        scale: scale,
-                        child: widget.tableAsset.image(
-                          width: widget.tableWidth,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                        ),
-                      ),
-                    ),
-                  ),
                   if (turnLightCenter != null)
                     AnimatedPositioned(
                       key: const ValueKey('moving-turn-light'),
@@ -261,20 +249,9 @@ class _TurnCircleLight extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Opacity(
+                const Opacity(
                   opacity: 0.82,
-                  child: Assets
-                      .games
-                      .liarsPoker
-                      .images
-                      .background
-                      .background
-                      .game
-                      .image(
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        filterQuality: FilterQuality.high,
-                      ),
+                  child: LiarsPokerWoodTableBackground(),
                 ),
                 const DecoratedBox(
                   decoration: BoxDecoration(

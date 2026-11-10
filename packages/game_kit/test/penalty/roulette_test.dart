@@ -104,7 +104,8 @@ void main() {
     await _mountRoulette(tester, prepared: prepared, onResult: results.add);
     await _pullLever(tester);
     prepared.complete(null);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
 
     expect(await _sampleSpeed(tester), closeTo(0, 0.001));
     expect(results, isEmpty);
@@ -113,6 +114,29 @@ void main() {
       find.ancestor(of: detector, matching: find.byType(IgnorePointer)).first,
     );
     expect(pointerGuard.ignoring, isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('레버를 당기기 전에는 아래로 당기는 안내가 보이고 드래그 때 숨는다', (tester) async {
+    final prepared = Completer<RouletteResult?>();
+    await _mountRoulette(tester, prepared: prepared, onResult: (_) {});
+    expect(find.byKey(const Key('roulette-lever-hint')), findsOneWidget);
+
+    final rect = tester.getRect(_leverFinder());
+    final scale = rect.height / RouletteWheel.leverGestureHeight;
+    final gesture = await tester.startGesture(
+      rect.topLeft +
+          Offset(
+            rect.width / 2,
+            (RouletteWheel.leverHeadTop + RouletteWheel.leverHeadSize / 2) *
+                scale,
+          ),
+    );
+    await gesture.moveBy(const Offset(0, 20));
+    await tester.pump();
+    expect(find.byKey(const Key('roulette-lever-hint')), findsNothing);
+
+    await gesture.up();
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }
@@ -137,7 +161,8 @@ Future<void> _mountRoulette(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  // 레버 안내의 펄스는 계속 반복되므로 안정화까지 기다리지 않습니다.
+  await tester.pump();
 }
 
 Finder _leverFinder() => find.byWidgetPredicate(

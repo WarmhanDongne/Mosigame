@@ -3,14 +3,38 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:game_kit/firebase/firebase_options.dart';
+import 'package:game_kit/firebase/firebase_options_test.dart';
+
+FirebaseOptions firebaseOptionsForBackend(String backend) {
+  return switch (backend) {
+    'server' => DefaultFirebaseOptions.currentPlatform,
+    'test' => TestFirebaseOptions.currentPlatform,
+    _ => throw ArgumentError('Firebase options require server or test mode.'),
+  };
+}
+
+FirebaseOptions get selectedFirebaseOptions =>
+    firebaseOptionsForBackend(FirebaseBackend.mode);
+
+String? get selectedGoogleServerClientId =>
+    FirebaseBackend.isTest ? TestFirebaseOptions.googleWebClientId : null;
 
 /// Connect every service before any auth listener, clock or game service starts.
 Future<void> initializeFirebaseBackend() async {
   FirebaseBackend.validate();
-  if (!FirebaseBackend.isLocal) {
+  if (FirebaseBackend.isTest) {
+    // Android/iOS native configuration may already have created the production
+    // [DEFAULT] app before Dart starts. Keep the test project in a named app so
+    // its different options never collide with or fall back to production.
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      name: 'mosigame-test',
+      options: selectedFirebaseOptions,
     );
+    debugPrint('Firebase backend: TEST (${selectedFirebaseOptions.projectId})');
+    return;
+  }
+  if (!FirebaseBackend.isLocal) {
+    await Firebase.initializeApp(options: selectedFirebaseOptions);
     return;
   }
 

@@ -1,7 +1,6 @@
 /* eslint-disable require-jsdoc, valid-jsdoc, max-len */
 import {operationFingerprint} from "../room/session-contract.js";
 import {beginRecoveryPause, clearFinishedRecovery, recoveryTimer, RecoveryGame, RecoveryRoom} from "./recovery-state.js";
-import {initializeStartupRecovery} from "./startup-recovery.js";
 
 const PUBLIC_META = new Set([
   "revision", "updatedAt", "gameInstanceId", "phaseSeq", "turnSeq", "dataSeq", "resumeEpoch", "recovery",
@@ -34,13 +33,13 @@ export function finalizeGameMutation(room: RecoveryRoom, before: RecoveryGame | 
     // functions have been deployed. No app or public state shape change.
     if (room.presenceProtocol === 2) game.server.playerRecoveryPolicy = "independent-v1";
     delete game.server.preparationReconnects;
+    delete game.server.startupRecovery;
     game.public.gameInstanceId = newGameId;
     game.public.phaseSeq = 1;
     game.public.turnSeq = 1;
     game.public.dataSeq = 1;
     game.public.resumeEpoch = 0;
     beginRecoveryPause(room, now, now, "initialReadiness");
-    initializeStartupRecovery(room, now);
   } else {
     game.public.gameInstanceId = before!.public.gameInstanceId;
     game.public.phaseSeq = (before!.public.phaseSeq ?? 0) + (phaseKey(before!) !== phaseKey(game) ? 1 : 0);

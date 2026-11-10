@@ -128,7 +128,7 @@ class PhoneHandCardStack extends StatefulWidget {
     this.entryCenterOffsetY = 0,
     this.announcementCenterOffset = Offset.zero,
     this.roundNumber = 1,
-    this.tableCardValue = 'K',
+    this.tableCardValue = 'TRUTH',
     required this.flowConfig,
   }) : assert(maxSelection > 0);
 
@@ -199,8 +199,8 @@ class _PhoneHandCardStackState extends State<PhoneHandCardStack> {
     widget.controller?._attach(this, _submitSelectedCards);
     _isDealing = !widget.initiallyRevealed;
     _showRoundIntro = _isDealing && widget.roundNumber > 1;
-    // 첫 라운드는 상위 화면의 GAME START가 먼저 끝난 뒤 이 위젯이 생성됩니다.
-    // 따라서 ROUND 문구 없이 바로 테이블을 안내하고 카드팩을 전달합니다.
+    // board에서 라운드·기준 카드 안내가 켜진 구성은 이 순서를 따르지만,
+    // 현재 설정처럼 두 안내를 모두 생략하면 바로 카드팩을 펼쳐 보여줍니다.
     _showTableIntro = _isDealing && widget.roundNumber == 1;
     _replaceCards(widget.cards ?? _defaultCards);
     _notifySelectionChanged();
@@ -266,11 +266,11 @@ class _PhoneHandCardStackState extends State<PhoneHandCardStack> {
   }
 
   List<LiarsCardFace> get _defaultCards => const [
-    LiarsCardFace.king,
-    LiarsCardFace.queen,
-    LiarsCardFace.ace,
-    LiarsCardFace.ace,
-    LiarsCardFace.joker,
+    LiarsCardFace.truth,
+    LiarsCardFace.lie,
+    LiarsCardFace.truth,
+    LiarsCardFace.lie,
+    LiarsCardFace.truth,
   ];
 
   void _replaceCards(List<LiarsCardFace> cards) {
@@ -549,8 +549,9 @@ class _PhoneHandCardStackState extends State<PhoneHandCardStack> {
                   spreadToLeft: widget.spreadToLeft,
                   entryCenterOffsetX: widget.entryCenterOffsetX,
                   entryCenterOffsetY: widget.entryCenterOffsetY,
-                  // 처음 받는 손패에서만 덱을 눌러 펼치라고 안내합니다.
-                  showTapHint: widget.roundNumber == 1,
+                  // 손패 덱은 도착 즉시 자동으로 펼칩니다. 태블릿 분배 후
+                  // 휴대폰에서 한 번 더 탭하게 하지 않아도 됩니다.
+                  autoReveal: true,
                   onRevealStarted: widget.onRevealStarted,
                   onCompleted: () {
                     if (!mounted) return;

@@ -501,19 +501,34 @@ void main() {
     final reset = find.byKey(const Key('room-reset-button'));
     final position = tester.getTopLeft(button);
     final resetPosition = tester.getTopLeft(reset);
+    final buttonSize = tester.getSize(button);
     provider.isLoading = true;
     await pump(true);
     expect(tester.getTopLeft(button), position);
     expect(tester.getTopLeft(reset), resetPosition);
     expect(find.text('초기화'), findsOneWidget);
     expect(find.textContaining('초기화 중'), findsNothing);
+    // 시작 처리 중에는 원형 로딩 대신 눌린 버튼에 진행 문구와 빛을 보입니다.
+    expect(tester.getSize(button), buttonSize);
+    expect(
+      find.descendant(of: button, matching: find.text('게임 준비 중')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: button,
+        matching: find.byKey(const Key('mosi-button-busy-sweep')),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: button,
         matching: find.byType(CircularProgressIndicator),
       ),
-      findsOneWidget,
+      findsNothing,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('인원 부족 피드백은 버튼에서 부드럽게 나타났다가 원래 상태로 돌아온다', (tester) async {

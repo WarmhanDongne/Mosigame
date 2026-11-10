@@ -193,6 +193,29 @@ void main() {
     },
   );
 
+  test('같은 order의 게임도 ID 기준으로 고정된 좌우 순서를 사용한다', () async {
+    final db = _Database();
+    final service = GameService(
+      firestore: db,
+      auth: _Auth(),
+      functions: _Functions(),
+    );
+    db.catalog.complete(
+      _Catalog([
+        _Document('mafia', {'enabled': true, 'order': 1}),
+        _Document('final_call', {'enabled': true, 'order': 1}),
+        _Document('liars', {'enabled': true, 'order': 0}),
+      ]),
+    );
+    db.owner.complete(_Document('user', {}));
+
+    expect((await service.fetchGames()).map((game) => game.id), [
+      'liars_poker',
+      'final_call',
+      'mafia',
+    ]);
+  });
+
   test(
     'existing rooms read the renamed document; fallback only before migration',
     () async {

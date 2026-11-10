@@ -15,7 +15,10 @@ function makeGame(overrides = {}) {
       phase: "playing",
       round: 1,
       revision: 10,
-      table: "A",
+      table: "TRUTH",
+      truthCardCount: 9,
+      lieCardCount: 9,
+      unrevealedCardCount: 3,
       turnUid: "p1",
       turnDeadlineAt: 1000,
       isFirstTurnReady: true,
@@ -41,7 +44,7 @@ function makeGame(overrides = {}) {
       updatedAt: 0,
     },
     private: {
-      p1: {hand: {c1: {id: "c1", rank: "K"}, c2: {id: "c2", rank: "A"}}},
+      p1: {hand: {c1: {id: "c1", rank: "LIE"}, c2: {id: "c2", rank: "TRUTH"}}},
     },
     server: {
       lastPlayCards: null,
@@ -97,10 +100,10 @@ test("직전 제출이 있으면 LIAR를 대신 선언한다 — 거짓이면 �
     public: {
       lastPlay: {
         playId: "play1", round: 1, playerUid: "p3", cardCount: 1,
-        declaredRank: "A", revealed: false, submittedAt: 900,
+        declaredRank: "TRUTH", revealed: false, submittedAt: 900,
       },
     },
-    server: {lastPlayCards: [{id: "x1", rank: "Q"}]},
+    server: {lastPlayCards: [{id: "x1", rank: "LIE"}]},
   });
   const result = resolveForcedTimeout(game, 2000);
 
@@ -117,10 +120,10 @@ test("직전 제출이 있으면 LIAR를 대신 선언한다 — 진실이면 �
     public: {
       lastPlay: {
         playId: "play1", round: 1, playerUid: "p3", cardCount: 1,
-        declaredRank: "A", revealed: false, submittedAt: 900,
+        declaredRank: "TRUTH", revealed: false, submittedAt: 900,
       },
     },
-    server: {lastPlayCards: [{id: "x1", rank: "A"}]},
+    server: {lastPlayCards: [{id: "x1", rank: "TRUTH"}]},
   });
   const result = resolveForcedTimeout(game, 2000);
 
@@ -134,10 +137,10 @@ test("두 생존자 모두 카드가 남은 자동 LIAR 실패는 룰렛 단계�
     public: {
       lastPlay: {
         playId: "truth", round: 1, playerUid: "p2", cardCount: 1,
-        declaredRank: "A", revealed: false, submittedAt: 900,
+        declaredRank: "TRUTH", revealed: false, submittedAt: 900,
       },
     },
-    server: {lastPlayCards: [{id: "truth-card", rank: "A"}]},
+    server: {lastPlayCards: [{id: "truth-card", rank: "TRUTH"}]},
   });
   delete game.public.players.p3;
   game.server.penaltyCountIncrementedBeforeRoulette = true;
@@ -164,10 +167,10 @@ test("마지막 카드 도전 단계에서는 FOLD로 자신이 벌칙을 받는
       },
       lastPlay: {
         playId: "play9", round: 1, playerUid: "p2", cardCount: 1,
-        declaredRank: "A", revealed: false, submittedAt: 900,
+        declaredRank: "TRUTH", revealed: false, submittedAt: 900,
       },
     },
-    server: {lastPlayCards: [{id: "x1", rank: "A"}]},
+    server: {lastPlayCards: [{id: "x1", rank: "TRUTH"}]},
   });
   const result = resolveForcedTimeout(game, 2000);
 
@@ -190,7 +193,7 @@ test("마지막 한 장 제출로 lastCardChallenge가 열리는 경우를 계�
         },
       },
     },
-    private: {p1: {hand: {c1: {id: "c1", rank: "K"}}}},
+    private: {p1: {hand: {c1: {id: "c1", rank: "LIE"}}}},
   });
   const result = resolveForcedTimeout(game, 2000);
 

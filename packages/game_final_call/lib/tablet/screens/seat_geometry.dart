@@ -38,15 +38,22 @@ double finalCallSeatRotation(int index, int count) {
   return 0;
 }
 
-/// 실제 원형 레이아웃 좌표에서 플레이어가 보드 중심을 바라보는 각도입니다.
+/// 좌석이 붙은 화면 변을 향하도록 돌리는 각도입니다.
+///
+/// 좌석은 화면 가장자리에 붙으므로([finalCallSeatCenters]) 가장 가까운 변의
+/// 사람이 똑바로 읽도록 위 180°, 오른쪽 -90°, 왼쪽 90°, 아래 0°로 맞춥니다.
 double finalCallSeatRotationForCenter({
   required Offset center,
   required Size boardSize,
 }) {
-  final boardCenter = boardSize.center(Offset.zero);
-  final direction = center - boardCenter;
-  if (direction.distanceSquared == 0) return 0;
-  return math.atan2(direction.dy, direction.dx) - math.pi / 2;
+  final distances = [
+    (center.dy, math.pi), // 위
+    (boardSize.width - center.dx, -math.pi / 2), // 오른쪽
+    (boardSize.height - center.dy, 0.0), // 아래
+    (center.dx, math.pi / 2), // 왼쪽
+  ];
+  distances.sort((a, b) => a.$1.compareTo(b.$1));
+  return distances.first.$2;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,3 +82,38 @@ Offset finalCallPublicCardCenter(Size boardSize) =>
           2,
       0,
     );
+
+// ---------------------------------------------------------------------------
+// 좌석 자리(A안)
+// ---------------------------------------------------------------------------
+/// 프로필이 화면 네 변의 가운데·끝에 붙도록 좌석 중심을 정합니다.
+///
+/// 원형 궤도 대신 화면 가장자리에 붙여, 태블릿을 둘러앉은 사람 바로 앞에
+/// 자기 프로필이 오게 합니다. 좌석 번호는 위쪽부터 시계 방향입니다.
+List<Offset> finalCallSeatCenters({
+  required int playerCount,
+  required Size boardSize,
+}) {
+  final w = boardSize.width;
+  final h = boardSize.height;
+  final inset = boardSize.shortestSide * 0.115;
+  final top = Offset(w / 2, inset);
+  final right = Offset(w - inset, h / 2);
+  final bottom = Offset(w / 2, h - inset);
+  final left = Offset(inset, h / 2);
+  Offset topAt(double x) => Offset(w * x, inset);
+  Offset bottomAt(double x) => Offset(w * x, h - inset);
+  final seats = switch (playerCount) {
+    <= 1 => [bottom],
+    2 => [top, bottom],
+    3 => [top, right, left],
+    4 => [top, right, bottom, left],
+    5 => [topAt(.36), topAt(.64), right, bottom, left],
+    _ => [topAt(.36), topAt(.64), right, bottomAt(.64), bottomAt(.36), left],
+  };
+  return List<Offset>.generate(
+    playerCount,
+    (index) => seats[index % seats.length],
+    growable: false,
+  );
+}

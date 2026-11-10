@@ -12,7 +12,6 @@ import 'package:game_final_call/shared/models/game_models.dart';
 import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_final_call/tablet/screens/seat_geometry.dart';
 import 'package:game_final_call/shared/widgets/card_view.dart';
-import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_final_call/game_copy.dart';
 import 'package:game_final_call/game_theme.dart';
 import 'package:game_final_call/shared/widgets/party_pop.dart';
@@ -428,7 +427,7 @@ class _FinalCallTabletDiscardAnimationState
     return LayoutBuilder(
       builder: (context, constraints) {
         final boardSize = constraints.biggest;
-        final start = playerCentersForBoard(
+        final start = finalCallSeatCenters(
           playerCount: widget.playerCount,
           boardSize: boardSize,
         )[player.seatIndex];

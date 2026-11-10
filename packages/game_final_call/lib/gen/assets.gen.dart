@@ -64,6 +64,10 @@ class $AssetsGamesFinalCallSoundsGen {
   String get aGitkeep =>
       'packages/game_final_call/assets/games/final_call/sounds/.gitkeep';
 
+  /// File path: assets/games/final_call/sounds/background.m4a
+  String get background =>
+      'packages/game_final_call/assets/games/final_call/sounds/background.m4a';
+
   /// File path: assets/games/final_call/sounds/heartbreak.mp3
   String get heartbreak =>
       'packages/game_final_call/assets/games/final_call/sounds/heartbreak.mp3';
@@ -91,6 +95,7 @@ class $AssetsGamesFinalCallSoundsGen {
   /// List of all assets
   List<String> get values => [
     aGitkeep,
+    background,
     heartbreak,
     voiceCall,
     voiceDraw,

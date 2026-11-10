@@ -656,10 +656,10 @@ class _TabletHomeState extends State<TabletHome>
                       startBackground: theme.btnBg,
                       startForeground: theme.btnFg,
                       maxSlots: detail == null ? null : _maxSlots(detail),
-                      // 시작 요청은 입력만 잠그고 로비의 글자·책·버튼 모양은
-                      // 그대로 둡니다. 다음 route가 열리기 전 레이아웃이 움직이면
-                      // 책 전환의 출발점이 흔들려 보입니다.
-                      startLoading: false,
+                      // 시작 요청 중에는 버튼만 눌린 채 "게임 준비 중"을 보입니다.
+                      // 버튼 크기·위치는 그대로라 책 전환의 출발점이 흔들리지
+                      // 않습니다.
+                      startLoading: _isStarting,
                       insufficientPlayersFeedback: _insufficientPlayersFeedback,
                       onStart: () => unawaited(_startSelectedGame()),
                     ),

@@ -5,8 +5,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/game_copy.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 import 'package:game_liars_poker/phone/widgets/exit_modal.dart';
 import 'package:game_liars_poker/phone/widgets/settings_dialog.dart';
 import 'package:game_liars_poker/phone/widgets/top_bar.dart';
@@ -15,7 +15,6 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/phone/widgets/ripple_dialog.dart';
 import 'package:game_kit/phone/widgets/rulebook_dialog.dart';
-import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_kit/core/constants/room_character.dart';
 import 'package:game_kit/localization/game_locale.dart';
 
@@ -56,7 +55,7 @@ class PhoneSpectator extends StatelessWidget {
           // ---------------------------------------------------------------------------
           // 진행 화면과 같은 세로 배경을 유지해야 관전 전환 중 배경 이미지가
           // 바뀌거나 새로 디코딩되며 번쩍이지 않습니다.
-          Positioned.fill(child: _buildBackground(isLandscape: false)),
+          const Positioned.fill(child: LiarsPokerWoodTableBackground()),
 
           // ---------------------------------------------------------------------------
           // 공용 상단 바
@@ -110,7 +109,7 @@ class PhoneSpectator extends StatelessWidget {
           // ---------------------------------------------------------------------------
           // 배경 화면
           // ---------------------------------------------------------------------------
-          Positioned.fill(child: _buildBackground(isLandscape: true)),
+          const Positioned.fill(child: LiarsPokerWoodTableBackground()),
 
           // ---------------------------------------------------------------------------
           // 공용 상단 바
@@ -299,24 +298,9 @@ class PhoneSpectator extends StatelessWidget {
     );
   }
 
-  Widget _buildBackground({required bool isLandscape}) {
-    final background = isLandscape
-        ? Assets.games.liarsPoker.images.background.background.game
-        : Assets.games.liarsPoker.images.background.backgroundPhone.game;
-    return background.image(
-      fit: BoxFit.cover,
-      filterQuality: FilterQuality.high,
-      gaplessPlayback: true,
-    );
-  }
-
   Widget _buildTopBar(BuildContext context, bool isLandscape) {
     return PhoneGameTopBar(
       isLandscape: isLandscape,
-      leadingWidget: _tableAsset(table).image(
-        height: isLandscape ? 30 : 34.h,
-        filterQuality: FilterQuality.high,
-      ),
       onSettingPressed: () => showDialog<void>(
         context: context,
         builder: (_) => const PhoneSettingsDialog(),
@@ -347,13 +331,5 @@ class PhoneSpectator extends StatelessWidget {
     final left = await onExitRoom();
     if (!context.mounted || left) return;
     showLeaveFailureNotice(context, provider);
-  }
-
-  GameImage _tableAsset(String cardValue) {
-    return switch (cardValue.toUpperCase()) {
-      'A' => Assets.games.liarsPoker.images.table.tableAceWhite.game,
-      'Q' => Assets.games.liarsPoker.images.table.tableQueenWhite.game,
-      _ => Assets.games.liarsPoker.images.table.tableKingWhite.game,
-    };
   }
 }

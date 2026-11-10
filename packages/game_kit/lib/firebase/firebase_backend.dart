@@ -13,8 +13,10 @@ abstract final class FirebaseBackend {
     defaultValue: 'server',
   );
   static const isLocal = mode == 'local';
+  static const isTest = mode == 'test';
   static const projectId = 'demo-mosigame-e13';
   static const appName = 'mosigame-local';
+  static const _testAppName = 'mosigame-test';
   static const functionsRegion = 'asia-northeast3';
   static const configuredHost = String.fromEnvironment(
     'MOSIGAME_EMULATOR_HOST',
@@ -32,8 +34,8 @@ abstract final class FirebaseBackend {
     bool debug = kDebugMode,
     String emulatorHost = configuredHost,
   }) {
-    if (backend != 'server' && backend != 'local') {
-      throw ArgumentError('MOSIGAME_BACKEND must be local or server.');
+    if (backend != 'server' && backend != 'test' && backend != 'local') {
+      throw ArgumentError('MOSIGAME_BACKEND must be server, test or local.');
     }
     if (backend == 'local' && !debug) {
       throw StateError('The local Firebase backend requires a debug build.');
@@ -46,11 +48,15 @@ abstract final class FirebaseBackend {
     }
   }
 
-  static FirebaseApp get app =>
-      isLocal ? Firebase.app(appName) : Firebase.app();
-  static FirebaseAuth get auth =>
-      isLocal ? FirebaseAuth.instanceFor(app: app) : FirebaseAuth.instance;
-  static FirebaseFirestore get firestore => isLocal
+  static FirebaseApp get app => isLocal
+      ? Firebase.app(appName)
+      : isTest
+      ? Firebase.app(_testAppName)
+      : Firebase.app();
+  static FirebaseAuth get auth => isLocal || isTest
+      ? FirebaseAuth.instanceFor(app: app)
+      : FirebaseAuth.instance;
+  static FirebaseFirestore get firestore => isLocal || isTest
       ? FirebaseFirestore.instanceFor(app: app)
       : FirebaseFirestore.instance;
   static FirebaseDatabase get database => FirebaseDatabase.instanceFor(

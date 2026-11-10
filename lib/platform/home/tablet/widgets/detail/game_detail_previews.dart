@@ -5,6 +5,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart' as liar;
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
+import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
 import 'package:game_liars_poker/game_theme.dart';
 import 'package:game_final_call/game_theme.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
@@ -141,9 +142,17 @@ Widget _fade(double opacity, Widget child) =>
 
 /// 시안 장면 공통 바탕: 아래쪽 비스듬한 띠 + 680×540 무대.
 class _SceneBackdrop extends StatelessWidget {
-  const _SceneBackdrop({required this.band, required this.stage, this.overlay});
+  const _SceneBackdrop({
+    required this.band,
+    required this.stage,
+    this.overlay,
+    this.background,
+  });
 
   final Color band;
+
+  /// 띠 대신 상자 전체에 까는 게임 배경입니다.
+  final Widget? background;
   final List<Widget> stage;
   final Widget? overlay;
 
@@ -152,12 +161,15 @@ class _SceneBackdrop extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
-        Positioned.fill(
-          child: ClipPath(
-            clipper: const _BandClipper(),
-            child: ColoredBox(color: band),
+        if (background case final background?)
+          Positioned.fill(child: background)
+        else
+          Positioned.fill(
+            child: ClipPath(
+              clipper: const _BandClipper(),
+              child: ColoredBox(color: band),
+            ),
           ),
-        ),
         ?overlay,
         // 바탕 띠는 상자 전체에 깔고, 무대만 상자에 맞춰 줄입니다.
         Positioned.fill(
@@ -227,10 +239,14 @@ class _PhoneFrame extends StatelessWidget {
     this.glow = 0,
     this.glowColor = MosiColors.lime,
     this.small = false,
+    this.screenBackground,
   });
 
   final Color screenColor;
   final Widget child;
+
+  /// 단색 대신 화면에 까는 게임 배경입니다.
+  final Widget? screenBackground;
   final double width;
   final double height;
   final double glow;
@@ -261,7 +277,12 @@ class _PhoneFrame extends StatelessWidget {
         borderRadius: BorderRadius.circular(small ? 9 : 10),
         child: ColoredBox(
           color: screenColor,
-          child: SizedBox.expand(child: child),
+          child: screenBackground == null
+              ? SizedBox.expand(child: child)
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [screenBackground!, child],
+                ),
         ),
       ),
     );
@@ -290,33 +311,6 @@ Widget _nameTag(
       ),
     ),
   ),
-);
-
-Widget _miniCard({
-  required double width,
-  required double height,
-  required Color background,
-  required Color border,
-  double borderWidth = 2,
-  double radius = 3,
-  String? label,
-  Color labelColor = MosiColors.white,
-  double labelSize = 18,
-}) => Container(
-  width: width,
-  height: height,
-  alignment: Alignment.center,
-  decoration: BoxDecoration(
-    color: background,
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: border, width: borderWidth),
-  ),
-  child: label == null
-      ? null
-      : Text(
-          label,
-          style: MosiFonts.playfair(size: labelSize, color: labelColor),
-        ),
 );
 
 /// 말풍선입니다. [tail]은 꼬리가 붙는 모서리입니다.
@@ -399,7 +393,9 @@ Widget _teamBubble(String text, {required Color tint, required Color team}) =>
 class _LiarPlayScene extends StatelessWidget {
   const _LiarPlayScene();
 
-  static const _violet = Color(0xFF4A1A5E);
+  // 게임 안과 같은 월넛 테이블을 미리보기 바탕과 기기 화면에 깝니다.
+  static const _walnut = Color(0xFF351707);
+  static const _table = LiarsPokerWoodTableBackground();
 
   @override
   Widget build(BuildContext context) {
@@ -433,8 +429,8 @@ class _LiarPlayScene extends StatelessWidget {
                 Transform.scale(
                   scale: scale,
                   child: SizedBox(
-                    width: 44,
-                    height: 62,
+                    width: 40,
+                    height: 64,
                     child: Stack(
                       children: [
                         Transform(
@@ -488,11 +484,10 @@ class _LiarPlayScene extends StatelessWidget {
                 bottom: rotations[i] == 0 && rotations.length == 3 ? 16 : 12,
                 child: _rotated(
                   rotations[i],
-                  _miniCard(
-                    width: rotations.length == 3 ? 24 : 22,
+                  SizedBox(
+                    width: rotations.length == 3 ? 21 : 19,
                     height: rotations.length == 3 ? 34 : 30,
-                    background: MosiColors.white,
-                    border: MosiColors.ink,
+                    child: const LiarsPokerCardView(face: LiarsCardFace.back),
                   ),
                 ),
               ),
@@ -501,61 +496,17 @@ class _LiarPlayScene extends StatelessWidget {
 
         return _SceneBackdrop(
           band: MosiColors.violet,
+          background: _table,
           stage: [
             _at(
               190 + shake,
               30,
               _TabletFrame(
                 screen: ColoredBox(
-                  color: _violet,
+                  color: _walnut,
                   child: Stack(
                     children: [
-                      Positioned(
-                        left: 10,
-                        top: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: MosiColors.white,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            context.l10n.previewTableAce,
-                            style: MosiFonts.sans(
-                              locale: Localizations.maybeLocaleOf(context),
-                              size: 11,
-                              weight: FontWeight.w700,
-                              color: const Color(0xFF1B1022),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 10,
-                        top: 12,
-                        child: Text(
-                          'TABLE',
-                          style: MosiFonts.grotesk(
-                            locale: Localizations.maybeLocaleOf(context),
-                            size: 10,
-                            color: const Color(0xFFC7B8CC),
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: Transform.translate(
-                          offset: const Offset(0, 5),
-                          child: MosiDashedBorder(
-                            color: const Color(0x47FFFFFF),
-                            radius: 55,
-                            child: const SizedBox(width: 110, height: 110),
-                          ),
-                        ),
-                      ),
+                      const Positioned.fill(child: _table),
                       Positioned(
                         left: 10,
                         bottom: 9,
@@ -584,7 +535,7 @@ class _LiarPlayScene extends StatelessWidget {
                 start: 3,
                 visible: 5,
                 land: 17,
-                front: const _LiarCardFace(label: 'A'),
+                front: const _LiarCardFace(face: LiarsCardFace.truth),
               ),
             ),
             _at(
@@ -597,11 +548,7 @@ class _LiarPlayScene extends StatelessWidget {
                 start: 7,
                 visible: 9,
                 land: 21,
-                front: const _LiarCardFace(
-                  label: 'K',
-                  background: Color(0xFFFFE3E7),
-                  color: Color(0xFFC0283C),
-                ),
+                front: const _LiarCardFace(face: LiarsCardFace.lie),
               ),
             ),
             // 휴대폰 1: 사라
@@ -617,7 +564,8 @@ class _LiarPlayScene extends StatelessWidget {
                     clipBehavior: Clip.none,
                     children: [
                       _PhoneFrame(
-                        screenColor: _violet,
+                        screenColor: _walnut,
+                        screenBackground: _table,
                         glow: glowA,
                         glowColor: MosiColors.lime,
                         child: Stack(
@@ -662,7 +610,13 @@ class _LiarPlayScene extends StatelessWidget {
                             scale: claimScale,
                             alignment: const Alignment(-0.8, 1),
                             child: _speech(
-                              context.l10n.previewTwoAces,
+                              GameLocale.selectFor(
+                                Localizations.localeOf(context),
+                                ko: '진실 카드 2장',
+                                en: 'Two Truth cards',
+                                zhHans: '两张真话牌',
+                                zhHant: '兩張真話牌',
+                              ),
                               background: MosiColors.lime,
                             ),
                           ),
@@ -701,7 +655,8 @@ class _LiarPlayScene extends StatelessWidget {
                     clipBehavior: Clip.none,
                     children: [
                       _PhoneFrame(
-                        screenColor: _violet,
+                        screenColor: _walnut,
+                        screenBackground: _table,
                         glow: glowB,
                         glowColor: MosiColors.coral,
                         child: Stack(
@@ -827,7 +782,8 @@ class _LiarPlayScene extends StatelessWidget {
               285,
               300,
               _PhoneFrame(
-                screenColor: _violet,
+                screenColor: _walnut,
+                        screenBackground: _table,
                 child: Stack(
                   children: [
                     Align(
@@ -903,69 +859,21 @@ class _LiarCardBack extends StatelessWidget {
   const _LiarCardBack();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 62,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: MosiColors.white,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: MosiColors.ink, width: 2.5),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(2),
-          border: Border.all(color: MosiColors.ink, width: 1),
-        ),
-        alignment: Alignment.center,
-        child: _rotated(
-          45,
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              border: Border.all(color: MosiColors.ink, width: 1.5),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox(
+    width: 40,
+    height: 64,
+    child: LiarsPokerCardView(face: LiarsCardFace.back),
+  );
 }
 
 class _LiarCardFace extends StatelessWidget {
-  const _LiarCardFace({
-    required this.label,
-    this.background = MosiColors.white,
-    this.color = MosiColors.ink,
-  });
+  const _LiarCardFace({required this.face});
 
-  final String label;
-  final Color background;
-  final Color color;
+  final LiarsCardFace face;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 62,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: MosiColors.ink, width: 2.5),
-      ),
-      child: Text(
-        label,
-        style: MosiFonts.playfair(
-          locale: Localizations.maybeLocaleOf(context),
-          size: 30,
-          color: color,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      SizedBox(width: 40, height: 64, child: LiarsPokerCardView(face: face));
 }
 
 //=======================파이널콜 미리보기 (14.66초)==============================

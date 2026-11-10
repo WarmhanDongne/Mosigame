@@ -28,7 +28,7 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
               // 재사용되지 않도록 모든 레이어에 역할별 고유 key를 유지합니다.
               const Positioned.fill(
                 key: ValueKey('portrait-background-slot'),
-                child: _PhoneGameBackground(isLandscape: false),
+                child: _PhoneGameBackground(),
               ),
               if (showHeader)
                 Positioned(
@@ -41,10 +41,6 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
                     entryAnimation: controller?.recoverySession.canSend == false
                         ? null
                         : _controlsEntryController,
-                    leadingWidget: _tableAsset(controller?.table ?? 'K').image(
-                      height: layout.tableHeight,
-                      filterQuality: FilterQuality.high,
-                    ),
                     onSettingPressed: () {
                       showDialog(
                         context: context,

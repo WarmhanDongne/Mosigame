@@ -51,6 +51,51 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     expect(completed, 0);
   });
+
+  testWidgets('분배하지 않는 카드는 분배 전에 덱 옆으로 빠졌다가 분배 중 사라진다', (tester) async {
+    final key = GlobalKey<CardDealAnimationState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CardDealAnimation(
+            key: key,
+            playerCount: 2,
+            cardsPerPlayer: 1,
+            reserveCardCount: 3,
+            duration: const Duration(milliseconds: 1000),
+            cardBuilder: (_, _, _) => const ColoredBox(color: Colors.red),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Finder reserved(int index) => find.byKey(ValueKey('reserved-card-$index'));
+    double opacity(int index) => tester
+        .widget<Opacity>(
+          find.descendant(of: reserved(index), matching: find.byType(Opacity)),
+        )
+        .opacity;
+    final centersBefore = [
+      for (var index = 0; index < 3; index++) tester.getCenter(reserved(index)),
+    ];
+    key.currentState!.play();
+    await tester.pump();
+    // 빼 두는 구간(0~10%)이 끝나면 덱 오른쪽에 그대로 보입니다.
+    await tester.pump(const Duration(milliseconds: 110));
+    for (var index = 0; index < 3; index++) {
+      expect(
+        tester.getCenter(reserved(index)).dx,
+        greaterThan(centersBefore[index].dx),
+      );
+      expect(opacity(index), 1);
+    }
+    // 분배가 끝나기 전에 모두 사라집니다.
+    await tester.pump(const Duration(milliseconds: 600));
+    for (var index = 0; index < 3; index++) {
+      expect(opacity(index), 0);
+    }
+    await tester.pumpAndSettle();
+  });
 }
 
 Widget _scene(

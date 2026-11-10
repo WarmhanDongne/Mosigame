@@ -1,15 +1,16 @@
-import 'package:game_kit/firebase/firebase_backend.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:game_kit/core/constants/room_character.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/platform/auth/models/nickname_policy.dart';
 import 'package:project00/platform/auth/widgets/auth_design.dart';
-import 'package:flutter/services.dart';
+import 'package:project00/platform/home/phone/models/guest_room_nickname.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_waiting.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
-import 'package:game_kit/core/constants/room_character.dart';
 import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/widgets/platform_components.dart';
@@ -34,6 +35,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   final math.Random _random = math.Random();
   late final TextEditingController _nicknameController;
   String? _selectedCharacterId;
+  bool _nicknameFollowsGuestCharacter = false;
 
   /// 닉네임 칸 오류가 날 때마다 바뀌어 그 칸만 흔듭니다(로비 연출 10번).
   int _nicknameShake = 0;
@@ -44,29 +46,27 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   @override
   void initState() {
     super.initState();
+    final available = _availableCharacters;
+    _selectedCharacterId = available.isEmpty
+        ? null
+        : available[_random.nextInt(available.length)].id;
     final user = FirebaseBackend.auth.currentUser;
     final pendingNickname = ProfileUpdateController.instance
         .pendingFor(user?.uid)
         ?.nickname
         .trim();
-    final accountNickname = pendingNickname?.isNotEmpty == true
-        ? pendingNickname!
-        : user?.displayName?.trim().isNotEmpty == true
-        ? user!.displayName!.trim()
-        : user?.email?.split('@').first ??
-              GameLocale.select(
-                ko: '사용자',
-                en: 'Player',
-                zhHans: '玩家',
-                zhHant: '玩家',
-              );
-    final initialNickname = accountNickname.length <= nicknameMaxLength
-        ? accountNickname
-        : accountNickname.substring(0, nicknameMaxLength);
-    _nicknameController = TextEditingController(text: initialNickname);
+    final seed = roomNicknameSeed(
+      isAnonymous: user?.isAnonymous == true,
+      characterId: _selectedCharacterId,
+      pendingNickname: pendingNickname,
+      displayName: user?.displayName,
+      email: user?.email,
+      maxLength: nicknameMaxLength,
+    );
+    _nicknameController = TextEditingController(text: seed.nickname);
+    _nicknameFollowsGuestCharacter = seed.followsCharacter;
     _roomProvider.addListener(_handleRoomUpdate);
     _roomProvider.listenRoomPreview(widget.roomCode);
-    _selectRandomAvailableCharacter();
   }
 
   Set<String> get _occupiedCharacterIds {
@@ -96,11 +96,20 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     final next = available.isEmpty
         ? null
         : available[_random.nextInt(available.length)].id;
+    _setSelectedCharacter(next);
+  }
+
+  void _setSelectedCharacter(String? characterId) {
     if (!mounted) {
-      _selectedCharacterId = next;
+      _selectedCharacterId = characterId;
       return;
     }
-    setState(() => _selectedCharacterId = next);
+    setState(() {
+      _selectedCharacterId = characterId;
+      if (_nicknameFollowsGuestCharacter && characterId != null) {
+        _nicknameController.text = guestRoomNicknameForCharacter(characterId);
+      }
+    });
   }
 
   @override
@@ -111,7 +120,11 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     super.dispose();
   }
 
-  Future<void> _saveProfileAndContinue() async {
+  /// 입력한 닉네임과 캐릭터를 이 방의 참가자 정보에만 저장하고 입장합니다.
+  ///
+  /// 계정 프로필은 수정하지 않으며, [RoomProvider.joinRoom]이 전달한 값은
+  /// `rooms/{roomCode}/players/{uid}`의 방 전용 표시 정보로만 사용됩니다.
+  Future<void> _joinRoomWithNickname() async {
     FocusScope.of(context).unfocus();
     final nickname = _nicknameController.text.trim();
     final characterId = _selectedCharacterId;
@@ -121,6 +134,16 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
         en: 'Enter a nickname.',
         zhHans: '请输入昵称。',
         zhHant: '請輸入暱稱。',
+      );
+      setState(() => _nicknameShake++);
+      return;
+    }
+    if (nickname == '나') {
+      _roomProvider.errorMessage = GameLocale.select(
+        ko: '닉네임으로 “나”는 사용할 수 없어요.',
+        en: '“Me” cannot be used as a nickname.',
+        zhHans: '不能使用“我”作为昵称。',
+        zhHant: '不能使用「我」作為暱稱。',
       );
       setState(() => _nicknameShake++);
       return;
@@ -201,7 +224,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   void _selectCharacter(String characterId) {
     if (_occupiedCharacterIds.contains(characterId)) return;
     _roomProvider.errorMessage = null;
-    setState(() => _selectedCharacterId = characterId);
+    _setSelectedCharacter(characterId);
   }
 
   Future<void> _cancelSetup() async {
@@ -247,7 +270,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
               label: '입장하기'.localized,
               onPressed: _selectedCharacterId == null || _isOpeningWaitingRoom
                   ? null
-                  : _saveProfileAndContinue,
+                  : _joinRoomWithNickname,
               loading: _isOpeningWaitingRoom,
             ),
           ],
@@ -275,43 +298,31 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: MosiShake(
-                        trigger: _nicknameShake == 0 ? null : _nicknameShake,
-                        child: TextField(
-                          controller: _nicknameController,
-                          maxLength: nicknameMaxLength,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(nicknameMaxLength),
-                          ],
-                          style: mosiFieldTextStyle(),
-                          decoration: mosiInputDecoration(
-                            hintText: GameLocale.select(
-                              ko: '닉네임 · 최대 $nicknameMaxLength자',
-                              en: 'Nickname · up to $nicknameMaxLength characters',
-                              zhHans: '昵称 · 最多 $nicknameMaxLength 个字符',
-                              zhHant: '暱稱 · 最多 $nicknameMaxLength 個字元',
-                            ),
-                          ).copyWith(counterText: ''),
-                          onChanged: (_) {
-                            if (_roomProvider.errorMessage != null) {
-                              _roomProvider.errorMessage = null;
-                              setState(() {});
-                            }
-                          },
-                        ),
+                MosiShake(
+                  trigger: _nicknameShake == 0 ? null : _nicknameShake,
+                  child: TextField(
+                    controller: _nicknameController,
+                    maxLength: nicknameMaxLength,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(nicknameMaxLength),
+                    ],
+                    style: mosiFieldTextStyle(),
+                    decoration: mosiInputDecoration(
+                      hintText: GameLocale.select(
+                        ko: '닉네임 · 최대 $nicknameMaxLength자',
+                        en: 'Nickname · up to $nicknameMaxLength characters',
+                        zhHans: '昵称 · 最多 $nicknameMaxLength 个字符',
+                        zhHant: '暱稱 · 最多 $nicknameMaxLength 個字元',
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    PlatformButton(
-                      label: '수정'.localized,
-                      expand: false,
-                      style: PlatformButtonStyle.secondary,
-                      onPressed: () => FocusScope.of(context).unfocus(),
-                    ),
-                  ],
+                    ).copyWith(counterText: ''),
+                    onChanged: (_) {
+                      _nicknameFollowsGuestCharacter = false;
+                      if (_roomProvider.errorMessage != null) {
+                        _roomProvider.errorMessage = null;
+                        setState(() {});
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(

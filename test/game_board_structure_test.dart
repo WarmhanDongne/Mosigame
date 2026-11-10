@@ -66,16 +66,16 @@ void main() {
     for (final stage in FinalCallPhoneStage.values) {
       expect(finalCallPhone.stepFor(stage).stage, stage);
     }
-    expect(
-      finalCallPhone.stepFor(FinalCallPhoneStage.roundIntro).announcement,
-      'ROUND 3',
-    );
-    expect(
-      finalCallPhone
-          .stepFor(FinalCallPhoneStage.gameStart)
-          .announcementDuration,
-      const Duration(milliseconds: 1700),
-    );
+    for (final stage in [
+      FinalCallPhoneStage.gameStart,
+      FinalCallPhoneStage.roundIntro,
+    ]) {
+      final step = finalCallPhone.stepFor(stage);
+      expect(step.showAnnouncement, isFalse);
+      expect(step.buildAnnouncement(), isNull);
+      expect(step.animation.enabled, isFalse);
+      expect(step.blocksInteraction, isFalse);
+    }
 
     final mafiaPhone = buildMafiaPhoneFlowConfig();
     for (final stage in MafiaPhoneStage.values) {
@@ -89,10 +89,17 @@ void main() {
     for (final stage in LiarsPokerPhoneStage.values) {
       expect(pokerPhone.stepFor(stage).stage, stage);
     }
-    expect(
-      pokerPhone.stepFor(LiarsPokerPhoneStage.gameStart).announcementDuration,
-      LiarsPokerPhoneTiming.gameStartAnnouncement,
-    );
+    for (final stage in [
+      LiarsPokerPhoneStage.gameStart,
+      LiarsPokerPhoneStage.roundIntro,
+      LiarsPokerPhoneStage.tableIntro,
+    ]) {
+      final step = pokerPhone.stepFor(stage);
+      expect(step.showAnnouncement, isFalse);
+      expect(step.buildAnnouncement(), isNull);
+      expect(step.animation.enabled, isFalse);
+      expect(step.blocksInteraction, isFalse);
+    }
   });
 
   testWidgets('태블릿 라운드 안내와 분배 연출 OFF도 서버 완료 콜백을 유지한다', (tester) async {
@@ -120,6 +127,9 @@ void main() {
             playerSeatIndexes: const [0, 1],
             dealPlayerSeatIndexes: const [0, 1],
             cardsPerPlayer: 5,
+            truthCardCount: 7,
+            lieCardCount: 6,
+            unrevealedCardCount: 3,
             roundNumber: 2,
             cardPileVersion: 1,
             table: 'K',
