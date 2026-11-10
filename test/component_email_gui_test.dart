@@ -237,6 +237,44 @@ void main() {
     });
   }
 
+  testWidgets('구성품 판은 느슨한 제약에서도 상자를 꽉 채우고 넘치지 않는다', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    // 휴대폰 가로·작은 태블릿·큰 태블릿·와이드 태블릿 상자 비율입니다.
+    for (final box in const [
+      Size(560, 300),
+      Size(694, 560),
+      Size(1000, 740),
+      Size(1300, 640),
+    ]) {
+      tester.view.physicalSize = box + const Offset(40, 40);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox.fromSize(
+                size: box,
+                // 상세 화면의 AnimatedSwitcher처럼 느슨한 제약을 줍니다.
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    GameDetailStage(
+                      key: const Key('parts-stage'),
+                      child: buildGameParts('liars_poker', playerCount: 4)!,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.getSize(find.byKey(const Key('parts-stage'))), box);
+      expect(tester.takeException(), isNull, reason: '$box');
+    }
+  });
+
   testWidgets('라이어스 포커 구성품은 지금 방 인원의 진실·거짓·전체 장수를 보여 준다', (tester) async {
     Color? totalColor() {
       final pill = tester.widget<Container>(

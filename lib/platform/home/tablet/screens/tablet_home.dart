@@ -560,7 +560,8 @@ class _TabletHomeState extends State<TabletHome>
       );
     }
     final art = MosiGameArt.of(_selectedGameId ?? 'liars_poker');
-    final theme = art.shelfTheme;
+    // 설명보기를 열면 게임 상세 전용색으로, 선반에서는 선반 색으로 칠합니다.
+    final theme = _isDetailOpen ? art.detailTheme : art.shelfTheme;
     final detail = _isDetailOpen ? _selection.game : null;
     return LobbyMusic(
       track: LobbyTracks.lobby,

@@ -19,6 +19,7 @@ import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:project00/platform/home/home.dart';
 import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_nickname.dart';
+import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -315,6 +316,42 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();
   });
+
+  testWidgets('참가자 미리보기가 늦어도 서버 검증을 위해 입장할 수 있다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService();
+    final provider = _RoomProvider(service, previewReadyOnListen: false);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('참가자를 확인하는 중…'), findsOneWidget);
+    expect(
+      tester
+          .widget<MosiButton>(find.widgetWithText(MosiButton, '입장하기'))
+          .onPressed,
+      isNotNull,
+    );
+
+    provider.completePreview();
+    await tester.pump();
+
+    expect(find.text('참가자를 확인하는 중…'), findsNothing);
+    expect(
+      tester
+          .widget<MosiButton>(find.widgetWithText(MosiButton, '입장하기'))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
 }
 
 class _Observer extends NavigatorObserver {
@@ -352,12 +389,26 @@ class _Onboarding extends OnboardingService {
 }
 
 class _RoomProvider extends RoomProvider {
-  _RoomProvider(_RoomService service)
+  _RoomProvider(_RoomService service, {this.previewReadyOnListen = true})
     : super(service: service, gameService: _GameService());
+
+  final bool previewReadyOnListen;
+
   @override
-  void listenRoomPreview(String roomCode) {}
+  void listenRoomPreview(String roomCode) {
+    if (previewReadyOnListen) roomPreviewReady = true;
+  }
+
+  void completePreview([List<RoomPlayer> value = const []]) {
+    players = value;
+    roomPreviewReady = true;
+    notifyListeners();
+  }
+
   @override
-  void stopRoomPreview() {}
+  void stopRoomPreview() {
+    roomPreviewReady = false;
+  }
 }
 
 class _RoomService implements RoomService {

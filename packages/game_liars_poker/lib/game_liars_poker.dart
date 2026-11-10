@@ -12,6 +12,7 @@ import 'package:game_liars_poker/shared/services/game_service.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_liars_poker/game_assets.dart';
+import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
 
 // ============================================================
@@ -45,14 +46,15 @@ class LiarsPokerGame extends TemplateGame {
   Color get tableColor => const Color(0xFF351707);
   @override
   ImageProvider? get tableBackgroundImage => null;
-  // 기존 보라색 카지노 테이블·의자 에셋은 자리배치와 게임 입장 사이의
-  // 분위기를 끊었습니다. 최근의 월넛 테이블 콘셉트는 코드로 그린 배경을
-  // 사용하므로, 자리배치에서는 같은 월넛 색의 플랫 테이블로 이어집니다.
+  // 자리 배치 완료 연출은 게임의 월넛 테이블과 이어지는 '월넛 살롱' 시안
+  // (월넛 상판·빨간 가죽 띠·진실/거짓 카드, 월넛 등받이·빨간 가죽 의자)을 씁니다.
   @override
-  ImageProvider? get layoutTableImage => null;
+  ImageProvider get layoutTableImage =>
+      Assets.games.liarsPoker.images.layout.layoutTable.game.provider();
 
   @override
-  ImageProvider? get layoutChairImage => null;
+  ImageProvider get layoutChairImage =>
+      Assets.games.liarsPoker.images.layout.layoutChair.game.provider();
 
   // ---------------------------------------------------------------------------
   // 서버 게임 시작과 상태 구독

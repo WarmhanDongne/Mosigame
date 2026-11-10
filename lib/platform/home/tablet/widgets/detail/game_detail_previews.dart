@@ -70,12 +70,18 @@ class GameDetailStage extends StatelessWidget {
           constraints.maxWidth / _partsMinWidth,
           constraints.maxHeight / _partsMinHeight,
         );
-        return FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox(
-            width: constraints.maxWidth / scale,
-            height: constraints.maxHeight / scale,
-            child: child,
+        // 상위(AnimatedSwitcher의 Stack)가 느슨한 제약을 주면 FittedBox가
+        // 논리 크기에 머물러 확대되지 않으므로, 상자 크기를 직접 고정합니다.
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: FittedBox(
+            fit: BoxFit.fill,
+            child: SizedBox(
+              width: constraints.maxWidth / scale,
+              height: constraints.maxHeight / scale,
+              child: child,
+            ),
           ),
         );
       },
@@ -783,7 +789,7 @@ class _LiarPlayScene extends StatelessWidget {
               300,
               _PhoneFrame(
                 screenColor: _walnut,
-                        screenBackground: _table,
+                screenBackground: _table,
                 child: Stack(
                   children: [
                     Align(

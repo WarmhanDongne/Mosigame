@@ -52,7 +52,7 @@ void main() {
     expect(completed, 0);
   });
 
-  testWidgets('분배하지 않는 카드는 분배 전에 덱 옆으로 빠졌다가 분배 중 사라진다', (tester) async {
+  testWidgets('분배하지 않는 카드는 덱 옆으로 빠졌다가 분배가 시작되기 전에 사라진다', (tester) async {
     final key = GlobalKey<CardDealAnimationState>();
     await tester.pumpWidget(
       MaterialApp(
@@ -80,8 +80,20 @@ void main() {
     ];
     key.currentState!.play();
     await tester.pump();
-    // 빼 두는 구간(0~10%)이 끝나면 덱 오른쪽에 그대로 보입니다.
-    await tester.pump(const Duration(milliseconds: 110));
+    final deckCenter = tester.getCenter(find.byType(CardDealAnimation));
+    // 분배 카드(빼 둔 카드가 아닌 것)의 중심입니다. 카드 위젯이 const라
+    // 위젯이 아니라 요소마다 위치를 읽습니다.
+    List<Offset> dealtCenters() => [
+      for (final element in find.byType(ColoredBox).evaluate())
+        if ((element.widget as ColoredBox).color == Colors.red &&
+            !_isReserved(element))
+          (element.renderObject! as RenderBox).localToGlobal(
+            (element.renderObject! as RenderBox).size.center(Offset.zero),
+          ),
+    ];
+    // 빼 두는 구간(0~16%)이 끝나면 덱 오른쪽에 그대로 보이고, 분배 카드는
+    // 아직 한 장도 덱을 떠나지 않았습니다(분배는 36%부터).
+    await tester.pump(const Duration(milliseconds: 200));
     for (var index = 0; index < 3; index++) {
       expect(
         tester.getCenter(reserved(index)).dx,
@@ -89,8 +101,21 @@ void main() {
       );
       expect(opacity(index), 1);
     }
+    expect(dealtCenters(), hasLength(2));
+    for (final center in dealtCenters()) {
+      expect((center - deckCenter).distance, lessThan(12));
+    }
+    // 다 뺀 뒤 멈춤 구간에서 뺀 카드가 모두 사라지고, 그때까지 분배 카드는
+    // 덱을 떠나지 않습니다(멈춤이 끝나기 직전 34%).
+    await tester.pump(const Duration(milliseconds: 140));
+    for (var index = 0; index < 3; index++) {
+      expect(opacity(index), 0);
+    }
+    for (final center in dealtCenters()) {
+      expect((center - deckCenter).distance, lessThan(12));
+    }
     // 분배가 끝나기 전에 모두 사라집니다.
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 460));
     for (var index = 0; index < 3; index++) {
       expect(opacity(index), 0);
     }
@@ -116,3 +141,16 @@ Widget _scene(
     ),
   ),
 );
+
+bool _isReserved(Element element) {
+  var reserved = false;
+  element.visitAncestorElements((ancestor) {
+    final key = ancestor.widget.key;
+    if (key is ValueKey<String> && key.value.startsWith('reserved-card-')) {
+      reserved = true;
+      return false;
+    }
+    return true;
+  });
+  return reserved;
+}

@@ -26,7 +26,7 @@ class _TabletStoreGameDetailState extends State<TabletStoreGameDetail> {
     final game = widget.game;
     final locale = Localizations.localeOf(context);
     final art = MosiGameArt.of(game.id, fallbackName: game.name);
-    final theme = art.shelfTheme;
+    final theme = art.detailTheme;
     final scene = _tab == _StoreDetailTab.preview
         ? buildGamePlayPreview(game.id)
         : buildGameParts(game.id);

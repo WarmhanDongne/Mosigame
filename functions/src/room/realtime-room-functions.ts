@@ -50,6 +50,37 @@ export function isValidRoomNickname(nickname: string): boolean {
   return nickname.length >= 1 && nickname.length <= 12 && nickname !== "나";
 }
 
+type RoomProfilePlayer = {nickname?: unknown; characterId?: unknown};
+export type RoomProfileConflict = "character" | "nickname" | null;
+
+/**
+ * Chooses the most useful room-profile conflict for the client. A generated
+ * guest nickname follows its character, so when both collide the character is
+ * the actionable cause and must be reported first.
+ * @param {Record<string, RoomProfilePlayer>} players Current room players.
+ * @param {string} uid Joining player UID.
+ * @param {string} nickname Effective nickname.
+ * @param {string} characterId Effective character ID.
+ * @return {RoomProfileConflict} Highest-priority conflict, if any.
+ */
+export function roomProfileConflict(
+  players: Record<string, RoomProfilePlayer>,
+  uid: string,
+  nickname: string,
+  characterId: string,
+): RoomProfileConflict {
+  const peers = Object.entries(players).filter(
+    ([playerUid]) => playerUid !== uid,
+  );
+  if (peers.some(([, player]) => player?.characterId === characterId)) {
+    return "character";
+  }
+  if (peers.some(([, player]) => player?.nickname === nickname)) {
+    return "nickname";
+  }
+  return null;
+}
+
 // 마피아가 최대 12명이라 방 상한을 12로 올렸습니다. 게임별 인원 제한은 각
 // 게임의 start_game이 따로 확인합니다(예: 파이널콜은 4인 또는 6인).
 const DEFAULT_MAX_PLAYERS = 12;
@@ -285,25 +316,20 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           existingPlayer && typeof existingPlayer.characterId === "string" &&
           ROOM_CHARACTER_IDS.has(existingPlayer.characterId) ?
           existingPlayer.characterId : characterId;
-        const duplicatedNickname = Object.entries(players).some(
-          ([playerUid, player]) =>
-            playerUid !== uid && player?.nickname === effectiveNickname,
+        const profileConflict = roomProfileConflict(
+          players, uid, effectiveNickname, effectiveCharacterId,
         );
-        if (duplicatedNickname) {
-          rejection = new HttpsError(
-            "already-exists",
-            "이미 사용 중인 닉네임입니다.",
-          );
-          return;
-        }
-        const duplicatedCharacter = Object.entries(players).some(
-          ([playerUid, player]) =>
-            playerUid !== uid && player?.characterId === effectiveCharacterId,
-        );
-        if (duplicatedCharacter) {
+        if (profileConflict === "character") {
           rejection = new HttpsError(
             "already-exists",
             "이미 선택된 캐릭터입니다.",
+          );
+          return;
+        }
+        if (profileConflict === "nickname") {
+          rejection = new HttpsError(
+            "already-exists",
+            "이미 사용 중인 닉네임입니다.",
           );
           return;
         }

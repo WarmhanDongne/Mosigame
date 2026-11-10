@@ -67,8 +67,9 @@ abstract final class LiarsPokerTabletTiming {
   /// 게임 화면 매트를 말아 로비로 돌아가는 시간입니다.
   static const gameExit = Duration(milliseconds: 820);
 
-  /// 생존 플레이어 좌석으로 카드를 분배하는 총 시간입니다.
-  static const cardDeal = Duration(milliseconds: 2800);
+  /// 숨길 3장을 먼저 빼고, 생존 플레이어 좌석으로 카드를 분배하는 총
+  /// 시간입니다. 빼기·멈춤 구간이 앞에 붙어도 분배 속도는 그대로입니다.
+  static const cardDeal = Duration(milliseconds: 4200);
 
   /// ROUND N 안내 문구가 유지되는 시간입니다.
   static const roundAnnouncement = Duration(milliseconds: 1900);

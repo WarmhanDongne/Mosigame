@@ -78,13 +78,38 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
         .toSet();
   }
 
-  List<RoomCharacter> get _availableCharacters => roomCharacters
-      .where((character) => !_occupiedCharacterIds.contains(character.id))
-      .toList(growable: false);
+  Set<String> get _occupiedNicknames {
+    final currentUid = FirebaseBackend.auth.currentUser?.uid;
+    return _roomProvider.players
+        .where((player) => player.uid != currentUid)
+        .map((player) => player.nickname)
+        .toSet();
+  }
+
+  List<RoomCharacter> get _availableCharacters => _nicknameFollowsGuestCharacter
+      ? availableGuestRoomCharacters(
+          occupiedCharacterIds: _occupiedCharacterIds,
+          occupiedNicknames: _occupiedNicknames,
+        )
+      : roomCharacters
+            .where((character) => !_occupiedCharacterIds.contains(character.id))
+            .toList(growable: false);
 
   void _handleRoomUpdate() {
+    if (!_roomProvider.roomPreviewReady) {
+      if (mounted) setState(() {});
+      return;
+    }
     final selected = _selectedCharacterId;
-    if (selected != null && !_occupiedCharacterIds.contains(selected)) {
+    final nicknameAvailable =
+        !_nicknameFollowsGuestCharacter ||
+        (selected != null &&
+            !_occupiedNicknames.contains(
+              guestRoomNicknameForCharacter(selected),
+            ));
+    if (selected != null &&
+        !_occupiedCharacterIds.contains(selected) &&
+        nicknameAvailable) {
       if (mounted) setState(() {});
       return;
     }
@@ -268,6 +293,8 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
             ),
             PlatformButton(
               label: '입장하기'.localized,
+              // 참가 전에는 RTDB 규칙상 다른 참가자 목록을 읽지 못할 수 있습니다.
+              // 미리보기는 보조 정보이고 최종 중복 검증은 join callable이 담당합니다.
               onPressed: _selectedCharacterId == null || _isOpeningWaitingRoom
                   ? null
                   : _joinRoomWithNickname,
@@ -283,6 +310,21 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _ParticipantPreview(players: _roomProvider.players),
+                if (!_roomProvider.roomPreviewReady) ...[
+                  const SizedBox(height: 8),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      GameLocale.select(
+                        ko: '참가자를 확인하는 중…',
+                        en: 'Checking players…',
+                        zhHans: '正在确认玩家…',
+                        zhHant: '正在確認玩家…',
+                      ),
+                      style: MosiFonts.sans(size: 12, color: MosiColors.muted),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 Text(
                   GameLocale.select(
@@ -316,7 +358,17 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                       ),
                     ).copyWith(counterText: ''),
                     onChanged: (_) {
+                      final followedCharacter = _nicknameFollowsGuestCharacter;
                       _nicknameFollowsGuestCharacter = false;
+                      if (followedCharacter &&
+                          _selectedCharacterId == null &&
+                          _availableCharacters.isNotEmpty) {
+                        _selectedCharacterId =
+                            _availableCharacters[_random.nextInt(
+                                  _availableCharacters.length,
+                                )]
+                                .id;
+                      }
                       if (_roomProvider.errorMessage != null) {
                         _roomProvider.errorMessage = null;
                         setState(() {});

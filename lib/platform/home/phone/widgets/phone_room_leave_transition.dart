@@ -49,40 +49,45 @@ class PhoneRoomLeaveTransition extends StatelessWidget {
       child: child,
       builder: (context, child) {
         final t = Curves.easeInOutCubic.transform(progress.value);
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            IgnorePointer(
-              ignoring: stage != PhoneRoomLeaveStage.idle,
-              child: child,
-            ),
-            if (stage == PhoneRoomLeaveStage.leaving || t > 0)
+        // Scaffold 밖에서 덮이는 전환이라 Material이 없으면 Flutter 기본
+        // 경고 글자 스타일(노란 이중 밑줄)이 붙습니다.
+        return Material(
+          type: MaterialType.transparency,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
               IgnorePointer(
-                child: PhoneBackgroundReveal(
-                  key: const Key('phone-room-leaving-background'),
-                  color: background,
-                  progress: t,
+                ignoring: stage != PhoneRoomLeaveStage.idle,
+                child: child,
+              ),
+              if (stage == PhoneRoomLeaveStage.leaving || t > 0)
+                IgnorePointer(
+                  child: PhoneBackgroundReveal(
+                    key: const Key('phone-room-leaving-background'),
+                    color: background,
+                    progress: t,
+                  ),
                 ),
-              ),
-            if (stage == PhoneRoomLeaveStage.leaving || t > 0)
-              Opacity(
-                opacity: t,
-                child: _LeavingRoomView(
-                  key: const Key('phone-room-leaving'),
-                  foreground: foreground,
-                  progress: t,
-                  title: transitionTitle,
-                  subtitle: transitionSubtitle,
+              if (stage == PhoneRoomLeaveStage.leaving || t > 0)
+                Opacity(
+                  opacity: t,
+                  child: _LeavingRoomView(
+                    key: const Key('phone-room-leaving'),
+                    foreground: foreground,
+                    progress: t,
+                    title: transitionTitle,
+                    subtitle: transitionSubtitle,
+                  ),
                 ),
-              ),
-            if (stage == PhoneRoomLeaveStage.failed)
-              _LeaveFailurePanel(
-                key: const Key('phone-room-leave-failed'),
-                errorMessage: errorMessage,
-                onRetry: onRetry,
-                onReturn: onReturn,
-              ),
-          ],
+              if (stage == PhoneRoomLeaveStage.failed)
+                _LeaveFailurePanel(
+                  key: const Key('phone-room-leave-failed'),
+                  errorMessage: errorMessage,
+                  onRetry: onRetry,
+                  onReturn: onReturn,
+                ),
+            ],
+          ),
         );
       },
     );
