@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "project0000-ec01e",
-    "mosigame-test": "ban-pick-simulator"
+    "default": "ban-pick-simulator",
+    "mosigame-test": "ban-pick-simulator",
+    "mosigame-production": "project0000-ec01e"
   }
 }

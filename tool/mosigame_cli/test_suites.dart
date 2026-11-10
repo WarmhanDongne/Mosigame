@@ -9,6 +9,7 @@ import 'validate.dart';
 const selectedFlutterTestTimeout = Duration(minutes: 30);
 const functionsBuildTimeout = Duration(minutes: 5);
 const selectedFunctionsTestTimeout = Duration(minutes: 15);
+const flutterUnitTestBackendArgument = '--dart-define=MOSIGAME_BACKEND=server';
 
 const supportedTestSuiteNames = <String>{'session', 'auth'};
 
@@ -388,7 +389,12 @@ final class TestSuiteRunner {
     return _runProcessStep(
       id: 'flutter-test',
       executable: 'flutter',
-      arguments: <String>['test', '--no-pub', ...suite.flutterTests],
+      arguments: <String>[
+        'test',
+        '--no-pub',
+        flutterUnitTestBackendArgument,
+        ...suite.flutterTests,
+      ],
       timeout: selectedFlutterTestTimeout,
       passedMessage: 'Selected Flutter tests passed.',
       failedMessage: 'Selected Flutter tests exited with a non-zero status.',
