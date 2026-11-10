@@ -27,6 +27,7 @@ Widget? buildGameParts(String gameId, {int? playerCount}) => switch (gameId) {
 /// 상자 바탕색 띠가 보입니다. 상자 자체를 칠해 띠가 생기지 않게 합니다.
 Color? gamePartsBackground(String gameId) => switch (gameId) {
   'liars_poker' => _liarPartsGround,
+  'final_call' => FinalCallColors.night,
   _ => null,
 };
 
@@ -63,6 +64,8 @@ class _PartsLayout extends StatelessWidget {
     required this.parts,
     required this.rules,
     this.plainParts = false,
+    this.plainLabelColor = const Color(0xFFE2C27E),
+    this.plainDividerColor = const Color(0x55E2C27E),
   });
 
   final List<_Part> parts;
@@ -71,15 +74,16 @@ class _PartsLayout extends StatelessWidget {
   /// 구성품을 흰 블록 없이 어두운 바탕 위에 바로 놓습니다. 글자는 밝게 씁니다.
   final bool plainParts;
 
+  /// [plainParts]일 때 "구성품" 제목과 칸 구분선 색입니다. 게임 배경에 맞춥니다.
+  final Color plainLabelColor;
+  final Color plainDividerColor;
+
   @override
   Widget build(BuildContext context) {
     final partsBody = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionLabel(
-          '구성품',
-          color: plainParts ? const Color(0xFFE2C27E) : null,
-        ),
+        _SectionLabel('구성품', color: plainParts ? plainLabelColor : null),
         const SizedBox(height: 6),
         Expanded(
           child: Row(
@@ -87,9 +91,7 @@ class _PartsLayout extends StatelessWidget {
             children: [
               for (final (i, part) in parts.indexed) ...[
                 if (i > 0)
-                  _CellDivider(
-                    color: plainParts ? const Color(0x55E2C27E) : null,
-                  ),
+                  _CellDivider(color: plainParts ? plainDividerColor : null),
                 Expanded(
                   flex: part.flex,
                   child: _PartCell(part: part, onDark: plainParts),
@@ -223,7 +225,7 @@ class _PartCell extends StatelessWidget {
             ),
             if (part.count != null) ...[
               const SizedBox(width: 6),
-              _CountBadge(part.count!),
+              _CountBadge(part.count!, onDark: onDark),
             ],
           ],
         ),
@@ -293,22 +295,29 @@ class _RuleCell extends StatelessWidget {
 
 /// 수량을 알리는 남색 알약입니다.
 class _CountBadge extends StatelessWidget {
-  const _CountBadge(this.text);
+  const _CountBadge(this.text, {this.onDark = false});
 
   final String text;
+
+  /// 어두운 게임 배경 위에서는 밝은 알약으로 뒤집어 묻히지 않게 합니다.
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: BoxDecoration(
-      color: MosiColors.navy,
+      color: onDark ? MosiColors.white : MosiColors.navy,
       borderRadius: BorderRadius.circular(999),
       border: Border.all(color: MosiColors.ink, width: 2),
     ),
     child: Text(
       text,
       maxLines: 1,
-      style: MosiFonts.grotesk(size: 12, color: MosiColors.white, height: 1.2),
+      style: MosiFonts.grotesk(
+        size: 12,
+        color: onDark ? MosiColors.navy : MosiColors.white,
+        height: 1.2,
+      ),
     ),
   );
 }
@@ -816,142 +825,149 @@ class _FinalParts extends StatelessWidget {
       ),
     );
 
-    return _PartsLayout(
-      parts: [
-        _Part(
-          label: '숫자 카드'.localized,
-          count: GameLocale.select(
-            ko: '4색 × 1~10',
-            en: '4 colors × 1–10',
-            zhHans: '4 色 × 1–10',
-            zhHant: '4 色 × 1–10',
+    // 라이어스와 같은 형식: 흰 블록 없이 게임 배경(남보라 점무늬) 위에
+    // 구성품을 놓고, 규칙만 흰 블록에 둡니다.
+    return FinalCallPopBackground(
+      child: _PartsLayout(
+        plainParts: true,
+        plainLabelColor: FinalCallColors.yellow,
+        plainDividerColor: const Color(0x40FFFFFF),
+        parts: [
+          _Part(
+            label: '숫자 카드'.localized,
+            count: GameLocale.select(
+              ko: '4색 × 1~10',
+              en: '4 colors × 1–10',
+              zhHans: '4 色 × 1–10',
+              zhHant: '4 色 × 1–10',
+            ),
+            flex: 6,
+            child: Column(
+              children: [
+                for (final (row, color) in colors.indexed) ...[
+                  if (row > 0) const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var n = 1; n <= 10; n++) ...[
+                        if (n > 1) const SizedBox(width: 3),
+                        _finalCardFace(color, n, 24),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-          flex: 6,
-          child: Column(
-            children: [
-              for (final (row, color) in colors.indexed) ...[
-                if (row > 0) const SizedBox(height: 4),
+          _Part(
+            label: '팀'.localized,
+            count: '2:2 · 2:2:2',
+            flex: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var n = 1; n <= 10; n++) ...[
-                      if (n > 1) const SizedBox(width: 3),
-                      _finalCardFace(color, n, 24),
-                    ],
+                    team(
+                      GameLocale.select(
+                        ko: '레드',
+                        en: 'Red',
+                        zhHans: '红队',
+                        zhHant: '紅隊',
+                      ),
+                      FinalCallColors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    team(
+                      GameLocale.select(
+                        ko: '블루',
+                        en: 'Blue',
+                        zhHans: '蓝队',
+                        zhHant: '藍隊',
+                      ),
+                      FinalCallColors.blue,
+                    ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                team(
+                  GameLocale.select(
+                    ko: '그린',
+                    en: 'Green',
+                    zhHans: '绿队',
+                    zhHant: '綠隊',
+                  ),
+                  FinalCallColors.green,
+                  extra: true,
+                ),
               ],
-            ],
-          ),
-        ),
-        _Part(
-          label: '팀'.localized,
-          count: '2:2 · 2:2:2',
-          flex: 3,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  team(
-                    GameLocale.select(
-                      ko: '레드',
-                      en: 'Red',
-                      zhHans: '红队',
-                      zhHant: '紅隊',
-                    ),
-                    FinalCallColors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  team(
-                    GameLocale.select(
-                      ko: '블루',
-                      en: 'Blue',
-                      zhHans: '蓝队',
-                      zhHant: '藍隊',
-                    ),
-                    FinalCallColors.blue,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              team(
-                GameLocale.select(
-                  ko: '그린',
-                  en: 'Green',
-                  zhHans: '绿队',
-                  zhHant: '綠隊',
-                ),
-                FinalCallColors.green,
-                extra: true,
-              ),
-            ],
-          ),
-        ),
-        _Part(
-          label: '팀 하트'.localized,
-          count: GameLocale.select(
-            ko: '3개',
-            en: '3',
-            zhHans: '3 个',
-            zhHant: '3 個',
-          ),
-          flex: 3,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const FinalCallPopHeart(color: FinalCallColors.red, size: 34),
-              const SizedBox(width: 8),
-              const FinalCallPopHeart(color: FinalCallColors.red, size: 34),
-              const SizedBox(width: 8),
-              _Float(
-                child: const FinalCallPopHeart(
-                  color: FinalCallColors.red,
-                  size: 34,
-                ),
-              ),
-            ],
-          ),
-        ),
-        _Part(
-          label: '선언'.localized,
-          flex: 3,
-          child: Semantics(
-            image: true,
-            excludeSemantics: true,
-            label: GameLocale.select(
-              ko: 'CALL 버튼',
-              en: 'CALL button',
-              zhHans: 'CALL 按钮',
-              zhHant: 'CALL 按鈕',
             ),
-            child: FinalCallPopBox(
-              color: FinalCallColors.red,
-              radius: 14,
-              borderWidth: 3,
-              shadowDepth: 4,
-              width: 120,
-              height: 54,
-              child: Center(
-                child: Text(
-                  'CALL!',
-                  style: finalCallPopText(
-                    22,
-                    color: Colors.white,
-                    shadows: finalCallPopOutline(),
+          ),
+          _Part(
+            label: '팀 하트'.localized,
+            count: GameLocale.select(
+              ko: '3개',
+              en: '3',
+              zhHans: '3 个',
+              zhHant: '3 個',
+            ),
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const FinalCallPopHeart(color: FinalCallColors.red, size: 34),
+                const SizedBox(width: 8),
+                const FinalCallPopHeart(color: FinalCallColors.red, size: 34),
+                const SizedBox(width: 8),
+                _Float(
+                  child: const FinalCallPopHeart(
+                    color: FinalCallColors.red,
+                    size: 34,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _Part(
+            label: '선언'.localized,
+            flex: 3,
+            child: Semantics(
+              image: true,
+              excludeSemantics: true,
+              label: GameLocale.select(
+                ko: 'CALL 버튼',
+                en: 'CALL button',
+                zhHans: 'CALL 按钮',
+                zhHant: 'CALL 按鈕',
+              ),
+              child: FinalCallPopBox(
+                color: FinalCallColors.red,
+                radius: 14,
+                borderWidth: 3,
+                shadowDepth: 4,
+                width: 120,
+                height: 54,
+                child: Center(
+                  child: Text(
+                    'CALL!',
+                    style: finalCallPopText(
+                      22,
+                      color: Colors.white,
+                      shadows: finalCallPopOutline(),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-      rules: const [
-        _Rule('점수', '손패 4장에서 같은 색 합과 같은 숫자 합 중 큰 쪽이에요.'),
-        _Rule('내 차례', '카드 1장을 가져와 손패와 바꾸거나 그대로 버려요.'),
-        _Rule('CALL!', '자신 있으면 선언해요. 점수가 가장 낮은 사람이 하트를 잃어요.'),
-      ],
+        ],
+        rules: const [
+          _Rule('점수', '손패 4장에서 같은 색 합과 같은 숫자 합 중 큰 쪽이에요.'),
+          _Rule('내 차례', '카드 1장을 가져와 손패와 바꾸거나 그대로 버려요.'),
+          _Rule('CALL!', '자신 있으면 선언해요. 점수가 가장 낮은 사람이 하트를 잃어요.'),
+        ],
+      ),
     );
   }
 }

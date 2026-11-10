@@ -409,11 +409,16 @@ class CardDealAnimationState extends State<CardDealAnimation>
 
   /// 카드 한 장이 중앙에서 플레이어 위치까지 이동하는 진행도 길이입니다.
   ///
-  /// 남겨 둘 카드를 덱 옆으로 빼는 구간입니다. 이 구간이 끝난 뒤 분배합니다.
-  static const double _setAsideEnd = 0.1;
+  /// 남겨 둘 카드를 덱 옆으로 빼는 구간입니다.
+  static const double _setAsideEnd = 0.16;
+
+  /// 남겨 둘 카드를 다 뺀 뒤, 남은 더미로 분배를 시작하는 진행도입니다.
+  /// 빼기와 분배 사이에 충분히 멈춰 3장을 버린 뒤 분배한다는 것이 보이게 합니다.
+  static const double _dealAfterSetAside = 0.36;
 
   /// 첫 카드가 출발하는 진행도입니다. 남겨 둘 카드가 있으면 먼저 빼 둡니다.
-  double get _dealDelay => widget.reserveCardCount > 0 ? _setAsideEnd : 0;
+  double get _dealDelay =>
+      widget.reserveCardCount > 0 ? _dealAfterSetAside : 0;
 
   /// 카드 수가 많아져도 마지막 카드가 [_dealEnd] 이전에 도착하도록
   /// 카드 한 장당 비행 구간을 자동으로 압축합니다.
@@ -595,7 +600,7 @@ class CardDealAnimationState extends State<CardDealAnimation>
   }
 
   /// 분배하지 않는 카드입니다. 분배 전에 덱 옆으로 빼 두었다가, 분배가
-  /// 진행되는 동안 눈에 띄지 않게 흐려지며 사라집니다.
+  /// 시작되기 전에 흐려지며 사라집니다.
   Widget _buildReservedCard(
     BuildContext context, {
     required Size size,
@@ -626,11 +631,12 @@ class CardDealAnimationState extends State<CardDealAnimation>
       position += Offset(0, -dropDistance * (1 - entryProgress));
     }
     final rotation = aside * (0.05 + reserveIndex * 0.04);
-    // 분배가 한창일 때 천천히 흐려져 분배가 끝나기 전에 사라집니다.
+    // 옆으로 뺀 뒤 멈춤 구간에서 흐려지며, 첫 카드가 출발하기 전에 모두
+    // 사라집니다.
     final vanish = intervalProgress(
       dealProgress,
-      _setAsideEnd + 0.2,
-      _dealEnd - 0.08,
+      _setAsideEnd + 0.05,
+      _dealAfterSetAside - 0.03,
       Curves.easeInOut,
     );
     return Positioned(

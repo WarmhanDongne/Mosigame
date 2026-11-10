@@ -28,7 +28,7 @@ class _TabletGameDetailContentState extends State<TabletGameDetailContent> {
   @override
   Widget build(BuildContext context) {
     final art = MosiGameArt.of(widget.game.id, fallbackName: widget.game.name);
-    final theme = art.shelfTheme;
+    final theme = art.detailTheme;
     final title = widget.game.localizedName(Localizations.localeOf(context));
     final locale = Localizations.localeOf(context);
     final englishName = widget.game.englishName;

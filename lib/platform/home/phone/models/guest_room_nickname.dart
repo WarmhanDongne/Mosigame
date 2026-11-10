@@ -32,6 +32,20 @@ String guestRoomNicknameForCharacter(String? characterId) {
   );
 }
 
+/// 현재 방에서 캐릭터와 자동 게스트 별명이 모두 빈 선택지입니다.
+List<RoomCharacter> availableGuestRoomCharacters({
+  required Set<String> occupiedCharacterIds,
+  required Set<String> occupiedNicknames,
+}) => roomCharacters
+    .where(
+      (character) =>
+          !occupiedCharacterIds.contains(character.id) &&
+          !occupiedNicknames.contains(
+            guestRoomNicknameForCharacter(character.id),
+          ),
+    )
+    .toList(growable: false);
+
 /// 계정 정보와 선택된 방 캐릭터로 입장 화면의 초기 닉네임을 결정합니다.
 RoomNicknameSeed roomNicknameSeed({
   required bool isAnonymous,

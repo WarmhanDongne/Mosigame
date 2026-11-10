@@ -30,12 +30,17 @@ class MosiGameArt {
     required this.spineColor,
     required this.spineText,
     required this.accent,
+    this.detailShelfTheme,
   });
 
   final String id;
   final String koreanName;
   final String englishName;
   final MosiShelfTheme shelfTheme;
+
+  /// 설명보기(상세)를 열었을 때만 쓰는 테마입니다. 없으면 [shelfTheme]과 같습니다.
+  final MosiShelfTheme? detailShelfTheme;
+  MosiShelfTheme get detailTheme => detailShelfTheme ?? shelfTheme;
   final Color spineColor;
   final Color spineText;
 
@@ -46,10 +51,23 @@ class MosiGameArt {
     id: 'liars_poker',
     koreanName: '라이어스 포커',
     englishName: "LIAR'S POKER",
+    // 선반·대기실은 기존 보라+초록 로비 색을 유지합니다.
     shelfTheme: MosiShelfTheme.violet,
+    // 설명보기는 먹빛 타로 표지·카드와 같은 색: 먹갈색 바탕, 뼈색 글자,
+    // 카드 빨강 버튼.
+    detailShelfTheme: MosiShelfTheme(
+      ground: Color(0xFF2B1F1B),
+      fg: Color(0xFFF2EADB),
+      fgDim: Color(0xB3F2EADB),
+      deep: Color(0xFF17110F),
+      btnBg: Color(0xFFB8262B),
+      btnFg: Color(0xFFF2EADB),
+      accA: Color(0xFFE0243A),
+      accB: Color(0xFFE2C27E),
+    ),
     spineColor: Color(0xFF2A1D18),
     spineText: Color(0xFFE6D8BC),
-    accent: Color(0xFFB8262B),
+    accent: Color(0xFFE0243A),
   );
 
   static const finalCall = MosiGameArt(

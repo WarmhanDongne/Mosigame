@@ -37,6 +37,26 @@ void main() {
     expect(guestRoomNicknameForCharacter('unknown'), '버거');
   });
 
+  test('자동 게스트는 캐릭터나 별명이 겹치는 선택지를 건너뛴다', () {
+    GameLocale.current = const Locale('ko');
+
+    final available = availableGuestRoomCharacters(
+      occupiedCharacterIds: {'cat'},
+      occupiedNicknames: {'버거', '우유'},
+    );
+    final ids = available.map((character) => character.id).toSet();
+    final nicknames = available
+        .map((character) => guestRoomNicknameForCharacter(character.id))
+        .toSet();
+
+    expect(ids, isNot(contains('cat')));
+    expect(ids, isNot(contains('frog')));
+    expect(ids, isNot(contains('penguin')));
+    expect(nicknames, isNot(contains('팝콘')));
+    expect(nicknames, isNot(contains('버거')));
+    expect(nicknames, isNot(contains('우유')));
+  });
+
   test('자동 이름의 게스트는 선택한 프로필 별명을 따른다', () {
     GameLocale.current = const Locale('ko');
 

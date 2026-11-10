@@ -91,6 +91,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
 
   @override
   List<RoomPlayer> players = [];
+  bool roomPreviewReady = false;
   List<GameInfo> groupGames = [];
   RoomDataLoadStatus groupGamesLoadStatus = RoomDataLoadStatus.idle;
   String? groupGamesError;
@@ -358,18 +359,29 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   void listenRoomPreview(String rawRoomCode) {
     if (roomCode != null) return;
     final code = rawRoomCode.trim().toUpperCase();
+    roomPreviewReady = false;
     playerSubscription?.cancel();
-    playerSubscription = _service.watchRoomPlayers(code).listen((value) {
-      if (roomCode != null) return;
-      players = value;
-      notifyListeners();
-    }, onError: (Object error) => _handleSubscriptionError(error));
+    playerSubscription = _service
+        .watchRoomPlayers(code)
+        .listen(
+          (value) {
+            if (roomCode != null) return;
+            players = value;
+            roomPreviewReady = true;
+            notifyListeners();
+          },
+          onError: (Object error) {
+            roomPreviewReady = false;
+            _handleSubscriptionError(error);
+          },
+        );
   }
 
   void stopRoomPreview() {
     if (roomCode != null) return;
     playerSubscription?.cancel();
     playerSubscription = null;
+    roomPreviewReady = false;
     players = [];
     notifyListeners();
   }
