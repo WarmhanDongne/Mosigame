@@ -328,28 +328,11 @@
     @media(max-width:960px){.hero{grid-template-columns:minmax(0,1fr) 300px;gap:12px}.shelf-scene{transform:scale(.84);transform-origin:right center}}
     @media(max-width:740px){.shell{padding:17px 13px 105px}.topline{font-size:.68rem}.mark{font-size:.98rem}.mark small{display:none}.hero{display:block;padding:35px 0 24px}.hero h1{font-size:clamp(2.6rem,10vw,4rem)}.shelf-scene{height:240px;width:min(100%,350px);transform:scale(.82);transform-origin:left top;margin-top:20px;margin-bottom:-34px}.bookmarks{padding-left:4px;padding-right:4px}.bookmarks button,.bookmarks button:nth-child(2),.bookmarks button:nth-child(3){padding:9px 11px 12px;font-size:.75rem;min-height:45px}.book-stack{margin-right:10px}.book-stack:before{inset:8px -5px -8px 5px}.book-stack:after{inset:16px -10px -16px 10px}.book-sheet,.book-stack[data-active="backend"] .book-sheet,.book-stack[data-active="other"] .book-sheet{padding:21px 14px 43px;border-radius:10px;box-shadow:6px 8px 0 #0e0a3d}.panel{box-shadow:3px 3px 0 #0e0a3d}.quick-nav{top:auto;bottom:calc(12px + env(safe-area-inset-bottom));width:calc(100% - 26px);max-width:460px;justify-content:space-between}.quick-nav button{flex:1;min-width:0;font-size:.72rem;padding:9px 5px}.quick-nav .quick-num{display:none}}
     @media(max-width:740px){.hero{padding:27px 0 22px}.hero h1{font-size:clamp(2.1rem,9vw,3.2rem)}.shelf-scene{display:none}.function-steps div{grid-template-columns:1fr;gap:3px}.edit-guide>div{grid-template-columns:1fr;gap:3px}.function-browser .function-list{max-height:360px}}
-    /* 05 운영: 첨부 시안의 책 페이지·남색 선·연두 강조를 문서용 콘솔로 재구성했습니다. */
-    .book-stack[data-active="operations"]:before{background:#e9e1c8}.book-stack[data-active="operations"]:after{background:#b9c49c}
-    .book-stack[data-active="operations"] .book-sheet{background:#fbf6e7;border-color:#142947;color:#142947}
-    .push-sheet .sheet-heading{border-color:#14294755}.push-sheet .sheet-heading>span{border-color:#142947;color:#49722d}
-    .push-kicker{display:inline-flex;gap:7px;align-items:center;border:1px solid #6a8638;border-radius:999px;background:#e0efbd;padding:5px 10px;color:#375923;font-size:.71rem;font-weight:900;letter-spacing:.08em}
-    .push-kicker:before{content:"";width:7px;height:7px;border-radius:50%;background:#6eaf39;box-shadow:0 0 0 3px #6eaf3940}
-    .push-note{margin:0 0 23px;padding:13px 15px;border:1px dashed #80944d;border-radius:9px;background:#f1edda;color:#4f573c;font-size:.84rem}
-    .push-note strong{color:#243d5e}
-    .push-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:15px 0 28px}.push-stat{position:relative;overflow:hidden;min-height:126px;padding:18px;border:2px solid #142947;border-radius:11px;background:#fffdf5;box-shadow:4px 5px 0 #142947}.push-stat:after{content:"";position:absolute;right:-27px;bottom:-40px;width:110px;height:110px;border:1px solid #a2ba6d;border-radius:50%}.push-stat b{position:relative;z-index:1;display:block;color:#526b31;font-size:.69rem;letter-spacing:.12em}.push-stat strong{position:relative;z-index:1;display:block;margin-top:9px;font-size:1.85rem;line-height:1}.push-stat small{position:relative;z-index:1;display:block;margin-top:9px;color:#6e6b63}.push-stat.alert b{color:#af5c35}.push-stat.alert:after{border-color:#d8966a}
-    .push-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.65fr);gap:18px;align-items:start}.push-panel{border:2px solid #142947;border-radius:12px;background:#fffdf5;box-shadow:5px 6px 0 #142947}.push-panel-head{display:flex;justify-content:space-between;gap:15px;align-items:start;padding:18px 19px 15px;border-bottom:1px solid #c8c3ae}.push-panel-head h3{margin:3px 0 0;font-size:1.3rem;letter-spacing:-.04em}.push-panel-head p{margin:4px 0 0;color:#68635a;font-size:.81rem}.push-sample{color:#557832;font-size:.69rem;font-weight:900;letter-spacing:.1em}.push-filter{display:flex;flex-wrap:wrap;gap:6px;padding:13px 18px;border-bottom:1px solid #d8d1bd}.push-filter button,.push-language button,.push-device button{border:1px solid #778e4e;border-radius:999px;background:#fffdf5;color:#344d28;padding:7px 10px;font-size:.73rem;font-weight:850}.push-filter button[aria-pressed="true"],.push-language button[aria-pressed="true"],.push-device button[aria-pressed="true"]{background:#a4d65e;border-color:#142947;color:#142947}.push-list{display:grid;padding:4px 18px 13px}.push-row{display:grid;grid-template-columns:11px minmax(0,1fr) auto;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid #e3decf}.push-row:last-child{border-bottom:0}.push-dot{width:9px;height:9px;border-radius:50%;background:#77ad42}.push-dot.scheduled{background:#d09b32}.push-dot.failed{background:#bd5e4d}.push-row strong{display:block;font-size:.88rem}.push-row span{display:block;margin-top:2px;color:#706c65;font-size:.73rem}.push-row time{color:#6a744e;font:700 .68rem ui-monospace,SFMono-Regular,monospace;white-space:nowrap}
-    .push-compose{margin-top:18px;padding:18px}.push-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.push-field{display:grid;gap:6px}.push-field.wide{grid-column:1/-1}.push-field label{color:#49652d;font-size:.68rem;font-weight:900;letter-spacing:.1em}.push-field input,.push-field textarea,.push-field select{width:100%;border:1.5px solid #233b5b;border-radius:7px;background:#fffdf5;color:#142947;padding:10px;font:inherit;font-size:.82rem}.push-field textarea{min-height:78px;resize:vertical}.push-language{display:flex;gap:5px;overflow:auto;margin:11px 0 0}.push-guard{display:flex;gap:8px;align-items:center;margin-top:13px;padding:11px;border:1px dashed #8b9a66;border-radius:8px;background:#f1f3df;color:#526043;font-size:.75rem}.push-guard:before{content:"⌁";font-size:1.2rem;color:#50762d}.push-preview{position:sticky;top:18px;padding:19px}.push-preview-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.push-preview-head h3{margin:0;font-size:1.15rem}.push-device{display:flex;gap:4px}.push-device button{padding:5px 8px;font-size:.66rem}.push-phone{width:min(100%,272px);margin:19px auto 3px;padding:8px;border:3px solid #142947;border-radius:31px;background:#142947;box-shadow:5px 6px 0 #a4d65e}.push-phone-screen{min-height:410px;padding:21px 13px;border-radius:20px;background:linear-gradient(155deg,#e2ebcb,#b9d59f 58%,#809a69);color:#142947}.push-phone-top{display:flex;justify-content:space-between;font-size:.65rem;font-weight:900}.push-clock{margin-top:60px;text-align:center;font-size:2.7rem;font-weight:800;letter-spacing:-.07em}.push-lock{margin-top:64px;border-radius:12px;background:#fffdf8e8;padding:12px;box-shadow:0 4px 16px #24361c33}.push-lock-head{display:flex;gap:7px;align-items:center;font-size:.66rem;font-weight:850}.push-lock-logo{display:grid;place-items:center;width:19px;height:19px;border-radius:5px;background:#142947;color:#c9ed88;font-size:.7rem}.push-lock p{margin:7px 0 0;font-size:.76rem;line-height:1.4}.push-preview-caption{margin:13px 0 0;text-align:center;color:#6a665c;font-size:.72rem}.push-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.push-actions button{border:2px solid #142947;border-radius:8px;padding:10px 13px;background:#fffdf5;color:#142947;font-size:.78rem;font-weight:900;box-shadow:3px 3px 0 #142947}.push-actions button:last-child{background:#a4d65e}.push-actions button[disabled]{cursor:not-allowed;opacity:.66}.push-checks{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px}.push-check{padding:12px;border:1px solid #a7b883;border-radius:8px;background:#f5f6e8;font-size:.75rem}.push-check b{display:block;color:#3c6428;font-size:.67rem;letter-spacing:.08em}.push-check span{display:block;margin-top:4px;color:#625e55}
-    .push-compose-launch{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px}.push-compose-launch p{margin:4px 0 0;color:#68635a;font-size:.84rem}.push-compose-launch button{flex:none;border:2px solid #142947;border-radius:9px;background:#a4d65e;color:#142947;padding:13px 16px;font-weight:900;box-shadow:4px 4px 0 #142947}.push-compose-launch button:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 #142947}
-    .push-dialog{width:min(940px,calc(100vw - 28px));max-height:min(880px,calc(100dvh - 28px));padding:0;border:3px solid #142947;border-radius:13px;background:#fbf6e7;color:#142947;box-shadow:12px 14px 0 #142947}.push-dialog::backdrop{background:#0e0a3dbd;backdrop-filter:blur(4px)}.push-dialog-form{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;padding:20px;overflow:auto;max-height:calc(100dvh - 34px)}.push-dialog .push-compose{margin:0;padding:0;border:0;box-shadow:none;background:transparent}.push-dialog .push-preview{position:static;align-self:start}.push-dialog-close{display:grid;place-items:center;width:35px;height:35px;border:2px solid #142947;border-radius:8px;background:#fffdf5;color:#142947;font-size:1.25rem;font-weight:900}.push-dialog-title{display:flex;justify-content:space-between;gap:15px;align-items:start;margin-bottom:13px}.push-dialog-title h2{margin:4px 0 0;font-size:1.65rem;letter-spacing:-.055em}.push-dialog-title p{margin:4px 0 0;color:#656055;font-size:.81rem}
-    @media(max-width:980px){.push-layout{grid-template-columns:1fr}.push-preview{position:static}.push-stats{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:740px){.quick-nav{justify-content:flex-start;overflow-x:auto}.quick-nav button{flex:0 0 auto;padding-inline:10px}}
-    @media(max-width:700px){.push-dialog-form{grid-template-columns:1fr;padding:15px}.push-dialog .push-phone{max-width:250px}.push-compose-launch{display:block}.push-compose-launch button{width:100%;margin-top:14px}}
-    @media(max-width:620px){.push-stats,.push-form-grid,.push-checks{grid-template-columns:1fr}.push-field.wide{grid-column:auto}.push-row{grid-template-columns:10px minmax(0,1fr)}.push-row time{grid-column:2}.push-panel-head{display:block}.push-panel-head .push-sample{display:inline-block;margin-top:8px}.push-actions{justify-content:stretch}.push-actions button{flex:1}}
   </style>
 </head>
 <body>
   <div class="shell">
-    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.11 · 앱 1.0.0+7</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button><button type="button" data-sheet="operations">05 · 운영</button></nav></div></div>
+    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.11 · 앱 1.0.0+7</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button></nav></div></div>
     <header class="hero">
       <div class="hero-copy">
         <div class="eyebrow">개발자 참고 문서</div>
@@ -367,18 +350,16 @@
       <button id="tab-game" role="tab" type="button" data-sheet="game" aria-controls="game" aria-selected="false"><span>02</span> 게임</button>
       <button id="tab-backend" role="tab" type="button" data-sheet="backend" aria-controls="backend" aria-selected="false"><span>03</span> 백엔드·파이어베이스</button>
       <button id="tab-other" role="tab" type="button" data-sheet="other" aria-controls="other" aria-selected="false"><span>04</span> 기타</button>
-      <button id="tab-operations" role="tab" type="button" data-sheet="operations" aria-controls="operations" aria-selected="false"><span>05</span> 운영</button>
     </nav>
     <nav class="quick-nav" aria-label="스크롤 중 페이지 전환" hidden>
       <button type="button" data-sheet="front" aria-controls="front" aria-current="page"><span class="quick-num">01</span>프론트</button>
       <button type="button" data-sheet="game" aria-controls="game"><span class="quick-num">02</span>게임</button>
       <button type="button" data-sheet="backend" aria-controls="backend"><span class="quick-num">03</span>백엔드·파이어베이스</button>
       <button type="button" data-sheet="other" aria-controls="other"><span class="quick-num">04</span>기타</button>
-      <button type="button" data-sheet="operations" aria-controls="operations"><span class="quick-num">05</span>운영</button>
     </nav>
     <main class="book-stack" data-active="front">
       <article id="front" class="book-sheet" role="tabpanel" aria-labelledby="tab-front">
-      <div class="sheet-heading"><span>01 / 05</span><div><h2>프론트</h2><p>화면이나 로비 동작을 바꿀 때 열 파일을 찾습니다.</p></div></div>
+      <div class="sheet-heading"><span>01 / 04</span><div><h2>프론트</h2><p>화면이나 로비 동작을 바꿀 때 열 파일을 찾습니다.</p></div></div>
       <section id="overview">
         <div class="section-title"><div><h2>태블릿 로비 UI</h2></div><p>왼쪽 로비의 요소를 누르면 오른쪽에서 담당 코드와 동작을 확인할 수 있습니다.</p></div>
         <div class="lobby-code-layout">
@@ -450,7 +431,7 @@
       </section>
       </article>
       <article id="game" class="book-sheet" role="tabpanel" aria-labelledby="tab-game" hidden>
-      <div class="sheet-heading"><span>02 / 05</span><div><h2>게임</h2><p>게임 규칙, 코드 경계, 태블릿·휴대폰 화면을 게임별로 확인합니다.</p></div></div>
+      <div class="sheet-heading"><span>02 / 04</span><div><h2>게임</h2><p>게임 규칙, 코드 경계, 태블릿·휴대폰 화면을 게임별로 확인합니다.</p></div></div>
       <section id="game-guide">
         <div class="section-title"><div><h2>게임 화면과 흐름</h2></div><p>게임과 단계를 고르면 양쪽 기기의 화면 구성과 담당 파일을 볼 수 있습니다.</p></div>
         <div class="game-guide-picker" id="game-guide-picker" aria-label="게임 고르기"></div>
@@ -468,7 +449,7 @@
       </section>
       </article>
       <article id="backend" class="book-sheet" role="tabpanel" aria-labelledby="tab-backend" hidden>
-      <div class="sheet-heading"><span>03 / 05</span><div><h2>백엔드·파이어베이스</h2><p>게임 함수의 실행 조건, 상태 변경, 저장 위치를 확인합니다.</p></div></div>
+      <div class="sheet-heading"><span>03 / 04</span><div><h2>백엔드·파이어베이스</h2><p>게임 함수의 실행 조건, 상태 변경, 저장 위치를 확인합니다.</p></div></div>
       <section id="games">
         <div class="section-title"><div><h2>게임 함수 찾기</h2></div><p>게임과 함수를 선택하면 실행 시점, 검사 내용, 상태 변경을 볼 수 있습니다.</p></div>
         <div class="game-controls" id="game-controls" aria-label="게임 선택"></div>
@@ -507,7 +488,7 @@
       </section>
       </article>
       <article id="other" class="book-sheet" role="tabpanel" aria-labelledby="tab-other" hidden>
-      <div class="sheet-heading"><span>04 / 05</span><div><h2>기타</h2><p>수정 목적에 따라 파일을 찾고, 코드 배포 경계를 확인합니다.</p></div></div>
+      <div class="sheet-heading"><span>04 / 04</span><div><h2>기타</h2><p>수정 목적에 따라 파일을 찾고, 코드 배포 경계를 확인합니다.</p></div></div>
       <section id="files">
         <div class="section-title"><div><h2>수정할 파일 찾기</h2></div><p>하고 싶은 변경에 해당하는 경로부터 열어 보세요.</p></div>
         <div class="edit-guide">
@@ -533,66 +514,9 @@
         </details>
       </section>
       </article>
-      <article id="operations" class="book-sheet push-sheet" role="tabpanel" aria-labelledby="tab-operations" hidden>
-        <div class="sheet-heading"><span>05 / 05</span><div><div class="push-kicker">PUSH NOTIFICATION · CONCEPT</div><h2>알림 운영</h2><p>발송 흐름과 다국어 메시지를 한 화면에서 검토하는 운영 콘솔 시안입니다. <a class="source" href="/operations/">테스트 운영 콘솔 열기 ↗</a></p></div></div>
-        <section aria-labelledby="push-overview-title">
-          <div class="section-title"><div><h2 id="push-overview-title">운영 현황</h2></div><p>첨부 시안의 종이책 구성, 남색 프레임, 연두 상태색을 참고한 문서용 예시입니다.</p></div>
-          <p class="push-note"><strong>디자인 시안 전용</strong> · 이 페이지는 Firebase Cloud Messaging, 예약 발송, 수신자 데이터와 아직 연결되지 않았습니다. 실제 앱 내 공지 A와 점검 B의 on/off는 위 테스트 운영 콘솔에서 관리합니다.</p>
-          <div class="push-stats" aria-label="발송 현황 예시">
-            <article class="push-stat"><b>이번 달 발송</b><strong>12</strong><small>캠페인 예시</small></article>
-            <article class="push-stat"><b>예상 도달률</b><strong>94%</strong><small>집계 방식 설계 필요</small></article>
-            <article class="push-stat"><b>예약됨</b><strong>3</strong><small>시간대 검증 필요</small></article>
-            <article class="push-stat alert"><b>검토 필요</b><strong>1</strong><small>번역 미입력 예시</small></article>
-          </div>
-          <div class="push-layout">
-            <div class="push-panel">
-              <div class="push-panel-head"><div><div class="label">CAMPAIGN LIST</div><h3>발송 목록</h3><p>상태와 대상별로 최근 캠페인을 빠르게 확인합니다.</p></div><span class="push-sample">SAMPLE DATA</span></div>
-              <div class="push-filter" aria-label="발송 상태 필터"><button type="button" data-push-filter="all" aria-pressed="true">전체</button><button type="button" data-push-filter="scheduled" aria-pressed="false">예약됨</button><button type="button" data-push-filter="sent" aria-pressed="false">발송 완료</button><button type="button" data-push-filter="draft" aria-pressed="false">초안</button></div>
-              <div class="push-list" id="push-list">
-                <div class="push-row" data-push-status="scheduled"><i class="push-dot scheduled"></i><div><strong>라이어스 새 라운드 안내</strong><span>한국어 · 영어 · 방 참여자</span></div><time>11/15 19:00</time></div>
-                <div class="push-row" data-push-status="sent"><i class="push-dot"></i><div><strong>주말 게임 초대</strong><span>한국어 · 전체 수신 동의 사용자</span></div><time>11/09 18:00</time></div>
-                <div class="push-row" data-push-status="draft"><i class="push-dot failed"></i><div><strong>전략 윷놀이 에디션 소개</strong><span>번역과 딥링크 확인 대기</span></div><time>초안</time></div>
-              </div>
-            </div>
-            <aside class="push-panel push-preview" aria-label="휴대폰 잠금 화면 미리보기">
-              <div class="push-preview-head"><h3>수신 화면</h3><div class="push-device" aria-label="미리보기 기기"><button type="button" data-push-device="ios" aria-pressed="true">iPhone</button><button type="button" data-push-device="android" aria-pressed="false">Android</button></div></div>
-              <div class="push-phone"><div class="push-phone-screen"><div class="push-phone-top"><span id="push-device-time">9:41</span><span id="push-device-name">iPhone</span></div><div class="push-clock">9:41</div><div class="push-lock"><div class="push-lock-head"><span class="push-lock-logo">M</span><span>MOSIGAME</span><time>지금</time></div><p><strong id="push-preview-title">라이어스 새 라운드</strong><br><span id="push-preview-body">친구들과 바로 다음 게임을 시작해 보세요.</span></p></div></div></div>
-              <p class="push-preview-caption">잠금 화면은 가독성 확인용 시각 예시입니다.</p>
-            </aside>
-          </div>
-        </section>
-        <section aria-labelledby="push-compose-title">
-          <div class="push-panel push-compose-launch"><div><div class="label">COMPOSE</div><h2 id="push-compose-title">새 알림 작성</h2><p>언어별 제목·본문, 대상, 딥링크, 예약 시간을 모달에서 검토합니다.</p></div><button id="push-compose-open" type="button" aria-haspopup="dialog" aria-controls="push-compose-dialog">새 알림 작성 →</button></div>
-        </section>
-      </article>
     </main>
     <footer class="footer">이 문서는 로컬 코드 기준입니다. 함수나 파일 구조를 바꾸면 내용을 다시 확인하세요. <a href="ARCHITECTURE.md">상세 구조 문서</a> · <a href="NEW_GAME_GUIDE.md">새 게임 가이드</a></footer>
   </div>
-  <dialog id="push-compose-dialog" class="push-dialog" aria-labelledby="push-dialog-title">
-    <div class="push-dialog-form">
-      <div class="push-compose">
-        <div class="push-dialog-title"><div><div class="label">COMPOSE · SAMPLE ONLY</div><h2 id="push-dialog-title">새 알림 작성</h2><p>입력과 미리보기만 가능한 디자인 시안입니다. 저장·예약·발송은 연결하지 않았습니다.</p></div><button type="button" class="push-dialog-close" id="push-compose-close" aria-label="새 알림 작성 닫기">×</button></div>
-        <div class="push-panel-head"><div><div class="label">CAMPAIGN DRAFT</div><h3>캠페인 초안</h3><p>언어별 제목·본문과 대상, 딥링크, 예약 시간을 검토합니다.</p></div><span class="push-sample">NO DELIVERY</span></div>
-        <div class="push-language" role="tablist" aria-label="알림 언어"><button type="button" role="tab" data-push-language="ko" aria-pressed="true">한국어</button><button type="button" role="tab" data-push-language="en" aria-pressed="false">English</button><button type="button" role="tab" data-push-language="zh-CN" aria-pressed="false">简体中文</button><button type="button" role="tab" data-push-language="zh-TW" aria-pressed="false">繁體中文</button></div>
-        <div class="push-form-grid">
-          <div class="push-field wide"><label for="push-title">알림 제목</label><input id="push-title" value="라이어스 새 라운드" maxlength="50"></div>
-          <div class="push-field wide"><label for="push-body">알림 본문</label><textarea id="push-body" maxlength="140">친구들과 바로 다음 게임을 시작해 보세요.</textarea></div>
-          <div class="push-field"><label for="push-audience">대상</label><select id="push-audience"><option>수신 동의한 전체 사용자</option><option>특정 게임 보유 사용자</option><option>최근 방 참가자</option></select></div>
-          <div class="push-field"><label for="push-link">딥링크</label><input id="push-link" value="mosigame://lobby/liars"></div>
-          <div class="push-field"><label for="push-send-at">발송 시간</label><input id="push-send-at" value="즉시 발송 또는 예약"></div>
-          <div class="push-field"><label for="push-campaign">내부 캠페인 이름</label><input id="push-campaign" value="liars-round-2026-11"></div>
-        </div>
-        <div class="push-guard">수신 동의, 대상 산정 기준, 시간대, 다국어 누락 여부를 발송 전에 서버가 검증해야 합니다.</div>
-        <div class="push-checks"><div class="push-check"><b>01 · CONTENT</b><span>제목·본문 길이와 언어별 입력</span></div><div class="push-check"><b>02 · AUDIENCE</b><span>수신 동의와 대상 수 확인</span></div><div class="push-check"><b>03 · DELIVERY</b><span>딥링크·예약 시간·결과 확인</span></div></div>
-        <div class="push-actions"><button type="button" id="push-preview-button">미리보기 갱신</button><button type="button" disabled aria-disabled="true" title="운영 기능 설계 전에는 발송할 수 없습니다">발송 기능 준비 중</button></div>
-      </div>
-      <aside class="push-panel push-preview" aria-label="휴대폰 잠금 화면 미리보기">
-        <div class="push-preview-head"><h3>수신 화면</h3><div class="push-device" aria-label="미리보기 기기"><button type="button" data-push-device="ios" aria-pressed="true">iPhone</button><button type="button" data-push-device="android" aria-pressed="false">Android</button></div></div>
-        <div class="push-phone"><div class="push-phone-screen"><div class="push-phone-top"><span id="push-device-time-modal">9:41</span><span id="push-device-name-modal">iPhone</span></div><div class="push-clock">9:41</div><div class="push-lock"><div class="push-lock-head"><span class="push-lock-logo">M</span><span>MOSIGAME</span><time>지금</time></div><p><strong id="push-preview-title-modal">라이어스 새 라운드</strong><br><span id="push-preview-body-modal">친구들과 바로 다음 게임을 시작해 보세요.</span></p></div></div></div>
-        <p class="push-preview-caption">잠금 화면은 가독성 확인용 시각 예시입니다.</p>
-      </aside>
-    </div>
-  </dialog>
   <dialog id="code-inspector" class="code-inspector" aria-labelledby="inspector-title">
     <div class="inspector-header"><div><span class="label">코드 설명</span><h2 id="inspector-title"></h2><code id="inspector-path"></code></div><button id="inspector-close" type="button" aria-label="코드 설명 닫기">×</button></div>
     <p id="inspector-summary"></p>
@@ -758,9 +682,9 @@
     function renderNode(i){const item=nodes[i];document.querySelectorAll('.node').forEach((el,j)=>el.setAttribute('aria-pressed',String(i===j)));document.getElementById('node-detail').innerHTML=`<div class="label accent-mint">${item.type}</div><h3>${item.title}</h3><p>${item.text}</p><div class="sources">${item.files.map(f=>source(f)).join('')}</div>`}
     document.getElementById('node-grid').innerHTML=nodes.map((n,i)=>`<button class="node" type="button" data-node="${i}" aria-pressed="false"><span>${n.type}</span><strong>${n.title}</strong></button>`).join('');
     document.getElementById('node-grid').addEventListener('click',e=>{const n=e.target.closest('[data-node]');if(n)renderNode(Number(n.dataset.node))});renderNode(0);
-    const pageLabels={front:'프론트',game:'게임',backend:'백엔드·파이어베이스',other:'기타',operations:'운영'};
+    const pageLabels={front:'프론트',game:'게임',backend:'백엔드·파이어베이스',other:'기타'};
     function openSheet(id){
-      if(!['front','game','backend','other','operations'].includes(id))return;
+      if(!['front','game','backend','other'].includes(id))return;
       document.querySelectorAll('.bookmarks button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.sheet===id)));
       document.querySelectorAll('.quick-nav button').forEach(b=>{
         if(b.dataset.sheet===id)b.setAttribute('aria-current','page');
@@ -792,40 +716,6 @@
       location.hash=button.dataset.sheet;
       document.querySelector('.book-stack').scrollIntoView({block:'start'});
     });
-    // 운영 페이지는 화면 검토용 인터랙션만 제공합니다. 저장·전송 요청은 만들지 않습니다.
-    const pushLanguageCopy={
-      ko:{title:'라이어스 새 라운드',body:'친구들과 바로 다음 게임을 시작해 보세요.'},
-      en:{title:'A new Liars round',body:'Start the next game with your friends.'},
-      'zh-CN':{title:'新的骗子回合',body:'和朋友们马上开始下一局游戏吧。'},
-      'zh-TW':{title:'新的騙子回合',body:'和朋友們馬上開始下一局遊戲吧。'}
-    };
-    const setPushPreview=(title,body)=>{
-      ['push-preview-title','push-preview-title-modal'].forEach(id=>document.getElementById(id).textContent=title);
-      ['push-preview-body','push-preview-body-modal'].forEach(id=>document.getElementById(id).textContent=body);
-    };
-    document.querySelectorAll('[data-push-filter]').forEach(button=>button.addEventListener('click',()=>{
-      const filter=button.dataset.pushFilter;
-      document.querySelectorAll('[data-push-filter]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-      document.querySelectorAll('#push-list [data-push-status]').forEach(row=>row.hidden=filter!=='all'&&row.dataset.pushStatus!==filter);
-    }));
-    document.querySelectorAll('[data-push-language]').forEach(button=>button.addEventListener('click',()=>{
-      const copy=pushLanguageCopy[button.dataset.pushLanguage];
-      document.querySelectorAll('[data-push-language]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-      document.getElementById('push-title').value=copy.title;
-      document.getElementById('push-body').value=copy.body;
-      setPushPreview(copy.title,copy.body);
-    }));
-    document.querySelectorAll('[data-push-device]').forEach(button=>button.addEventListener('click',()=>{
-      document.querySelectorAll('[data-push-device]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-      const deviceName=button.dataset.pushDevice==='ios'?'iPhone':'Android';
-      ['push-device-name','push-device-name-modal'].forEach(id=>document.getElementById(id).textContent=deviceName);
-    }));
-    document.getElementById('push-preview-button').addEventListener('click',()=>{
-      setPushPreview(document.getElementById('push-title').value||'알림 제목',document.getElementById('push-body').value||'알림 본문');
-    });
-    const pushComposeDialog=document.getElementById('push-compose-dialog');
-    document.getElementById('push-compose-open').addEventListener('click',()=>pushComposeDialog.showModal());
-    document.getElementById('push-compose-close').addEventListener('click',()=>pushComposeDialog.close());
     window.addEventListener('hashchange',()=>openSheet(location.hash.slice(1)));
     const gameLabels={liars:'라이어스 포커',final:'파이널콜',mafia:'마피아',holdem:'홀덤',yut:'윷놀이 계열'};
     // 화면 캡처는 게임 패키지의 실제 위젯을 테스트 fixture로 렌더링한 결과입니다.
