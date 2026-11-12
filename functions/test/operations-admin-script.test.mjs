@@ -2,12 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  PRODUCTION_PROJECT_ID,
   TEST_PROJECT_ID,
   grantOperationsAdmin,
+  supportedOperationsProject,
 } from "../scripts/grant-operations-admin.mjs";
 
-test("operations-admin script is pinned to the test Firebase project", () => {
+test("operations-admin script permits only explicit known Firebase projects", () => {
   assert.equal(TEST_PROJECT_ID, "ban-pick-simulator");
+  assert.equal(PRODUCTION_PROJECT_ID, "project0000-ec01e");
+  assert.equal(supportedOperationsProject(TEST_PROJECT_ID), true);
+  assert.equal(supportedOperationsProject(PRODUCTION_PROJECT_ID), true);
+  assert.equal(supportedOperationsProject("other-project"), false);
 });
 
 test("operations-admin claim keeps the user's existing claims", async () => {
