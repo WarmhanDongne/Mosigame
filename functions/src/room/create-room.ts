@@ -8,7 +8,6 @@ import {allocateRoom, RoomAllocation, RoomReservation, TerminalRoomReservation, 
 import {operationFingerprint, parseSessionId} from "./session-contract.js";
 import {reconcileTerminal, sameCleanupTarget} from "./room-cleanup.js";
 import {runPrimedTransaction} from "./room-transaction.js";
-import {assertPlatformMaintenanceInactive} from "../operations/announcements.js";
 
 async function abandonReservation(code: string, reservation: RoomReservation, uid: string, operationId: string, now: number): Promise<void> {
   const target = {...reservation, status: "terminal", controllerUid: uid, creationOperationId: operationId};
@@ -27,7 +26,6 @@ function newCode(): string {
 export const createRealtimeRoom = onCall({region: "asia-northeast3"}, async (request) => traceRoomAction("createRealtimeRoom", async (timing) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
-  await assertPlatformMaintenanceInactive();
   if (request.data?.presenceProtocol !== 2) {
     throw new HttpsError("failed-precondition", "앱 업데이트가 필요합니다.", {reason: "upgradeRequired"});
   }

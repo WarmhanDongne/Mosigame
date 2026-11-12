@@ -58,11 +58,6 @@ export {
   cleanupIncompleteAccounts,
 } from "./auth/cleanup-incomplete-accounts.js";
 
-// ---------------------------------------------- 플랫폼 운영 공지
-export {
-  updatePlatformAnnouncement,
-} from "./operations/announcements.js";
-
 // ---------------------------------------------- 게임: Liar's Poker
 export {game_liars_poker_start_game} from "./liars-poker/start-game.js";
 export {

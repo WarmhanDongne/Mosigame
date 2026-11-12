@@ -25,13 +25,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 앱 시작 시 보여 주는 최근 공지와 서버 점검 상태입니다. 일반 앱은 읽기만
-    // 허용하고, 수정은 운영자 callable이 Admin SDK로 처리합니다.
-    match /platformAnnouncements/{announcementId} {
-      allow read: if signedIn();
-      allow write: if false;
-    }
-
     // 사용자 프로필과 보유 게임(`ownedGames`)입니다. 민감 필드가 같은 문서에
     // 있으므로 본인만 읽습니다. 그룹 보유 게임은 인증된 callable이 방 참가자를
     // 검증한 뒤 필요한 ID만 반환합니다.
