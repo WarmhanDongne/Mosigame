@@ -308,15 +308,15 @@ void main() {
     }
 
     await pump(4);
-    expect(find.text('진실 12'), findsOneWidget);
-    expect(find.text('거짓 11'), findsOneWidget);
+    expect(find.text('진실 7'), findsOneWidget);
+    expect(find.text('거짓 16'), findsOneWidget);
     expect(find.text('4명 → 23장'), findsOneWidget);
     expect(find.text('3장은 끝까지 숨김'), findsOneWidget);
     expect(totalColor(), MosiColors.sun);
 
     await pump(6);
-    expect(find.text('진실 18'), findsOneWidget);
-    expect(find.text('거짓 15'), findsOneWidget);
+    expect(find.text('진실 10'), findsOneWidget);
+    expect(find.text('거짓 23'), findsOneWidget);
     expect(find.text('6명 → 33장'), findsOneWidget);
 
     // 방이 없거나 인원이 덱 범위 밖이면 4명 기준을 강조 없이 보여 줍니다.

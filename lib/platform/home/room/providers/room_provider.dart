@@ -171,6 +171,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   /// 직접 돌려야 합니다.
   Timer? _controllerPresenceTimer;
   Timer? _playerPresenceTimer;
+  Timer? _roomPreviewExpiryTimer;
   bool _ownsControllerSession = false;
   final PlayerStaleReportTracker _staleReportTracker =
       PlayerStaleReportTracker();
@@ -362,12 +363,13 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     roomPreviewReady = false;
     playerSubscription?.cancel();
     playerSubscription = _service
-        .watchRoomPlayers(code)
+        .watchRoomJoinPreview(code)
         .listen(
           (value) {
             if (roomCode != null) return;
             players = value;
             roomPreviewReady = true;
+            _scheduleRoomPreviewExpiry();
             notifyListeners();
           },
           onError: (Object error) {
@@ -380,10 +382,44 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   void stopRoomPreview() {
     if (roomCode != null) return;
     playerSubscription?.cancel();
+    _roomPreviewExpiryTimer?.cancel();
+    _roomPreviewExpiryTimer = null;
     playerSubscription = null;
     roomPreviewReady = false;
     players = [];
     notifyListeners();
+  }
+
+  void _scheduleRoomPreviewExpiry() {
+    _roomPreviewExpiryTimer?.cancel();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final nextExpiry = players
+        .where((player) => !player.isConnected && player.lastSeen != null)
+        .map((player) => player.lastSeen!)
+        .where((expiresAt) => expiresAt > now)
+        .fold<int?>(
+          null,
+          (earliest, expiresAt) =>
+              earliest == null || expiresAt < earliest ? expiresAt : earliest,
+        );
+    if (nextExpiry == null) return;
+    _roomPreviewExpiryTimer = Timer(
+      Duration(milliseconds: nextExpiry - now + 1),
+      () {
+        if (roomCode != null) return;
+        final current = DateTime.now().millisecondsSinceEpoch;
+        players = players
+            .where(
+              (player) =>
+                  player.isConnected ||
+                  player.lastSeen == null ||
+                  player.lastSeen! > current,
+            )
+            .toList(growable: false);
+        _scheduleRoomPreviewExpiry();
+        notifyListeners();
+      },
+    );
   }
 
   @override
@@ -784,6 +820,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     _playerHeartbeatTimer?.cancel();
     _controllerPresenceTimer?.cancel();
     _playerPresenceTimer?.cancel();
+    _roomPreviewExpiryTimer?.cancel();
 
     // 이전 방에서 계산한 상태 초기화
     controllerPresenceState = ControllerPresenceState.unknown;
@@ -1099,6 +1136,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   // 게임 진행 중 참가자들의 연결 상태를 주기적으로 검사하는 타이머를 시작하거나 중단시킴.
   void _syncPlayerPresenceTimer() {
     _playerPresenceTimer?.cancel();
+    _roomPreviewExpiryTimer?.cancel();
     _playerPresenceTimer = null;
     if (!_ownsControllerSession ||
         !_isServerConnected ||

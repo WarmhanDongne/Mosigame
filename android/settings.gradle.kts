@@ -2,7 +2,18 @@ pluginManagement {
     val flutterSdkPath =
         run {
             val properties = java.util.Properties()
-            file("local.properties").inputStream().use { properties.load(it) }
+            val localProperties = file("local.properties")
+            // Flutter writes local.properties as UTF-8. Reading it through
+            // Properties.load(InputStream) treats non-ASCII SDK paths as
+            // ISO-8859-1 and breaks Gradle on localized macOS user folders.
+            localProperties.reader(Charsets.UTF_8).use {
+                properties.load(it)
+            }
+            // Flutter's bundled plugin loader reads this same file through the
+            // legacy byte-stream API. Re-serializing after the UTF-8 read
+            // writes Java's portable \\u escapes, so both readers resolve the
+            // identical SDK path. local.properties is machine-local/ignored.
+            localProperties.outputStream().use { properties.store(it, null) }
             val flutterSdkPath = properties.getProperty("flutter.sdk")
             require(flutterSdkPath != null) { "flutter.sdk not set in local.properties" }
             flutterSdkPath

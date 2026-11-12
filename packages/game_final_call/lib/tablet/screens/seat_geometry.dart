@@ -8,6 +8,7 @@
 // ========================[ import ]==========================
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 
 // ============================================================
 
@@ -38,22 +39,20 @@ double finalCallSeatRotation(int index, int count) {
   return 0;
 }
 
-/// 좌석이 붙은 화면 변을 향하도록 돌리는 각도입니다.
+/// 좌석이 가운데 테이블을 바라보도록 돌리는 각도입니다.
 ///
-/// 좌석은 화면 가장자리에 붙으므로([finalCallSeatCenters]) 가장 가까운 변의
-/// 사람이 똑바로 읽도록 위 180°, 오른쪽 -90°, 왼쪽 90°, 아래 0°로 맞춥니다.
+/// 자리에서 테이블 중심 쪽이 프로필의 아래가 되게 돌려, 그 자리에 앉은 사람이
+/// 똑바로 읽습니다. 위 180°, 오른쪽 -90°, 왼쪽 90°, 아래 0°이고, 모서리 자리는
+/// 그 사이 대각선 각도로 테이블을 향합니다.
 double finalCallSeatRotationForCenter({
   required Offset center,
   required Size boardSize,
 }) {
-  final distances = [
-    (center.dy, math.pi), // 위
-    (boardSize.width - center.dx, -math.pi / 2), // 오른쪽
-    (boardSize.height - center.dy, 0.0), // 아래
-    (center.dx, math.pi / 2), // 왼쪽
-  ];
-  distances.sort((a, b) => a.$1.compareTo(b.$1));
-  return distances.first.$2;
+  final outward = center - boardSize.center(Offset.zero);
+  if (outward.distance < 1) return 0;
+  final angle = math.atan2(-outward.dx, outward.dy);
+  // 정확히 위쪽 자리는 -180°가 나올 수 있어 같은 방향인 180°로 맞춥니다.
+  return angle <= -math.pi + 1e-9 ? math.pi : angle;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,34 +85,21 @@ Offset finalCallPublicCardCenter(Size boardSize) =>
 // ---------------------------------------------------------------------------
 // 좌석 자리(A안)
 // ---------------------------------------------------------------------------
-/// 프로필이 화면 네 변의 가운데·끝에 붙도록 좌석 중심을 정합니다.
+/// 공용 자리배치 화면에서 확정한 좌석 번호와 같은 중심을 돌려줍니다.
 ///
-/// 원형 궤도 대신 화면 가장자리에 붙여, 태블릿을 둘러앉은 사람 바로 앞에
-/// 자기 프로필이 오게 합니다. 좌석 번호는 위쪽부터 시계 방향입니다.
+/// 자리배치의 카드 중심을 그대로 써야, 순서를 바꾼 참가자가 게임 진입 뒤에
+/// 상·하·좌·우의 새 위치로 재배정되지 않습니다.
 List<Offset> finalCallSeatCenters({
   required int playerCount,
   required Size boardSize,
 }) {
-  final w = boardSize.width;
-  final h = boardSize.height;
-  final inset = boardSize.shortestSide * 0.115;
-  final top = Offset(w / 2, inset);
-  final right = Offset(w - inset, h / 2);
-  final bottom = Offset(w / 2, h - inset);
-  final left = Offset(inset, h / 2);
-  Offset topAt(double x) => Offset(w * x, inset);
-  Offset bottomAt(double x) => Offset(w * x, h - inset);
-  final seats = switch (playerCount) {
-    <= 1 => [bottom],
-    2 => [top, bottom],
-    3 => [top, right, left],
-    4 => [top, right, bottom, left],
-    5 => [topAt(.36), topAt(.64), right, bottom, left],
-    _ => [topAt(.36), topAt(.64), right, bottomAt(.64), bottomAt(.36), left],
-  };
-  return List<Offset>.generate(
-    playerCount,
-    (index) => seats[index % seats.length],
-    growable: false,
-  );
+  if (playerCount <= 0) return const [];
+  return normalizedPlayerCenters(playerCount)
+      .map(
+        (center) => playerCenterFromNormalized(
+          normalizedCenter: center,
+          boardSize: boardSize,
+        ),
+      )
+      .toList(growable: false);
 }

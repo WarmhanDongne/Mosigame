@@ -148,15 +148,15 @@
     .meta-control{position:relative;flex:none}
     #meta-trigger{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#ffffff1a;color:#fff;border:1.5px solid #ffffffa6;border-radius:8px;font-size:.78rem;font-weight:800;letter-spacing:0;text-transform:none}
     #meta-trigger:hover{background:#ffffff30}
-    #meta-trigger span+span{border-left:1px solid #ffffff75;padding-left:10px}
-    #meta-form[hidden]{display:none}
-    #meta-form{position:absolute;right:0;top:calc(100% + 10px);width:min(330px,calc(100vw - 26px));padding:18px;background:#fffdf8;color:#0e0a3d;border:2px solid #0e0a3d;border-radius:10px;box-shadow:7px 8px 0 #0e0a3d;letter-spacing:0;text-transform:none;display:grid;gap:12px}
-    #meta-form label{display:grid;gap:5px;font-size:.8rem;font-weight:800}
-    #meta-form input{width:100%;padding:9px 10px;background:#fff;border:1.5px solid #8b82ad;border-radius:6px;color:#0e0a3d}
-    #meta-form p{font-size:.74rem;line-height:1.5;color:#55527a;margin:0}
-    .meta-actions{display:flex;justify-content:flex-end;gap:7px}
-    .meta-actions button{padding:8px 13px;border:1.5px solid #0e0a3d;border-radius:6px;background:#fff;color:#0e0a3d;font-weight:800;font-size:.78rem}
-    .meta-actions button[type=submit]{background:#a4d65e}
+    #meta-trigger .meta-stamp{border-left:1px solid #ffffff75;padding-left:10px;color:#e8e1ff}
+    #meta-trigger .meta-chevron{font-size:.9rem;transition:transform .18s}
+    #meta-trigger[aria-expanded="true"] .meta-chevron{transform:rotate(180deg)}
+    #page-menu[hidden]{display:none}
+    #page-menu{position:absolute;right:0;top:calc(100% + 10px);width:min(310px,calc(100vw - 26px));padding:8px;background:#fffdf8;color:#0e0a3d;border:2px solid #0e0a3d;border-radius:10px;box-shadow:7px 8px 0 #0e0a3d;letter-spacing:0;text-transform:none;display:grid;gap:3px}
+    #page-menu button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:6px;background:transparent;color:#0e0a3d;font-size:.84rem;font-weight:800;text-align:left}
+    #page-menu button:hover,#page-menu button:focus-visible{background:#eee9fb}
+    #page-menu button[aria-current="page"]{background:#a4d65e}
+    #page-menu button[aria-current="page"]:after{content:"✓";font-weight:900}
     .developer-note .source{margin:7px 0 0 6px;vertical-align:middle;font-weight:800}
     .code-inspector{width:min(1020px,calc(100vw - 28px));max-height:calc(100dvh - 26px);overflow:auto;background:#fffdf8;color:#0e0a3d;border:3px solid #0e0a3d;border-radius:13px;box-shadow:12px 14px 0 #0e0a3d;padding:27px}
     .code-inspector::backdrop{background:#0e0a3dc9;backdrop-filter:blur(3px)}
@@ -275,6 +275,49 @@
     .lobby-start{width:100%;border:2px solid #0e0a3d;border-radius:5px;background:var(--lobby-button);color:#0e0a3d;box-shadow:3px 3px 0 #0e0a3d;font-size:.74rem;font-weight:900;padding:10px 4px}
     .lobby-code-detail{position:sticky;top:25px;min-width:0;background:#fff;border:2px solid #0e0a3d;border-radius:10px;box-shadow:5px 6px 0 #0e0a3d;padding:18px}
     .lobby-code-detail .label{color:#3927a4}.lobby-code-detail h3{font-size:1.23rem;line-height:1.3;margin:7px 0}.lobby-code-detail p{font-size:.82rem;line-height:1.55;color:#48435e;margin:0 0 13px}.lobby-code-detail h4{font-size:.7rem;margin:15px 0 6px;letter-spacing:.08em;color:#3927a4}.lobby-code-detail pre{overflow:auto;max-height:265px;margin:0;background:#0e0a3d;color:#f7f4ec;border-radius:6px;padding:11px;font:11px/1.55 ui-monospace,SFMono-Regular,monospace;white-space:pre}.lobby-code-detail pre code{color:inherit;font:inherit}.lobby-code-detail .sources{margin-top:14px}.lobby-code-detail .source{font-size:.68rem}
+    .book-stack[data-active="game"]:before{background:#2b334a}.book-stack[data-active="game"]:after{background:#172b3d}
+    .game-guide-picker{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 19px}
+    .game-guide-picker button,.game-guide-stage-list button{border:2px solid #0e0a3d;border-radius:7px;background:#fff;color:#0e0a3d;font-weight:850;padding:9px 13px;box-shadow:3px 3px 0 #0e0a3d}
+    .game-guide-picker button[aria-pressed="true"],.game-guide-stage-list button[aria-pressed="true"]{background:#a4d65e}
+    .game-guide-picker button:hover,.game-guide-stage-list button:hover{transform:translateY(-2px)}
+    .game-guide-head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:18px;background:#f7f4ec;border:2px solid #0e0a3d;border-radius:9px;padding:21px;margin-bottom:29px}
+    .game-guide-head h3{font-size:1.75rem;margin:3px 0 7px;line-height:1.2}
+    .game-guide-head p{font-size:.85rem;color:#48435e;line-height:1.6;margin:0}
+    .game-guide-rules{display:grid;gap:5px;margin-top:15px}
+    .game-guide-rules p{display:flex;gap:9px;align-items:start;margin:0;font-size:.79rem;color:#0e0a3d}
+    .game-guide-rules b{flex:none;color:#3927a4;font:900 .7rem ui-monospace,SFMono-Regular,monospace}
+    .game-guide-structure{border-left:1px solid #d4ccdc;padding-left:18px;min-width:0}
+    .game-guide-structure>strong{font-size:.85rem}
+    .game-guide-structure #game-guide-structure{display:grid;gap:6px;margin-top:9px}
+    .game-guide-structure #game-guide-structure div{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;font-size:.74rem;align-items:baseline}
+    .game-guide-structure #game-guide-structure b{color:#3927a4}
+    .game-guide-structure .source{font-size:.69rem;min-width:0}
+    .game-guide-stage-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .game-guide-stage-head h3{font-size:1.2rem;margin:0 0 10px}
+    .game-guide-stage-head p{font-size:.78rem;margin:0;color:#55527a}
+    .game-guide-stage-list{display:flex;gap:8px;overflow-x:auto;padding:3px 4px 12px;margin-bottom:13px}
+    .game-guide-stage-list button{flex:none;font-size:.77rem;white-space:nowrap}
+    .game-guide-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:18px;align-items:start}
+    .game-guide-scenes{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.43fr);gap:16px;align-items:start;min-width:0}
+    .game-guide-scenes[data-game="final"]{grid-template-columns:1fr}
+    .game-scene-wrap{min-width:0}
+    .game-scene-wrap>strong{display:block;font-size:.75rem;margin:0 0 7px;color:#3927a4}
+    .game-screen-button{display:block;width:100%;padding:0;border:3px solid #0e0a3d;border-radius:11px;background:#eee;overflow:hidden;box-shadow:5px 6px 0 #0e0a3d;cursor:pointer;line-height:0}
+    .game-screen-button:hover{transform:translateY(-2px);box-shadow:5px 8px 0 #0e0a3d}
+    .game-screen-button:focus-visible,.game-screen-action:focus-visible{outline:3px solid #7052ed;outline-offset:4px}
+    .game-screen-button img{display:block;width:100%;height:auto}
+    .game-screen-unavailable{display:grid;place-items:center;min-height:130px;padding:18px;border:2px dashed #a9a1ba;border-radius:10px;background:#f7f4ec;color:#57516b;font-size:.78rem;line-height:1.6;text-align:center}
+    .game-screen-meta{grid-column:1/-1}
+    .game-screen-caption{margin:9px 0 0;color:#59536b;font-size:.7rem;line-height:1.5}
+    .game-screen-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+    .game-screen-action{border:1px solid #0e0a3d;border-radius:7px;background:#f7f4ec;color:#0e0a3d;padding:6px 9px;font-size:.7rem;font-weight:850;cursor:pointer}
+    .game-screen-action:hover{background:#a4d65e}
+    .game-guide-detail{position:sticky;top:18px;min-width:0;background:#fff;border:2px solid #0e0a3d;border-radius:10px;box-shadow:5px 6px 0 #0e0a3d;padding:18px}
+    .game-guide-detail h3{margin:6px 0 10px;font-size:1.15rem}
+    .game-guide-detail dl{display:grid;gap:9px;margin:0}.game-guide-detail dl div{border-top:1px solid #d7d1e8;padding-top:7px}.game-guide-detail dt{color:#3927a4;font-size:.7rem;font-weight:900}.game-guide-detail dd{margin:2px 0 0;font-size:.79rem;line-height:1.5;color:#34304b}
+    .game-guide-detail .sources{margin-top:14px}.game-guide-detail .source{font-size:.7rem}
+    @media(max-width:1100px){.game-guide-layout{grid-template-columns:1fr}.game-guide-detail{position:static}}
+    @media(max-width:740px){.game-guide-head{grid-template-columns:1fr;padding:15px}.game-guide-structure{border-left:0;border-top:1px solid #d4ccdc;padding:14px 0 0}.game-guide-scenes{grid-template-columns:1fr}.game-scene-wrap.phone{width:min(260px,100%);margin:auto}.game-guide-scenes[data-game="final"] .game-scene-wrap.phone{width:100%}.game-guide-stage-head{display:block}.game-guide-stage-head p{margin-bottom:7px}}
     @media(max-width:1000px){.lobby-code-layout{grid-template-columns:1fr}.lobby-code-detail{position:static}.lobby-preview{max-width:780px;margin:auto}.lobby-preview-label{max-width:780px;margin:0 auto 9px}}
     @media(max-width:600px){.lobby-preview{padding:10px;min-height:0}.lobby-preview-main{grid-template-columns:1fr;gap:15px}.lobby-room{min-height:260px}.lobby-books{min-height:215px}.lobby-preview-label{display:grid}.lobby-account button span:not(.lobby-avatar){display:none}.lobby-store span{display:none}.lobby-preview-header{grid-template-columns:1fr auto 1fr}.lobby-room-top{grid-template-columns:76px 1fr}}
     @media(max-width:800px){.roulette-layout{grid-template-columns:1fr}.roulette-stage{width:min(100%,350px);margin:auto}.roulette-code{grid-template-columns:1fr}}
@@ -289,7 +332,7 @@
 </head>
 <body>
   <div class="shell">
-    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-expanded="false" aria-controls="meta-form"><span id="meta-date-label">확인일 2026.11.10</span><span id="meta-version-label">앱 1.0.0+7</span><span aria-hidden="true">✎</span></button><form id="meta-form" hidden><label>코드 확인일<input id="meta-date" type="date" required value="2026-11-10"></label><label>표시할 앱 버전<input id="meta-version" type="text" required maxlength="40" value="1.0.0+7"></label><p>이 문서의 표시만 바뀝니다. 실제 앱 버전은 <code>pubspec.yaml</code>에서 관리합니다.</p><div class="meta-actions"><button type="button" id="meta-reset">기본값</button><button type="submit">저장</button></div></form></div></div>
+    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.11 · 앱 1.0.0+7</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button></nav></div></div>
     <header class="hero">
       <div class="hero-copy">
         <div class="eyebrow">개발자 참고 문서</div>
@@ -304,17 +347,19 @@
     </header>
     <nav class="bookmarks" role="tablist" aria-label="책갈피로 페이지 선택">
       <button id="tab-front" role="tab" type="button" data-sheet="front" aria-controls="front" aria-selected="true"><span>01</span> 프론트</button>
-      <button id="tab-backend" role="tab" type="button" data-sheet="backend" aria-controls="backend" aria-selected="false"><span>02</span> 백엔드·파이어베이스</button>
-      <button id="tab-other" role="tab" type="button" data-sheet="other" aria-controls="other" aria-selected="false"><span>03</span> 기타</button>
+      <button id="tab-game" role="tab" type="button" data-sheet="game" aria-controls="game" aria-selected="false"><span>02</span> 게임</button>
+      <button id="tab-backend" role="tab" type="button" data-sheet="backend" aria-controls="backend" aria-selected="false"><span>03</span> 백엔드·파이어베이스</button>
+      <button id="tab-other" role="tab" type="button" data-sheet="other" aria-controls="other" aria-selected="false"><span>04</span> 기타</button>
     </nav>
     <nav class="quick-nav" aria-label="스크롤 중 페이지 전환" hidden>
       <button type="button" data-sheet="front" aria-controls="front" aria-current="page"><span class="quick-num">01</span>프론트</button>
-      <button type="button" data-sheet="backend" aria-controls="backend"><span class="quick-num">02</span>백엔드·파이어베이스</button>
-      <button type="button" data-sheet="other" aria-controls="other"><span class="quick-num">03</span>기타</button>
+      <button type="button" data-sheet="game" aria-controls="game"><span class="quick-num">02</span>게임</button>
+      <button type="button" data-sheet="backend" aria-controls="backend"><span class="quick-num">03</span>백엔드·파이어베이스</button>
+      <button type="button" data-sheet="other" aria-controls="other"><span class="quick-num">04</span>기타</button>
     </nav>
     <main class="book-stack" data-active="front">
       <article id="front" class="book-sheet" role="tabpanel" aria-labelledby="tab-front">
-      <div class="sheet-heading"><span>01 / 03</span><div><h2>프론트</h2><p>화면이나 로비 동작을 바꿀 때 열 파일을 찾습니다.</p></div></div>
+      <div class="sheet-heading"><span>01 / 04</span><div><h2>프론트</h2><p>화면이나 로비 동작을 바꿀 때 열 파일을 찾습니다.</p></div></div>
       <section id="overview">
         <div class="section-title"><div><h2>태블릿 로비 UI</h2></div><p>왼쪽 로비의 요소를 누르면 오른쪽에서 담당 코드와 동작을 확인할 수 있습니다.</p></div>
         <div class="lobby-code-layout">
@@ -385,8 +430,26 @@
         </details>
       </section>
       </article>
+      <article id="game" class="book-sheet" role="tabpanel" aria-labelledby="tab-game" hidden>
+      <div class="sheet-heading"><span>02 / 04</span><div><h2>게임</h2><p>게임 규칙, 코드 경계, 태블릿·휴대폰 화면을 게임별로 확인합니다.</p></div></div>
+      <section id="game-guide">
+        <div class="section-title"><div><h2>게임 화면과 흐름</h2></div><p>게임과 단계를 고르면 양쪽 기기의 화면 구성과 담당 파일을 볼 수 있습니다.</p></div>
+        <div class="game-guide-picker" id="game-guide-picker" aria-label="게임 고르기"></div>
+        <div class="game-guide-head">
+          <div><span class="label">선택한 게임</span><h3 id="game-guide-title"></h3><p id="game-guide-summary"></p><div class="label" style="margin-top:15px">진행 규칙</div><div id="game-guide-rules" class="game-guide-rules"></div></div>
+          <div class="game-guide-structure"><strong>코드 구조</strong><div id="game-guide-structure"></div></div>
+        </div>
+        <div class="game-guide-stage-head"><h3>화면 단계</h3><p>단계를 누르면 Flutter 위젯을 실행해 저장한 화면과 코드 위치가 바뀝니다.</p></div>
+        <div class="game-guide-stage-list" id="game-guide-stage-list" aria-label="게임 단계"></div>
+        <div class="game-guide-layout">
+          <div class="game-guide-scenes" id="game-guide-scenes" aria-label="실제 Flutter 위젯으로 렌더링한 태블릿과 휴대폰 게임 화면"></div>
+          <aside class="game-guide-detail" id="game-guide-detail" aria-live="polite"></aside>
+        </div>
+        <p class="hint">화면은 게임 패키지의 실제 Flutter 위젯을 테스트 상태로 렌더링한 캡처입니다. 예시 플레이어·카드를 사용했으며 로그인, 실시간 서버, 동영상 연출은 포함하지 않습니다. 캡처하지 못한 단계는 그 사실을 표시합니다. 이미지를 누르면 해당 화면 코드 위치를 확인할 수 있습니다.</p>
+      </section>
+      </article>
       <article id="backend" class="book-sheet" role="tabpanel" aria-labelledby="tab-backend" hidden>
-      <div class="sheet-heading"><span>02 / 03</span><div><h2>백엔드·파이어베이스</h2><p>게임 함수의 실행 조건, 상태 변경, 저장 위치를 확인합니다.</p></div></div>
+      <div class="sheet-heading"><span>03 / 04</span><div><h2>백엔드·파이어베이스</h2><p>게임 함수의 실행 조건, 상태 변경, 저장 위치를 확인합니다.</p></div></div>
       <section id="games">
         <div class="section-title"><div><h2>게임 함수 찾기</h2></div><p>게임과 함수를 선택하면 실행 시점, 검사 내용, 상태 변경을 볼 수 있습니다.</p></div>
         <div class="game-controls" id="game-controls" aria-label="게임 선택"></div>
@@ -425,7 +488,7 @@
       </section>
       </article>
       <article id="other" class="book-sheet" role="tabpanel" aria-labelledby="tab-other" hidden>
-      <div class="sheet-heading"><span>03 / 03</span><div><h2>기타</h2><p>수정 목적에 따라 파일을 찾고, 코드 배포 경계를 확인합니다.</p></div></div>
+      <div class="sheet-heading"><span>04 / 04</span><div><h2>기타</h2><p>수정 목적에 따라 파일을 찾고, 코드 배포 경계를 확인합니다.</p></div></div>
       <section id="files">
         <div class="section-title"><div><h2>수정할 파일 찾기</h2></div><p>하고 싶은 변경에 해당하는 경로부터 열어 보세요.</p></div>
         <div class="edit-guide">
@@ -619,10 +682,16 @@
     function renderNode(i){const item=nodes[i];document.querySelectorAll('.node').forEach((el,j)=>el.setAttribute('aria-pressed',String(i===j)));document.getElementById('node-detail').innerHTML=`<div class="label accent-mint">${item.type}</div><h3>${item.title}</h3><p>${item.text}</p><div class="sources">${item.files.map(f=>source(f)).join('')}</div>`}
     document.getElementById('node-grid').innerHTML=nodes.map((n,i)=>`<button class="node" type="button" data-node="${i}" aria-pressed="false"><span>${n.type}</span><strong>${n.title}</strong></button>`).join('');
     document.getElementById('node-grid').addEventListener('click',e=>{const n=e.target.closest('[data-node]');if(n)renderNode(Number(n.dataset.node))});renderNode(0);
+    const pageLabels={front:'프론트',game:'게임',backend:'백엔드·파이어베이스',other:'기타'};
     function openSheet(id){
-      if(!['front','backend','other'].includes(id))return;
+      if(!['front','game','backend','other'].includes(id))return;
       document.querySelectorAll('.bookmarks button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.sheet===id)));
       document.querySelectorAll('.quick-nav button').forEach(b=>{
+        if(b.dataset.sheet===id)b.setAttribute('aria-current','page');
+        else b.removeAttribute('aria-current');
+      });
+      document.getElementById('page-current-label').textContent=pageLabels[id];
+      document.querySelectorAll('#page-menu [data-sheet]').forEach(b=>{
         if(b.dataset.sheet===id)b.setAttribute('aria-current','page');
         else b.removeAttribute('aria-current');
       });
@@ -649,6 +718,153 @@
     });
     window.addEventListener('hashchange',()=>openSheet(location.hash.slice(1)));
     const gameLabels={liars:'라이어스 포커',final:'파이널콜',mafia:'마피아',holdem:'홀덤',yut:'윷놀이 계열'};
+    // 화면 캡처는 게임 패키지의 실제 위젯을 테스트 fixture로 렌더링한 결과입니다.
+    // 단계별 서버 상태와 화면의 최종 기준은 연결한 Dart/Cloud Functions 코드입니다.
+    const gameGuideData={
+      liars:{
+        rules:['기준 카드에 맞는 카드를 냈다고 주장하며 카드를 제출합니다.','다음 플레이어는 카드를 내거나 LIAR를 선언합니다. 마지막 손패 보유자만 남은 상황에서는 LIAR 또는 FOLD를 선택합니다.','서버가 거짓 여부와 벌칙 결과를 판정하고, 태블릿이 카드 공개와 룰렛을 연출합니다.'],
+        tabletBg:'packages/game_liars_poker/assets/games/liars_poker/images/background/background.webp',
+        phoneBg:'packages/game_liars_poker/assets/games/liars_poker/images/background/background_phone.webp',
+        tableArt:'packages/game_liars_poker/assets/games/liars_poker/images/layout/layout_table.webp',
+        phoneScreen:'packages/game_liars_poker/lib/phone/screens/game_screen.dart',tabletScreen:'packages/game_liars_poker/lib/tablet/tablet_board.dart',
+        scenes:[
+          ['GAME START','게임이 시작됩니다','',[]],['CARD DEAL','카드를 나눠드리고 있습니다','▥ ▥ ▥',[]],
+          ['기준 카드 A · 카드 제출','A 카드를 선택해 제출하세요','A K Q',['제출']],
+          ['LIAR / FOLD','상대의 제출을 확인하세요','A K Q',['LIAR','FOLD']],
+          ['벌칙 룰렛','벌칙 결과를 기다리는 중','',[]],['ROUND RESULT','다음 라운드 또는 결과','',[]]
+        ]
+      },
+      final:{
+        rules:['팀 색과 하트가 표시되며, 자기 차례에 새 카드를 받아 손패를 바꾸거나 CALL을 선언합니다.','CALL 후 남은 플레이어가 최종 손패를 정하고, 서버가 공개 카드와 점수를 판정합니다.','팀원이 하트를 모두 잃으면 그 팀이 패배합니다. 게임은 4명 또는 6명 구성을 지원합니다.'],
+        tabletBg:null,phoneBg:null,tableArt:'packages/game_final_call/assets/games/final_call/images/layout/table.png',
+        phoneScreen:'packages/game_final_call/lib/phone/screens/game_screen.dart',tabletScreen:'packages/game_final_call/lib/tablet/tablet_board.dart',
+        scenes:[
+          ['GAME START','팀과 손패를 준비하고 있습니다','',[]],['ROUND 1','손패와 팀 하트 확인','10 J Q A',[]],
+          ['RED ♥ · BLUE ♥','새 카드를 받거나 CALL을 선언하세요','10 J Q A',['새 카드','CALL']],
+          ['CALL!','최종 손패를 선택하세요','10 J Q A',['손패 제출']],
+          ['ROUND RESULT','공개 결과를 확인하세요','10 J Q A',[]],['BLUE TEAM WIN','팀 승리 결과','',[]]
+        ]
+      },
+      mafia:{
+        rules:['태블릿에서 역할 구성과 규칙을 고른 뒤 서버가 개인 역할을 배정합니다.','밤에는 역할별 행동을 제출하고, 낮에는 결과를 확인한 뒤 토론과 투표를 진행합니다.','개인 역할과 밤 행동은 휴대폰의 개인 화면에만 표시합니다. 승패는 서버가 계산합니다.'],
+        tabletBg:'packages/game_mafia/assets/games/mafia/images/background/background_night.webp',
+        phoneBg:'packages/game_mafia/assets/games/mafia/images/background/background_night_phone.webp',tableArt:null,
+        morningTablet:'packages/game_mafia/assets/games/mafia/images/background/background_morning.webp',
+        morningPhone:'packages/game_mafia/assets/games/mafia/images/background/background_morning_phone.webp',
+        phoneScreen:'packages/game_mafia/lib/phone/screens/game_screen.dart',tabletScreen:'packages/game_mafia/lib/tablet/tablet_board.dart',
+        scenes:[
+          ['ROLE SETUP','역할 구성을 기다리는 중','',[]],['ROLE REVEAL','나의 역할 확인','MAFIA', ['확인']],
+          ['NIGHT','밤 행동 대상을 선택하세요','', ['대상 선택','제출']],
+          ['MORNING · DAY','아침 결과와 토론','',[]],['VOTE','투표할 플레이어를 선택하세요','', ['투표']],
+          ['GAME RESULT','최종 승패 확인','',[]]
+        ]
+      },
+      holdem:{
+        rules:['각자 개인 카드 2장을 받고 프리플롭·플롭·턴·리버 순서로 베팅합니다.','휴대폰은 자신의 카드와 베팅 선택을 보여 주고, 태블릿은 공용 카드·팟·좌석을 표시합니다.','베팅과 핸드 평가, 팟 배분은 서버가 계산합니다.'],
+        tabletBg:'packages/game_holdem/assets/images/background/tablet.webp',
+        phoneBg:'packages/game_holdem/assets/images/background/phone.webp',
+        tableArt:'packages/game_holdem/assets/images/layout/table.webp',
+        phoneScreen:'packages/game_holdem/lib/phone/screens/game_screen.dart',tabletScreen:'packages/game_holdem/lib/tablet/screens/table_screen.dart',
+        scenes:[
+          ['DEALING','홀카드 분배를 기다리는 중','▥ ▥',[]],['PREFLOP · POT','내 카드를 보고 행동 선택','A K',['FOLD','CALL','RAISE']],
+          ['FLOP · 3 CARDS','공용 카드 3장 · 베팅','A K',['CHECK','RAISE']],
+          ['TURN → RIVER','공용 카드 추가 · 베팅','A K',['CHECK','CALL']],
+          ['SHOWDOWN','승리한 손패와 팟 확인','A K',[]],['HAND END','다음 핸드 또는 종료','',[]]
+        ]
+      },
+      yut:{
+        rules:['일반 윷놀이는 윷을 던지고 결과에 따라 말을 움직입니다.','전략형은 선택 단계를 먼저 거치며, 같은 game_yut 패키지가 화면과 서비스를 공유합니다.','서버가 턴, 이동 가능 경로와 승리 상태를 판정합니다.'],
+        tabletBg:'packages/game_yut/assets/images/bg_holo_tablet.webp',
+        phoneBg:'packages/game_yut/assets/images/bg_holo_phone.webp',
+        tableArt:'packages/game_yut/assets/images/board_holo.webp',
+        phoneScreen:'packages/game_yut/lib/src/phone.dart',tabletScreen:'packages/game_yut/lib/src/tablet.dart',
+        scenes:[
+          ['YUT START','현재 순서를 확인하세요','',[]],['SELECT','전략형 선택을 제출하세요','', ['선택 제출']],
+          ['ROLL','휴대폰으로 윷을 던지세요','', ['윷 던지기']],
+          ['MOVE','이동할 말을 선택하세요','', ['말 이동']],
+          ['NEXT TURN','다음 플레이어 차례','',[]],['FINISHED','최종 승자 확인','',[]]
+        ]
+      }
+    };
+    // 각 파일은 tablet/phone 화면 위젯을 실제로 렌더링한 캡처입니다.
+    // null은 해당 단계 화면을 캡처하지 못했음을 뜻하며, 다른 phase 사진으로 대체하지 않습니다.
+    const gameGuideShots={
+      liars:[
+        {tablet:'liars_tablet_dealing',phone:'liars_phone_dealing',note:'시작 함수 실행 후 dealing 상태입니다. 휴대폰은 개인 손패를 받기 전이어서 배경만 보입니다.'},
+        {tablet:'liars_tablet_dealing',phone:'liars_phone_dealing',note:'태블릿 카드 분배 애니메이션의 정지 프레임입니다. 휴대폰은 서버의 분배 완료를 기다립니다.'},
+        {tablet:'liars_tablet_table',phone:'liars_phone_turn',note:'태블릿은 6명 테이블, 휴대폰은 3명 게임의 내 차례 예시입니다.'},
+        {tablet:'liars_tablet_reveal',phone:'liars_phone_challenge',note:'공개 화면과 마지막 카드 도전 화면을 각각 캡처했습니다.'},
+        {tablet:'liars_tablet_roulette',phone:'liars_phone_penalty',note:'룰렛은 정지 프레임이며 실제 앱에서는 회전합니다.'},
+        {tablet:'liars_tablet_winner',phone:null,note:'태블릿 우승 화면입니다. 휴대폰의 같은 시점 결과 화면은 캡처하지 않았습니다.'},
+      ],
+      final:[
+        {tablet:'final_tablet_dealing',phone:null,note:'태블릿 카드 분배 애니메이션의 정지 프레임입니다. 이 시점 휴대폰 전체 화면은 별도로 캡처하지 않았습니다.'},
+        {tablet:'final_tablet_turn',phone:'final_phone_turn',note:'카드 분배 완료 후 playing 상태로 넘어온 첫 턴 화면입니다. 분배 동작 자체의 정지 캡처는 아닙니다.'},
+        {tablet:'final_tablet_draw',phone:'final_phone_draw',note:'새 카드를 받은 플레이어와 태블릿의 실제 화면입니다.'},
+        {tablet:'final_tablet_call',phone:'final_phone_call',note:'CALL 이후 최종 손패를 고르는 6명 예시 상태입니다.'},
+        {tablet:'final_tablet_result',phone:'final_phone_result',note:'라운드 결과 공개의 6명 예시 상태입니다.'},
+        {tablet:'final_tablet_winner',phone:null,note:'태블릿 팀 승리 화면입니다. 휴대폰은 게임 종료 시 이 결과 화면을 표시하지 않습니다.'},
+      ],
+      mafia:[
+        {tablet:'mafia_tablet_setup',phone:null,note:'역할 구성은 태블릿 전용 시작 화면입니다. 휴대폰은 방에서 시작을 기다립니다.'},
+        {tablet:'mafia_tablet_role',phone:'mafia_phone_role',note:'역할 공개 테스트 상태입니다.'},
+        {tablet:'mafia_tablet_night',phone:'mafia_phone_night',note:'마피아 역할 플레이어의 밤 화면입니다. 역할에 따라 휴대폰 화면이 달라집니다.'},
+        {tablet:'mafia_tablet_morning',phone:'mafia_phone_morning',note:'아침 사망 발표 화면입니다. 이어지는 낮 토론은 다음 화면에서 진행됩니다.'},
+        {tablet:'mafia_tablet_vote',phone:'mafia_phone_vote',note:'처형 투표 화면입니다. 개표 연출은 이어지는 상태에서 표시됩니다.'},
+        {tablet:'mafia_tablet_result',phone:'mafia_phone_result',note:'게임 종료 테스트 상태입니다.'},
+      ],
+      holdem:[
+        {tablet:'holdem_tablet_dealing',phone:'holdem_phone_dealing',note:'dealing 상태에서 실제 위젯을 렌더링했습니다. 카드가 공개되기 전 프레임입니다.'},
+        {tablet:'holdem_tablet_preflop',phone:'holdem_phone_preflop',note:'프리플롭 베팅 상태입니다.'},
+        {tablet:'holdem_tablet_flop',phone:'holdem_phone_flop',note:'플롭과 베팅 선택 상태입니다.'},
+        {tablet:'holdem_tablet_turn',phone:'holdem_phone_turn',note:'턴 카드가 공개된 상태입니다. 리버는 그다음 단계입니다.'},
+        {tablet:'holdem_tablet_handResult',phone:'holdem_phone_handResult',note:'핸드 판정 결과 상태입니다.'},
+        {tablet:'holdem_tablet_river',phone:'holdem_phone_river',note:'리버 베팅 상태의 캡처입니다. 다음 핸드·게임 종료 화면은 포함하지 않았습니다.'},
+      ],
+      yut:[
+        {tablet:'yut_tablet_start',phone:'yut_phone_start',note:'게임 시작 후 첫 턴의 실제 윷놀이 화면입니다.'},
+        {tablet:'yut_tablet_select',phone:'yut_phone_select',note:'전략형 윷놀이의 선택 단계입니다.'},
+        {tablet:'yut_tablet_roll',phone:'yut_phone_roll',note:'일반 윷놀이의 윷 던지기 단계입니다.'},
+        {tablet:'yut_tablet_move',phone:'yut_phone_move',note:'말 이동 단계입니다.'},
+        {tablet:'yut_tablet_next',phone:'yut_phone_next',note:'다른 플레이어의 턴을 기다리는 단계입니다.'},
+        {tablet:'yut_tablet_result',phone:'yut_phone_result',note:'게임 종료 테스트 상태입니다.'},
+      ],
+    };
+    let selectedGuideGame='liars';
+    let selectedGuideStage=2;
+    const gameGuideEl=id=>document.getElementById(id);
+    function gameGuideActionPath(key,action,stage){
+      if(key==='liars')return action==='FOLD'?'functions/src/liars-poker/pass-challenge.ts':action==='LIAR'?'functions/src/liars-poker/call-liar.ts':'functions/src/liars-poker/submit-card.ts';
+      if(key==='final')return action==='새 카드'?'functions/src/final-call/draw-card.ts':action==='CALL'?'functions/src/final-call/call.ts':'functions/src/final-call/submit-final-hand.ts';
+      if(key==='mafia')return action==='투표'?'functions/src/mafia/vote.ts':'functions/src/mafia/night.ts';
+      if(key==='holdem')return 'functions/src/holdem/act.ts';
+      if(key==='yut')return 'functions/src/yut/callables.ts';
+      return games[key].stages[stage][5];
+    }
+    function renderGameGuide(key,stageIndex=2){
+      if(!games[key]||!gameGuideData[key])return;
+      const game=games[key],guide=gameGuideData[key];
+      selectedGuideGame=key;
+      selectedGuideStage=Math.max(0,Math.min(stageIndex,game.stages.length-1));
+      const step=game.stages[selectedGuideStage],scene=guide.scenes[selectedGuideStage];
+      gameGuideEl('game-guide-picker').innerHTML=Object.keys(gameGuideData).map(id=>`<button type="button" data-guide-game="${id}" aria-pressed="${id===key}">${escapeHtml(gameLabels[id])}</button>`).join('');
+      gameGuideEl('game-guide-title').textContent=game.name;
+      gameGuideEl('game-guide-summary').textContent=`${game.family} · ${game.count} · ${game.orientation}. ${game.description}`;
+      gameGuideEl('game-guide-rules').innerHTML=guide.rules.map((rule,i)=>`<p><b>${String(i+1).padStart(2,'0')}</b><span>${escapeHtml(rule)}</span></p>`).join('');
+      gameGuideEl('game-guide-structure').innerHTML=[['등록',game.entry],['휴대폰',game.phone],['태블릿',game.tablet],['공용',game.shared]].map(([label,path])=>`<div><b>${label}</b>${source(path,escapeHtml(path.split('/').pop()))}</div>`).join('');
+      gameGuideEl('game-guide-stage-list').innerHTML=game.stages.map((s,i)=>`<button type="button" data-guide-stage="${i}" aria-pressed="${i===selectedGuideStage}">${String(i+1).padStart(2,'0')} · ${escapeHtml(s[0])}</button>`).join('');
+      const shot=gameGuideShots[key][selectedGuideStage];
+      const shotHtml=(device,label,path)=>`<div class="game-scene-wrap ${device}"><strong>${label}</strong>${shot[device]
+        ?`<button class="game-screen-button" type="button" data-code-path="${path}" aria-label="${label} 코드 보기"><img src="screenshots/system-map/${shot[device]}.webp" alt="${escapeHtml(game.name)} ${escapeHtml(step[0])} ${label}의 실제 Flutter 화면" loading="lazy"></button>`
+        :`<div class="game-screen-unavailable">이 단계의 실행 화면 캡처가 없습니다.</div>`}</div>`;
+      const actions=scene[3].map(action=>`<button type="button" class="game-screen-action" data-code-path="${gameGuideActionPath(key,action,selectedGuideStage)}">${escapeHtml(action)} 동작 코드 ↗</button>`).join('');
+      gameGuideEl('game-guide-scenes').dataset.game=key;
+      gameGuideEl('game-guide-scenes').innerHTML=`${shotHtml('tablet','태블릿 · 공용 화면',guide.tabletScreen)}${shotHtml('phone','휴대폰 · 개인 화면',guide.phoneScreen)}<div class="game-screen-meta"><p class="game-screen-caption">${escapeHtml(shot.note)}</p>${actions?`<div class="game-screen-actions">${actions}</div>`:''}</div>`;
+      gameGuideEl('game-guide-detail').innerHTML=`<div class="label">${String(selectedGuideStage+1).padStart(2,'0')} / ${String(game.stages.length).padStart(2,'0')} · ${escapeHtml(game.name)}</div><h3>${escapeHtml(step[0])}</h3><dl><div><dt>서버 상태</dt><dd>${escapeHtml(step[1])}</dd></div><div><dt>휴대폰 화면</dt><dd>${escapeHtml(step[2])}</dd></div><div><dt>태블릿 화면</dt><dd>${escapeHtml(step[3])}</dd></div><div><dt>서버 함수</dt><dd>${escapeHtml(step[4])}</dd></div></dl><div class="sources">${source(guide.phoneScreen,'휴대폰 UI')}${source(guide.tabletScreen,'태블릿 UI')}${source(step[5],'이 단계의 로직')}</div>`;
+    }
+    gameGuideEl('game-guide-picker').addEventListener('click',e=>{const button=e.target.closest('[data-guide-game]');if(button)renderGameGuide(button.dataset.guideGame)});
+    gameGuideEl('game-guide-stage-list').addEventListener('click',e=>{const button=e.target.closest('[data-guide-stage]');if(button)renderGameGuide(selectedGuideGame,Number(button.dataset.guideStage))});
+    gameGuideEl('game-guide-scenes').addEventListener('click',e=>{const button=e.target.closest('[data-code-path]');if(button)openCodeInspector(button.dataset.codePath,root+button.dataset.codePath)});
     document.getElementById('game-controls').innerHTML=Object.keys(games).map(k=>`<button type="button" data-game="${k}" aria-pressed="false">${gameLabels[k]}</button>`).join('');
     document.getElementById('game-controls').addEventListener('click',e=>{const b=e.target.closest('[data-game]');if(b)renderGame(b.dataset.game)});
     function stageFunctions(key,label){
@@ -663,7 +879,7 @@
       functionScope='game';
       selectedFunctionName=null;
       document.getElementById('function-search').value='';
-      document.querySelectorAll('[data-game]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.game===key)));
+      document.querySelectorAll('#game-controls [data-game]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.game===key)));
       const g=games[key];
       document.getElementById('game-intro').innerHTML=`<div class="label accent-mint">${g.family}</div><h3>${g.name}</h3><p>${g.description}</p><div class="game-meta"><span>runtime ID · ${g.id}</span><span>${g.count}</span><span>${g.orientation}</span></div>`;
       document.getElementById('game-files').innerHTML=`<strong>코드 시작점</strong>${source(g.entry,'게임 등록 · '+g.entry.split('/').pop())}${source(g.phone,'휴대폰 화면')}${source(g.tablet,'태블릿 화면')}${source(g.shared,'상태·서비스')}`;
@@ -719,48 +935,27 @@
     });
     document.getElementById('function-search').addEventListener('input',renderFunctions);
 
-    // 이 값은 문서 표시용입니다. pubspec.yaml이나 실제 배포 버전을 수정하지 않습니다.
-    const metaDefaults={date:'2026-11-10',version:'1.0.0+7'};
-    const metaKey='mosigame-system-map-metadata-v1';
-    const metaForm=document.getElementById('meta-form');
+    // 오른쪽 상단은 페이지 이동 메뉴입니다. 항목 선택 즉시 책갈피와 본문을 동기화합니다.
+    const pageMenu=document.getElementById('page-menu');
     const metaTrigger=document.getElementById('meta-trigger');
     const metaControl=document.querySelector('.meta-control');
-    function setMeta(date,version){
-      document.getElementById('meta-date').value=date;
-      document.getElementById('meta-version').value=version;
-      document.getElementById('meta-date-label').textContent=`확인일 ${date.replaceAll('-','.')}`;
-      document.getElementById('meta-version-label').textContent=`앱 ${version}`;
-    }
-    try{
-      const saved=JSON.parse(localStorage.getItem(metaKey)||'null');
-      if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(saved.date)&&typeof saved.version==='string'&&saved.version.trim()){
-        setMeta(saved.date,saved.version.trim());
-      }
-    }catch(_){/* file:// 저장소가 막힌 브라우저에서는 기본값만 표시합니다. */}
-    function closeMeta(){metaForm.hidden=true;metaTrigger.setAttribute('aria-expanded','false')}
+    function closePageMenu(){pageMenu.hidden=true;metaTrigger.setAttribute('aria-expanded','false')}
     metaTrigger.addEventListener('click',()=>{
-      metaForm.hidden=!metaForm.hidden;
-      metaTrigger.setAttribute('aria-expanded',String(!metaForm.hidden));
-      if(!metaForm.hidden)document.getElementById('meta-date').focus();
+      pageMenu.hidden=!pageMenu.hidden;
+      metaTrigger.setAttribute('aria-expanded',String(!pageMenu.hidden));
+      if(!pageMenu.hidden)pageMenu.querySelector('[aria-current="page"]')?.focus();
     });
-    metaForm.addEventListener('submit',e=>{
-      e.preventDefault();
-      const date=document.getElementById('meta-date').value;
-      const version=document.getElementById('meta-version').value.trim();
-      if(!date||!version)return;
-      setMeta(date,version);
-      try{localStorage.setItem(metaKey,JSON.stringify({date,version}))}catch(_){}
-      closeMeta();
+    pageMenu.addEventListener('click',e=>{
+      const button=e.target.closest('[data-sheet]');
+      if(!button)return;
+      openSheet(button.dataset.sheet);
+      location.hash=button.dataset.sheet;
+      closePageMenu();
       metaTrigger.focus();
+      requestAnimationFrame(()=>document.querySelector('.book-stack').scrollIntoView({block:'start',behavior:'instant'}));
     });
-    document.getElementById('meta-reset').addEventListener('click',()=>{
-      setMeta(metaDefaults.date,metaDefaults.version);
-      try{localStorage.removeItem(metaKey)}catch(_){}
-      closeMeta();
-      metaTrigger.focus();
-    });
-    document.addEventListener('click',e=>{if(!metaControl.contains(e.target))closeMeta()});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMeta()});
+    document.addEventListener('click',e=>{if(!metaControl.contains(e.target))closePageMenu()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pageMenu.hidden){closePageMenu();metaTrigger.focus()}});
 
     // 모든 로컬 코드 링크는 먼저 파일의 책임을 설명합니다. 원본 열기는 별도 버튼입니다.
     const inspector=document.getElementById('code-inspector');
@@ -1110,6 +1305,7 @@ return nextInt(totalSections) < eliminatedSections ?
       showRoulettePart('layout');
     }
     renderGame('liars');
+    renderGameGuide('liars');
     openSheet(location.hash.slice(1)||'front');
   </script>
 </body>

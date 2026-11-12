@@ -41,6 +41,7 @@ export interface SessionRoom {
   controllerConnectionSeq?: number;
   controllerConnected?: boolean;
   controllerPresence?: {connected?: boolean; lastSeen?: number};
+  joinPreview?: unknown;
   players?: Record<string, SessionPlayer>;
   connections?: Record<string, Record<string, RoomConnection>>;
   sessionOperations?: Record<string, RoomOperation>;

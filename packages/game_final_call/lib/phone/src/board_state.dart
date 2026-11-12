@@ -27,8 +27,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
   String? replacingCardId;
   int? _turnSubmissionRevision;
 
-  /// 최종 조합을 미리 골라 둔 라운드입니다. 사용자가 모두 해제해도 같은
-  /// 라운드에서 다시 채우지 않습니다.
+  /// 현재 손패에서 최고 조합 체크를 동기화한 라운드입니다.
   int? _presetFinalSelectionRound;
   bool _isLeavingRoom = false;
   bool _isExitModalOpen = false;
@@ -385,13 +384,10 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
                         setState(() => revealedRound = game.round),
                     onSelectedCardChanged: (id) =>
                         setState(() => selectedCardId = id),
-                    onFinalCardSelected: (id) => setState(() {
-                      toggleFinalCallSelection(
-                        selected: selectedFinalCardIds,
-                        hand: game.hand,
-                        cardId: id,
-                      );
-                    }),
+                    // 최종 제출 조합은 손패 전체에서 자동으로 고릅니다.
+                    // 카드 탭으로 체크를 바꾸면 화면과 서버 판정이 달라질 수 있어
+                    // 여기서는 선택 상태를 바꾸지 않습니다.
+                    onFinalCardSelected: (_) {},
                     onCompleteTurn: _completeTurn,
                     replacingCardId: replacingCardId,
                     replacementInProgress: replacementInProgress,

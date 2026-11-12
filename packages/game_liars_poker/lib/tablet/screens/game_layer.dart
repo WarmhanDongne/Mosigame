@@ -46,15 +46,15 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
   static const _cardRadius = _cardWidth * 14 / 200;
 
   // 장수를 아직 보내지 않는 서버에서도 섞기 전 구성 화면을 보여 주도록,
-  // 서버 덱 규칙(인원당 진실 3장, 전체 인원×5+3장)으로 장수를 채웁니다.
+  // 서버 덱 규칙([liarsPokerDeckCounts])으로 장수를 채웁니다.
   bool get _hasServerCounts =>
       widget.truthCardCount + widget.lieCardCount > 0;
-  int get _truthCardCount => _hasServerCounts
-      ? widget.truthCardCount
-      : widget.playerSeatIndexes.length * 3;
-  int get _lieCardCount => _hasServerCounts
-      ? widget.lieCardCount
-      : widget.playerSeatIndexes.length * 2 + 3;
+  ({int truth, int lie}) get _ruleCounts =>
+      liarsPokerDeckCounts(widget.playerSeatIndexes.length);
+  int get _truthCardCount =>
+      _hasServerCounts ? widget.truthCardCount : _ruleCounts.truth;
+  int get _lieCardCount =>
+      _hasServerCounts ? widget.lieCardCount : _ruleCounts.lie;
 
   @override
   Widget build(BuildContext context) {

@@ -64,19 +64,19 @@ export const localizedGameGenres = Object.freeze({
 // Korean remains in update-game-rules.mjs as the legacy Firestore value.
 export const translatedGameRules = Object.freeze({
   liars_poker: Object.freeze({
-    en: `- Components: The deck uses only Truth and Lie cards. Every living player receives five cards each round, while three cards remain hidden for the entire round. Before dealing, only the total count of each card type is shown.
+    en: `- Components: The deck uses only Truth and Lie cards. Every living player receives five cards each round, while three cards remain hidden for the entire round. Before each round, only the number of Truth cards in this round is shown. There are 3 Truth cards with two players up to 10 with six players; every other card is a Lie card.
 - Play: On your turn, place 1–3 cards face down and claim they are all Truth cards.
 - Bluffing: You may play Lie cards while claiming they are Truth cards.
 - Challenge: Call LIAR when you believe the previous player lied, then reveal the cards.
 - If even one card is a Lie, the player who played the cards spins the roulette. If every card is Truth, the challenger spins.
 - Landing on black means survival; landing on red means death. Each player gets up to three chances. The red area grows after every attempt, and on the third attempt every space except one is red.`,
-    "zh-Hans": `- 牌组：只使用真话牌和谎言牌。每轮每位存活玩家获得5张牌，另有3张牌全程不公开。发牌前只显示两种牌的总数。
+    "zh-Hans": `- 牌组：只使用真话牌和谎言牌。每轮每位存活玩家获得5张牌，另有3张牌全程不公开。每轮发牌前只公开本局真话牌的张数。真话牌按人数从2人3张到6人10张，其余都是谎言牌。
 - 出牌：轮到你时盖着打出1~3张牌，并宣称它们都是真话牌。
 - 诈唬：你可以把谎言牌当作真话牌打出。
 - 质疑：认为上一位玩家在说谎时喊出 LIAR，并翻开这些牌。
 - 只要有一张谎言牌，出牌者转动轮盘；全部是真话牌时，质疑者转动轮盘。
 - 停在黑色区域即可生存，停在红色区域则死亡。每人最多有三次机会；每次尝试后红色区域都会扩大，第三次只剩一个黑色格。`,
-    "zh-Hant": `- 牌組：只使用真話牌和謊言牌。每輪每位存活玩家獲得5張牌，另有3張牌全程不公開。發牌前只顯示兩種牌的總數。
+    "zh-Hant": `- 牌組：只使用真話牌和謊言牌。每輪每位存活玩家獲得5張牌，另有3張牌全程不公開。每輪發牌前只公開本局真話牌的張數。真話牌依人數從2人3張到6人10張，其餘都是謊言牌。
 - 出牌：輪到你時蓋著打出1~3張牌，並宣稱它們都是真話牌。
 - 詐唬：你可以把謊言牌當作真話牌打出。
 - 質疑：認為上一位玩家在說謊時喊出 LIAR，並翻開這些牌。

@@ -29,6 +29,7 @@ import 'package:game_kit/tablet/animations/card_deal_animation.dart';
 import 'package:game_kit/shared/widgets/game_announcement_layer.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_liars_poker/game_sounds.dart';
+import 'package:game_liars_poker/game_theme.dart' show liarsPokerDeckCounts;
 import 'package:game_liars_poker/shared/models/game_state.dart';
 import 'package:game_liars_poker/shared/providers/game_controller.dart';
 import 'package:game_liars_poker/shared/providers/session_provider.dart';
