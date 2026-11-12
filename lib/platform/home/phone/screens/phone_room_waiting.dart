@@ -591,7 +591,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
       stage: _leaveStage,
       progress: _leaveTransition,
       gameId: widget.provider.selectedGameId,
-      errorMessage: _leaveError,
+      errorMessage: _leaveError?.localized,
       onRetry: () => unawaited(_leaveRoomWithTransition()),
       onReturn: _dismissLeaveFailure,
       child: guarded,
@@ -770,7 +770,7 @@ class _GroupWaitingContent extends StatelessWidget {
                       if (provider.errorMessage != null) ...[
                         const SizedBox(height: 12),
                         PlatformNotice(
-                          message: provider.errorMessage!,
+                          message: provider.errorMessage!.localized,
                           style: PlatformNoticeStyle.danger,
                         ),
                       ],
@@ -958,7 +958,7 @@ class _GroupGamesContent extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              provider.groupGamesError ??
+              provider.groupGamesError?.localized ??
                   GameLocale.select(
                     ko: '게임 목록을 불러오지 못했습니다.',
                     en: 'Could not load the game list.',
@@ -1108,7 +1108,7 @@ class _SelectedGameContent extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  provider.selectedGameError ??
+                  provider.selectedGameError?.localized ??
                       GameLocale.select(
                         ko: '게임 정보를 불러오지 못했습니다.',
                         en: 'Could not load game details.',

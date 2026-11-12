@@ -38,6 +38,9 @@ import {
   allocateRoomConnection, assertRoomTarget, parseSessionId,
   roomOperationResult, SessionRoom,
 } from "./session-contract.js";
+import {
+  assertPlatformMaintenanceInactive,
+} from "../operations/announcements.js";
 
 const REGION = "asia-northeast3";
 
@@ -155,6 +158,7 @@ export const validateRealtimeRoom = onCall<ValidateRealtimeRoomData>(
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     await assertOnboardingComplete(uid);
+    await assertPlatformMaintenanceInactive();
 
     const rawRoomCode = request.data?.roomCode;
     const roomCode = typeof rawRoomCode === "string" ?
@@ -227,6 +231,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
       );
     }
     await assertOnboardingComplete(uid);
+    await assertPlatformMaintenanceInactive();
 
     const rawRoomCode = request.data?.roomCode;
     const roomCode = typeof rawRoomCode === "string" ?

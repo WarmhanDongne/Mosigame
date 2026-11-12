@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Mosigame · 알림 운영</title>
+    <style>
+      :root { --ink:#142947; --paper:#fbf6e7; --line:#213754; --lime:#b9c49c; --gold:#e9b95d; --red:#b94b43; --muted:#66738a; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; color:var(--ink); background:linear-gradient(135deg,#142947,#243d65); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; }
+      main { width:min(1120px,calc(100% - 32px)); margin:32px auto 64px; }
+      header,.card { border:2px solid var(--line); box-shadow:7px 7px 0 #101f36; background:var(--paper); }
+      header { display:flex; gap:20px; align-items:center; justify-content:space-between; padding:24px 28px; }
+      .brand { font-weight:900; font-size:24px; letter-spacing:-.05em; }.brand small { display:block; color:var(--muted); font-size:12px; letter-spacing:.04em; margin-top:5px; }
+      .badge { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:999px; background:#f5e6bf; padding:7px 10px; font-size:12px; font-weight:800; }
+      .dot { width:8px; height:8px; border-radius:50%; background:var(--red); }.dot.ok { background:#4e925d; }
+      button { font:inherit; font-weight:800; cursor:pointer; border:2px solid var(--line); color:var(--ink); background:#fffdf6; box-shadow:3px 3px 0 var(--line); padding:11px 15px; }
+      button:hover { transform:translate(1px,1px); box-shadow:2px 2px 0 var(--line); } button:disabled { cursor:not-allowed; opacity:.55; transform:none; }
+      .primary { background:var(--lime); }.danger { background:#f5d0cd; }.hidden { display:none!important; }
+      .status { margin:24px 0; border:1px solid rgba(255,255,255,.45); color:white; padding:12px 14px; background:rgba(8,18,41,.32); font-size:14px; }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }.card { padding:24px; }.card h2 { margin:0; font-size:22px; }.eyebrow { margin:0 0 8px; color:#6d5524; font:800 11px/1.1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.11em; }.desc { margin:9px 0 20px; color:var(--muted); line-height:1.55; }
+      .switch-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px; background:#f1ead8; border:1px solid #c5b98e; }.switch-row strong { font-size:15px; }.switch { appearance:none; width:54px; height:30px; border:2px solid var(--line); border-radius:999px; background:#c9c9c9; position:relative; cursor:pointer; }.switch:before { content:""; position:absolute; width:20px; height:20px; top:3px; left:4px; border-radius:50%; background:white; transition:.18s; }.switch:checked { background:#88ad67; }.switch:checked:before { transform:translateX(21px); }
+      .languages { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 12px; }.language { border:1px solid var(--line); box-shadow:none; padding:7px 10px; background:transparent; }.language.active { background:var(--ink); color:white; }
+      label { display:block; margin:14px 0 6px; font-weight:800; font-size:13px; } input,textarea { width:100%; border:2px solid var(--line); padding:11px; color:var(--ink); background:#fffefa; font:inherit; } textarea { min-height:120px; resize:vertical; }.help { color:var(--muted); font-size:12px; line-height:1.5; }.actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }.notice-preview { margin-top:20px; border:2px solid var(--line); background:white; padding:18px; }.notice-preview .tag { display:inline-block; font:800 10px ui-monospace,monospace; letter-spacing:.1em; background:var(--gold); padding:4px 7px; }.notice-preview.maintenance .tag { background:#ec9187; }.period { margin:14px 0 0; padding:12px; color:white; background:var(--ink); font-weight:800; }
+      .access { margin-top:24px; padding:18px; border-left:5px solid var(--gold); color:#fff; background:rgba(7,16,36,.38); line-height:1.6; }.access code { font-family:ui-monospace,monospace; }.push-note { color:#fff; font-size:13px; opacity:.82; }
+      @media (max-width:720px) { main { width:min(100% - 24px,1120px); margin-top:12px; } header { align-items:flex-start; flex-direction:column; } .grid { grid-template-columns:1fr; } .card { padding:18px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">모시겜 <small>ALERT OPERATIONS · TEST ONLY</small></div>
+        <div>
+          <span class="badge"><i id="auth-dot" class="dot"></i><span id="auth-status">로그인 필요</span></span>
+          <button id="sign-in" class="primary" type="button">Google로 로그인</button>
+          <button id="sign-out" class="hidden" type="button">로그아웃</button>
+        </div>
+      </header>
+
+      <p id="status" class="status">테스트 Firebase에 연결할 준비가 되었습니다.</p>
+      <section id="console" class="grid hidden" aria-label="공지 운영 콘솔">
+        <article class="card">
+          <p class="eyebrow">A · LATEST NOTICE</p>
+          <h2>최근 공지</h2>
+          <p class="desc">앱 로비에 표시됩니다. “상점으로”를 누르면 태블릿 상점으로 이동합니다.</p>
+          <div class="switch-row"><div><strong>공지 표시</strong><div class="help">켜면 로그인한 앱에 실시간 반영됩니다.</div></div><input id="notice-active" class="switch" type="checkbox" aria-label="최근 공지 표시" /></div>
+          <div class="languages" data-kind="notice"></div>
+          <label for="notice-title">제목</label><input id="notice-title" maxlength="80" />
+          <label for="notice-body">본문</label><textarea id="notice-body" maxlength="500"></textarea>
+          <div id="notice-preview" class="notice-preview"><span class="tag">NOTICE</span><h3></h3><p></p></div>
+          <div class="actions"><button class="primary save" data-kind="notice" type="button">최근 공지 저장</button></div>
+        </article>
+        <article class="card">
+          <p class="eyebrow">B · MAINTENANCE ONLY</p>
+          <h2>서버 점검</h2>
+          <p class="desc">점검 모달을 보여 주고, 서버에서 새 방 생성과 방 참가를 차단합니다.</p>
+          <div class="switch-row"><div><strong>점검 모드</strong><div class="help">켜기 전에 점검 시간을 반드시 입력하세요.</div></div><input id="maintenance-active" class="switch" type="checkbox" aria-label="서버 점검 표시" /></div>
+          <label for="maintenance-period">점검 시간</label><input id="maintenance-period" maxlength="120" placeholder="예: 11월 12일 02:00–03:00 (KST)" />
+          <div class="languages" data-kind="maintenance"></div>
+          <label for="maintenance-title">제목</label><input id="maintenance-title" maxlength="80" />
+          <label for="maintenance-body">본문</label><textarea id="maintenance-body" maxlength="500"></textarea>
+          <div id="maintenance-preview" class="notice-preview maintenance"><span class="tag">MAINTENANCE</span><h3></h3><p></p><div class="period"></div></div>
+          <div class="actions"><button class="danger save" data-kind="maintenance" type="button">점검 설정 저장</button></div>
+        </article>
+      </section>
+      <p class="push-note">일반 푸시 알림(FCM)은 이 화면에 아직 연결하지 않았습니다. 이 콘솔은 앱 내 공지 A와 점검 B만 관리합니다.</p>
+      <p class="access">접근 권한은 Firebase Auth UID의 <code>operationsAdmin</code> custom claim으로 서버가 검증합니다. 이 페이지는 <strong>ban-pick-simulator 테스트 Firebase</strong> 전용입니다.</p>
+    </main>
+    <script type="module">
+      import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
+      import {GoogleAuthProvider, getAuth, getIdTokenResult, onAuthStateChanged, signInWithPopup, signOut} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
+      import {getFirestore, onSnapshot, doc} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
+      import {connectFunctionsEmulator, getFunctions, httpsCallable} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js';
+
+      const app = initializeApp({apiKey:'AIzaSyDDw0DN-3Hv5rpSccdjeygfh0XYLVD1txo',authDomain:'ban-pick-simulator.firebaseapp.com',projectId:'ban-pick-simulator',storageBucket:'ban-pick-simulator.firebasestorage.app',messagingSenderId:'127477049099',appId:'1:127477049099:web:c11a93f52655e4a0dd640e'});
+      const auth = getAuth(app); const db = getFirestore(app); const functions = getFunctions(app, 'asia-northeast3');
+      const callUpdate = httpsCallable(functions, 'updatePlatformAnnouncement');
+      const locales = [['ko','한국어'],['en','English'],['zh-Hans','简体中文'],['zh-Hant','繁體中文']];
+      const defaults = {
+        notice:{active:false, localized:{ko:{title:'',body:''},en:{title:'',body:''},'zh-Hans':{title:'',body:''},'zh-Hant':{title:'',body:''}}},
+        maintenance:{active:false,maintenancePeriod:'',localized:{ko:{title:'서버 점검 안내',body:'더 나은 서비스를 위해 잠시 점검 중입니다.'},en:{title:'Maintenance notice',body:'We are temporarily performing maintenance.'},'zh-Hans':{title:'服务器维护通知',body:'我们正在进行临时维护。'},'zh-Hant':{title:'伺服器維護通知',body:'我們正在進行暫時維護。'}}}
+      };
+      const state = structuredClone(defaults); const selectedLocale = {notice:'ko',maintenance:'ko'};
+      const $ = id => document.getElementById(id); const status = text => $('status').textContent = text;
+      const edit = kind => ({title:$(`${kind}-title`),body:$(`${kind}-body`),active:$(`${kind}-active`),period:$(`${kind}-period`)});
+      const copy = kind => state[kind].localized[selectedLocale[kind]];
+      const ensureCopy = (kind, locale) => state[kind].localized[locale] ??= {title:'',body:''};
+      function render(kind) {
+        const fields=edit(kind), current=copy(kind), preview=$(`${kind}-preview`);
+        fields.title.value=current.title; fields.body.value=current.body; fields.active.checked=state[kind].active;
+        if(fields.period) fields.period.value=state[kind].maintenancePeriod ?? '';
+        const languageBox=document.querySelector(`.languages[data-kind="${kind}"]`);
+        languageBox.replaceChildren(...locales.map(([locale,label])=>{const button=document.createElement('button');button.className=`language ${locale===selectedLocale[kind]?'active':''}`;button.type='button';button.textContent=label;button.onclick=()=>{selectedLocale[kind]=locale;ensureCopy(kind,locale);render(kind)};return button;}));
+        preview.querySelector('h3').textContent=current.title || '제목 미입력'; preview.querySelector('p').textContent=current.body || '본문 미입력';
+        if(kind==='maintenance') preview.querySelector('.period').textContent=state.maintenance.maintenancePeriod || '점검 시간 미입력';
+      }
+      function renderAll(){ render('notice');render('maintenance'); }
+      function syncFromInputs(kind){const fields=edit(kind), current=copy(kind);current.title=fields.title.value;current.body=fields.body.value;state[kind].active=fields.active.checked;if(fields.period)state[kind].maintenancePeriod=fields.period.value;render(kind);}
+      document.querySelectorAll('input,textarea').forEach(field=>field.addEventListener('input',()=>{const kind=field.id.startsWith('maintenance')?'maintenance':'notice';syncFromInputs(kind)}));
+      document.querySelectorAll('.save').forEach(button=>button.addEventListener('click',async()=>{const kind=button.dataset.kind;syncFromInputs(kind);const value=state[kind];for(const [locale] of locales){const c=value.localized[locale];if(!c?.title.trim()||!c?.body.trim()){status(`${locale} 제목과 본문을 모두 입력해 주세요.`);return;}}if(kind==='maintenance'&&value.active&&!value.maintenancePeriod.trim()){status('점검 모드를 켜려면 점검 시간을 입력해 주세요.');return;}button.disabled=true;try{await callUpdate({kind,active:value.active,localized:value.localized,maintenancePeriod:kind==='maintenance'?value.maintenancePeriod:null});status(`${kind==='notice'?'최근 공지':'서버 점검'} 설정을 저장했습니다. 앱에 실시간 반영됩니다.`);}catch(error){status(`저장하지 못했습니다: ${error.message ?? error}`);}finally{button.disabled=false;}}));
+      $('sign-in').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(error){status(`로그인하지 못했습니다: ${error.message ?? error}`);}};
+      $('sign-out').onclick=()=>signOut(auth);
+      let unsubs=[];function clearSubscriptions(){unsubs.forEach(unsub=>unsub());unsubs=[];}
+      onAuthStateChanged(auth,async user=>{clearSubscriptions();$('console').classList.add('hidden');$('sign-in').classList.toggle('hidden',!!user);$('sign-out').classList.toggle('hidden',!user);if(!user){$('auth-dot').classList.remove('ok');$('auth-status').textContent='로그인 필요';status('테스트 Firebase 운영자 계정으로 로그인해 주세요.');return;}const token=await getIdTokenResult(user,true);$('auth-dot').classList.add('ok');$('auth-status').textContent=`로그인됨 · ${user.uid}`;if(token.claims.operationsAdmin!==true){status('이 계정에는 운영자 권한이 없습니다. UID에 operationsAdmin 권한을 부여한 뒤 다시 로그인해 주세요.');return;}$('console').classList.remove('hidden');status('테스트 Firebase 공지를 불러오는 중입니다.');for(const kind of ['notice','maintenance'])unsubs.push(onSnapshot(doc(db,'platformAnnouncements',kind),snapshot=>{if(snapshot.exists())state[kind]={...defaults[kind],...snapshot.data(),localized:{...defaults[kind].localized,...snapshot.data().localized}};render(kind);status('테스트 Firebase와 동기화되었습니다.');},error=>status(`공지 데이터를 읽지 못했습니다: ${error.message ?? error}`)));});
+      renderAll();
+    </script>
+  </body>
+</html>

@@ -102,7 +102,7 @@ class _TabletGameShelfState extends State<TabletGameShelf> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  errorMessage,
+                  errorMessage.localized,
                   style: MosiFonts.sans(
                     locale: Localizations.maybeLocaleOf(context),
                     size: 15,
