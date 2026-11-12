@@ -530,7 +530,7 @@ class _EmptyRoom extends StatelessWidget {
         const Spacer(),
         if (provider.errorMessage != null) ...[
           Text(
-            provider.errorMessage!,
+            provider.errorMessage!.localized,
             key: const Key('room-create-error'),
             textAlign: TextAlign.center,
             style: MosiFonts.sans(
@@ -770,7 +770,7 @@ class _RoomBody extends StatelessWidget {
         if (provider.errorMessage != null && players.isEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            provider.errorMessage!,
+            provider.errorMessage!.localized,
             style: MosiFonts.sans(
               locale: Localizations.maybeLocaleOf(context),
               size: 13,

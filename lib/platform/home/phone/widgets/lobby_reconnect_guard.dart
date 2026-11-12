@@ -112,7 +112,7 @@ class _LobbyReconnectGuardState extends State<LobbyReconnectGuard> {
                       : Semantics(
                           liveRegion: true,
                           child: Text(
-                            _error!,
+                            _error!.localized,
                             style: MosiFonts.sans(
                               size: 14,
                               weight: FontWeight.w700,

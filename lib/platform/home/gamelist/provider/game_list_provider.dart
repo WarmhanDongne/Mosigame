@@ -62,8 +62,10 @@ class GameProvider extends ChangeNotifier {
         GameListScope.store => await _service.fetchStoreGames(),
       };
       if (!_isDisposed) games = result;
-    } catch (e) {
-      errorMessage = e.toString();
+    } catch (_) {
+      // Keep a stable source message here. The UI localizes it at render time,
+      // so an open lobby also updates when the display language changes.
+      errorMessage = '게임 목록을 불러오지 못했습니다.';
     } finally {
       isLoading = false;
       notifyListeners();
@@ -77,8 +79,8 @@ class GameProvider extends ChangeNotifier {
           try {
             bundleErrorMessage = null;
             bundles = await _bundleService.fetchStoreBundles();
-          } catch (error) {
-            bundleErrorMessage = error.toString();
+          } catch (_) {
+            bundleErrorMessage = '게임 목록을 불러오지 못했습니다.';
           } finally {
             notifyListeners();
           }

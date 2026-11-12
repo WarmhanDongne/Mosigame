@@ -170,6 +170,146 @@ const _commonUiCopy = <String, (String, String, String)>{
     '无法下载游戏文件。',
     '無法下載遊戲檔案。',
   ),
+  '기존 방을 종료하지 못했어요. 다시 시도해 주세요.': (
+    'Could not close the previous room. Try again.',
+    '无法关闭之前的房间，请重试。',
+    '無法關閉先前的房間，請重試。',
+  ),
+  '이전 게임을 확인하지 못했어요.': (
+    'Could not check the previous game.',
+    '无法确认之前的游戏。',
+    '無法確認先前的遊戲。',
+  ),
+  '게임 목록을 불러오지 못했습니다.': (
+    'Could not load the game list.',
+    '无法加载游戏列表。',
+    '無法載入遊戲列表。',
+  ),
+  '선택한 게임 정보를 찾을 수 없습니다.': (
+    'Could not find the selected game.',
+    '找不到所选游戏。',
+    '找不到所選遊戲。',
+  ),
+  '선택한 게임 정보를 불러오지 못했습니다.': (
+    'Could not load the selected game details.',
+    '无法加载所选游戏信息。',
+    '無法載入所選遊戲資訊。',
+  ),
+  '게임 정보를 확인할 수 없습니다.': (
+    'Could not verify the game information.',
+    '无法确认游戏信息。',
+    '無法確認遊戲資訊。',
+  ),
+  '방 정보를 확인할 수 없습니다.': (
+    'Could not verify the room information.',
+    '无法确认房间信息。',
+    '無法確認房間資訊。',
+  ),
+  '방 연결을 확인하지 못했습니다. 다시 시도해주세요.': (
+    'Could not verify the room connection. Try again.',
+    '无法确认房间连接，请重试。',
+    '無法確認房間連線，請重試。',
+  ),
+  '방 연결을 확인하지 못했어요. 다시 연결해주세요.': (
+    'Could not verify the room connection. Reconnect and try again.',
+    '无法确认房间连接，请重新连接后重试。',
+    '無法確認房間連線，請重新連線後重試。',
+  ),
+  '기존 방 연결을 확인하지 못했습니다. 다시 시도하거나 기존 방을 종료해주세요.': (
+    'Could not verify the previous room connection. Try again or close the previous room.',
+    '无法确认之前房间的连接。请重试或关闭之前的房间。',
+    '無法確認先前房間的連線。請重試或關閉先前的房間。',
+  ),
+  '연결 복구 결과를 확인하지 못했습니다. 다시 시도해주세요.': (
+    'Could not confirm the reconnection result. Try again.',
+    '无法确认重新连接结果，请重试。',
+    '無法確認重新連線結果，請重試。',
+  ),
+  '플레이어를 내보내지 못했습니다.': ('Could not remove the player.', '无法移除该玩家。', '無法移除該玩家。'),
+  '계정이 변경되었습니다. 다시 조회해주세요.': (
+    'Your account changed. Please refresh and try again.',
+    '账号已更改，请刷新后重试。',
+    '帳號已變更，請重新整理後重試。',
+  ),
+  '그룹 구성이 변경되었습니다.': (
+    'The room members changed. Please refresh and try again.',
+    '房间成员已更改，请刷新后重试。',
+    '房間成員已變更，請重新整理後重試。',
+  ),
+  '인증 정보가 없습니다.': ('Could not verify your sign-in.', '无法验证登录信息。', '無法驗證登入資訊。'),
+  '로그인 상태가 변경되었습니다.': (
+    'Your sign-in changed. Please try again.',
+    '登录状态已更改，请重试。',
+    '登入狀態已變更，請重試。',
+  ),
+  '사용자 인증에 실패했습니다.': ('Could not sign you in.', '无法完成登录验证。', '無法完成登入驗證。'),
+  '서버 요청을 처리하지 못했습니다.': (
+    'Could not complete the server request.',
+    '无法完成服务器请求。',
+    '無法完成伺服器請求。',
+  ),
+  '방을 만들려면 로그인이 필요합니다.': (
+    'Sign in to create a room.',
+    '请先登录以创建房间。',
+    '請先登入以建立房間。',
+  ),
+  '생성된 방 코드를 확인할 수 없습니다.': (
+    'Could not verify the room code that was created.',
+    '无法确认创建的房间码。',
+    '無法確認建立的房間碼。',
+  ),
+  '방을 생성하지 못했습니다.': ('Could not create the room.', '无法创建房间。', '無法建立房間。'),
+  '이전 방은 종료되었습니다. 새 방을 만들어주세요.': (
+    'The previous room has closed. Please create a new room.',
+    '之前的房间已关闭，请创建新房间。',
+    '先前的房間已關閉，請建立新房間。',
+  ),
+  '이 방에는 다시 참가할 수 없습니다.': (
+    'You cannot rejoin this room.',
+    '无法重新加入此房间。',
+    '無法重新加入此房間。',
+  ),
+  '복구할 방 정보가 없습니다.': (
+    'There is no room information to restore.',
+    '没有可恢复的房间信息。',
+    '沒有可復原的房間資訊。',
+  ),
+  '복구할 플레이어 정보가 없습니다.': (
+    'There is no player information to restore.',
+    '没有可恢复的玩家信息。',
+    '沒有可復原的玩家資訊。',
+  ),
+  '이전 방 복구 요청입니다.': (
+    'This is a previous room recovery request.',
+    '这是之前房间的恢复请求。',
+    '這是先前房間的復原請求。',
+  ),
+  '현재 방 접속을 확인하지 못했습니다.': (
+    'Could not verify the current room connection.',
+    '无法确认当前房间连接。',
+    '無法確認目前房間連線。',
+  ),
+  '이미 종료된 방입니다.': ('This room has already closed.', '该房间已结束。', '該房間已結束。'),
+  '퇴장 결과를 먼저 확인해주세요.': (
+    'Please confirm the leave result first.',
+    '请先确认退出结果。',
+    '請先確認離開結果。',
+  ),
+  '퇴장 결과를 확인하고 있습니다. 다시 확인해주세요.': (
+    'Your leave result is still being checked. Please try again.',
+    '正在确认退出结果，请稍后重试。',
+    '正在確認離開結果，請稍後重試。',
+  ),
+  '로컬 환경에서는 테스트 이메일 계정 또는 게스트 로그인을 사용해주세요.': (
+    'Use a test email account or guest sign-in in the local environment.',
+    '本地环境请使用测试邮箱账号或游客登录。',
+    '本機環境請使用測試電子郵件帳號或訪客登入。',
+  ),
+  'Apple 인증 토큰을 가져오지 못했습니다.': (
+    'Could not retrieve the Apple sign-in token.',
+    '无法获取 Apple 登录令牌。',
+    '無法取得 Apple 登入權杖。',
+  ),
   '진행 중인 게임을 열려면 앱을 업데이트해 주세요.': (
     'Update the app to open the active game.',
     '请更新应用以打开进行中的游戏。',

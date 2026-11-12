@@ -18,6 +18,7 @@ import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
+import 'package:project00/platform/announcements/widgets/platform_announcement_host.dart';
 
 class PhoneHome extends StatefulWidget {
   const PhoneHome({
@@ -244,25 +245,27 @@ class _PhoneHomeState extends State<PhoneHome> {
         onDecline: () => unawaited(_declineReturn()),
       );
     }
-    return ListenableBuilder(
-      listenable: _restoredRoomProvider,
-      builder: (context, child) => LobbyConnectionBand(
-        connectionChanges: _restoredRoomProvider.isInRoom
-            ? _serverConnection
-            : null,
-        child: child!,
-      ),
-      child: Scaffold(
-        backgroundColor: MosiColors.violet,
-        body: SafeArea(
-          top: false,
-          bottom: false,
-          child: Column(
-            children: [
-              const PhoneHeader(),
-              PhoneOwnGameList(games: _games),
-              _buildJoinBar(),
-            ],
+    return PlatformAnnouncementHost(
+      child: ListenableBuilder(
+        listenable: _restoredRoomProvider,
+        builder: (context, child) => LobbyConnectionBand(
+          connectionChanges: _restoredRoomProvider.isInRoom
+              ? _serverConnection
+              : null,
+          child: child!,
+        ),
+        child: Scaffold(
+          backgroundColor: MosiColors.violet,
+          body: SafeArea(
+            top: false,
+            bottom: false,
+            child: Column(
+              children: [
+                const PhoneHeader(),
+                PhoneOwnGameList(games: _games),
+                _buildJoinBar(),
+              ],
+            ),
           ),
         ),
       ),

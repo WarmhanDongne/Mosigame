@@ -28,6 +28,11 @@ void main() {
     expect(HoldemCopy.myTurn, 'Your turn');
     expect(MafiaCopy.morningNotice, 'Morning has come');
     expect(termsOfService.title, 'Mosigame Terms of Service');
+    expect('게임 목록을 불러오지 못했습니다.'.localized, 'Could not load the game list.');
+    expect(
+      '기존 방을 종료하지 못했어요. 다시 시도해 주세요.'.localized,
+      'Could not close the previous room. Try again.',
+    );
 
     GameLocale.current = const Locale.fromSubtags(
       languageCode: 'zh',
@@ -38,6 +43,7 @@ void main() {
     expect(const MafiaGame().title, '黑手黨');
     expect(MafiaCopy.morningNotice, '天亮了');
     expect(termsOfService.title, 'Mosigame 使用條款');
+    expect('게임 목록을 불러오지 못했습니다.'.localized, '無法載入遊戲列表。');
   });
 
   test('앱 시작 전 locale 선택도 간체와 번체를 구분한다', () {

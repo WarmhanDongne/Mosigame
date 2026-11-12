@@ -205,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       // 사용자가 창을 닫은 경우에는 errorMessage가 비어 있어 문구를 띄우지 않습니다.
       if (credential == null && _authProvider.errorMessage != null) {
-        _errorMessage = _authProvider.errorMessage;
+        _errorMessage = _authProvider.errorMessage!.localized;
       }
       _action = null;
     });
