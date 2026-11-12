@@ -157,6 +157,13 @@ export function selectBestFinalCallCombination(
   return candidates[0];
 }
 
+/** 손패 전체에서 최종 제출·공개에 쓸 최고 점수 조합을 고릅니다. */
+export function selectBestFinalCallHand(
+  hand: Record<string, FinalCallCard> | undefined,
+): FinalCallCard[] {
+  return selectBestFinalCallCombination(Object.values(hand ?? {}));
+}
+
 /** 라운드를 판정하고 생명, 탈락, 승리 상태를 갱신합니다. */
 export function resolveFinalCallRound(
   game: FinalCallGameState,
@@ -166,9 +173,9 @@ export function resolveFinalCallRound(
   const revealedHands: Record<string, FinalCallCard[]> = {};
   const scores: Record<string, number> = {};
   for (const player of orderedAlivePlayers(game.public.players)) {
-    const fullHand = Object.values(game.private[player.uid]?.hand ?? {});
+    const fullHand = game.private[player.uid]?.hand;
     const submitted = automaticCall ?
-      selectBestFinalCallCombination(fullHand) :
+      selectBestFinalCallHand(fullHand) :
       game.server.finalSubmissions?.[player.uid];
     if (!submitted || submitted.length === 0) {
       throw new Error(`${player.uid}의 최종 제출 카드를 찾을 수 없습니다.`);
@@ -456,8 +463,8 @@ export function autoSubmitFinalCallHand(
   now: number,
 ): void {
   game.server.finalSubmissions ??= {};
-  game.server.finalSubmissions[uid] = selectBestFinalCallCombination(
-    Object.values(game.private[uid]?.hand ?? {}),
+  game.server.finalSubmissions[uid] = selectBestFinalCallHand(
+    game.private[uid]?.hand,
   );
   game.public.finalTurnPendingUids =
     removeFinalTurnPendingPlayer(game.public.finalTurnPendingUids, uid);

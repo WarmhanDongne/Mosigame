@@ -14,6 +14,7 @@ import {
   prepareFinalCallRound,
   removeFinalTurnPendingPlayer,
   resolveFinalCallRound,
+  selectBestFinalCallHand,
   selectBestFinalCallCombination,
 } from "../lib/final-call/game.js";
 
@@ -145,6 +146,20 @@ test("혼합 제출도 서버는 같은 색 또는 같은 숫자 조합만 남�
   assert.equal(
     calculateFinalCallScore(selectBestFinalCallCombination(colorCards)),
     calculateFinalCallScore(colorCards),
+  );
+});
+
+test("최종 제출은 사용자가 고른 일부 카드가 아닌 손패 전체의 최고 조합을 쓴다", () => {
+  const hand = {
+    red7: card("red7", "red", 7),
+    red3: card("red3", "red", 3),
+    blue7: card("blue7", "blue", 7),
+    yellow2: card("yellow2", "yellow", 2),
+  };
+
+  assert.deepEqual(
+    selectBestFinalCallHand(hand).map((value) => value.id),
+    ["red7", "blue7"],
   );
 });
 

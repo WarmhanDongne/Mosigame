@@ -30,6 +30,11 @@ import {decideSeatSave} from "./room-seating-policy.js";
 import {currentPresence} from "./current-presence.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {
+  buildRoomJoinPreview,
+  isRoomProfileReserved,
+  RoomProfilePreviewSource,
+} from "./room-join-preview.js";
+import {
   allocateRoomConnection, assertRoomTarget, parseSessionId,
   roomOperationResult, SessionRoom,
 } from "./session-contract.js";
@@ -50,7 +55,7 @@ export function isValidRoomNickname(nickname: string): boolean {
   return nickname.length >= 1 && nickname.length <= 12 && nickname !== "나";
 }
 
-type RoomProfilePlayer = {nickname?: unknown; characterId?: unknown};
+type RoomProfilePlayer = RoomProfilePreviewSource;
 export type RoomProfileConflict = "character" | "nickname" | null;
 
 /**
@@ -68,9 +73,11 @@ export function roomProfileConflict(
   uid: string,
   nickname: string,
   characterId: string,
+  now = Date.now(),
 ): RoomProfileConflict {
   const peers = Object.entries(players).filter(
-    ([playerUid]) => playerUid !== uid,
+    ([playerUid, player]) =>
+      playerUid !== uid && isRoomProfileReserved(player, now),
   );
   if (peers.some(([, player]) => player?.characterId === characterId)) {
     return "character";
@@ -179,9 +186,28 @@ export const validateRealtimeRoom = onCall<ValidateRealtimeRoomData>(
     if (decisionError) throw decisionError;
     const maxPlayers = typeof room.maxPlayers === "number" ?
       room.maxPlayers : DEFAULT_MAX_PLAYERS;
-    if (!(uid in players) && Object.keys(players).length >= maxPlayers) {
+    if (!(uid in players) && Object.values(players).filter(
+      (player) => isRoomProfileReserved(player, Date.now()),
+    ).length >= maxPlayers) {
       throw new HttpsError("resource-exhausted", "방 인원이 초과되었습니다.");
     }
+    // A room created before the preview feature has no projection until its
+    // first membership event. Seed it during the already-required validation.
+    await runPrimedTransaction(
+      getDatabase().ref(`rooms/${roomCode}`),
+      (raw) => {
+        if (!raw || typeof raw !== "object") return;
+        const current = raw as Record<string, unknown>;
+        if (current.roomInstanceId !== room.roomInstanceId ||
+            current.status !== "waiting") return;
+        current.joinPreview = buildRoomJoinPreview(
+          current.players as
+            Record<string, RoomProfilePreviewSource> | undefined,
+          Date.now(),
+        );
+        return current;
+      },
+    );
     return {success: true, roomCode, roomInstanceId: room.roomInstanceId};
   },
 );
@@ -317,7 +343,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           ROOM_CHARACTER_IDS.has(existingPlayer.characterId) ?
           existingPlayer.characterId : characterId;
         const profileConflict = roomProfileConflict(
-          players, uid, effectiveNickname, effectiveCharacterId,
+          players, uid, effectiveNickname, effectiveCharacterId, now,
         );
         if (profileConflict === "character") {
           rejection = new HttpsError(
@@ -346,6 +372,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           delete updatedPlayer.accentColor;
           players[uid] = updatedPlayer;
           currentRoom.players = players;
+          currentRoom.joinPreview = buildRoomJoinPreview(players, now);
           connectionResult = allocateRoomConnection(sessionRoom, {
             uid, role: "player", operationId, roomInstanceId: expectedRoomId,
             membershipId: parseSessionId(
@@ -369,7 +396,9 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
 
         const maxPlayers = typeof currentRoom.maxPlayers === "number" ?
           currentRoom.maxPlayers : DEFAULT_MAX_PLAYERS;
-        if (Object.keys(players).length >= maxPlayers) {
+        if (Object.values(players).filter(
+          (player) => isRoomProfileReserved(player, now),
+        ).length >= maxPlayers) {
           rejection = new HttpsError(
             "resource-exhausted",
             "방 인원이 초과되었습니다.",
@@ -390,6 +419,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           penaltyAttemptCount: 0,
           joinedAt: now,
         };
+        currentRoom.joinPreview = buildRoomJoinPreview(players, now);
         currentRoom.players = players;
         sessionRoom.membershipRevision =
           (sessionRoom.membershipRevision ?? 0) + 1;

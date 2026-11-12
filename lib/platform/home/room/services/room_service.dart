@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:game_kit/core/constants/room_character.dart';
 import 'package:game_kit/core/error/user_error_message.dart';
 import 'package:game_kit/firebase/services/realtime_database_service.dart';
 import 'package:game_kit/core/network/realtime_connection_monitor.dart';
@@ -783,6 +784,44 @@ class RoomService {
       },
     );
     return output.stream;
+  }
+
+  /// 입장 전에는 내부 참가자 노드 대신 공개용 프로필 미리보기만 읽습니다.
+  Stream<List<RoomPlayer>> watchRoomJoinPreview(String roomCode) => realtime
+      .ref('rooms/$roomCode/joinPreview/participants')
+      .onValue
+      .map((event) => _joinPreviewPlayersFromSnapshot(event.snapshot));
+
+  List<RoomPlayer> _joinPreviewPlayersFromSnapshot(DataSnapshot snapshot) {
+    final value = snapshot.value;
+    final entries = switch (value) {
+      List<dynamic> list => list,
+      Map<dynamic, dynamic> map => map.values,
+      _ => const <dynamic>[],
+    };
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return entries.indexed
+        .where((entry) => entry.$2 is Map)
+        .map((entry) {
+          final json = Map<String, dynamic>.from(entry.$2 as Map);
+          final expiresAt = (json['reservationExpiresAt'] as num?)?.toInt();
+          if (expiresAt != null && expiresAt <= now) return null;
+          return RoomPlayer(
+            // This synthetic key prevents a pre-join read from exposing UID.
+            uid: 'join_preview_${entry.$1}',
+            nickname: json['nickname'] as String? ?? 'Player',
+            characterId:
+                json['characterId'] as String? ?? defaultRoomCharacterId,
+            isConnected: expiresAt == null,
+            seatIndex: -1,
+            role: 'player',
+            status: 'active',
+            lastSeen: expiresAt,
+            penaltyAttemptCount: 0,
+          );
+        })
+        .whereType<RoomPlayer>()
+        .toList(growable: false);
   }
 
   // Only the two scalar leaves are readable by peers; never subscribe to C or R.

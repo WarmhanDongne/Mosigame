@@ -45,7 +45,7 @@ void main() {
     expect(selected, {'red-7'});
   });
 
-  test('최종 제출이 열리면 가장 높은 조합을 한 번만 미리 고른다', () {
+  test('최종 제출 중에는 항상 가장 높은 조합을 체크한다', () {
     final hand = [
       _card('red', 7),
       _card('red', 3),
@@ -63,7 +63,7 @@ void main() {
     expect(selected, {'red-7', 'blue-7'});
     expect(preset, 2);
 
-    // 사용자가 모두 해제하면 같은 라운드에서는 다시 채우지 않습니다.
+    // 체크를 모두 지워도 다음 상태 동기화에서 최고 조합으로 복원합니다.
     selected.clear();
     preset = syncFinalCallSelection(
       selected: selected,
@@ -72,7 +72,7 @@ void main() {
       round: 2,
       presetRound: preset,
     );
-    expect(selected, isEmpty);
+    expect(selected, {'red-7', 'blue-7'});
   });
 
   test('제출 단계가 바뀐 손패보다 먼저 와도 버린 카드를 제출하지 않는다', () {

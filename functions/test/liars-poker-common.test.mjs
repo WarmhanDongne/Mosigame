@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {createDeck} from "../lib/liars-poker/common/deck.js";
+import {
+  createDeck,
+  truthCardCountForPlayerCount,
+} from "../lib/liars-poker/common/deck.js";
 import {dealCards} from "../lib/liars-poker/common/deal-card.js";
 import {recordCommand} from "../lib/liars-poker/common/commands.js";
 import {
@@ -56,16 +59,26 @@ function gameState(count = 3) {
   };
 }
 
-test("2~6인 덱은 진실 3N장과 거짓 2N+3장으로 구성된다", () => {
+test("2~6인 덱은 라운드마다 1.6~1.9배 범위의 진실 카드와 나머지 거짓으로 5N+3장이다", () => {
+  const expectedRange = {2: [3, 4], 3: [5, 6], 4: [6, 8], 5: [8, 10], 6: [10, 11]};
   for (let count = 2; count <= 6; count += 1) {
     const deck = createDeck(count);
     assert.equal(deck.length, count * 5 + 3);
     const truthCount = deck.filter((card) => card.rank === "TRUTH").length;
     const lieCount = deck.filter((card) => card.rank === "LIE").length;
-    assert.equal(truthCount, count * 3);
-    assert.equal(lieCount, count * 2 + 3);
+    assert.ok(truthCount >= expectedRange[count][0]);
+    assert.ok(truthCount <= expectedRange[count][1]);
+    assert.equal(lieCount, count * 5 + 3 - truthCount);
     assert.equal(new Set(deck.map((card) => card.id)).size, deck.length);
   }
+});
+
+test("진실 카드 수는 비율 범위의 모든 정수 후보에서 고르게 뽑는다", () => {
+  assert.equal(truthCardCountForPlayerCount(4, () => 0), 6);
+  assert.equal(truthCardCountForPlayerCount(4, () => 1), 7);
+  assert.equal(truthCardCountForPlayerCount(4, () => 2), 8);
+  assert.equal(truthCardCountForPlayerCount(6, () => 0), 10);
+  assert.equal(truthCardCountForPlayerCount(6, () => 1), 11);
 });
 
 test("카드는 5장씩 분배되고 정확히 3장이 중앙 덱에 남는다", () => {

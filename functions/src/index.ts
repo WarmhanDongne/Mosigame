@@ -38,6 +38,7 @@ export {
   fetchRealtimeRoomSession,
   game_common_operation_status,
   syncRealtimeRoomConnection,
+  syncRealtimeRoomJoinPreview,
 } from "./room/session-functions.js";
 
 // ---------------------------------------------- 인증

@@ -7,6 +7,7 @@ import {applyRoomPresence, parseSessionId, roomOperationResult, SessionRoom} fro
 import {assertControllerSession, parseControllerSessionId} from "./controller-session.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {RecoveryRoom, registerRecoveryFailure} from "../game-interruption/recovery-state.js";
+import {buildRoomJoinPreview, RoomProfilePreviewSource} from "./room-join-preview.js";
 
 function requestTarget(uid: string | undefined, data: Record<string, unknown>): {uid: string; roomCode: string} {
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -89,6 +90,27 @@ export const syncRealtimeRoomConnection = onValueWritten({
         observedAt,
       );
     })) return;
+    room.joinPreview = buildRoomJoinPreview(
+      room.players as Record<string, RoomProfilePreviewSource> | undefined,
+      now,
+    );
+    return room;
+  });
+});
+
+/** Keeps the public pre-join projection synchronized after leave, kick, and cleanup. */
+export const syncRealtimeRoomJoinPreview = onValueWritten({
+  ref: "/rooms/{roomCode}/players", region: "asia-southeast1", retry: true,
+}, async (event) => {
+  const now = Date.now();
+  await runPrimedTransaction(getDatabase().ref(`rooms/${event.params.roomCode}`), (raw) => {
+    if (!raw || typeof raw !== "object") return;
+    const room = raw as SessionRoom & {joinPreview?: unknown};
+    if (room.status === "closed" || room.status === "terminal") return;
+    room.joinPreview = buildRoomJoinPreview(
+      room.players as Record<string, RoomProfilePreviewSource> | undefined,
+      now,
+    );
     return room;
   });
 });

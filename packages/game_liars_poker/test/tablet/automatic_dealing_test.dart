@@ -7,7 +7,7 @@ import 'package:game_liars_poker/tablet/providers/game_stage.dart';
 import 'package:game_liars_poker/tablet/tablet_board.dart';
 
 void main() {
-  testWidgets('분배 전에는 진실·거짓 카드를 실제 장수만큼 깔고 장수 문구는 쓰지 않는다', (tester) async {
+  testWidgets('분배 전에는 진실 카드만 실제 장수만큼 앞면으로 깔고 장수 문구는 쓰지 않는다', (tester) async {
     tester.view.physicalSize = const Size(1180, 820);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -41,12 +41,28 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('이번 판 카드 구성'), findsOneWidget);
+    expect(find.text('이번 판 진실 카드'), findsOneWidget);
+    // 거짓 카드도 덱에 뒷면으로 남아 함께 섞이므로 전체 장수만큼 그립니다.
     expect(find.byType(LiarsPokerCardView), findsNWidgets(23));
     expect(find.textContaining('×'), findsNothing);
+
+    // 진실 카드를 다 뒤집은 뒤(덱 등장 + 전시)에는 진실 앞면만 보이고 거짓
+    // 앞면은 한 장도 없습니다.
+    await tester.pump(const Duration(milliseconds: 630));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1400));
+    List<LiarsCardFace> faces() => [
+      for (final view in tester.widgetList<LiarsPokerCardView>(
+        find.byType(LiarsPokerCardView),
+      ))
+        view.face,
+    ];
+    expect(faces().where((face) => face == LiarsCardFace.truth), hasLength(12));
+    expect(faces().where((face) => face == LiarsCardFace.lie), isEmpty);
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
 
-  testWidgets('서버가 장수를 보내지 않아도 인원으로 진실·거짓 장수를 채운다', (tester) async {
+  testWidgets('서버가 장수를 보내지 않아도 덱 규칙으로 진실·거짓 장수를 채운다', (tester) async {
     tester.view.physicalSize = const Size(1180, 820);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -59,8 +75,8 @@ void main() {
     final shuffle = tester.widget<TruthLieShuffleAnimation>(
       find.byType(TruthLieShuffleAnimation),
     );
-    expect(shuffle.truthCardCount, 12);
-    expect(shuffle.lieCardCount, 11);
+    expect(shuffle.truthCardCount, 7);
+    expect(shuffle.lieCardCount, 16);
     expect(find.byType(LiarsPokerCardView), findsNWidgets(23));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
@@ -114,10 +130,13 @@ void main() {
 
     await tester.pumpWidget(_dealingLayer(roundNumber: 1));
     await tester.pump();
-    // 덱 등장 620ms + 섞기 4600ms 직전까지는 분배가 시작되지 않습니다.
+    // 덱 등장 620ms + 전시·섞기가 끝나기 직전까지는 분배가 시작되지 않습니다.
     await tester.pump(const Duration(milliseconds: 630));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 4500));
+    await tester.pump(
+      TruthLieShuffleAnimation.shuffleDuration -
+          const Duration(milliseconds: 100),
+    );
     expect(find.byType(TruthLieShuffleAnimation), findsOneWidget);
     expect(find.byType(CardDealAnimation), findsNothing);
 

@@ -1,10 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
 import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_final_call/tablet/providers/game_stage.dart';
+import 'package:game_final_call/tablet/screens/seat_geometry.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
 import 'package:game_final_call/tablet/widgets/result_overlay.dart';
+import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 
 class _BoardGame extends Fake implements FinalCallController {
   String currentPhase = 'playing';
@@ -50,6 +54,43 @@ class _BoardGame extends Fake implements FinalCallController {
 }
 
 void main() {
+  test('좌석 프로필은 가운데 테이블을 바라보도록 돌아간다', () {
+    const boardSize = Size(1200, 800);
+    double rotation(Offset center) =>
+        finalCallSeatRotationForCenter(center: center, boardSize: boardSize);
+    // 위·아래·좌·우 자리는 그 변의 사람이 똑바로 읽는 각도입니다.
+    expect(rotation(const Offset(600, 80)), closeTo(math.pi, 1e-9));
+    expect(rotation(const Offset(600, 720)), closeTo(0, 1e-9));
+    expect(rotation(const Offset(1120, 400)), closeTo(-math.pi / 2, 1e-9));
+    expect(rotation(const Offset(80, 400)), closeTo(math.pi / 2, 1e-9));
+    // 모서리 자리는 테이블 중심을 향하는 대각선 각도입니다.
+    const corner = Offset(1000, 100);
+    final angle = rotation(corner);
+    // 프로필의 위(0, -1)를 돌린 방향이 테이블 중심을 가리키고, 아래는 그
+    // 자리에 앉은 사람 쪽입니다.
+    final up = Offset(math.sin(angle), -math.cos(angle));
+    final toCenter = boardSize.center(Offset.zero) - corner;
+    final cosine =
+        (up.dx * toCenter.dx + up.dy * toCenter.dy) / toCenter.distance;
+    expect(cosine, closeTo(1, 1e-9));
+  });
+
+  test('게임 프로필은 공용 자리배치에서 확정한 좌석 중심을 그대로 쓴다', () {
+    const boardSize = Size(1280, 800);
+    final expected = normalizedPlayerCenters(4)
+        .map(
+          (center) => playerCenterFromNormalized(
+            normalizedCenter: center,
+            boardSize: boardSize,
+          ),
+        )
+        .toList(growable: false);
+    expect(
+      finalCallSeatCenters(playerCount: 4, boardSize: boardSize),
+      expected,
+    );
+  });
+
   testWidgets('팀 동반 탈락 문구는 카드 공개와 하트 연출이 끝난 뒤 표시한다', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;

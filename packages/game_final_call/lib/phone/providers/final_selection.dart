@@ -42,11 +42,11 @@ void toggleFinalCallSelection({
 ///
 /// 공개 진행(phase)과 내 손패는 서로 다른 경로로 도착합니다. 마지막 교체
 /// 직후에는 제출 단계가 먼저 오고 바뀐 손패가 뒤에 올 수 있어, 이미 버린
-/// 카드가 선택에 남으면 서버가 제출을 거절합니다. 손패에 없는 카드가 섞였으면
-/// 선택을 비우고 지금 손패의 가장 높은 조합으로 다시 골라 둡니다.
+/// 카드가 선택에 남으면 서버가 제출을 거절합니다. 최종 제출은 항상 손패 전체의
+/// 최고 조합을 내는 규칙이므로, 손패가 갱신될 때마다 그 조합으로 체크를 맞춥니다.
 ///
-/// [presetRound]는 이미 미리 골라 둔 라운드입니다. 사용자가 모두 해제해도 같은
-/// 라운드에서는 다시 채우지 않습니다. 새 값을 돌려줍니다.
+/// [presetRound]는 이전 클라이언트 상태와의 호출 호환을 위해 받지만, 제출 단계의
+/// 체크 상태는 라운드 안에서도 다시 고정합니다. 새 값을 돌려줍니다.
 int? syncFinalCallSelection({
   required Set<String> selected,
   required List<FinalCallCard> hand,
@@ -56,18 +56,14 @@ int? syncFinalCallSelection({
 }) {
   if (!submitPhase) {
     selected.clear();
-    return presetRound;
+    return null;
   }
-  final handIds = {for (final card in hand) card.id};
-  if (selected.any((cardId) => !handIds.contains(cardId))) {
+  if (hand.isEmpty) {
     selected.clear();
-    presetRound = null;
+    return null;
   }
-  if (presetRound != round && hand.isNotEmpty) {
-    presetRound = round;
-    if (selected.isEmpty) {
-      selected.addAll(finalCallBestCombination(hand).cardIds);
-    }
-  }
-  return presetRound;
+  selected
+    ..clear()
+    ..addAll(finalCallBestCombination(hand).cardIds);
+  return round;
 }

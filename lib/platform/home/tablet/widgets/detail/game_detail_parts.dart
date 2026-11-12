@@ -376,8 +376,10 @@ class _LiarParts extends StatelessWidget {
         .where((deck) => deck.$1 == playerCount)
         .firstOrNull;
     final (displayPlayers, displayTotal) = current ?? _liarDecks[2];
-    final truthCount = displayPlayers * 3;
-    final lieCount = displayTotal - truthCount;
+    final (:truth, :lie) = liarsPokerDeckCounts(displayPlayers);
+    assert(truth + lie == displayTotal);
+    final truthCount = truth;
+    final lieCount = lie;
 
     return LiarsPokerWoodTableBackground(
       child: _PartsLayout(

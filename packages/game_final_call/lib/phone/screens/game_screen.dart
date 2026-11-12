@@ -314,7 +314,9 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
       combinationLabel: combination == null
           ? null
           : FinalCallCopy.combinationEquation(combination),
-      selectionEnabled: controller.canCompleteTurn || submitMode,
+      // 최종 제출은 규칙상 손패 전체의 최고 조합으로 자동 제출합니다. 체크된
+      // 카드를 다시 눌러 해제할 수 없게 해 화면의 체크와 실제 제출을 일치시킵니다.
+      selectionEnabled: controller.canCompleteTurn,
       onRevealStarted: onRevealStarted,
       onRevealCompleted: _handleRevealCompleted,
       onCardSelected: submitMode
@@ -450,11 +452,11 @@ class _FinalSubmitActionState extends State<_FinalSubmitAction> {
     if (_submittedRevision != null || !widget.controller.canSubmitFinalHand) {
       return;
     }
-    // 지금 손패에 있는 카드만 보냅니다(늦게 도착한 손패 갱신 대비).
-    final handIds = {for (final card in widget.controller.hand) card.id};
-    final cards = widget.selectedCardIds
-        .where(handIds.contains)
-        .toList(growable: false);
+    // 표시 체크 상태와 무관하게 현재 손패 전체에서 최고 점수 조합을 다시
+    // 계산합니다. 제출 직전 손패 갱신에도 항상 같은 규칙으로 전송됩니다.
+    final cards = finalCallBestCombination(
+      widget.controller.hand,
+    ).cards.map((card) => card.id).toList(growable: false);
     if (cards.isEmpty) return;
     setState(() => _submittedRevision = widget.controller.revision);
     final completed = await widget.controller.submitFinalHand(cards);

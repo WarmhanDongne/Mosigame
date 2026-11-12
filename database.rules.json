@@ -114,6 +114,10 @@
             }
           }
         },
+        "joinPreview": {
+          ".read": "auth != null && root.child('rooms').child($roomCode).child('status').val() == 'waiting'",
+          ".write": false
+        },
         "game": {
           ".read": false,
           ".write": false,
