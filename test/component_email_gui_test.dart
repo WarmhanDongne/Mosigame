@@ -275,7 +275,7 @@ void main() {
     }
   });
 
-  testWidgets('라이어스 포커 구성품은 지금 방 인원의 진실·거짓·전체 장수를 보여 준다', (tester) async {
+  testWidgets('라이어스 포커 구성품은 인원별 진실 카드 수를 크게 보여 준다', (tester) async {
     Color? totalColor() {
       final pill = tester.widget<Container>(
         find
@@ -324,24 +324,31 @@ void main() {
     for (final label in ['2인', '3인', '4인', '5인', '6인']) {
       expect(find.text(label), findsOneWidget);
     }
-    for (final label in [
-      '13장 · 진실 23%',
-      '18장 · 진실 28%',
-      '23장 · 진실 30%',
-      '28장 · 진실 29%',
-      '33장 · 진실 30%',
-    ]) {
-      expect(find.text(label), findsOneWidget);
+    for (final entry in const {
+      2: '3 ~ 4장',
+      3: '5 ~ 6장',
+      4: '6 ~ 8장',
+      5: '8 ~ 10장',
+      6: '10 ~ 11장',
+    }.entries) {
+      final count = find.byKey(Key('liar-truth-count-${entry.key}'));
+      expect(count, findsOneWidget);
+      expect(tester.widget<Text>(count).data, entry.value);
+      expect(
+        tester.widget<Text>(count).style?.fontSize,
+        greaterThanOrEqualTo(24),
+      );
     }
+    expect(find.textContaining('진실 23%'), findsNothing);
     expect(columnColor(4), MosiColors.sun);
-    expect(columnColor(2), isNull);
+    expect(columnColor(2), isNot(MosiColors.sun));
 
     await pump(6);
     expect(find.text('진실 10'), findsOneWidget);
     expect(find.text('거짓 23'), findsOneWidget);
     expect(find.text('6명 → 33장'), findsOneWidget);
     expect(columnColor(6), MosiColors.sun);
-    expect(columnColor(4), isNull);
+    expect(columnColor(4), isNot(MosiColors.sun));
 
     // 방이 없거나 인원이 덱 범위 밖이면 4명 기준을 강조 없이 보여 줍니다.
     for (final players in [null, 7]) {
@@ -349,7 +356,7 @@ void main() {
       expect(find.text('4명 → 23장'), findsOneWidget);
       expect(totalColor(), isNot(MosiColors.sun));
       for (var count = 2; count <= 6; count++) {
-        expect(columnColor(count), isNull);
+        expect(columnColor(count), isNot(MosiColors.sun));
       }
     }
     expect(find.textContaining('×'), findsNothing);

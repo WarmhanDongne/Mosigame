@@ -703,10 +703,10 @@ class _LiarRoundDeal extends StatelessWidget {
   }
 }
 
-/// 구성품과 규칙 사이에 들어가는 인원별 덱 구성 표입니다.
+/// 구성품과 규칙 사이에 들어가는 인원별 진실 카드 안내입니다.
 ///
-/// 첨부 시안처럼 2~6인을 가로 열로 두고, 진실·거짓 비율과 전체 장수를 한눈에
-/// 비교합니다. 현재 방 인원은 머리글만 노란색으로 강조합니다.
+/// 덱 전체 장수와 비율처럼 이미 다른 영역에서 확인할 수 있는 정보는 반복하지 않고,
+/// 게임을 고를 때 필요한 인원수별 진실 카드 수만 크게 보여 줍니다.
 class _LiarPlayerCountStrip extends StatelessWidget {
   const _LiarPlayerCountStrip({required this.playerCount});
 
@@ -715,24 +715,24 @@ class _LiarPlayerCountStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final columns = [
-      for (final (players, total) in _liarDecks)
+      for (final (players, _) in _liarDecks)
         (
           players: players,
-          total: total,
-          truth: liarsPokerDeckCounts(players).truth,
+          minimumTruth: (players * 1.6).round(),
+          maximumTruth: (players * 1.9).round(),
         ),
     ];
     return Semantics(
       container: true,
       label: GameLocale.select(
-        ko: '인원별 진실·거짓 카드 수',
-        en: 'Truth and Lie cards by player count',
-        zhHans: '按人数显示真话与谎言牌数量',
-        zhHant: '按人數顯示真話與謊言牌數量',
+        ko: '인원별 진실 카드 수',
+        en: 'Truth cards by player count',
+        zhHans: '按人数显示真话牌数量',
+        zhHant: '按人數顯示真話牌數量',
       ),
       child: Container(
         key: const Key('liar-player-count-strip'),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: const Color(0x800D0912),
           borderRadius: BorderRadius.circular(14),
@@ -740,246 +740,139 @@ class _LiarPlayerCountStrip extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 작은 가로 화면의 높이가 부족할 때는 시안 비율을 유지한 채 표만
-            // 축소합니다. 보통 태블릿에서는 가용 폭을 그대로 사용합니다.
-            final designWidth = math.max(760.0, constraints.maxWidth);
-            return FittedBox(
-              fit: BoxFit.scaleDown,
-              child: SizedBox(
-                width: designWidth,
-                // 시스템 글자 크기 1.3배에서도 각 행의 내부 줄 높이가 충분해야
-                // FittedBox로 축소하기 전에 글자가 잘린 것으로 판정되지 않습니다.
-                height: 110,
-                child: Column(
-                  children: [
-                    Expanded(child: _liarStripHeader(columns)),
-                    const SizedBox(height: 4),
-                    Expanded(child: _liarStripTruthRow(columns)),
-                    const SizedBox(height: 4),
-                    Expanded(child: _liarStripTotalRow(columns)),
-                  ],
+            final compact = constraints.maxWidth < 620;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: compact ? 82 : 112,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        GameLocale.select(
+                          ko: '인원별\n진실 카드',
+                          en: 'TRUTH CARDS\nBY PLAYERS',
+                          zhHans: '按人数\n真话牌',
+                          zhHant: '按人數\n真話牌',
+                        ),
+                        maxLines: 2,
+                        style: MosiFonts.sans(
+                          size: 17,
+                          height: 1.25,
+                          weight: FontWeight.w800,
+                          color: _liarBone,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(width: compact ? 4 : 10),
+                for (final column in columns)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 2 : 4,
+                      ),
+                      child: _LiarTruthCountTile(
+                        players: column.players,
+                        minimumTruth: column.minimumTruth,
+                        maximumTruth: column.maximumTruth,
+                        highlighted: column.players == playerCount,
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         ),
       ),
     );
   }
-
-  Widget _liarStripHeader(
-    List<({int players, int total, int truth})> columns,
-  ) => Row(
-    children: [
-      SizedBox(
-        width: 120,
-        child: Text(
-          GameLocale.select(
-            ko: '인원별 카드',
-            en: 'BY PLAYERS',
-            zhHans: '按人数卡牌',
-            zhHant: '按人數卡牌',
-          ),
-          maxLines: 1,
-          style: MosiFonts.sans(
-            size: 13,
-            weight: FontWeight.w700,
-            color: _liarBone,
-            letterSpacing: 1,
-          ),
-        ),
-      ),
-      for (final column in columns)
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Container(
-              key: Key('liar-player-column-${column.players}'),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              decoration: column.players == playerCount
-                  ? BoxDecoration(
-                      color: MosiColors.sun,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _liarInk, width: 2),
-                    )
-                  : null,
-              child: Text(
-                GameLocale.select(
-                  ko: '${column.players}인',
-                  en: '${column.players}P',
-                  zhHans: '${column.players}人',
-                  zhHant: '${column.players}人',
-                ),
-                style: MosiFonts.sans(
-                  size: 15,
-                  weight: FontWeight.w700,
-                  color: column.players == playerCount ? _liarInk : _liarBone,
-                ),
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
-
-  Widget _liarStripTruthRow(
-    List<({int players, int total, int truth})> columns,
-  ) => Row(
-    children: [
-      SizedBox(
-        width: 120,
-        child: Row(
-          children: [
-            const LiarsPokerCardView(
-              face: LiarsCardFace.truth,
-              rounded: true,
-              width: 16,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              GameLocale.select(
-                ko: '진실',
-                en: 'TRUTH',
-                zhHans: '真话',
-                zhHant: '真話',
-              ),
-              style: MosiFonts.sans(
-                size: 14,
-                weight: FontWeight.w700,
-                color: _liarBone,
-              ),
-            ),
-          ],
-        ),
-      ),
-      for (final column in columns)
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 26,
-                  child: Text(
-                    '${column.truth}',
-                    textAlign: TextAlign.right,
-                    style: MosiFonts.grotesk(
-                      size: 20,
-                      weight: FontWeight.w700,
-                      color: const Color(0xFF8FD3AE),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _LiarDeckRatioBar(
-                    truth: column.truth,
-                    total: column.total,
-                    highlighted: column.players == playerCount,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 26,
-                  child: Text(
-                    '${column.total - column.truth}',
-                    style: MosiFonts.grotesk(
-                      size: 16,
-                      weight: FontWeight.w700,
-                      color: const Color(0xFFFF8A8E),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-    ],
-  );
-
-  Widget _liarStripTotalRow(
-    List<({int players, int total, int truth})> columns,
-  ) => Row(
-    children: [
-      SizedBox(
-        width: 120,
-        child: Row(
-          children: [
-            const LiarsPokerCardView(
-              face: LiarsCardFace.back,
-              rounded: true,
-              width: 16,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              GameLocale.select(
-                ko: '전체',
-                en: 'TOTAL',
-                zhHans: '总计',
-                zhHant: '總計',
-              ),
-              style: MosiFonts.sans(size: 13, color: const Color(0xBFF3EEE6)),
-            ),
-          ],
-        ),
-      ),
-      for (final column in columns)
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                GameLocale.select(
-                  ko: '${column.total}장 · 진실 ${_truthPercent(column)}%',
-                  en: '${column.total} · Truth ${_truthPercent(column)}%',
-                  zhHans: '${column.total}张 · 真话 ${_truthPercent(column)}%',
-                  zhHant: '${column.total}張 · 真話 ${_truthPercent(column)}%',
-                ),
-                maxLines: 1,
-                style: MosiFonts.sans(size: 13, color: const Color(0xCCF3EEE6)),
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
-
-  int _truthPercent(({int players, int total, int truth}) column) =>
-      (column.truth / column.total * 100).round();
 }
 
-class _LiarDeckRatioBar extends StatelessWidget {
-  const _LiarDeckRatioBar({
-    required this.truth,
-    required this.total,
+class _LiarTruthCountTile extends StatelessWidget {
+  const _LiarTruthCountTile({
+    required this.players,
+    required this.minimumTruth,
+    required this.maximumTruth,
     required this.highlighted,
   });
 
-  final int truth;
-  final int total;
+  final int players;
+  final int minimumTruth;
+  final int maximumTruth;
   final bool highlighted;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 12,
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(
-      color: _liarLie,
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(
-        color: highlighted ? _liarInk : const Color(0x80F3EEE6),
-        width: 2,
+  Widget build(BuildContext context) {
+    final playerLabel = GameLocale.select(
+      ko: '$players인',
+      en: '${players}P',
+      zhHans: '$players人',
+      zhHant: '$players人',
+    );
+    final truthLabel = GameLocale.select(
+      ko: '$minimumTruth ~ $maximumTruth장',
+      en: '$minimumTruth–$maximumTruth cards',
+      zhHans: '$minimumTruth～$maximumTruth张',
+      zhHant: '$minimumTruth～$maximumTruth張',
+    );
+    return Semantics(
+      label: GameLocale.select(
+        ko: '$playerLabel, 진실 카드 $truthLabel',
+        en: '$playerLabel, $truthLabel',
+        zhHans: '$playerLabel，真话牌 $truthLabel',
+        zhHant: '$playerLabel，真話牌 $truthLabel',
       ),
-    ),
-    alignment: Alignment.centerLeft,
-    child: FractionallySizedBox(
-      widthFactor: truth / total,
-      heightFactor: 1,
-      child: const ColoredBox(color: _liarTruth),
-    ),
-  );
+      selected: highlighted,
+      child: Container(
+        key: Key('liar-player-column-$players'),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        decoration: BoxDecoration(
+          color: highlighted ? MosiColors.sun : const Color(0x3321100B),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: highlighted ? _liarInk : const Color(0x55E2C27E),
+            width: 2,
+          ),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                playerLabel,
+                maxLines: 1,
+                style: MosiFonts.sans(
+                  size: 15,
+                  height: 1,
+                  weight: FontWeight.w700,
+                  color: highlighted ? _liarInk : _liarBone,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                truthLabel,
+                key: Key('liar-truth-count-$players'),
+                maxLines: 1,
+                style: MosiFonts.grotesk(
+                  size: 24,
+                  height: 1,
+                  weight: FontWeight.w800,
+                  color: highlighted ? _liarInk : const Color(0xFF8FD3AE),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// 장수를 적는 둥근 알약입니다.
