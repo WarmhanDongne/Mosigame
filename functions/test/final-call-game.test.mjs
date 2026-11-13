@@ -14,6 +14,7 @@ import {
   prepareFinalCallRound,
   removeFinalTurnPendingPlayer,
   resolveFinalCallRound,
+  resolveFinalCallSubmission,
   selectBestFinalCallHand,
   selectBestFinalCallCombination,
 } from "../lib/final-call/game.js";
@@ -149,7 +150,7 @@ test("혼합 제출도 서버는 같은 색 또는 같은 숫자 조합만 남�
   );
 });
 
-test("최종 제출은 사용자가 고른 일부 카드가 아닌 손패 전체의 최고 조합을 쓴다", () => {
+test("제한 시간 자동 제출은 손패 전체의 최고 조합을 쓴다", () => {
   const hand = {
     red7: card("red7", "red", 7),
     red3: card("red3", "red", 3),
@@ -161,6 +162,32 @@ test("최종 제출은 사용자가 고른 일부 카드가 아닌 손패 전체
     selectBestFinalCallHand(hand).map((value) => value.id),
     ["red7", "blue7"],
   );
+});
+
+test("최종 제출은 사용자가 고른 한 장 또는 유효한 조합을 그대로 쓴다", () => {
+  const hand = {
+    red7: card("red7", "red", 7),
+    red3: card("red3", "red", 3),
+    blue7: card("blue7", "blue", 7),
+    yellow2: card("yellow2", "yellow", 2),
+  };
+
+  assert.deepEqual(
+    resolveFinalCallSubmission(hand, ["red3"]).map((value) => value.id),
+    ["red3"],
+  );
+  assert.deepEqual(
+    resolveFinalCallSubmission(hand, ["red7", "red3"])
+      .map((value) => value.id),
+    ["red7", "red3"],
+  );
+  assert.deepEqual(
+    resolveFinalCallSubmission(hand, ["red7", "blue7"])
+      .map((value) => value.id),
+    ["red7", "blue7"],
+  );
+  assert.equal(resolveFinalCallSubmission(hand, ["red3", "blue7"]), null);
+  assert.equal(resolveFinalCallSubmission(hand, ["missing"]), null);
 });
 
 test("마주 보는 좌석은 같은 팀으로 자동 지정된다", () => {

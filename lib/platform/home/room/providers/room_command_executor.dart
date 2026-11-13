@@ -15,9 +15,14 @@ class RoomCommandExecutor {
       // run으로 전달 받은 함수를 실행(예: _service.createRoom(...))
       return RoomCommandOutcome.success(await command());
     } on RoomCommandException catch (error) {
-      return RoomCommandOutcome.failure(error.message);
+      return RoomCommandOutcome.failure(error.message, reason: error.reason);
     } on FirebaseFunctionsException catch (error) {
-      return RoomCommandOutcome.failure(error.message ?? '서버 요청을 처리하지 못했습니다.');
+      final details = error.details;
+      final reason = details is Map ? details['reason']?.toString() : null;
+      return RoomCommandOutcome.failure(
+        error.message ?? '서버 요청을 처리하지 못했습니다.',
+        reason: reason,
+      );
     } catch (error) {
       DevErrorLog.instance.add(
         error: error,
@@ -34,14 +39,15 @@ class RoomCommandExecutor {
 
 //===========================[ run으로 전달 받은 함수 실행 결과 담는 객체 ]==========
 class RoomCommandOutcome<T> {
-  const RoomCommandOutcome._({this.value, this.errorMessage});
+  const RoomCommandOutcome._({this.value, this.errorMessage, this.reason});
 
   const RoomCommandOutcome.success(T value) : this._(value: value);
 
-  const RoomCommandOutcome.failure(String message)
-    : this._(errorMessage: message);
+  const RoomCommandOutcome.failure(String message, {String? reason})
+    : this._(errorMessage: message, reason: reason);
 
   final T? value;
   final String? errorMessage;
+  final String? reason;
   bool get succeeded => errorMessage == null;
 }

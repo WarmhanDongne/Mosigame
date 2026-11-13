@@ -288,6 +288,13 @@ void main() {
       return (pill.decoration! as BoxDecoration).color;
     }
 
+    Color? columnColor(int players) {
+      final column = tester.widget<Container>(
+        find.byKey(Key('liar-player-column-$players')),
+      );
+      return (column.decoration as BoxDecoration?)?.color;
+    }
+
     Future<void> pump(int? players) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -313,17 +320,37 @@ void main() {
     expect(find.text('4명 → 23장'), findsOneWidget);
     expect(find.text('3장은 끝까지 숨김'), findsOneWidget);
     expect(totalColor(), MosiColors.sun);
+    expect(find.byKey(const Key('liar-player-count-strip')), findsOneWidget);
+    for (final label in ['2인', '3인', '4인', '5인', '6인']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    for (final label in [
+      '13장 · 진실 23%',
+      '18장 · 진실 28%',
+      '23장 · 진실 30%',
+      '28장 · 진실 29%',
+      '33장 · 진실 30%',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(columnColor(4), MosiColors.sun);
+    expect(columnColor(2), isNull);
 
     await pump(6);
     expect(find.text('진실 10'), findsOneWidget);
     expect(find.text('거짓 23'), findsOneWidget);
     expect(find.text('6명 → 33장'), findsOneWidget);
+    expect(columnColor(6), MosiColors.sun);
+    expect(columnColor(4), isNull);
 
     // 방이 없거나 인원이 덱 범위 밖이면 4명 기준을 강조 없이 보여 줍니다.
     for (final players in [null, 7]) {
       await pump(players);
       expect(find.text('4명 → 23장'), findsOneWidget);
       expect(totalColor(), isNot(MosiColors.sun));
+      for (var count = 2; count <= 6; count++) {
+        expect(columnColor(count), isNull);
+      }
     }
     expect(find.textContaining('×'), findsNothing);
     expect(tester.takeException(), isNull);

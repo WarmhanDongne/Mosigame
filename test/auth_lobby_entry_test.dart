@@ -292,6 +292,41 @@ void main() {
     provider.dispose();
   });
 
+  testWidgets('선택 직후 캐릭터가 선점되면 최신 목록으로 바꾸어 한 번 재시도한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService()..failFirstCharacterConflict = true;
+    final provider = _RoomProvider(service);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '방전용닉네임');
+
+    await tester.tap(find.widgetWithText(MosiButton, '입장하기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(provider.previewRefreshes, 1);
+    expect(service.calls, 2);
+    expect(service.sentCharacterIds, hasLength(2));
+    expect(service.sentCharacterIds[1], isNot(service.sentCharacterIds[0]));
+    expect(find.text('이미 선택된 캐릭터입니다.'), findsNothing);
+
+    service.response.completeError(
+      FirebaseFunctionsException(code: 'unavailable', message: '연결 실패'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
   testWidgets('방 입장 닉네임으로 나를 사용할 수 없다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -389,10 +424,12 @@ class _Onboarding extends OnboardingService {
 }
 
 class _RoomProvider extends RoomProvider {
-  _RoomProvider(_RoomService service, {this.previewReadyOnListen = true})
+  _RoomProvider(this.service, {this.previewReadyOnListen = true})
     : super(service: service, gameService: _GameService());
 
+  final _RoomService service;
   final bool previewReadyOnListen;
+  int previewRefreshes = 0;
 
   @override
   void listenRoomPreview(String roomCode) {
@@ -406,6 +443,26 @@ class _RoomProvider extends RoomProvider {
   }
 
   @override
+  Future<bool> refreshRoomPreview(String roomCode) async {
+    previewRefreshes++;
+    players = [
+      RoomPlayer(
+        uid: 'other',
+        nickname: '다른참가자',
+        characterId: service.sentCharacterIds.first,
+        isConnected: true,
+        seatIndex: -1,
+        role: 'player',
+        status: 'active',
+        penaltyAttemptCount: 0,
+      ),
+    ];
+    roomPreviewReady = true;
+    notifyListeners();
+    return true;
+  }
+
+  @override
   void stopRoomPreview() {
     roomPreviewReady = false;
   }
@@ -415,6 +472,8 @@ class _RoomService implements RoomService {
   int calls = 0;
   String? sentNickname;
   String? sentCharacterId;
+  final List<String> sentCharacterIds = [];
+  bool failFirstCharacterConflict = false;
   final response = Completer<void>();
   @override
   Future<void> joinRoom(
@@ -426,6 +485,15 @@ class _RoomService implements RoomService {
     calls++;
     sentNickname = nickname;
     sentCharacterId = characterId;
+    sentCharacterIds.add(characterId);
+    if (failFirstCharacterConflict && calls == 1) {
+      return Future.error(
+        FirebaseFunctionsException(
+          code: 'already-exists',
+          message: '이미 선택된 캐릭터입니다.',
+        ),
+      );
+    }
     return response.future;
   }
 

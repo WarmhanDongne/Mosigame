@@ -9,8 +9,8 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {finalCallProcessed, recordFinalCallCommand} from "./commands.js";
 import {
   nextFinalCallPlayer,
+  resolveFinalCallSubmission,
   resolveFinalCallRound,
-  selectBestFinalCallHand,
   startTurn,
 } from "./game.js";
 import {FinalCallRoom} from "./types.js";
@@ -49,22 +49,17 @@ export const game_final_call_submit_hand = onCall<Data>(
           (!isCallerSubmission && !isFinalTurnSubmission)) {
         throw new HttpsError("failed-precondition", "현재 최종 손패를 제출할 수 없습니다.");
       }
-      const handIds = Object.keys(game.private[uid]?.hand ?? {}).sort();
       const submittedIds = [...new Set(cardIds)];
-      const sortedSubmittedIds = [...submittedIds].sort();
-      const handIdSet = new Set(handIds);
-      if (handIds.length !== 4 || submittedIds.length < 1 ||
-          submittedIds.length > 4 ||
-          sortedSubmittedIds.some((cardId) => !handIdSet.has(cardId))) {
+      const selectedCards = resolveFinalCallSubmission(
+        game.private[uid]?.hand,
+        submittedIds,
+      );
+      if (!selectedCards) {
         throw new HttpsError("invalid-argument", "현재 손패에서 점수 조합을 선택해주세요.");
       }
       const now = transactionNow;
-      const privateHand = game.private[uid]?.hand ?? {};
       game.server.finalSubmissions ??= {};
-      // 클라이언트가 보낸 카드는 최신 손패인지 확인하는 용도입니다. 최종 점수와
-      // 공개 카드는 선택 일부가 아니라 서버의 현재 손패 전체에서 항상 최고
-      // 조합을 고릅니다. 구버전 화면에서 체크가 달라도 판정은 바뀌지 않습니다.
-      game.server.finalSubmissions[uid] = selectBestFinalCallHand(privateHand);
+      game.server.finalSubmissions[uid] = selectedCards;
 
       if (isFinalTurnSubmission) {
         game.public.finalTurnPendingUids = game.public.finalTurnPendingUids

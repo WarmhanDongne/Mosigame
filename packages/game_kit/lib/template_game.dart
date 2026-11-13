@@ -19,6 +19,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
+import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/models/game_room_context.dart';
 
 // ============================================================
@@ -98,6 +99,9 @@ abstract class TemplateGame implements GameGateway {
 
   //[테이블이미지]
   ImageProvider? get layoutTableImage => null;
+
+  /// 게임별 자리 배치 좌표입니다. null이면 공용 원형 좌표를 사용합니다.
+  SeatingCardPositionsBuilder? get layoutSeatPositionsBuilder => null;
 
   /// true면 자리 배치 뒤 테이블 확대 대신 한지 창호문이 닫혔다 열리며
   /// 게임 화면을 공개합니다(윷놀이 디자인의 입장 연출).
