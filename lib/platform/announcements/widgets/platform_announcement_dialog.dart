@@ -55,6 +55,7 @@ class _PlatformAnnouncementDialog extends StatelessWidget {
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       backgroundColor: Colors.transparent,
+      clipBehavior: Clip.none,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
         child: Stack(
@@ -200,6 +201,20 @@ class _PlatformAnnouncementDialog extends StatelessWidget {
                     ],
                   ),
                 ],
+              ),
+            ),
+            // The card's top rule stops behind the round badge instead of
+            // visually cutting through the announcement/maintenance icon.
+            Positioned(
+              top: -1,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 108,
+                  height: 5,
+                  color: MosiColors.white,
+                ),
               ),
             ),
             Positioned(
