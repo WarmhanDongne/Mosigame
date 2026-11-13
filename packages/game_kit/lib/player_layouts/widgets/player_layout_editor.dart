@@ -73,6 +73,7 @@ class PlayerLayoutEditor extends StatefulWidget {
     this.seatTheme = MosiSeatTheme.fallback,
     this.zoomHandoff = true,
     this.previousLayout,
+    this.slotPositionsBuilder,
   }) : assert(
          initialLayout.playerCount >= 2 && initialLayout.playerCount <= 12,
          '지원하는 플레이어 수는 2~12명입니다.',
@@ -83,6 +84,10 @@ class PlayerLayoutEditor extends StatefulWidget {
   /// 지난 게임에서 쓴 자리 배치입니다. 지금 참가자와 같은 사람들이면 상단에
   /// '이전 자리' 버튼이 생겨 한 번에 불러올 수 있습니다.
   final PlayerLayoutModel? previousLayout;
+
+  /// 게임 규칙상 좌석이 특정 면에 놓여야 할 때 쓰는 좌표 계산기입니다.
+  /// 생략하면 모든 게임이 사용하던 공용 원형 좌표를 그대로 사용합니다.
+  final SeatingCardPositionsBuilder? slotPositionsBuilder;
   final PlayerLayoutPrepared onPrepare;
   final PlayerLayoutCompleted onComplete;
   final PlayerLayoutCancelled onCancel;
@@ -751,11 +756,12 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   Widget _buildBoard(Size boardSize, double t, double uiOpacity) {
     final theme = widget.seatTheme;
     final metrics = _metricsFor(boardSize);
-    final positions = seatingCardTopLeftPositions(
-      playerCount: _playerCount,
-      boardSize: boardSize,
-      cardSize: metrics.size,
-    );
+    final positions =
+        (widget.slotPositionsBuilder ?? seatingCardTopLeftPositions)(
+          playerCount: _playerCount,
+          boardSize: boardSize,
+          cardSize: metrics.size,
+        );
     // 서버의 전략 윷 팀 규칙은 짝수 좌석=청군, 홀수 좌석=백군입니다.
     // 일반 4인 원형 자리의 아래 두 위치만 바꿔 각 팀을 좌우에 모읍니다.
     _slotPositions = theme.teams != null && _playerCount == 4

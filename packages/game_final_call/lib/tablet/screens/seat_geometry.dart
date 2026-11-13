@@ -85,20 +85,63 @@ Offset finalCallPublicCardCenter(Size boardSize) =>
 // ---------------------------------------------------------------------------
 // 좌석 자리(A안)
 // ---------------------------------------------------------------------------
-/// 공용 자리배치 화면에서 확정한 좌석 번호와 같은 중심을 돌려줍니다.
+/// 파이널콜 좌석을 모서리가 아닌 테이블의 네 면에 놓습니다.
 ///
-/// 자리배치의 카드 중심을 그대로 써야, 순서를 바꾼 참가자가 게임 진입 뒤에
-/// 상·하·좌·우의 새 위치로 재배정되지 않습니다.
+/// 6인은 위·아래 면에 두 자리씩, 좌·우 면에 한 자리씩 놓습니다. 서로 마주
+/// 보는 좌석은 0↔3, 1↔4, 2↔5라 서버의 팀 배치와도 일치합니다.
+List<Offset> finalCallNormalizedSeatCenters(int playerCount) {
+  return switch (playerCount) {
+    4 => const [
+      Offset(0.5, 0.84),
+      Offset(0.84, 0.5),
+      Offset(0.5, 0.16),
+      Offset(0.16, 0.5),
+    ],
+    6 => const [
+      Offset(0.35, 0.84),
+      Offset(0.65, 0.84),
+      Offset(0.84, 0.5),
+      Offset(0.65, 0.16),
+      Offset(0.35, 0.16),
+      Offset(0.16, 0.5),
+    ],
+    _ => normalizedPlayerCenters(playerCount),
+  };
+}
+
+/// 자리 배치 화면과 실제 게임 화면이 공유하는 파이널콜 좌석 좌표입니다.
 List<Offset> finalCallSeatCenters({
   required int playerCount,
   required Size boardSize,
 }) {
   if (playerCount <= 0) return const [];
-  return normalizedPlayerCenters(playerCount)
+  return finalCallNormalizedSeatCenters(playerCount)
       .map(
         (center) => playerCenterFromNormalized(
           normalizedCenter: center,
           boardSize: boardSize,
+        ),
+      )
+      .toList(growable: false);
+}
+
+/// 공용 자리 배치 카드의 좌측 상단 좌표를 실제 게임 좌석과 맞춥니다.
+List<Offset> finalCallSeatingCardTopLeftPositions({
+  required int playerCount,
+  required Size boardSize,
+  required Size cardSize,
+}) {
+  return finalCallNormalizedSeatCenters(playerCount)
+      .map(
+        (normalized) => playerCenterFromNormalized(
+          normalizedCenter: normalized,
+          boardSize: boardSize,
+        ),
+      )
+      .map(
+        (center) => Offset(
+          (center.dx - cardSize.width / 2) / boardSize.width,
+          (center.dy - cardSize.height / 2) / boardSize.height,
         ),
       )
       .toList(growable: false);

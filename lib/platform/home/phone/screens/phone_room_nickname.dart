@@ -32,6 +32,7 @@ class PhoneRoomNickname extends StatefulWidget {
 }
 
 class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
+  static const _characterTakenReason = 'characterTaken';
   final math.Random _random = math.Random();
   late final TextEditingController _nicknameController;
   String? _selectedCharacterId;
@@ -116,8 +117,10 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     _selectRandomAvailableCharacter();
   }
 
-  void _selectRandomAvailableCharacter() {
-    final available = _availableCharacters;
+  void _selectRandomAvailableCharacter({String? excluding}) {
+    final available = _availableCharacters
+        .where((character) => character.id != excluding)
+        .toList(growable: false);
     final next = available.isEmpty
         ? null
         : available[_random.nextInt(available.length)].id;
@@ -221,12 +224,37 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     if (_isOpeningWaitingRoom) return;
     setState(() => _isOpeningWaitingRoom = true);
 
-    final joined = await _roomProvider.joinRoom(
+    var joined = await _roomProvider.joinRoom(
       widget.roomCode,
       nickname,
       characterId: characterId,
     );
     if (!mounted) return;
+    final characterWasTaken =
+        _roomProvider.lastCommandErrorReason == _characterTakenReason ||
+        _roomProvider.errorMessage == '이미 선택된 캐릭터입니다.';
+    if (!joined && characterWasTaken) {
+      // 화면을 본 직후 다른 휴대폰이 같은 캐릭터를 먼저 확정한 경쟁입니다.
+      // 서버 projection을 다시 받은 뒤 그 캐릭터를 제외하고 한 번만 재시도해,
+      // 실제로 비어 있는 캐릭터를 눌렀는데 입장 화면에 남는 일을 막습니다.
+      await _roomProvider.refreshRoomPreview(widget.roomCode);
+      if (!mounted) return;
+      if (_selectedCharacterId == characterId ||
+          (_selectedCharacterId != null &&
+              _occupiedCharacterIds.contains(_selectedCharacterId))) {
+        _selectRandomAvailableCharacter(excluding: characterId);
+      }
+      final retryCharacterId = _selectedCharacterId;
+      if (retryCharacterId != null && retryCharacterId != characterId) {
+        _roomProvider.errorMessage = null;
+        joined = await _roomProvider.joinRoom(
+          widget.roomCode,
+          _nicknameController.text.trim(),
+          characterId: retryCharacterId,
+        );
+        if (!mounted) return;
+      }
+    }
     if (!joined) {
       setState(() => _isOpeningWaitingRoom = false);
       return;

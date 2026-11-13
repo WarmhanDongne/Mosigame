@@ -45,7 +45,7 @@ class _SubmitGame extends Fake implements FinalCallController {
 }
 
 void main() {
-  testWidgets('CALL 이후 카드 탭으로 자동 최고 조합 체크를 바꾸지 않는다', (tester) async {
+  testWidgets('CALL 이후 최고 조합을 같은 색 조합으로 바꿔 그대로 제출한다', (tester) async {
     tester.view.physicalSize = const Size(844, 390);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -87,15 +87,15 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('red_3')));
     await tester.pump();
-    expect(selected, {'red_7', 'blue_7'});
-    expect(find.text('14'), findsOneWidget);
+    expect(selected, {'red_7', 'red_3'});
+    expect(find.text('10'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel(FinalCallCopy.submit));
     await tester.pump();
-    expect(game.submittedIds, unorderedEquals(['red_7', 'blue_7']));
+    expect(game.submittedIds, unorderedEquals(['red_7', 'red_3']));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('표시 체크가 늦게 갱신돼도 제출은 손패의 최고 조합을 전송한다', (tester) async {
+  testWidgets('선택한 카드를 해제해 한 장만 전략적으로 제출한다', (tester) async {
     tester.view.physicalSize = const Size(844, 390);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -135,13 +135,13 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('blue_7')));
+    await tester.tap(find.byKey(const ValueKey('red_3')));
     await tester.pump();
-    expect(selected, {'red_7', 'red_3'});
-    expect(find.text('10'), findsOneWidget);
+    expect(selected, {'red_7'});
+    expect(find.byKey(const ValueKey(7)), findsOneWidget);
     await tester.tap(find.bySemanticsLabel(FinalCallCopy.submit));
     await tester.pump();
-    expect(game.submittedIds, unorderedEquals(['red_7', 'blue_7']));
+    expect(game.submittedIds, ['red_7']);
     expect(tester.takeException(), isNull);
   });
 }

@@ -188,6 +188,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   String? _pendingCreateRoomOperationId;
 
   String? errorMessage;
+  String? lastCommandErrorReason;
   String? selectedGameId;
   @override
   GameInfo? selectedGame;
@@ -215,11 +216,13 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     // 로딩 시작 및 이전 에러 초기화
     isLoading = true;
     errorMessage = null;
+    lastCommandErrorReason = null;
     notifyListeners();
 
     try {
       final outcome = await _commandExecutor.run(command);
       errorMessage = outcome.errorMessage;
+      lastCommandErrorReason = outcome.reason;
       return outcome.succeeded ? outcome.value : null;
     } finally {
       // 로딩 종료 및 UI 갱신
@@ -388,6 +391,28 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     roomPreviewReady = false;
     players = [];
     notifyListeners();
+  }
+
+  /// 서버 판정과 같은 시점의 참가자 미리보기를 다시 받아옵니다.
+  ///
+  /// 다른 휴대폰이 거의 동시에 캐릭터를 확정하면 기존 스트림 화면과 참가
+  /// transaction 사이에 짧은 차이가 생길 수 있습니다. 이때 방 검증이 서버의
+  /// projection을 다시 만든 뒤 한 번 읽어 화면과 최종 판정을 맞춥니다.
+  Future<bool> refreshRoomPreview(String rawRoomCode) async {
+    if (roomCode != null) return false;
+    final code = rawRoomCode.trim().toUpperCase();
+    try {
+      await _service.validateRoomJoin(code);
+      final value = await _service.getRoomJoinPreview(code);
+      if (roomCode != null) return false;
+      players = value;
+      roomPreviewReady = true;
+      _scheduleRoomPreviewExpiry();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _scheduleRoomPreviewExpiry() {

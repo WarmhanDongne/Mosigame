@@ -8,7 +8,6 @@ import 'package:game_final_call/tablet/providers/game_stage.dart';
 import 'package:game_final_call/tablet/screens/seat_geometry.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
 import 'package:game_final_call/tablet/widgets/result_overlay.dart';
-import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 
 class _BoardGame extends Fake implements FinalCallController {
   String currentPhase = 'playing';
@@ -75,20 +74,58 @@ void main() {
     expect(cosine, closeTo(1, 1e-9));
   });
 
-  test('게임 프로필은 공용 자리배치에서 확정한 좌석 중심을 그대로 쓴다', () {
+  test('4인 게임 프로필과 자리배치는 모서리가 아닌 네 면의 같은 좌표를 쓴다', () {
     const boardSize = Size(1280, 800);
-    final expected = normalizedPlayerCenters(4)
+    const expected = [
+      Offset(640, 672),
+      Offset(1075.2, 400),
+      Offset(640, 128),
+      Offset(204.8, 400),
+    ];
+    final gameCenters = finalCallSeatCenters(
+      playerCount: 4,
+      boardSize: boardSize,
+    );
+    expect(gameCenters, expected);
+
+    const cardSize = Size(220, 92);
+    final setupPositions = finalCallSeatingCardTopLeftPositions(
+      playerCount: 4,
+      boardSize: boardSize,
+      cardSize: cardSize,
+    );
+    final setupCenters = setupPositions
         .map(
-          (center) => playerCenterFromNormalized(
-            normalizedCenter: center,
-            boardSize: boardSize,
+          (position) => Offset(
+            position.dx * boardSize.width + cardSize.width / 2,
+            position.dy * boardSize.height + cardSize.height / 2,
           ),
         )
         .toList(growable: false);
-    expect(
-      finalCallSeatCenters(playerCount: 4, boardSize: boardSize),
-      expected,
-    );
+    expect(setupCenters, gameCenters);
+  });
+
+  test('6인 좌석은 네 면 위에 있고 반대 좌석끼리 같은 팀이다', () {
+    const boardSize = Size(1280, 800);
+    final centers = finalCallSeatCenters(playerCount: 6, boardSize: boardSize);
+    for (final center in centers) {
+      final normalized = Offset(
+        center.dx / boardSize.width,
+        center.dy / boardSize.height,
+      );
+      final onFace =
+          (normalized.dx - 0.16).abs() < 1e-9 ||
+          (normalized.dx - 0.84).abs() < 1e-9 ||
+          (normalized.dy - 0.16).abs() < 1e-9 ||
+          (normalized.dy - 0.84).abs() < 1e-9;
+      expect(onFace, isTrue);
+    }
+    for (var seat = 0; seat < 3; seat++) {
+      expect(
+        centers[seat] + centers[seat + 3],
+        boardSize.center(Offset.zero) * 2,
+      );
+    }
   });
 
   testWidgets('팀 동반 탈락 문구는 카드 공개와 하트 연출이 끝난 뒤 표시한다', (tester) async {

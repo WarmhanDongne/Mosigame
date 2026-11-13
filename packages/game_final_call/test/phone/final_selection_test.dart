@@ -45,7 +45,7 @@ void main() {
     expect(selected, {'red-7'});
   });
 
-  test('최종 제출 중에는 항상 가장 높은 조합을 체크한다', () {
+  test('최고 조합을 먼저 체크하고 사용자가 고친 뒤에는 빈 선택도 보존한다', () {
     final hand = [
       _card('red', 7),
       _card('red', 3),
@@ -59,11 +59,12 @@ void main() {
       submitPhase: true,
       round: 2,
       presetRound: null,
+      preserveUserSelection: false,
     );
     expect(selected, {'red-7', 'blue-7'});
     expect(preset, 2);
 
-    // 체크를 모두 지워도 다음 상태 동기화에서 최고 조합으로 복원합니다.
+    // 사용자가 직접 모두 해제했다면 다음 상태 스냅샷에도 선택을 강제하지 않습니다.
     selected.clear();
     preset = syncFinalCallSelection(
       selected: selected,
@@ -71,8 +72,9 @@ void main() {
       submitPhase: true,
       round: 2,
       presetRound: preset,
+      preserveUserSelection: true,
     );
-    expect(selected, {'red-7', 'blue-7'});
+    expect(selected, isEmpty);
   });
 
   test('제출 단계가 바뀐 손패보다 먼저 와도 버린 카드를 제출하지 않는다', () {
@@ -90,6 +92,7 @@ void main() {
       submitPhase: true,
       round: 4,
       presetRound: null,
+      preserveUserSelection: false,
     );
     expect(selected, contains('blue-7'));
 
@@ -105,6 +108,7 @@ void main() {
       submitPhase: true,
       round: 4,
       presetRound: preset,
+      preserveUserSelection: false,
     );
     final handIds = {for (final card in newHand) card.id};
     expect(selected.every(handIds.contains), isTrue);
@@ -120,6 +124,7 @@ void main() {
       submitPhase: false,
       round: 1,
       presetRound: 1,
+      preserveUserSelection: true,
     );
     expect(selected, isEmpty);
   });

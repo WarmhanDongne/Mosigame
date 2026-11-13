@@ -142,6 +142,16 @@ class FinalCallCombination {
   Set<String> get cardIds => {for (final card in cards) card.id};
 }
 
+/// 최종 제출로 허용되는 조합인지 확인합니다.
+/// 한 장은 언제나 유효하고, 두 장 이상은 모두 같은 색 또는 같은 숫자여야 합니다.
+bool isValidFinalCallSelection(Iterable<FinalCallCard> cards) {
+  final selected = cards.toList(growable: false);
+  if (selected.isEmpty || selected.length > 4) return false;
+  final first = selected.first;
+  return selected.every((card) => card.color == first.color) ||
+      selected.every((card) => card.value == first.value);
+}
+
 /// [calculateFinalCallScoreResult]와 같은 규칙으로 최고 점수를 만든 카드를
 /// 함께 돌려줍니다.
 FinalCallCombination finalCallBestCombination(Iterable<FinalCallCard> cards) {
