@@ -25,22 +25,60 @@
       label { display:block; margin:14px 0 6px; font-weight:800; font-size:13px; } input,textarea { width:100%; border:2px solid var(--line); padding:11px; color:var(--ink); background:#fffefa; font:inherit; } textarea { min-height:120px; resize:vertical; }.help { color:var(--muted); font-size:12px; line-height:1.5; }.actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }.notice-preview { margin-top:20px; border:2px solid var(--line); background:white; padding:18px; }.notice-preview .tag { display:inline-block; font:800 10px ui-monospace,monospace; letter-spacing:.1em; background:var(--gold); padding:4px 7px; }.notice-preview.maintenance .tag { background:#ec9187; }.period { margin:14px 0 0; padding:12px; color:white; background:var(--ink); font-weight:800; }
       .access { margin-top:24px; padding:18px; border-left:5px solid var(--gold); color:#fff; background:rgba(7,16,36,.38); line-height:1.6; }.access code { font-family:ui-monospace,monospace; }.push-note { color:#fff; font-size:13px; opacity:.82; }
       @media (max-width:720px) { main { width:min(100% - 24px,1120px); margin-top:12px; } header { align-items:flex-start; flex-direction:column; } .grid { grid-template-columns:1fr; } .card { padding:18px; } }
+
+      /* SYSTEM MAP의 운영 탭과 같은 종이책·남색 프레임 시각 언어 */
+      :root { --ink:#142947; --paper:#fbf6e7; --line:#0e0a3d; --lime:#a4d65e; --gold:#f8cf88; --red:#b94b43; --muted:#68635a; }
+      body { min-height:100vh; background:radial-gradient(circle at 14% -4%,#23416e80,transparent 29rem),radial-gradient(circle at 94% 3%,#40295872,transparent 25rem),#0b101b; color:var(--ink); }
+      main { position:relative; width:min(1240px,calc(100% - 48px)); margin:42px auto 74px; padding:0; }
+      main::before, main::after { content:""; position:absolute; inset:18px -18px -18px 18px; z-index:-2; border:2px solid #40526d; border-radius:17px; background:#172335; box-shadow:9px 10px 0 #05091578; }
+      main::before { inset:9px -9px -9px 9px; z-index:-1; border-color:#5c7192; background:#e9e1c8; }
+      header { position:relative; padding:27px 30px; border:3px solid var(--line); border-radius:12px 12px 0 0; box-shadow:none; background:#fffdf8; }
+      header::after { content:"OPERATIONS"; position:absolute; right:27px; bottom:-14px; border:2px solid var(--line); border-radius:999px; background:var(--lime); padding:4px 9px; color:var(--line); font:900 10px/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.13em; }
+      .brand { color:var(--line); font-size:27px; letter-spacing:-.07em; }.brand small { color:#49722d; font-size:11px; font-weight:900; letter-spacing:.13em; }
+      .badge { border:1px solid #6a8638; background:#e0efbd; color:#375923; }.dot { background:#b94b43; }.dot.ok { background:#57945b; }
+      button { border:2px solid var(--line); border-radius:8px; box-shadow:3px 3px 0 var(--line); color:var(--line); background:#fffdf5; }.primary { background:var(--lime); }.danger { background:#f4c6bc; }
+      .status { margin:0; min-height:72px; padding:25px 30px 19px; border:3px solid var(--line); border-top:0; color:#4f573c; background:#f1edda; font-size:14px; line-height:1.55; }
+      .grid { margin-top:24px; gap:20px; }.card { position:relative; padding:25px; border:3px solid var(--line); border-radius:12px; box-shadow:7px 8px 0 var(--line); background:#fffdf8; }.card::before { content:""; position:absolute; top:0; right:0; width:82px; height:8px; border-radius:0 9px 0 8px; background:var(--lime); }
+      .card h2 { color:var(--line); font-size:25px; letter-spacing:-.055em; }.eyebrow { color:#49652d; }.desc { color:var(--muted); }
+      .switch-row { border:1px solid #c5b98e; background:#f1ead8; }.switch { border-color:var(--line); box-shadow:none; }.switch:checked { background:#88ad67; }
+      .languages { border-top:1px solid #ddd5bf; padding-top:17px; }.language { border-color:#778e4e; color:#344d28; }.language.active { border-color:var(--line); background:var(--lime); color:var(--line); }
+      label { color:#49652d; font-size:12px; letter-spacing:.08em; } input,textarea { border:1.5px solid #233b5b; border-radius:7px; background:#fffdf5; color:var(--ink); }.notice-preview { border-color:var(--line); border-radius:9px; background:#fffdf8; }.notice-preview .tag { background:var(--gold); }.notice-preview.maintenance .tag { background:#ec9187; }.period { background:var(--line); }
+      .access { margin:25px 0 0; border-left:0; border:2px dashed #80944d; border-radius:10px; color:#4f573c; background:#f1edda; }.access code { color:#375923; }.push-note { margin:18px 0 0; padding:13px 15px; border:1px solid #14294755; border-radius:9px; background:#fffdf8; color:#68635a; }
+      @media (max-width:720px) { main { width:min(100% - 28px,1240px); margin:22px auto 55px; } main::before,main::after { display:none; } header { padding:22px 19px; } header::after { right:18px; } .status { padding:23px 19px 17px; } }
+
+      /* v2: 운영 탭의 목록 → 선택 편집 구조. 로그인 전에는 실제 UI를 비활성 미리보기로만 보입니다. */
+      body { background:radial-gradient(circle at 11% 5%,#7e67ff 0,transparent 26rem),radial-gradient(circle at 88% 9%,#3d289b 0,transparent 29rem),linear-gradient(145deg,#6345ed,#3120b2); }
+      main::before { background:#6850db; border-color:#9a89ff; } main::after { background:#24126f; border-color:#1a0b54; }
+      .status { border-color:#0e0a3d; background:#f6f0d9; color:#4f573c; }
+      .console-wrap { position:relative; margin-top:24px; min-height:650px; }
+      .console-layout { display:grid; grid-template-columns:minmax(255px,.56fr) minmax(0,1.44fr); gap:20px; align-items:start; }
+      .campaign-panel,.editor-card { border:3px solid var(--line); border-radius:12px; background:#fffdf8; box-shadow:7px 8px 0 var(--line); }
+      .campaign-panel { overflow:hidden; position:sticky; top:18px; }
+      .campaign-heading { display:flex; justify-content:space-between; gap:14px; padding:24px 23px 18px; border-bottom:1px solid #d9d1b8; }.campaign-heading h2 { margin:2px 0 0; font-size:1.5rem; letter-spacing:-.06em; }.campaign-heading p:not(.eyebrow) { margin:7px 0 0; color:var(--muted); font-size:.8rem; line-height:1.5; }.campaign-heading>span { align-self:start; border:1px solid #6a8638; border-radius:999px; background:#e0efbd; color:#375923; padding:5px 8px; font:900 .65rem/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.11em; }
+      .campaign-list { display:grid; padding:7px 14px 14px; }.campaign-item { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:9px; padding:8px 9px; border-bottom:1px solid #e3decf; }.campaign-item:last-child { border-bottom:0; }.campaign-item.is-selected { background:#eef5dc; }.campaign-select { display:grid; grid-template-columns:12px minmax(0,1fr); align-items:center; gap:10px; width:100%; min-width:0; padding:8px 0; border:0; border-radius:0; box-shadow:none; background:transparent; text-align:left; }.campaign-select:hover { transform:none; box-shadow:none; background:transparent; }.campaign-select:focus-visible { outline:3px solid #7052ed; outline-offset:2px; }.campaign-dot { width:9px; height:9px; border-radius:50%; background:#b7b7b7; }.campaign-dot.is-active { background:#77ad42; }.campaign-dot.is-pending { background:#d09b32; }.campaign-item strong { display:block; color:var(--line); font-size:.88rem; }.campaign-item small { display:block; margin-top:3px; color:#706c65; font-size:.7rem; line-height:1.4; }.campaign-control { display:grid; justify-items:end; gap:5px; min-width:53px; }.campaign-state { color:#516a33; font:900 .65rem/1.3 ui-monospace,SFMono-Regular,monospace; text-align:right; }.campaign-state.off { color:#8a8176; }.campaign-state.pending { color:#a06f23; }.campaign-switch { appearance:none; width:47px; height:27px; margin:0; border:2px solid var(--line); border-radius:999px; background:#bab6b0; position:relative; cursor:pointer; }.campaign-switch::before { content:""; position:absolute; top:3px; left:4px; width:17px; height:17px; border-radius:50%; background:#fff; transition:transform .16s ease; }.campaign-switch:checked { background:#88ad67; }.campaign-switch:checked::before { transform:translateX(19px); }.campaign-switch:disabled { cursor:wait; opacity:.65; }
+      .editor-panel { min-width:0; }.editor-card { min-height:625px; padding:27px; }.editor-card[hidden] { display:none; }.editor-card::before { width:95px; height:9px; }.editor-card .desc { max-width:660px; }.alert-editor { display:grid; align-content:start; gap:9px; }.alert-state { display:grid; gap:7px; margin-top:28px; padding:20px; border:2px dashed #a99669; border-radius:10px; background:#f8f3e3; }.alert-state b { color:#49652d; font-size:.7rem; letter-spacing:.1em; }.alert-state strong { font-size:1.25rem; }.alert-state span { color:#68635a; font-size:.82rem; }
+      .console-wrap { margin-top:0; }.console-status { min-height:0; margin:0 0 14px; padding:11px 13px; border:1px dashed #80944d; border-radius:9px; background:#f1edda; color:#4f573c; font-size:.78rem; line-height:1.45; }.campaign-sign-out { flex:none; align-self:start; padding:7px 9px; font-size:.67rem; box-shadow:2px 2px 0 var(--line); }
+      .device-previews { margin-top:24px; padding:16px; border:2px solid var(--line); border-radius:11px; background:#f3edda; }.device-preview-heading { display:flex; justify-content:space-between; gap:12px; margin:0 0 13px; }.device-preview-heading b { color:#49652d; font:900 .67rem/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.12em; }.device-preview-heading span { display:block; margin-top:5px; color:#68635a; font-size:.73rem; }.device-preview-grid { display:grid; grid-template-columns:minmax(0,1.38fr) minmax(150px,.62fr); gap:16px; align-items:start; }.preview-device>strong { display:block; margin:0 0 7px; color:#49652d; font-size:.7rem; letter-spacing:.06em; }.tablet-screen,.phone-screen { position:relative; overflow:hidden; border:3px solid var(--line); background:#3e2bb4; color:#fff; box-shadow:4px 5px 0 #1d125a; }.tablet-screen { min-height:250px; border-radius:14px; }.phone-screen { width:min(100%,220px); min-height:250px; margin:auto; border-radius:25px; }.tablet-lobby,.phone-game { position:absolute; inset:0; padding:17px; background:linear-gradient(140deg,#6749e9,#34209c 60%,#221167); }.tablet-lobby>span,.phone-game>span { position:relative; z-index:1; font-size:.72rem; font-weight:900; letter-spacing:.08em; }.tablet-lobby i,.phone-game i { position:absolute; bottom:17px; width:23%; border:2px solid #fff; border-radius:6px 10px 4px 4px; background:linear-gradient(135deg,#c8ed88,#6e54dd); }.tablet-lobby i:nth-of-type(1),.phone-game i:nth-of-type(1){left:16%;height:48%}.tablet-lobby i:nth-of-type(2),.phone-game i:nth-of-type(2){left:40%;height:64%;background:linear-gradient(135deg,#f6eac9,#db775c)}.tablet-lobby i:nth-of-type(3),.phone-game i:nth-of-type(3){left:64%;height:40%;background:linear-gradient(135deg,#ca9af4,#5f3fd5)}.phone-game { background:linear-gradient(160deg,#26467e,#15153c 66%,#080b24); }.phone-status { position:absolute; z-index:1; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:9px 14px; color:#fff; font-size:.55rem; font-weight:900; }.preview-scrim { position:absolute; inset:0; background:#10134ea8; }.app-announcement { position:absolute; z-index:2; top:50%; left:50%; width:calc(100% - 46px); transform:translate(-50%,-46%); padding:30px 16px 13px; border:2px solid var(--line); border-radius:13px; background:#fffdf8; color:var(--line); text-align:center; box-shadow:4px 5px 0 #1c164c; }.announcement-badge { position:absolute; top:-22px; left:50%; display:grid; place-items:center; width:45px; height:45px; transform:translateX(-50%); border:2px solid var(--line); border-radius:50%; background:#f8cf58; box-shadow:2px 3px 0 #1c164c; font-size:1.35rem; font-weight:900; }.announcement-tag { display:inline-block; padding:3px 6px; background:#f3a795; color:var(--line); font:900 .51rem/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.09em; }.app-announcement h3 { display:-webkit-box; overflow:hidden; margin:8px 0 0; font-size:.88rem; line-height:1.2; letter-spacing:-.04em; -webkit-line-clamp:2; -webkit-box-orient:vertical; }.app-announcement p { display:-webkit-box; overflow:hidden; margin:5px 0 0; color:#68635a; font-size:.6rem; line-height:1.42; -webkit-line-clamp:3; -webkit-box-orient:vertical; }.announcement-period { margin-top:9px; padding:7px; border:1.5px solid var(--line); border-radius:7px; background:#1b2852; color:#fff; }.announcement-period small { display:block; color:#dfe5f3; font-size:.51rem; }.announcement-period strong { display:block; margin-top:2px; color:#f8cf58; font-size:.64rem; line-height:1.25; }.announcement-actions { display:grid; grid-template-columns:1fr 1.35fr; gap:5px; margin-top:11px; }.announcement-actions button { min-height:27px; padding:4px; border:1.5px solid var(--line); border-radius:5px; box-shadow:none; background:#fffdf8; color:var(--line); font-size:.58rem; font-weight:900; }.announcement-actions button:last-child { background:#a4d65e; }.is-maintenance .announcement-badge { background:#f3a795; }.is-maintenance .announcement-tag { background:#f8cf58; }.is-maintenance .announcement-actions { grid-template-columns:1fr 1fr; }.is-maintenance .announcement-actions button:last-child { background:#fffdf8; }
+      .login-gate { position:absolute; z-index:5; inset:0; display:grid; place-items:center; padding:24px; border-radius:13px; background:rgb(96 71 240 / .28); }.login-card { width:min(390px,100%); padding:29px 28px; border:3px solid var(--line); border-radius:13px; background:#fffdf8; box-shadow:9px 10px 0 var(--line); text-align:center; }.login-card p { margin:12px 0 5px; color:#49652d; font:900 .7rem/1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.14em; }.login-card h1 { margin:0; color:var(--line); font-size:1.75rem; letter-spacing:-.06em; }.login-card>span:not(.login-mark) { display:block; margin:11px 0 22px; color:#68635a; font-size:.83rem; line-height:1.55; }.login-card button { width:100%; }.login-mark { display:inline-grid; place-items:center; width:42px; height:42px; border:3px solid var(--line); border-radius:11px; background:var(--lime); color:var(--line); font-size:1.2rem; font-weight:950; }
+      .login-card button.is-loading { display:flex; align-items:center; justify-content:center; gap:8px; cursor:wait; background:#d9efae; animation:login-button-pulse .75s ease-in-out infinite alternate; }.login-card button.is-loading::after { content:""; width:9px; height:9px; border:2px solid #142947; border-top-color:transparent; border-radius:50%; animation:login-spinner .75s linear infinite; }.login-card button.is-loading:active { transform:none; box-shadow:3px 3px 0 var(--line); }@keyframes login-spinner{to{transform:rotate(360deg)}}@keyframes login-button-pulse{to{filter:brightness(1.06);box-shadow:5px 5px 0 var(--line)}}
+      .is-locked #console { filter:blur(10px); opacity:.62; pointer-events:none; user-select:none; }.is-locked #login-gate { display:grid; }.is-unlocked #login-gate { display:none; }.is-unlocked #console { filter:none; opacity:1; pointer-events:auto; user-select:auto; }
+      @media (max-width:850px) { .console-layout { grid-template-columns:1fr; }.campaign-panel { position:static; }.campaign-list { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }.campaign-item { min-height:95px; grid-template-columns:1fr; align-content:start; border:1px solid #e3decf; border-radius:8px; }.campaign-control { grid-template-columns:auto auto; justify-content:start; }.console-wrap { min-height:735px; } }
+      @media (max-width:640px) { .device-preview-grid { grid-template-columns:1fr; }.preview-phone { width:min(220px,100%); margin:auto; }.tablet-screen { min-height:230px; } }
+      @media (max-width:560px) { .campaign-list { grid-template-columns:1fr; }.campaign-item { min-height:0; grid-template-columns:minmax(0,1fr) auto; }.campaign-control { grid-template-columns:1fr; justify-items:end; }.editor-card { min-height:570px; padding:20px 17px; }.login-card { padding:25px 20px; }.console-wrap { min-height:760px; } .device-previews { padding:12px; }.app-announcement { width:calc(100% - 30px); } }
     </style>
   </head>
-  <body>
+  <body class="is-locked">
     <main>
-      <header>
-        <div class="brand">모시겜 <small>ALERT OPERATIONS · TEST ONLY</small></div>
-        <div>
-          <span class="badge"><i id="auth-dot" class="dot"></i><span id="auth-status">로그인 필요</span></span>
-          <button id="sign-in" class="primary" type="button">Google로 로그인</button>
-          <button id="sign-out" class="hidden" type="button">로그아웃</button>
-        </div>
-      </header>
-
-      <p id="status" class="status">테스트 Firebase에 연결할 준비가 되었습니다.</p>
-      <section id="console" class="grid hidden" aria-label="공지 운영 콘솔">
-        <article class="card">
+      <div hidden aria-hidden="true"><i id="auth-dot" class="dot"></i><span id="auth-status">로그인 필요</span><button id="sign-in" type="button">Google로 로그인</button></div>
+      <div id="console-wrap" class="console-wrap">
+        <section id="console" class="console-layout" aria-label="공지 운영 콘솔" aria-hidden="true" inert>
+          <aside class="campaign-panel">
+            <div class="campaign-heading"><div><p class="eyebrow">LIVE STATUS</p><h2>운영 목록</h2><p>공지, 점검, 알림 상태를 우선순위 순서로 확인합니다.</p></div><button id="sign-out" class="campaign-sign-out hidden" type="button">로그아웃</button></div>
+            <div id="campaign-list" class="campaign-list" aria-label="운영 항목 목록"></div>
+          </aside>
+          <div class="editor-panel">
+        <p id="status" class="console-status" role="status">로그인 후 공지와 점검 상태를 확인하고 설정할 수 있습니다.</p>
+        <article id="notice-editor" class="card editor-card">
           <p class="eyebrow">A · LATEST NOTICE</p>
           <h2>최근 공지</h2>
           <p class="desc">앱 로비에 표시됩니다. “상점으로”를 누르면 태블릿 상점으로 이동합니다.</p>
@@ -48,10 +86,16 @@
           <div class="languages" data-kind="notice"></div>
           <label for="notice-title">제목</label><input id="notice-title" maxlength="80" />
           <label for="notice-body">본문</label><textarea id="notice-body" maxlength="500"></textarea>
-          <div id="notice-preview" class="notice-preview"><span class="tag">NOTICE</span><h3></h3><p></p></div>
+          <div class="device-previews" data-preview-kind="notice" aria-label="공지 화면 미리보기">
+            <div class="device-preview-heading"><div><b>SCREEN PREVIEW</b><span>입력 중인 내용이 두 화면에 바로 반영됩니다.</span></div></div>
+            <div class="device-preview-grid">
+              <section class="preview-device preview-tablet"><strong>태블릿 · 공용 화면</strong><div class="tablet-screen"><div class="tablet-lobby"><span>MOSIGAME</span><i></i><i></i><i></i></div><div class="preview-scrim"></div><div class="app-announcement"><div class="announcement-badge">⌁</div><span class="announcement-tag">NOTICE</span><h3 data-preview-title="notice"></h3><p data-preview-body="notice"></p><div class="announcement-actions"><button data-preview-secondary="notice" type="button" tabindex="-1">닫기</button><button data-preview-primary="notice" type="button" tabindex="-1">상점으로</button></div></div></div></section>
+              <section class="preview-device preview-phone"><strong>휴대폰 · 개인 화면</strong><div class="phone-screen"><div class="phone-status"><span>9:41</span><span>●●●</span></div><div class="phone-game"><span>모시겜</span><i></i><i></i></div><div class="preview-scrim"></div><div class="app-announcement"><div class="announcement-badge">⌁</div><span class="announcement-tag">NOTICE</span><h3 data-preview-title="notice"></h3><p data-preview-body="notice"></p><div class="announcement-actions"><button data-preview-secondary="notice" type="button" tabindex="-1">닫기</button><button data-preview-primary="notice" type="button" tabindex="-1">상점으로</button></div></div></div></section>
+            </div>
+          </div>
           <div class="actions"><button class="primary save" data-kind="notice" type="button">최근 공지 저장</button></div>
         </article>
-        <article class="card">
+        <article id="maintenance-editor" class="card editor-card" hidden>
           <p class="eyebrow">B · MAINTENANCE ONLY</p>
           <h2>서버 점검</h2>
           <p class="desc">점검 모달을 보여 주고, 서버에서 새 방 생성과 방 참가를 차단합니다.</p>
@@ -60,16 +104,31 @@
           <div class="languages" data-kind="maintenance"></div>
           <label for="maintenance-title">제목</label><input id="maintenance-title" maxlength="80" />
           <label for="maintenance-body">본문</label><textarea id="maintenance-body" maxlength="500"></textarea>
-          <div id="maintenance-preview" class="notice-preview maintenance"><span class="tag">MAINTENANCE</span><h3></h3><p></p><div class="period"></div></div>
+          <div class="device-previews is-maintenance" data-preview-kind="maintenance" aria-label="점검 화면 미리보기">
+            <div class="device-preview-heading"><div><b>SCREEN PREVIEW</b><span>점검 내용과 시간을 실제 공지 모달 형태로 확인합니다.</span></div></div>
+            <div class="device-preview-grid">
+              <section class="preview-device preview-tablet"><strong>태블릿 · 공용 화면</strong><div class="tablet-screen"><div class="tablet-lobby"><span>MOSIGAME</span><i></i><i></i><i></i></div><div class="preview-scrim"></div><div class="app-announcement"><div class="announcement-badge">⌁</div><span class="announcement-tag">MAINTENANCE</span><h3 data-preview-title="maintenance"></h3><p data-preview-body="maintenance"></p><div class="announcement-period"><small data-preview-period-label="maintenance">점검 시간</small><strong data-preview-period="maintenance"></strong></div><div class="announcement-actions"><button data-preview-secondary="maintenance" type="button" tabindex="-1">나중에</button><button data-preview-primary="maintenance" type="button" tabindex="-1">닫기</button></div></div></div></section>
+              <section class="preview-device preview-phone"><strong>휴대폰 · 개인 화면</strong><div class="phone-screen"><div class="phone-status"><span>9:41</span><span>●●●</span></div><div class="phone-game"><span>모시겜</span><i></i><i></i></div><div class="preview-scrim"></div><div class="app-announcement"><div class="announcement-badge">⌁</div><span class="announcement-tag">MAINTENANCE</span><h3 data-preview-title="maintenance"></h3><p data-preview-body="maintenance"></p><div class="announcement-period"><small data-preview-period-label="maintenance">점검 시간</small><strong data-preview-period="maintenance"></strong></div><div class="announcement-actions"><button data-preview-secondary="maintenance" type="button" tabindex="-1">나중에</button><button data-preview-primary="maintenance" type="button" tabindex="-1">닫기</button></div></div></div></section>
+            </div>
+          </div>
           <div class="actions"><button class="danger save" data-kind="maintenance" type="button">점검 설정 저장</button></div>
         </article>
-      </section>
-      <p class="push-note">일반 푸시 알림(FCM)은 이 화면에 아직 연결하지 않았습니다. 이 콘솔은 앱 내 공지 A와 점검 B만 관리합니다.</p>
-      <p class="access">접근 권한은 Firebase Auth UID의 <code>operationsAdmin</code> custom claim으로 서버가 검증합니다. 이 페이지는 <strong>ban-pick-simulator 테스트 Firebase</strong> 전용입니다.</p>
+        <article id="alert-editor" class="card editor-card alert-editor" hidden>
+          <p class="eyebrow">C · PUSH ALERT</p>
+          <h2>일반 알림</h2>
+          <p class="desc">푸시 알림 발송은 아직 이 콘솔과 연결하지 않았습니다.</p>
+          <div class="alert-state"><b>전송 상태</b><strong>연동 전</strong><span>성공 여부를 표시할 수 있는 발송 이력이 아직 없습니다.</span></div>
+        </article>
+          </div>
+        </section>
+        <section id="login-gate" class="login-gate" aria-live="polite">
+          <div class="login-card"><span class="login-mark">M</span><p>ALERT OPERATIONS</p><h1>운영 콘솔에 로그인</h1><span>공지와 점검 설정은 운영자 계정으로만 변경할 수 있습니다.</span><button id="sign-in-gate" class="primary" type="button">Google로 로그인</button></div>
+        </section>
+      </div>
     </main>
     <script type="module">
       import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
-      import {GoogleAuthProvider, getAuth, getIdTokenResult, onAuthStateChanged, signInWithPopup, signOut} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
+      import {GoogleAuthProvider, getAuth, getIdTokenResult, getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
       import {getFirestore, onSnapshot, doc} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
       import {connectFunctionsEmulator, getFunctions, httpsCallable} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-functions.js';
 
@@ -82,27 +141,85 @@
         maintenance:{active:false,maintenancePeriod:'',localized:{ko:{title:'서버 점검 안내',body:'더 나은 서비스를 위해 잠시 점검 중입니다.'},en:{title:'Maintenance notice',body:'We are temporarily performing maintenance.'},'zh-Hans':{title:'服务器维护通知',body:'我们正在进行临时维护。'},'zh-Hant':{title:'伺服器維護通知',body:'我們正在進行暫時維護。'}}}
       };
       const state = structuredClone(defaults); const selectedLocale = {notice:'ko',maintenance:'ko'};
+      let selectedPanel = null; let manualPanelSelection = false;
       const $ = id => document.getElementById(id); const status = text => $('status').textContent = text;
       const edit = kind => ({title:$(`${kind}-title`),body:$(`${kind}-body`),active:$(`${kind}-active`),period:$(`${kind}-period`)});
       const copy = kind => state[kind].localized[selectedLocale[kind]];
       const ensureCopy = (kind, locale) => state[kind].localized[locale] ??= {title:'',body:''};
+      const previewLabels = {
+        ko:{close:'닫기',store:'상점으로',later:'나중에',period:'점검 시간',emptyTitle:'제목 미입력',emptyBody:'본문 미입력',emptyPeriod:'점검 시간 미입력'},
+        en:{close:'Close',store:'Go to store',later:'Later',period:'Maintenance window',emptyTitle:'No title',emptyBody:'No message',emptyPeriod:'Maintenance window not set'},
+        'zh-Hans':{close:'关闭',store:'前往商店',later:'稍后',period:'维护时间',emptyTitle:'未填写标题',emptyBody:'未填写正文',emptyPeriod:'未填写维护时间'},
+        'zh-Hant':{close:'關閉',store:'前往商店',later:'稍後',period:'維護時間',emptyTitle:'未填寫標題',emptyBody:'未填寫正文',emptyPeriod:'未填寫維護時間'},
+      };
+      function renderDevicePreview(kind, current) {
+        const labels = previewLabels[selectedLocale[kind]];
+        document.querySelectorAll(`[data-preview-title="${kind}"]`).forEach(node => node.textContent=current.title || labels.emptyTitle);
+        document.querySelectorAll(`[data-preview-body="${kind}"]`).forEach(node => node.textContent=current.body || labels.emptyBody);
+        document.querySelectorAll(`[data-preview-kind="${kind}"]`).forEach(node => node.classList.toggle('is-maintenance',kind==='maintenance'));
+        document.querySelectorAll(`[data-preview-secondary="${kind}"]`).forEach(node => node.textContent=kind==='maintenance'?labels.later:labels.close);
+        document.querySelectorAll(`[data-preview-primary="${kind}"]`).forEach(node => node.textContent=kind==='maintenance'?labels.close:labels.store);
+        if(kind==='maintenance') {
+          document.querySelectorAll('[data-preview-period-label="maintenance"]').forEach(node => node.textContent=labels.period);
+          document.querySelectorAll('[data-preview-period="maintenance"]').forEach(node => node.textContent=state.maintenance.maintenancePeriod || labels.emptyPeriod);
+        }
+      }
+      const preferredPanel = () => state.notice.active ? 'notice' : state.maintenance.active ? 'maintenance' : 'notice';
+      function renderCampaignList() {
+        const entries = [
+          {kind:'notice', title:'공지', detail:state.notice.active?'앱 로비에 표시 중':'앱 로비에 표시 안 함', active:state.notice.active, toggle:true},
+          {kind:'maintenance', title:'점검', detail:state.maintenance.active?'새 방 생성·참가 차단 중':'점검 모드 해제', active:state.maintenance.active, toggle:true},
+          {kind:'alert', title:'알림', detail:'알림 전송 · 성공 여부 미연동', value:'연동 전', pending:true},
+        ];
+        const list = $('campaign-list');
+        list.replaceChildren(...entries.map(entry => {
+          const row = document.createElement('div'); row.className = `campaign-item ${entry.kind===selectedPanel?'is-selected':''}`;
+          const select = document.createElement('button'); select.type = 'button'; select.className = 'campaign-select';
+          select.innerHTML = `<i class="campaign-dot ${entry.active?'is-active':entry.pending?'is-pending':''}"></i><span><strong>${entry.title}</strong><small>${entry.detail}</small></span>`;
+          select.onclick = () => { selectedPanel = entry.kind; manualPanelSelection = true; renderEditor(); };
+          row.append(select);
+          const control = document.createElement('div'); control.className = 'campaign-control';
+          if (entry.toggle) {
+            const stateLabel = document.createElement('em'); stateLabel.className = `campaign-state ${entry.active?'':'off'}`; stateLabel.textContent = entry.active?'켜짐':'꺼짐';
+            const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.className = 'campaign-switch'; toggle.checked = entry.active; toggle.setAttribute('aria-label',`${entry.title} ${entry.active?'끄기':'켜기'}`);
+            toggle.addEventListener('change',() => updateActive(entry.kind,toggle.checked));
+            control.append(stateLabel,toggle);
+          } else {
+            const stateLabel = document.createElement('em'); stateLabel.className = 'campaign-state pending'; stateLabel.textContent = entry.value; control.append(stateLabel);
+          }
+          row.append(control); return row;
+        }));
+      }
+      function renderEditor() {
+        if (!selectedPanel) selectedPanel = preferredPanel();
+        ['notice','maintenance','alert'].forEach(kind => $(`${kind}-editor`).hidden = kind !== selectedPanel);
+        renderCampaignList();
+      }
       function render(kind) {
-        const fields=edit(kind), current=copy(kind), preview=$(`${kind}-preview`);
+        const fields=edit(kind), current=copy(kind);
         fields.title.value=current.title; fields.body.value=current.body; fields.active.checked=state[kind].active;
         if(fields.period) fields.period.value=state[kind].maintenancePeriod ?? '';
         const languageBox=document.querySelector(`.languages[data-kind="${kind}"]`);
         languageBox.replaceChildren(...locales.map(([locale,label])=>{const button=document.createElement('button');button.className=`language ${locale===selectedLocale[kind]?'active':''}`;button.type='button';button.textContent=label;button.onclick=()=>{selectedLocale[kind]=locale;ensureCopy(kind,locale);render(kind)};return button;}));
-        preview.querySelector('h3').textContent=current.title || '제목 미입력'; preview.querySelector('p').textContent=current.body || '본문 미입력';
-        if(kind==='maintenance') preview.querySelector('.period').textContent=state.maintenance.maintenancePeriod || '점검 시간 미입력';
+        renderDevicePreview(kind,current);
       }
-      function renderAll(){ render('notice');render('maintenance'); }
-      function syncFromInputs(kind){const fields=edit(kind), current=copy(kind);current.title=fields.title.value;current.body=fields.body.value;state[kind].active=fields.active.checked;if(fields.period)state[kind].maintenancePeriod=fields.period.value;render(kind);}
-      document.querySelectorAll('input,textarea').forEach(field=>field.addEventListener('input',()=>{const kind=field.id.startsWith('maintenance')?'maintenance':'notice';syncFromInputs(kind)}));
-      document.querySelectorAll('.save').forEach(button=>button.addEventListener('click',async()=>{const kind=button.dataset.kind;syncFromInputs(kind);const value=state[kind];for(const [locale] of locales){const c=value.localized[locale];if(!c?.title.trim()||!c?.body.trim()){status(`${locale} 제목과 본문을 모두 입력해 주세요.`);return;}}if(kind==='maintenance'&&value.active&&!value.maintenancePeriod.trim()){status('점검 모드를 켜려면 점검 시간을 입력해 주세요.');return;}button.disabled=true;try{await callUpdate({kind,active:value.active,localized:value.localized,maintenancePeriod:kind==='maintenance'?value.maintenancePeriod:null});status(`${kind==='notice'?'최근 공지':'서버 점검'} 설정을 저장했습니다. 앱에 실시간 반영됩니다.`);}catch(error){status(`저장하지 못했습니다: ${error.message ?? error}`);}finally{button.disabled=false;}}));
-      $('sign-in').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(error){status(`로그인하지 못했습니다: ${error.message ?? error}`);}};
+      function renderAll(){ render('notice');render('maintenance');renderEditor(); }
+      function syncFromInputs(kind){const fields=edit(kind), current=copy(kind);current.title=fields.title.value;current.body=fields.body.value;state[kind].active=fields.active.checked;if(fields.period)state[kind].maintenancePeriod=fields.period.value;render(kind);renderCampaignList();}
+      document.querySelectorAll('input:not(.switch),textarea').forEach(field=>field.addEventListener('input',()=>{const kind=field.id.startsWith('maintenance')?'maintenance':'notice';syncFromInputs(kind)}));
+      const updateError = kind => {const value=state[kind];for(const [locale] of locales){const c=value.localized[locale];if(!c?.title.trim()||!c?.body.trim())return `${locale} 제목과 본문을 모두 입력해 주세요.`;}if(kind==='maintenance'&&value.active&&!value.maintenancePeriod.trim())return '점검 모드를 켜려면 점검 시간을 입력해 주세요.';return null;};
+      async function persist(kind,button=null,{fromToggle=false}={}){const error=updateError(kind);if(error){status(error);return false;}if(button)button.disabled=true;try{await callUpdate({kind,active:state[kind].active,localized:state[kind].localized,maintenancePeriod:kind==='maintenance'?state[kind].maintenancePeriod:null});status(fromToggle?`${kind==='notice'?'공지':'점검'}를 ${state[kind].active?'켰습니다':'껐습니다'}. 앱에 즉시 반영됩니다.`:`${kind==='notice'?'최근 공지':'서버 점검'} 설정을 저장했습니다. 앱에 실시간 반영됩니다.`);return true;}catch(error){status(`저장하지 못했습니다: ${error.message ?? error}`);return false;}finally{if(button)button.disabled=false;}}
+      async function updateActive(kind,nextActive){const previousActive=state[kind].active;state[kind].active=nextActive;renderAll();const saved=await persist(kind,null,{fromToggle:true});if(!saved){state[kind].active=previousActive;renderAll();}}
+      document.querySelectorAll('.switch').forEach(field=>field.addEventListener('change',()=>{const kind=field.id.startsWith('maintenance')?'maintenance':'notice';updateActive(kind,field.checked);}));
+      document.querySelectorAll('.save').forEach(button=>button.addEventListener('click',async()=>{const kind=button.dataset.kind;syncFromInputs(kind);await persist(kind,button);}));
+      function setLoginPending(pending){document.querySelectorAll('#sign-in,#sign-in-gate').forEach(button=>{button.disabled=pending;button.classList.toggle('is-loading',pending);button.setAttribute('aria-busy',String(pending));button.textContent=pending?'로그인 페이지 여는 중…':'Google로 로그인';});}
+      async function requestSignIn(){try{setLoginPending(true);status('Google 로그인 페이지로 이동합니다. 로그인이 끝나면 이 운영 콘솔로 돌아옵니다.');await signInWithRedirect(auth,new GoogleAuthProvider());}catch(error){setLoginPending(false);const code=typeof error?.code==='string'?` (${error.code})`:'';status(`로그인하지 못했습니다${code}: ${error?.message ?? error}`);}}
+      $('sign-in').onclick=requestSignIn; $('sign-in-gate').onclick=requestSignIn;
       $('sign-out').onclick=()=>signOut(auth);
+      function setLocked(locked){document.body.classList.toggle('is-locked',locked);document.body.classList.toggle('is-unlocked',!locked);$('console').setAttribute('aria-hidden',String(locked));$('console').toggleAttribute('inert',locked);}
       let unsubs=[];function clearSubscriptions(){unsubs.forEach(unsub=>unsub());unsubs=[];}
-      onAuthStateChanged(auth,async user=>{clearSubscriptions();$('console').classList.add('hidden');$('sign-in').classList.toggle('hidden',!!user);$('sign-out').classList.toggle('hidden',!user);if(!user){$('auth-dot').classList.remove('ok');$('auth-status').textContent='로그인 필요';status('테스트 Firebase 운영자 계정으로 로그인해 주세요.');return;}const token=await getIdTokenResult(user,true);$('auth-dot').classList.add('ok');$('auth-status').textContent=`로그인됨 · ${user.uid}`;if(token.claims.operationsAdmin!==true){status('이 계정에는 운영자 권한이 없습니다. UID에 operationsAdmin 권한을 부여한 뒤 다시 로그인해 주세요.');return;}$('console').classList.remove('hidden');status('테스트 Firebase 공지를 불러오는 중입니다.');for(const kind of ['notice','maintenance'])unsubs.push(onSnapshot(doc(db,'platformAnnouncements',kind),snapshot=>{if(snapshot.exists())state[kind]={...defaults[kind],...snapshot.data(),localized:{...defaults[kind].localized,...snapshot.data().localized}};render(kind);status('테스트 Firebase와 동기화되었습니다.');},error=>status(`공지 데이터를 읽지 못했습니다: ${error.message ?? error}`)));});
+      let redirectFailure = null;
+      try { await getRedirectResult(auth); } catch (error) { const code=typeof error?.code==='string'?` (${error.code})`:''; redirectFailure=`Google 로그인에 실패했습니다${code}: ${error?.message ?? error}`; }
+      onAuthStateChanged(auth,async user=>{clearSubscriptions();$('sign-out').classList.toggle('hidden',!user);if(!user){$('auth-dot').classList.remove('ok');$('auth-status').textContent='로그인 필요';setLocked(true);status(redirectFailure ?? '로그인 후 공지와 점검 상태를 확인하고 설정할 수 있습니다.');return;}const token=await getIdTokenResult(user,true);$('auth-dot').classList.add('ok');$('auth-status').textContent='로그인됨';if(token.claims.operationsAdmin!==true){setLocked(true);status('이 계정에는 운영자 권한이 없습니다. 운영자 계정으로 다시 로그인해 주세요.');return;}manualPanelSelection=false;selectedPanel=null;setLocked(false);status('테스트 Firebase 공지를 불러오는 중입니다.');for(const kind of ['notice','maintenance'])unsubs.push(onSnapshot(doc(db,'platformAnnouncements',kind),snapshot=>{if(snapshot.exists())state[kind]={...defaults[kind],...snapshot.data(),localized:{...defaults[kind].localized,...snapshot.data().localized}};if(!manualPanelSelection)selectedPanel=null;renderAll();status('테스트 Firebase와 동기화되었습니다.');},error=>status(`공지 데이터를 읽지 못했습니다: ${error.message ?? error}`)));});
       renderAll();
     </script>
   </body>
