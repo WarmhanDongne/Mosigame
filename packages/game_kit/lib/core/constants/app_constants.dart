@@ -14,5 +14,5 @@ abstract final class AppConstants {
   ///
   /// ⚠️ `pubspec.yaml`의 `version:`(+빌드번호 제외)과 반드시 같아야 합니다.
   /// 어긋나면 `app_version_constant_test.dart`가 실패합니다.
-  static const appVersion = '1.0.0';
+  static const appVersion = '1.0.1';
 }
