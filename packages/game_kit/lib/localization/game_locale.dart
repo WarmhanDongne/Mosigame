@@ -609,6 +609,13 @@ const _commonUiCopy = <String, (String, String, String)>{
   '업데이트를 받는 중': ('Downloading update', '正在下载更新', '正在下載更新'),
   '나중에 하기': ('Later', '稍后', '稍後'),
   '업데이트를 마쳤어요': ('Update downloaded', '更新下载完成', '更新下載完成'),
+  '업데이트가 필요해요': ('Update required', '需要更新', '需要更新'),
+  '최신 버전으로 업데이트한 뒤 이용해 주세요': (
+    'Please update to the latest version to continue',
+    '请更新到最新版本后继续使用',
+    '請更新到最新版本後繼續使用',
+  ),
+  '업데이트하기': ('Update', '立即更新', '立即更新'),
   '앱을 다시 켜면 적용됩니다': (
     'Restart the app to apply it',
     '重新启动应用后生效',
