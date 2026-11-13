@@ -792,6 +792,14 @@ class RoomService {
       .onValue
       .map((event) => _joinPreviewPlayersFromSnapshot(event.snapshot));
 
+  /// 참가 충돌 직후 서버가 다시 만든 최신 미리보기를 한 번 읽습니다.
+  Future<List<RoomPlayer>> getRoomJoinPreview(String roomCode) async {
+    final snapshot = await _readWithRetry(
+      realtime.ref('rooms/$roomCode/joinPreview/participants'),
+    );
+    return _joinPreviewPlayersFromSnapshot(snapshot);
+  }
+
   List<RoomPlayer> _joinPreviewPlayersFromSnapshot(DataSnapshot snapshot) {
     final value = snapshot.value;
     final entries = switch (value) {

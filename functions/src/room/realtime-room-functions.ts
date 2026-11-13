@@ -349,6 +349,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           rejection = new HttpsError(
             "already-exists",
             "이미 선택된 캐릭터입니다.",
+            {reason: "characterTaken"},
           );
           return;
         }
@@ -356,6 +357,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           rejection = new HttpsError(
             "already-exists",
             "이미 사용 중인 닉네임입니다.",
+            {reason: "nicknameTaken"},
           );
           return;
         }

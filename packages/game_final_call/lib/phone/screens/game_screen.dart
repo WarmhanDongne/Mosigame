@@ -314,9 +314,11 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
       combinationLabel: combination == null
           ? null
           : FinalCallCopy.combinationEquation(combination),
-      // 최종 제출은 규칙상 손패 전체의 최고 조합으로 자동 제출합니다. 체크된
-      // 카드를 다시 눌러 해제할 수 없게 해 화면의 체크와 실제 제출을 일치시킵니다.
-      selectionEnabled: controller.canCompleteTurn,
+      // 최고 조합을 먼저 골라 주되, 최종 제출 단계에서는 한 장까지 자유롭게
+      // 해제·변경할 수 있습니다.
+      selectionEnabled: submitMode
+          ? controller.canSubmitFinalHand
+          : controller.canCompleteTurn,
       onRevealStarted: onRevealStarted,
       onRevealCompleted: _handleRevealCompleted,
       onCardSelected: submitMode
@@ -452,12 +454,11 @@ class _FinalSubmitActionState extends State<_FinalSubmitAction> {
     if (_submittedRevision != null || !widget.controller.canSubmitFinalHand) {
       return;
     }
-    // 표시 체크 상태와 무관하게 현재 손패 전체에서 최고 점수 조합을 다시
-    // 계산합니다. 제출 직전 손패 갱신에도 항상 같은 규칙으로 전송됩니다.
-    final cards = finalCallBestCombination(
-      widget.controller.hand,
-    ).cards.map((card) => card.id).toList(growable: false);
-    if (cards.isEmpty) return;
+    final selectedCards = widget.controller.hand
+        .where((card) => widget.selectedCardIds.contains(card.id))
+        .toList(growable: false);
+    if (!isValidFinalCallSelection(selectedCards)) return;
+    final cards = selectedCards.map((card) => card.id).toList(growable: false);
     setState(() => _submittedRevision = widget.controller.revision);
     final completed = await widget.controller.submitFinalHand(cards);
     if (!mounted || completed) return;
@@ -485,7 +486,9 @@ class _FinalSubmitActionState extends State<_FinalSubmitAction> {
     final submitted = _submittedRevision == controller.revision;
     final hasSelection = widget.selectedCardIds.isNotEmpty;
     final canSubmit =
-        !submitted && hasSelection && controller.canSubmitFinalHand;
+        !submitted &&
+        isValidFinalCallSelection(selectedCards) &&
+        controller.canSubmitFinalHand;
     final label = submitted
         ? FinalCallCopy.submitted
         : hasSelection

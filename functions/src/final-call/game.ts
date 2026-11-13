@@ -164,6 +164,27 @@ export function selectBestFinalCallHand(
   return selectBestFinalCallCombination(Object.values(hand ?? {}));
 }
 
+/** 클라이언트가 직접 고른 최종 조합을 현재 손패 기준으로 검증해 반환합니다. */
+export function resolveFinalCallSubmission(
+  hand: Record<string, FinalCallCard> | undefined,
+  cardIds: string[],
+): FinalCallCard[] | null {
+  const currentHand = hand ?? {};
+  const uniqueIds = [...new Set(cardIds)];
+  if (Object.keys(currentHand).length !== FINAL_CALL_CARDS_PER_PLAYER ||
+      uniqueIds.length < 1 ||
+      uniqueIds.length > FINAL_CALL_CARDS_PER_PLAYER) {
+    return null;
+  }
+  const selected = uniqueIds.map((cardId) => currentHand[cardId]);
+  if (selected.some((card) => card === undefined)) return null;
+  const cards = selected as FinalCallCard[];
+  const first = cards[0];
+  const sameColor = cards.every((card) => card.color === first.color);
+  const sameValue = cards.every((card) => card.value === first.value);
+  return sameColor || sameValue ? cards : null;
+}
+
 /** 라운드를 판정하고 생명, 탈락, 승리 상태를 갱신합니다. */
 export function resolveFinalCallRound(
   game: FinalCallGameState,

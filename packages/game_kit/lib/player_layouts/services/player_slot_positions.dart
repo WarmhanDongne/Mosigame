@@ -11,6 +11,13 @@ import 'package:flutter/widgets.dart';
 
 // ============================================================
 
+typedef SeatingCardPositionsBuilder =
+    List<Offset> Function({
+      required int playerCount,
+      required Size boardSize,
+      required Size cardSize,
+    });
+
 //사용 방법
 //normalizedPlayerCenters(playerCount)
 

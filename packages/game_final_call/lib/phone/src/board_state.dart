@@ -29,6 +29,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
 
   /// 현재 손패에서 최고 조합 체크를 동기화한 라운드입니다.
   int? _presetFinalSelectionRound;
+  bool _finalSelectionEdited = false;
   bool _isLeavingRoom = false;
   bool _isExitModalOpen = false;
   bool _wasMyTurn = false;
@@ -136,12 +137,14 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
       selectedCardId = null;
     }
     if (game.isFinalSubmitPhase) selectedCardId = null;
+    if (!game.isFinalSubmitPhase) _finalSelectionEdited = false;
     _presetFinalSelectionRound = syncFinalCallSelection(
       selected: selectedFinalCardIds,
       hand: game.hand,
       submitPhase: game.isFinalSubmitPhase,
       round: game.round,
       presetRound: _presetFinalSelectionRound,
+      preserveUserSelection: _finalSelectionEdited,
     );
     if (game.callerUid == null) {
       observedCallerUid = null;
@@ -384,10 +387,14 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
                         setState(() => revealedRound = game.round),
                     onSelectedCardChanged: (id) =>
                         setState(() => selectedCardId = id),
-                    // 최종 제출 조합은 손패 전체에서 자동으로 고릅니다.
-                    // 카드 탭으로 체크를 바꾸면 화면과 서버 판정이 달라질 수 있어
-                    // 여기서는 선택 상태를 바꾸지 않습니다.
-                    onFinalCardSelected: (_) {},
+                    onFinalCardSelected: (cardId) => setState(() {
+                      toggleFinalCallSelection(
+                        selected: selectedFinalCardIds,
+                        hand: game.hand,
+                        cardId: cardId,
+                      );
+                      _finalSelectionEdited = true;
+                    }),
                     onCompleteTurn: _completeTurn,
                     replacingCardId: replacingCardId,
                     replacementInProgress: replacementInProgress,

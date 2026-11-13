@@ -15,6 +15,7 @@ import 'package:game_final_call/gen/assets.gen.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_final_call/phone/phone_board.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
+import 'package:game_final_call/tablet/screens/seat_geometry.dart';
 import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/models/game_room_context.dart';
@@ -53,6 +54,8 @@ class FinalCallGame extends TemplateGame {
   @override
   ImageProvider get layoutChairImage =>
       Assets.games.finalCall.images.layout.chair.game.provider();
+  @override
+  get layoutSeatPositionsBuilder => finalCallSeatingCardTopLeftPositions;
 
   @override
   Future<void> startGame(String roomCode, {Map<String, Object?>? options}) =>

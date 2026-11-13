@@ -592,6 +592,7 @@ class _TabletGameLauncher {
             tableBackgroundImage: templateGame.tableBackgroundImage,
             tableImage: templateGame.layoutTableImage,
             chairImage: templateGame.layoutChairImage,
+            slotPositionsBuilder: templateGame.layoutSeatPositionsBuilder,
             seatTheme: MosiSeatTheme.of(templateGame.id),
             zoomHandoff: !templateGame.usesDoorEntrance,
             onCancel: cancel,
