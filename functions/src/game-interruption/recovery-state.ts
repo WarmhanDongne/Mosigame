@@ -4,6 +4,7 @@ import {assertRoomTarget, SessionRoom} from "../room/session-contract.js";
 import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/common/types.js";
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
+import {RUSSIAN_ROULETTE_TURN_MS} from "../russian-roulette/game.js";
 
 export interface GameContext {
   gameInstanceId: string;
@@ -137,8 +138,10 @@ export function beginRecoveryPause(
       game.public.phase === "lastCardChallenge" ? LAST_CARD_CHALLENGE_DURATION_MS : undefined) :
     game.public.gameType === "final_call" ? FINAL_CALL_TURN_MS :
       ["yut", "strategy_yut", "strategy_yut_edition"].includes(String(game.public.gameType)) ? YUT_TURN_MS : undefined;
-  if (turnLimit !== undefined && typeof deadline === "number" && Number.isFinite(deadline)) {
-    timerReferenceAt = Math.max(timerReferenceAt, deadline - turnLimit);
+  const resolvedTurnLimit = game.public.gameType === "russian_roulette" ?
+    RUSSIAN_ROULETTE_TURN_MS : turnLimit;
+  if (resolvedTurnLimit !== undefined && typeof deadline === "number" && Number.isFinite(deadline)) {
+    timerReferenceAt = Math.max(timerReferenceAt, deadline - resolvedTurnLimit);
   }
   game.server.recovery = {
     startedAt: now,

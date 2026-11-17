@@ -337,45 +337,16 @@ class FinalCallTabletGameLayer extends StatelessWidget {
                       card: visibleDiscard,
                       cardWidth: cardWidth,
                       gap: gap,
+                      deckCount: controller.deckRemainingCount,
                       showRevealedCard:
                           !hideDiscardWhileTaken && !hideDiscardDuringThrow,
-                    ),
-                  ),
-                  // 덱 장수와 공개 카드 이름표입니다.
-                  Positioned(
-                    left: center.dx - cardWidth - gap / 2,
-                    top: center.dy + cardHeight / 2 + 12 * scale,
-                    width: cardWidth * 2 + gap,
-                    child: Row(
-                      children: [
-                        for (final label in [
-                          FinalCallCopy.deckCount(
-                            controller.deckRemainingCount,
-                          ),
-                          FinalCallCopy.publicCard,
-                        ]) ...[
-                          if (label == FinalCallCopy.publicCard)
-                            SizedBox(width: gap),
-                          SizedBox(
-                            width: cardWidth,
-                            child: Text(
-                              label,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              style: finalCallPopText(
-                                16 * scale,
-                                color: FinalCallColors.muted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
                     ),
                   ),
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: center.dy + cardHeight / 2 + 40 * scale,
+                    // 덱 장수는 덱 카드 위 별 스티커가 보여 주므로 라운드 안내만 둡니다.
+                    top: center.dy + cardHeight / 2 + 22 * scale,
                     child: Text(
                       FinalCallCopy.roundCaption(controller.round),
                       textAlign: TextAlign.center,

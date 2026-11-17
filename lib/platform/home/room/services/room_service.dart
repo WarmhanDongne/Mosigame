@@ -18,6 +18,17 @@ import 'package:game_kit/session/controller_room_session_store.dart';
 import 'package:game_kit/recovery/models/room_session_identity.dart';
 import 'package:game_kit/recovery/services/room_session_identity_store.dart';
 
+/// 기존 참가자 노드는 `status` 필드가 없을 수 있습니다.
+///
+/// 서버 join 정책과 [RoomPlayer.fromJson]은 필드 누락을 active로 취급하므로, 복구
+/// 사전 판정도 같은 규칙을 써야 정상 참가자를 `player-not-active`로 오판하지 않습니다.
+/// 노드가 없거나 명시적으로 inactive인 경우는 계속 거절합니다.
+bool _isActivePlayerNodeValue(Object? value) {
+  if (value is! Map) return false;
+  final status = value['status']?.toString();
+  return status == null || status == 'active';
+}
+
 class RoomService {
   static const int _databaseOperationAttempts = 4;
   RoomService({
@@ -241,6 +252,32 @@ class RoomService {
       realtime.ref('rooms/$roomCode/players'),
     );
     return _playersFromSnapshot(snapshot);
+  }
+
+  Future<Map<String, dynamic>?> _readPlayerNode(
+    String roomCode,
+    String uid,
+  ) async {
+    final snapshot = await _readWithRetry(
+      realtime.ref('rooms/$roomCode/players/$uid'),
+    );
+    final value = snapshot.value;
+    if (value is! Map || value.isEmpty) return null;
+    // iOS can return the subscribed players collection as the value of a
+    // child get(), even though snapshot.key is the requested UID. A roster
+    // contains only child records. Never parse the roster itself as a player.
+    final node = value.values.every((field) => field is Map)
+        ? value[uid]
+        : value;
+    return node is Map ? Map<String, dynamic>.from(node) : null;
+  }
+
+  /// 복구 완료 확인에 필요한 본인 참가자 요약 한 건만 읽습니다.
+  Future<RoomPlayer?> getRoomPlayer(String roomCode, String uid) async {
+    final value = await _readPlayerNode(roomCode, uid);
+    if (value == null) return null;
+    final player = RoomPlayer.fromJson(value, key: uid);
+    return player.isPlayer && player.isActive ? player : null;
   }
 
   Stream<DatabaseEvent> watchRoom(String roomCode) {
@@ -915,6 +952,10 @@ class RoomService {
   Stream<bool> watchServerConnection() =>
       RealtimeConnectionMonitor.instance.watch(realtime);
 
+  /// 앱 복귀·수동 재시도에서 RTDB 네이티브 연결과 공유 연결 감시를 다시 엽니다.
+  Future<void> resumeRealtimeConnection() =>
+      RealtimeConnectionMonitor.instance.resume(realtime);
+
   Future<Map<String, dynamic>> gameTarget(String roomCode) async {
     final identity = await _sessionIdentity(roomCode, 'controller');
     final snapshot = await realtime.ref('rooms/$roomCode/game/public').get();
@@ -1127,8 +1168,8 @@ class RoomService {
 
   /// 저장된 세션으로 무엇을 복원할 수 있는지 확인합니다.
   ///
-  /// 대기실과 진행 중 게임을 구분해 돌려줍니다. 화면이 `그룹 다시 참여`와
-  /// `게임 다시 참여` 중 무엇을 보여 줄지 정하는 근거입니다(P-01).
+  /// 대기실과 진행 중 게임을 구분해 돌려줍니다. 대기실은 복귀 여부를 묻고,
+  /// 진행 중 게임은 저장된 membership으로 바로 자동 복원합니다.
   ///
   /// 이 확인 없이 join callable을 호출하면 대기 중인 방에서 강퇴된 사용자를 새
   /// 참가자로 다시 만들 수 있으므로, 자동 재접속 경로에서는 반드시 선행합니다.
@@ -1139,14 +1180,9 @@ class RoomService {
     // players는 인증 사용자에게 독립적으로 읽기가 허용됩니다. 먼저 참가자 노드를
     // 확인해야, 이미 제거된 사용자가 status/game을 읽다가 permission-denied가 나
     // 로컬 유령 세션을 계속 보존하는 일을 막을 수 있습니다.
-    final playerSnapshot = await _readWithRetry(
-      realtime.ref('rooms/$code/players/${user.uid}'),
-    );
-    final playerValue = playerSnapshot.value;
-    final playerStatus = playerValue is Map
-        ? playerValue['status']?.toString()
-        : null;
-    if (!playerSnapshot.exists || playerStatus != 'active') {
+    final playerValue = await _readPlayerNode(code, user.uid);
+    final playerStatus = playerValue?['status']?.toString();
+    if (!_isActivePlayerNodeValue(playerValue)) {
       return RestorableSession.none;
     }
 
@@ -1264,16 +1300,31 @@ class RoomService {
           'role': 'player',
           'roomCode': roomCode,
         });
-        if (identity.roomInstanceId != pending['roomInstanceId'] ||
-            (pending['membershipId'] != null &&
-                identity.membershipId != pending['membershipId'])) {
-          throw const RoomCommandException('이 방에는 다시 참가할 수 없습니다.');
+        if (identity.roomInstanceId != pending['roomInstanceId']) {
+          throw const RoomCommandException(
+            '이 방에는 다시 참가할 수 없습니다.',
+            reason: 'pending-room-generation-mismatch',
+          );
         }
         await _identities.save(
           identity,
           completedOperationId: pending['operationId'] as String,
           isCurrent: current,
         );
+        if (pending['membershipId'] != null &&
+            identity.membershipId != pending['membershipId']) {
+          // The old allocation belongs to a membership that has since been
+          // replaced. The authenticated lookup above proves the current active
+          // membership in the same room generation. Complete the obsolete
+          // intent, then allocate a fresh connection for that current member.
+          return await _joinRoomWithRetry(
+            roomCode: roomCode,
+            nickname: nickname,
+            characterId: characterId,
+            preserveProfile: preserveProfile,
+            allowNewMembershipAfterRemoval: allowNewMembershipAfterRemoval,
+          );
+        }
         if (!preserveProfile &&
             (pending['nickname'] != nickname ||
                 pending['characterId'] != characterId)) {
@@ -1302,23 +1353,54 @@ class RoomService {
       }
     }
     // Independent reads; the join transaction still checks both generations.
-    final snapshots = await Future.wait([
-      _readWithRetry(realtime.ref('rooms/$roomCode/roomInstanceId')),
-      _readWithRetry(realtime.ref('rooms/$roomCode/players/$uid')),
+    final values = await Future.wait<Object?>([
+      _readWithRetry(
+        realtime.ref('rooms/$roomCode/roomInstanceId'),
+      ).then((s) => s.value),
+      _readPlayerNode(roomCode, uid),
     ]);
-    final roomId = snapshots[0].value;
-    final player = snapshots[1].value;
-    final membership = player is Map ? player['membershipId'] : null;
-    final sequence = player is Map ? player['connectionSeq'] : null;
+    var roomId = values[0];
+    final player = values[1] as Map<String, dynamic>?;
+    var membership = player?['membershipId'];
+    var sequence = player?['connectionSeq'];
     requireCurrent();
     final previousIdentity = _identities.current(uid, 'player', roomCode);
-    if (preserveProfile &&
-        (player is! Map ||
-            player['status'] != 'active' ||
-            (previousIdentity != null &&
-                (previousIdentity.roomInstanceId != roomId ||
-                    previousIdentity.membershipId != membership)))) {
-      throw const RoomCommandException('이 방에는 다시 참가할 수 없습니다.');
+    if (preserveProfile) {
+      if (!_isActivePlayerNodeValue(player)) {
+        throw const RoomCommandException(
+          '이 방에는 다시 참가할 수 없습니다.',
+          reason: 'player-not-active',
+        );
+      }
+      if (previousIdentity != null &&
+          (previousIdentity.roomInstanceId != roomId ||
+              previousIdentity.membershipId != membership)) {
+        // 저장한 신원과 방금 읽은 요약이 다릅니다. 어느 쪽이 현재인지는 로컬에서
+        // 판정할 수 없습니다. 복귀 직후의 `get()`은 아직 되살아나지 않은 연결의
+        // SDK 캐시를 돌려줄 수 있고, 저장 신원은 중단된 재참가 뒤 한 세대
+        // 뒤처질 수 있습니다. 두 값을 서로 비교해 거절하면 캐시가 오래된 동안
+        // 모든 복구와 수동 재시도가 같은 이유로 영구히 막힙니다.
+        //
+        // 현재 자격을 증명할 수 있는 것은 인증 조회뿐입니다. 자격을 잃었으면
+        // 이 호출이 permission-denied로 거절되므로, 자동 복구가 새 참가를
+        // 만들지 않는다는 기존 계약은 그대로 유지됩니다.
+        final confirmed = await _call('fetchRealtimeRoomSession', {
+          'roomCode': roomCode,
+        });
+        requireCurrent();
+        final confirmedIdentity = RoomSessionIdentity.fromJson({
+          ...Map<String, dynamic>.from(confirmed.data as Map),
+          'uid': uid,
+          'role': 'player',
+          'roomCode': roomCode,
+        });
+        // 서버가 확인한 현재 방 세대와 membership으로만 재참가합니다. 최종
+        // 판정은 기존 joinRealtimeRoom transaction의 CAS가 그대로 수행하므로,
+        // 이 값이 그사이 밀려도 staleConnection으로 거절되고 재시도합니다.
+        roomId = confirmedIdentity.roomInstanceId;
+        membership = confirmedIdentity.membershipId;
+        sequence = confirmedIdentity.connectionSeq;
+      }
     }
     final payload = {
       'roomCode': roomCode,
@@ -1360,12 +1442,7 @@ class RoomService {
     final user = _auth.currentUser;
     if (user == null) return false;
     final code = roomCode.trim().toUpperCase();
-    final snapshot = await _readWithRetry(
-      realtime.ref('rooms/$code/players/${user.uid}'),
-    );
-    if (!snapshot.exists) return false;
-    final value = snapshot.value;
-    return value is Map && value['status']?.toString() == 'active';
+    return _isActivePlayerNodeValue(await _readPlayerNode(code, user.uid));
   }
 
   Future<void> leaveRoom(String roomCode) =>

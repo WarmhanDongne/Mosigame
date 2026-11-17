@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_final_call/game_final_call.dart';
 import 'package:game_holdem/game_holdem.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/recovery/models/game_recovery_context.dart';
 import 'package:game_kit/core/diagnostics/game_communication_log.dart';
 import 'package:game_kit/recovery/models/room_session_identity.dart';
@@ -26,6 +25,7 @@ import 'package:game_liars_poker/shared/services/command_service.dart';
 import 'package:game_mafia/game_mafia.dart';
 import 'package:project00/platform/home/tablet/tablet_game_start.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
@@ -56,7 +56,7 @@ List<Object?> _error(String code, String message) => [
 
 void _user(String uid) {
   FirebaseAuthPlatform.instanceFor(
-    app: Firebase.app(),
+    app: FirebaseBackend.app,
     pluginConstants: {
       'APP_CURRENT_USER': [
         InternalUserInfo(
@@ -68,7 +68,7 @@ void _user(String uid) {
       ],
     },
   );
-  expect(FirebaseAuth.instance.currentUser?.uid, uid);
+  expect(FirebaseBackend.auth.currentUser?.uid, uid);
 }
 
 GameRecoveryContext _context(String id, int phase) => GameRecoveryContext(
@@ -107,7 +107,7 @@ class _Calls {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     _user(_identity.uid);

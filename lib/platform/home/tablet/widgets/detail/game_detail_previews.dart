@@ -19,6 +19,7 @@ import 'package:game_mafia/game_theme.dart';
 import 'package:game_mafia/shared/models/role_catalog.dart';
 import 'package:game_mafia/shared/widgets/noir.dart';
 import 'package:game_yut/ui.dart' as yut;
+import 'package:game_russian_roulette/ui.dart' as roulette;
 import 'package:game_kit/core/constants/room_character.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
@@ -42,8 +43,17 @@ Widget? buildGamePlayPreview(String gameId) => switch (gameId) {
   'yut' => const _YutPlayScene(edition: false),
   'strategy_yut' => const _YutPlayScene(edition: false, strategy: true),
   'strategy_yut_edition' => const _YutPlayScene(edition: true, strategy: true),
+  'russian_roulette' => const _RussianRoulettePlayScene(),
   _ => null,
 };
+
+class _RussianRoulettePlayScene extends StatelessWidget {
+  const _RussianRoulettePlayScene();
+
+  /// B안 판과 같은 부품으로 그린 10초 반복 연출입니다.
+  @override
+  Widget build(BuildContext context) => const roulette.RoulettePlayPreview();
+}
 
 /// 구성품 판을 상자에 꽉 채워 그립니다.
 ///

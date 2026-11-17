@@ -167,6 +167,25 @@ class MosiGameArt {
     accent: Color(0xFFC99A48),
   );
 
+  static const russianRoulette = MosiGameArt(
+    id: 'russian_roulette',
+    koreanName: '러시안 룰렛',
+    englishName: 'RUSSIAN ROULETTE',
+    shelfTheme: MosiShelfTheme(
+      ground: Color(0xFFB3201F),
+      fg: Color(0xFFECE3D0),
+      fgDim: Color(0xB3ECE3D0),
+      deep: Color(0xFF121110),
+      btnBg: Color(0xFFECE3D0),
+      btnFg: Color(0xFF121110),
+      accA: Color(0xFFECE3D0),
+      accB: Color(0xFF7E1414),
+    ),
+    spineColor: Color(0xFFB3201F),
+    spineText: Color(0xFFECE3D0),
+    accent: Color(0xFFECE3D0),
+  );
+
   static const _known = <String, MosiGameArt>{
     'liars_poker': liarsPoker,
     'final_call': finalCall,
@@ -175,6 +194,7 @@ class MosiGameArt {
     'yut': yut,
     'strategy_yut': strategyYut,
     'strategy_yut_edition': strategyYutEdition,
+    'russian_roulette': russianRoulette,
   };
 
   /// 표지 그림이 등록된 게임인지 알려 줍니다.
@@ -623,6 +643,8 @@ class _CoverPainter extends CustomPainter {
       case 'strategy_yut':
       case 'strategy_yut_edition':
         _paintYut(canvas, gameId, displayName, englishName);
+      case 'russian_roulette':
+        _paintRussianRoulette(canvas, displayName, englishName);
     }
     canvas.restore();
   }
@@ -632,6 +654,180 @@ class _CoverPainter extends CustomPainter {
       oldDelegate.gameId != gameId ||
       oldDelegate.displayName != displayName ||
       oldDelegate.englishName != englishName;
+}
+
+/// 러시안 룰렛 표지(B안): 어두운 바탕 위 크림색 실린더 정면, 한 칸만 붉게 장전,
+/// 가운데 둥근 글씨 "최후의 1인", 아래 붉은 제목 띠.
+void _paintRussianRoulette(
+  Canvas canvas,
+  String displayName,
+  String englishName,
+) {
+  const ink = Color(0xFF121110);
+  const red = Color(0xFFB3201F);
+  const cream = Color(0xFFECE3D0);
+
+  // 그림 칸(위 296)
+  const picture = Rect.fromLTWH(0, 0, 300, 296);
+  canvas.drawRect(
+    picture,
+    Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(0, -0.1),
+        radius: 0.9,
+        colors: [Color(0xFF2A1A17), Color(0xFF151211), Color(0xFF070606)],
+        stops: [0, 0.6, 1],
+      ).createShader(picture),
+  );
+  final ray = Paint()
+    ..color = cream.withValues(alpha: 0.07)
+    ..strokeWidth = 0.6;
+  for (var i = 0; i < 48; i++) {
+    final a = i * 7.5 * math.pi / 180;
+    canvas.drawLine(
+      const Offset(150, 140),
+      Offset(150 + 420 * math.cos(a), 140 + 420 * math.sin(a)),
+      ray,
+    );
+  }
+  canvas.drawRect(
+    const Rect.fromLTWH(10, 10, 280, 276),
+    _stroke(cream.withValues(alpha: 0.5), 0.8),
+  );
+  for (final (x, y, r) in const [
+    (10.0, 10.0, 0.0),
+    (290.0, 10.0, 90.0),
+    (290.0, 286.0, 180.0),
+    (10.0, 286.0, 270.0),
+  ]) {
+    canvas.save();
+    canvas.translate(x, y);
+    canvas.rotate(r * math.pi / 180);
+    canvas.drawLine(Offset.zero, const Offset(14, 0), _stroke(cream, 1.4));
+    canvas.drawLine(Offset.zero, const Offset(0, 14), _stroke(cream, 1.4));
+    canvas.rotate(math.pi / 4);
+    canvas.drawRect(const Rect.fromLTWH(-3, -3, 6, 6), _fill(cream));
+    canvas.restore();
+  }
+
+  // 실린더 정면: 테두리 홈 6개, 약실 6개 중 하나만 붉게.
+  var cylinder = Path()
+    ..addOval(Rect.fromCircle(center: Offset.zero, radius: 110));
+  for (var i = 0; i < 6; i++) {
+    final a = -math.pi / 3 + i * math.pi / 3;
+    final notch = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(116 * math.cos(a), 116 * math.sin(a)),
+          radius: 24,
+        ),
+      );
+    cylinder = Path.combine(PathOperation.difference, cylinder, notch);
+  }
+  canvas.save();
+  canvas.translate(150, 144);
+  canvas.rotate(-8 * math.pi / 180);
+  canvas.save();
+  canvas.translate(6, 7);
+  canvas.drawPath(cylinder, _fill(Colors.black.withValues(alpha: 0.55)));
+  canvas.restore();
+  canvas.drawPath(cylinder, _fill(cream));
+  canvas.drawCircle(Offset.zero, 101, _stroke(ink.withValues(alpha: 0.25), 1));
+  for (var i = 0; i < 6; i++) {
+    final a = -math.pi / 2 + i * math.pi / 3;
+    final c = Offset(66 * math.cos(a), 66 * math.sin(a));
+    if (i == 1) {
+      canvas.drawCircle(c, 30, _fill(red));
+      canvas.drawCircle(c, 23, _stroke(cream, 2.5));
+      canvas.drawCircle(c, 10, _fill(cream));
+      canvas.drawCircle(c, 4, _fill(red));
+    } else {
+      canvas.drawCircle(c, 30, _fill(ink));
+    }
+  }
+  canvas.drawCircle(Offset.zero, 36, _fill(cream));
+  canvas.drawCircle(Offset.zero, 36, _stroke(ink, 2.5));
+  canvas.drawCircle(Offset.zero, 13, _fill(ink));
+  final ring = GameLocale.select(
+    ko: '최후의 1인 · 최후의 1인 · ',
+    en: 'LAST ONE · LAST ONE · ',
+    zhHans: '最后一人 · 最后一人 · ',
+    zhHant: '最後一人 · 最後一人 · ',
+  ).characters.toList();
+  for (var i = 0; i < ring.length; i++) {
+    final a = -math.pi / 2 + i * math.pi * 2 / ring.length;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: ring[i],
+        style: MosiFonts.sans(
+          size: 9,
+          weight: FontWeight.w700,
+          color: ink,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    canvas.save();
+    canvas.translate(24 * math.cos(a), 24 * math.sin(a));
+    canvas.rotate(a + math.pi / 2);
+    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    canvas.restore();
+  }
+  canvas.restore();
+
+  // 인원 표시
+  final badge = RRect.fromRectAndRadius(
+    const Rect.fromLTWH(238, 18, 44, 22),
+    Radius.zero,
+  );
+  canvas.drawRRect(badge, _fill(cream));
+  canvas.drawRRect(badge, _stroke(ink, 1.5));
+  _text(
+    canvas,
+    '2–6',
+    260,
+    34,
+    _grotesk(14, ink, 0.5),
+    align: TextAlign.center,
+    maxWidth: 44,
+  );
+
+  // 아래 제목 띠
+  canvas.drawRect(const Rect.fromLTWH(0, 290, 300, 6), _fill(ink));
+  canvas.drawRect(const Rect.fromLTWH(0, 296, 300, 2), _fill(cream));
+  const band = Rect.fromLTWH(0, 298, 300, 102);
+  canvas.drawRect(
+    band,
+    Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(0, -1),
+        radius: 1.2,
+        colors: [Color(0xFFC42824), red, Color(0xFF8E1715)],
+        stops: [0, 0.45, 1],
+      ).createShader(band),
+  );
+  _text(
+    canvas,
+    displayName,
+    150,
+    356,
+    _plex(36, cream),
+    align: TextAlign.center,
+    maxWidth: 280,
+  );
+  final line = _stroke(cream.withValues(alpha: 0.7), 1);
+  canvas.drawLine(const Offset(52, 377), const Offset(80, 377), line);
+  canvas.drawLine(const Offset(220, 377), const Offset(248, 377), line);
+  _text(
+    canvas,
+    englishName,
+    150,
+    381,
+    _grotesk(10, cream, 3.2),
+    align: TextAlign.center,
+    maxWidth: 136,
+  );
 }
 
 //=======================캔버스 도우미==============================
@@ -1258,6 +1454,27 @@ class MosiGameSpine extends StatelessWidget {
         ),
       );
     }
+    if (gameId == 'russian_roulette') {
+      return Semantics(
+        button: true,
+        label: GameLocale.select(
+          ko: '$localizedTitle 선택',
+          en: 'Select $localizedTitle',
+          zhHans: '选择 $localizedTitle',
+          zhHant: '選擇 $localizedTitle',
+        ),
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: _RouletteSpine(
+            title: localizedTitle,
+            deep: deep,
+            width: width,
+            height: height,
+          ),
+        ),
+      );
+    }
     return Semantics(
       button: true,
       label: GameLocale.select(
@@ -1375,6 +1592,12 @@ String _localizedGameTitle(MosiGameArt art) => switch (art.id) {
     zhHans: '德州扑克',
     zhHant: '德州撲克',
   ),
+  'russian_roulette' => GameLocale.select(
+    ko: '러시안 룰렛',
+    en: 'Russian Roulette',
+    zhHans: '俄罗斯轮盘',
+    zhHant: '俄羅斯輪盤',
+  ),
   _ => art.koreanName,
 };
 
@@ -1393,6 +1616,12 @@ class _SpineBadge extends StatelessWidget {
         MosiColors.white,
       ),
       'mafia' => (const Color(0xFFFFC400), MosiColors.ink, '', MosiColors.ink),
+      'russian_roulette' => (
+        const Color(0xFF121110),
+        const Color(0xFFECE3D0),
+        '•',
+        const Color(0xFFB3201F),
+      ),
       _ => (MosiColors.white, MosiColors.ink, 'A', MosiColors.ink),
     };
     return Container(
@@ -1625,6 +1854,22 @@ class MosiSeatTheme {
     ring: Color(0x99A4D65E),
   );
 
+  static const russianRoulette = MosiSeatTheme(
+    ground: Color(0xFF121110),
+    deep: Color(0xFF080707),
+    table: Color(0xFFB3201F),
+    dots: Color(0x12ECE3D0),
+    pill: Color(0xB37E1414),
+    pillLine: Color(0x99ECE3D0),
+    button: Color(0xFFECE3D0),
+    buttonFg: Color(0xFF121110),
+    selected: Color(0xFFB3201F),
+    ring: Color(0x99ECE3D0),
+    // 원탁 그림(layout_table.png)의 테두리 지름이 그림 폭의 92%이고 가운데에 있습니다.
+    tableFit: 0.92,
+    tableDy: 0,
+  );
+
   static const strategyYut = MosiSeatTheme(
     ground: MosiColors.navy,
     deep: MosiColors.navyDeepest,
@@ -1675,8 +1920,126 @@ class MosiSeatTheme {
     'mafia' => mafia,
     'holdem' => holdem,
     'strategy_yut' || 'strategy_yut_edition' => strategyYut,
+    'russian_roulette' => russianRoulette,
     _ => fallback,
   };
+}
+
+//=======================러시안 룰렛 책등==============================
+/// 러시안 룰렛 책등(B안): 붉은 바탕, 위쪽 먹색 칸의 작은 실린더, 세로 제목.
+class _RouletteSpine extends StatelessWidget {
+  const _RouletteSpine({
+    required this.title,
+    required this.deep,
+    required this.width,
+    required this.height,
+  });
+
+  final String title;
+  final Color deep;
+  final double width;
+  final double height;
+
+  static const _red = Color(0xFFB3201F);
+  static const _ink = Color(0xFF121110);
+  static const _cream = Color(0xFFECE3D0);
+
+  @override
+  Widget build(BuildContext context) {
+    final cjk = RegExp(r'[\u3131-\uD79D\u4E00-\u9FFF]').hasMatch(title);
+    final label = cjk
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final ch in title.characters)
+                ch.trim().isEmpty
+                    ? const SizedBox(height: 10)
+                    : Text(
+                        ch,
+                        style: MosiFonts.sans(
+                          size: 22,
+                          weight: FontWeight.w700,
+                          color: _cream,
+                          height: 1.08,
+                        ),
+                      ),
+            ],
+          )
+        : RotatedBox(
+            quarterTurns: 1,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: MosiFonts.sans(
+                size: 20,
+                weight: FontWeight.w700,
+                color: _cream,
+                height: 1,
+              ),
+            ),
+          );
+    return Container(
+      width: width,
+      height: height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: _red,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF111111), width: 3),
+        boxShadow: [BoxShadow(color: deep, offset: const Offset(4, 4))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: 46,
+            color: _ink,
+            alignment: Alignment.center,
+            child: const CustomPaint(
+              size: Size.square(26),
+              painter: _MiniCylinderPainter(),
+            ),
+          ),
+          Container(height: 3, color: _cream),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Center(child: FittedBox(child: label)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '2–6',
+              style: MosiFonts.grotesk(size: 11, color: _cream),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniCylinderPainter extends CustomPainter {
+  const _MiniCylinderPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final s = size.width / 26;
+    canvas.drawCircle(c, 12 * s, _fill(const Color(0xFFB3201F)));
+    canvas.drawCircle(c, 4 * s, _fill(const Color(0xFF121110)));
+    for (var i = 0; i < 6; i++) {
+      final a = -math.pi / 2 + i * math.pi / 3;
+      canvas.drawCircle(
+        c + Offset(7.5 * s * math.cos(a), 7.5 * s * math.sin(a)),
+        2.4 * s,
+        _fill(const Color(0xFF121110)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 //=======================파이널콜 표지·책등 (코드로 그림)==============================

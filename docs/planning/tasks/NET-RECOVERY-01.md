@@ -934,3 +934,295 @@ auth는 Functions38개를 포함해 각각 5/5단계·mutation PASS/exit0이다.
 Functions lint/build과 ASCII 임시 검증본의 변경 Dart 6파일 분석도 PASS/exit0이다.
 원본 한글 경로의 분석은 기존 SDK LSP JSON 절단으로 exit255였고,
 동일 소스 ASCII 경로에서 `No issues found`를 확인했다. FULL은 승인 대기다.
+
+
+<a id="foreground-presence-confirmation-20261116"></a>
+### 2026-11-16 — 복귀 presence 확정·로비 행 고정 후보
+
+장시간 이탈 후 로비의 해당 유저가 `연결 끊김`으로 남고, 상태 표시가
+생기며 닉네임·X 버튼 위치가 움직이는 경로를 점검했다. 기존 복구는 callable과
+heartbeat가 완료되면 앱의 복구 상태를 해제할 수 있었지만, 서버
+`players/{uid}` 요약이 현재 membership/connection으로 `isConnected=true`인지를
+마지막에 확인하지 않아 반쪽 성공을 정상으로 처리할 수 있었다.
+
+`RoomProvider._recoverCurrentConnection`은 기존 접속 검증과 새 접속 할당 모두에서
+`RoomService.getRoomPlayer`로 본인 단일 경로를 확인한다. 서버 요약의
+membershipId·currentConnectionId·connectionSeq·isConnected가 저장 identity와 모두
+일치해야 입력 보호를 풀고, 새 접속이면 RTDB 구독을 재시작하며 확인한
+본인 요약을 로컬 player 목록에 즉시 반영한다. 확인 실패 시 확정 Future를
+제거해 화면 터치 재시도가 다시 실행되고, 확인 전까지 복구 잠금을 유지한다.
+
+`TabletRoomPanel`의 player 행은 연결 상태 영역을 항상 82px로 예약하고
+`AnimatedSwitcher` 안에서만 표시를 바꿔, 끊김 상태 전환과 큰 글자에서도 닉네임·X
+버튼의 기준 위치가 변하지 않게 했다. Functions·Rules·영속 데이터 계약은 변경하지
+않았다. 관련 Flutter 41개 PASS/exit0, `git diff --check` PASS/exit0.
+원본 한글 경로 analyzer는 기존 SDK JSON 경로 파싱 오류로 exit255이며,
+공식 session·ASCII 경로 분석·FULL·iOS/Android 실기기 검증은 후속 기록한다.
+
+후속 ASCII 임시 검증본의 변경 Dart 5파일 `flutter analyze --no-pub`는
+`No issues found`/exit0이다. 공식 `dart run :mosigame test session`은 manifest·
+preflight·Flutter 238개·working-tree mutation이 PASS했으나 Functions는 215개 중
+193 PASS/22 FAIL로 전체 exit1이다. 22개는 모두 기존 공지/점검 경로의
+`assertPlatformMaintenanceInactive` 호출이 테스트에서 Firebase Admin 기본 앱을
+초기화하지 않아 발생한 `app/no-app`이며, 이번 복귀 코드·테스트와 독립된
+기존 변경이다. FULL·실기기·배포는 미실행이다.
+
+
+<a id="whole-room-lifecycle-recovery-20261116"></a>
+### 2026-11-16 — 룸 전체 생명주기·foreground 복구 후보
+
+사용자가 룸 입장 후 카카오톡·SNS·알림을 잠시 확인하고 돌아오는 흐름을
+룸 입장 미리보기부터 대기실·게임·종료·초기화·퇴장 전까지 확장했다.
+`RoomProvider.didChangeAppLifecycleState`를 단일 presence 소유자로 두고, `inactive`는
+접속을 내리지 않으며 `hidden`은 로컬 heartbeat만 멈춘다. `paused`/`detached`는
+한 foreground 이탈 세대에 한 번만 disconnected를 쓴다. `resumed`는 RTDB
+`.info/connected=true`를 기다린 후 기존 접속의 heartbeat·서버 player 요약을
+확인하고, paused를 거쳤거나 기존 신원이 거절되면 새 connection으로 복구한다.
+서버 summary의 membership/id/seq/connected가 저장 identity와 모두 일치해야
+복구 완료로 판정한다.
+
+성공한 foreground 확인마다 `foregroundRefreshRevision`을 증가시켜
+`PhoneRoomWaiting` 과 `TabletHome`이 별도로 열은 game-status 구독을 새로 열게
+했다. 두 화면의 게임 route 진입과 태블릿 finished 정리는 foreground에서만
+시작한다. `RoomProvider.listenRoomPreview`는 최근 방 코드를 보존해 닉네임·
+캐릭터 선택 중 복귀해도 미리보기를 재구독한다. `TabletHome`의 중복
+controller presence pause/resume 호출은 제거하고 fullscreen 복원만 남겼다.
+
+제품 파일은 `room_provider.dart`, `phone_room_waiting.dart`, `tablet_home.dart`,
+기존 서버 player 확인을 위한 `room_service.dart`다. 테스트는 짧은
+inactive→hidden→resumed, 완전한 inactive→hidden→paused→hidden→inactive→resumed,
+오프라인 resumed 후 RTDB 재연결 대기, 입장 preview 재구독, 휴대폰 game-status
+재구독을 고정한다. 관련 단독 테스트는 room15개, phone17개,
+tablet/controller9개, tablet reset16개 PASS/exit0. 변경 7파일 `dart analyze`는
+No issues found/exit0, `git diff --check` PASS/exit0이다.
+
+Node22 표준 session은 Flutter241개와 manifest·preflight·working-tree mutation이
+PASS했다. Functions는 215개 중 193 PASS/22 FAIL로 전체 exit1이다. 실패는
+기존 공지/점검 변경의 `assertPlatformMaintenanceInactive`가 테스트에서 Firebase
+Admin 기본 앱을 초기화하지 않은 `app/no-app`으로, 이 후보의 Flutter 복구
+경로와 독립적인 기존 오류다. Functions·Rules·persistent contract 변경, 배포,
+production 접근, commit/push는 없다. FULL과 iOS/Android 실기기 반복 복귀는
+후속 확인 대기다.
+
+
+<a id="foreground-recovery-review-fixes-20261116"></a>
+### 2026-11-16 — foreground 복구 검토 후속 수정 후보
+
+검토에서 확인한 세 경로를 고쳤다. Functions·Rules·persistent contract 변경은 없다.
+
+1. 로비 재시도 경로: RTDB는 연결돼 있고 callable·서버 확인만 실패하면 네트워크 가드의
+   탭 영역이 생기지 않아 재시도할 수 없었다. `RoomProvider.connectionRecoveryFailed`와
+   `RoomRecoveryRetryBand`를 추가해 휴대폰 대기실(`LobbyReconnectGuard`)과 태블릿
+   로비(`TabletHome`) 아래에 재시도 띠를 표시한다. 입력은 막지 않는다. 안내 문구는
+   `아래 알림을 눌러 다시 연결해주세요`로 바꿨다.
+2. 서버 요약 지연: 새 접속 할당 직후 `_confirmPlayerConnection`이 불일치를 만나면
+   같은 identity로 0.3초·0.7초 뒤 다시 읽는다. 새 접속을 다시 할당하지 않는다.
+3. 복구 중 연결 변동: 뒤따르는 재시도가 미확인 foreground 세대를 이어받아 성공 시
+   `foregroundRefreshRevision`을 올린다. 대체된 복구는 `recoveryRetrying`을 남기지 않는다.
+
+`test/room_recovery_heartbeat_test.dart`에 요약 지연 재확인, 복구 중 연결 변동, 재시도
+띠 탭 회귀 3건을 추가했다. 이전 기록의 Functions 193/215는 공지 점검 mock 추가 뒤
+Node22에서 215/215 PASS로 바뀌었다. 검증 결과는 11월 작업 기록을 따른다. FULL과
+iOS/Android 실기기 반복 복귀는 대기다.
+
+
+<a id="short-return-light-probe-20261116"></a>
+### 2026-11-16 — 짧은 복귀 가벼운 확인·미리보기·미사용 코드 정리 후보
+
+사용자 결정으로 `inactive`만 거친 복귀(알림·제어 센터·결제창·권한 팝업)를 가볍게
+바꿨다. `RoomProvider`는 `hidden` 이상을 거쳤는지 기억하고, 거치지 않았으면
+`_probeForegroundConnection`으로 현재 접속 heartbeat 한 번만 보낸다. 성공하면 세션
+무효화·입력 잠금·재구독·ready 재보고가 없다. 실패하거나 연결이 바뀌면 전체 복구로
+넘어가고, 확인 중 들어온 수동 재시도는 그 결과를 기다린다. 실제 background 복귀의
+전체 확인은 그대로다.
+
+방 입장 미리보기는 `hidden` 이상을 거친 복귀에서만 다시 구독해 닉네임·캐릭터 선택
+화면이 깜빡이지 않는다. 호출처가 없던 `RoomProvider.resumeControllerPresence`,
+`ControllerReconnectGuard`의 `onExit`·`exitDelay`, `LobbyReconnectGuard`의 `onExit`을
+제거했다. `pauseControllerPresence`는 `TabletHome.dispose`가 쓰므로 유지했다.
+`AppNetworkGuard`의 `onExit`·`exitLabel`은 오프라인 나가기 결정이 남아 있어 유지했다.
+
+테스트는 짧은 복귀가 heartbeat 1회·요약 읽기 0회·세션 무효화 0회·revision 유지임을
+고정하고, 미리보기가 짧은 가림에서는 유지되고 실제 background 뒤에만 다시 열림을
+고정한다. Functions·Rules·persistent contract 변경은 없다. 검증 결과는 11월 작업
+기록을 따른다.
+
+
+<a id="auto-return-stale-hand-20261116"></a>
+### 2026-11-16 — 자동 복귀 원칙·이전 손패·오래된 준비 보고 후보
+
+사용자 결정: 묻는 과정을 줄이고 자동 재연결 또는 화면 아래 띠 터치로 복귀한다. 계약
+문서의 `복귀 여부를 묻는다` 절을 진행 게임 자동 복귀·대기 방만 질문으로 고쳤다.
+
+사용자 보고(복귀 뒤 새 5장이 아닌 이전 3장이 보임)의 경로를 코드에서 확인했다.
+
+1. 이전 손패 표시: 서버는 새 라운드에서 `game.private`를 비우고 분배 완료 때 새 손패를
+   쓴다. 휴대폰은 context가 일치하는 개인 이벤트만 해석하므로 빈 개인 노드·지연된 새
+   손패 동안 `LiarsPokerController`의 이전 `handCards`가 남았고, 공개 상태가 `playing`이면
+   그 카드를 손패로 그렸다. 공개 상태의 라운드 변경·새 분배 진입 때 손패를 비우게 했다.
+2. 오래된 준비 보고: 복귀 직후 캐시된 이전 공개·개인 상태가 서로 일치하면 준비 보고가
+   나가고 서버가 `staleContext`를 돌려준다. 기존에는 즉시 준비 실패로 굳어 수동 재시도
+   전까지 이전 화면에 머물렀다. 서버 context가 앞서면 공개 상태를 다시 읽고 재구독한 뒤
+   같은 예산에서 다시 보고한다(회차당 최대 3회).
+3. 자동 재시도: 방 연결 복구 실패 뒤 3초·10초에 두 번 자동으로 다시 시도한다. 새 복귀·
+   성공·방 정리에서 회차를 초기화한다.
+
+테스트: LP `startup_readiness_test`에 다음 라운드 직행·새 분배·staleContext 새로고침 3건,
+`room_recovery_heartbeat_test`에 자동 재시도 1건을 추가했다. Functions·Rules·persistent
+contract 변경은 없다. 실제 단말에서 캐시된 이전 상태가 먼저 오는지는 미확인이며, 수정은
+그 경우와 개인 이벤트 지연 모두에서 이전 손패가 보이지 않게 한다.
+
+남은 확인 대상(미수정): `dataMissing` 응답은 여전히 즉시 실패다. 다른 게임의 개인
+상태(파이널콜 등)가 같은 방식으로 이전 값을 남기는지는 점검하지 않았다. 연결이 불안정해
+복구 묶음이 재시도되면 묶음당 최대 6회 join이 나가고, 자동 재시도 2회가 더해질 수 있다.
+
+
+<a id="offline-lobby-leave-20261116"></a>
+### 2026-11-16 — 오프라인 대기실 퇴장 후보
+
+사용자가 시안 A(연결 띠 안의 나가기 버튼)를 선택했다. `MosiConnectionBand`에
+`trailingReserve`를, `AppNetworkGuard`·`CriticalNetworkGuard`에 `showExitInBand`를
+추가하고 휴대폰 대기실만 켰다. 버튼은 흰 알약 모양이며 재시도 영역 위에 놓여 자신의
+터치만 나가기로 처리한다.
+
+`RoomProvider.leaveRoomDeferred`는 오프라인이면 퇴장 의도를 기록하고 로컬 방 상태를
+즉시 정리한다. `DeferredRoomLeave`가 서버 퇴장을 즉시 한 번 시도해 durable 퇴장
+작업을 남기고, 연결될 때마다 최대 6회 다시 시도해 확정한다. 저장된 방 세션은 확정
+뒤에만 지운다. 테스트는 띠 버튼이 재시도와 구분되어 동작하는지, 요청하지 않은 화면에는
+버튼이 없는지, 오프라인 퇴장이 즉시 방을 떠나고 재연결 뒤 서버 퇴장을 마무리하며
+재참가하지 않는지를 고정한다.
+
+한계: 버튼의 실제 모양은 기기·에뮬레이터에서 확인하지 않았다. 실제 오프라인에서
+퇴장 callable·`onDisconnect` 취소가 어떻게 끝나는지는 가짜 서비스로만 검증했다. 게임
+중 오프라인 퇴장은 범위 밖이다.
+
+
+<a id="foreground-saved-profile-20261117"></a>
+### 2026-11-17 — 홈 복귀 시 저장 프로필 fallback 후보
+
+사용자가 iOS 시뮬레이터에서 홈 화면을 갔다 돌아오면 휴대폰 대기실의 방 연결 복구가
+실패하고 화면 재시도도 같은 상태에 머문다고 보고했다. 재현 시간대의 로컬 시뮬레이터
+로그는 RTDB `connected=true` 뒤 `RoomCommandException`이 네트워크 대기 없이 반복된
+것을 보여 줬다. 개인정보·서버 payload·production 데이터는 조회하지 않았다.
+
+복구는 현재 players 목록과 provider의 가입 직후 필드만 닉네임·캐릭터 근거로 썼다.
+lifecycle/route 재생성 직후 둘 다 아직 준비되지 않으면 같은 UID·방의
+`PlayerRoomSessionStore`에 정상 저장된 공개 프로필이 있어도 `복구할 플레이어 정보가
+없습니다`로 즉시 끝날 수 있었다. `_performConnectionRecovery`가 현재 값들을 우선하고,
+없을 때만 동일 UID·동일 방의 저장 프로필을 읽어 기존 `preserveProfile` 복구를 계속하게
+했다. membership·connection identity·Functions·Rules·영속 형식은 바꾸지 않았다.
+
+저장 프로필이 있고 players 구독이 아직 빈 회귀를 추가했다. 직접 관련 Flutter 25개는
+PASS/exit0이며 첫 실행은 nullable promotion 컴파일 오류로 FAIL/exit1, non-null 지역
+변수로 수정한 재실행은 PASS다. 공식 `dart run :mosigame test session`은 현재 shell의
+Node v24.12.0이 `.nvmrc`의 major 22와 달라 preflight BLOCKED/exit3이었다. doctor도 같은
+단일 Node 조건만 BLOCKED/exit3이고 나머지 8개 검사는 PASS다. 저장소 지침에 따라 여기서
+중단했으며 FULL·수정 빌드 실기기 재확인은 미실행이다.
+
+후속 재현 로그는 첫 후보 뒤에도 `stage=restore-connection`,
+`errorType=RoomCommandException`이 반복됨을 확인했다. 이 단계에는 로컬 프로필 누락,
+membership 불일치, 인증 변경, 미완료 퇴장이 함께 포함되므로 추가 복구 동작은 추측으로
+넣지 않았다. 사용자·방·payload나 예외 원문을 출력하지 않고 `reason`을
+`player-profile-missing`/`membership-mismatch`/`auth-missing`/`auth-changed`/
+`leave-pending` 등 고정 코드로 분류하는 debug 로그를 추가했다. 직접 관련 Flutter
+25개와 `git diff --check`는 PASS/exit0이다.
+
+수정 빌드의 사용자 재현에서 reason이 `membership-mismatch`로 확정됐다. 서버에는
+같은 UID의 active player가 남아 있지만 로컬 identity의 membership이 더 오래된
+상태였다. `RoomService` 복구는 같은 roomInstance에서만 기존
+`fetchRealtimeRoomSession`으로 인증된 현재 membership·connectionSeq를 다시 확인한다.
+이 값이 RTDB 본인 player 요약과 같을 때만 해당 membership으로 새 connection을
+발급받고 로컬 identity를 교체한다. 다른 방 세대, 제거된 player, 서버 확인값
+불일치는 기존처럼 거부한다. 새 callable·Rules·영속 형식 변경은 없다.
+
+`room_join_recovery_test` 회귀는 stale 로컬 membership에서 서버 확인 후 새 connection을
+발급하고 heartbeat가 그 connection을 쓰는지 고정한다. 프로필 fallback·실시간 연결
+모니터까지 포함한 관련 Flutter 39개는 PASS/exit0이다. 현재 수정 빌드의
+iOS 시뮬레이터 재현과 FULL은 대기다. 저장소 요구 버전인 Node22를 해당
+명령의 PATH에만 적용한 `dart run :mosigame test session`은 Flutter257개·Functions215개·
+manifest·preflight·working-tree mutation 모두 PASS/exit0이다.
+
+후속 실기기에서 방·게임 선택 구독은 동작하지만 연결 표시와 복구는 계속
+`membership-mismatch`였다. 이는 단순 표시 잔상이 아니라 RTDB 읽기는 허용되는 반면
+현재 connection identity·heartbeat 검증은 실패한 상태다. 코드에서 이전 connection
+발급 pending이 남은 경우는 서버가 같은 방의 더 최신 membership을 확인해도 일반
+복구 분기에 도달하기 전에 예전 pending membership과 다르다고 차단하는 경로를
+확인했다.
+
+서버 현재 세션 조회가 같은 roomInstance의 active player를 확인하면 오래된
+pending을 완료하고 현재 membership으로 새 connection을 발급하게 고쳤다. 제거된
+player는 조회가 permission-denied로 실패하므로 기존처럼 복귀하지 못한다. 다음
+재현이 남을 경우를 위해 player 비활성·방 세대·서버 membership·connectionSeq
+불일치를 식별자·payload 없는 서로 다른 고정 reason으로 분리했다. 신규 pending
+회귀를 포함한 관련 Flutter 40개·변경 6항목 analyze·diff check는 PASS/exit0이다.
+Node22 `dart run :mosigame test session`은 Flutter258개·Functions215개·manifest·
+preflight·working-tree mutation 모두 PASS/exit0이다. FULL·수정 빌드 실기기
+재현은 대기다.
+
+
+<a id="recovery-authoritative-membership-20261117"></a>
+### 2026-11-17 — 복구 전 자격 확인의 권위 출처 후보
+
+실기기 증상: 대기실로 복귀한 휴대폰이 태블릿·본인 목록 모두에서 `연결 끊김`으로
+남고, 하단 재시도 띠를 눌러도 같은 실패가 반복됐다. 진단 로그의
+`reason=membership-mismatch`는 `_joinRoomWithRetry`의 복구 전 자격 확인에서 저장
+신원과 RTDB `players/{uid}` 읽기가 다를 때 던지던 거절이다.
+
+두 비교 대상은 모두 로컬 값이다. 복귀 직후의 `get()`은 아직 되살아나지 않은 연결의
+SDK 캐시를 돌려줄 수 있고, 저장 신원은 중단된 재참가 뒤 한 세대 뒤처질 수 있다.
+따라서 불일치는 자격 상실의 근거가 아니며, 캐시가 오래된 동안 자동 복구와 수동
+재시도가 모두 같은 이유로 막혔다.
+
+`fetchRealtimeRoomSession`은 `players/{uid}.status`가 active가 아니면
+permission-denied로 거절한다(`functions/src/room/session-functions.ts`의
+`roomSessionContext`). 즉 이 조회의 성공 자체가 현재 자격의 증거다. 그래서 불일치
+시 이 조회의 roomInstanceId·membershipId·connectionSeq를 join 준비 값으로 채택하고,
+로컬 두 값과의 일치는 더 요구하지 않는다. 기존 `room-generation-mismatch`,
+`confirmed-room-generation-mismatch`, `confirmed-membership-mismatch`,
+`confirmed-connection-sequence-mismatch` 거절은 제거했다. 최종 판정은 기존
+joinRealtimeRoom transaction의 CAS이며, 채택 값이 밀리면 staleConnection으로 거절돼
+기존 재시도 예산에서 다시 시도한다.
+
+같은 안티패턴이 `RoomProvider._confirmPlayerConnection`에도 있으나 이번에는 바꾸지
+않았다. 그 확인의 읽기는 활성 `players` 구독이 동기화한 값이고, 사용자 화면이 실제로
+`연결 끊김`을 표시하고 있었으므로 서버 상태가 실제로 disconnected였을 가능성이 높다.
+권위 조회는 `connected` 값을 돌려주지 않아, 대체하면 실제 끊김을 성공으로 오인할 수
+있다. 이 경로의 실패는 진단 로그의 `stage=validate-player-summary` 또는
+`stage=confirm-player-summary`로 구분되므로 다음 실기기 로그로 판정한다.
+
+이 변경은 병행 세션이 같은 블록에 추가했던 `confirmed-*` 거절과 그 회귀 테스트
+(`foreground restore rejects a membership not confirmed by the server`)를 대체한다.
+해당 테스트는 캐시가 오래된 경우의 채택을 고정하는 테스트로 바꾸고, 서버가 자격을
+거절하면 새 참가를 만들지 않는다는 기존 불변식은 별도 테스트로 유지했다.
+
+
+<a id="legacy-player-status-recovery-20261117"></a>
+### 2026-11-17 — status 없는 기존 참가자의 복구 오판 수정 후보
+
+후속 실기기 로그의 `reason=player-not-active`를 따라 복구 사전 판정을 확인했다.
+초기 스키마의 `players/{uid}`에는 `status`가 없을 수 있고, 서버 join 정책과
+`RoomPlayer.fromJson`은 이 누락을 active로 취급한다. 반면 `restorableSession`,
+`_joinRoomWithRetry`, `hasActivePlayerNode`는 명시적 문자열 `active`만 허용해 게임
+구독과 명령은 동작하는 참가자에게 연결 끊김과 실패 띠를 남겼다.
+
+세 경로의 판정을 서버 join 정책과 맞춰 노드가 존재하고 status가 없으면 기존 active
+참가자로 복구한다. 노드 부재와 명시적 inactive는 계속 거절해 강퇴·퇴장 사용자를 새로
+참가시키지 않는다. 기존 데이터 migration, Functions, Rules, 공개 API 변경은 없다.
+status 누락 복구·새 connection heartbeat와 명시적 inactive 거절 회귀를 추가했다.
+
+관련 Flutter 49개는 PASS/exit0이고 변경 7항목 analyze는 No issues/exit0이다.
+Node22 `dart run :mosigame test session`은 Flutter262개·Functions215개·manifest·
+preflight·working-tree mutation 모두 PASS/exit0이다. 현재 후보의 FULL과 수정 빌드
+실기기 재현은 대기다.
+
+두 번째 수정 빌드에서 참가자 연결 끊김 표시는 사라졌지만 하단 실패 띠만 남았다.
+`RoomProvider`의 후속 자체 재시도는 성공했으나, transport는 이미 true라
+`AppNetworkGuard`가 새 이벤트를 받지 못하고 앞선 실패 상태를 유지한 것이 원인이다.
+실패 뒤 방 세션 복구가 성공했을 때만 provider의 화면용 연결 스트림에 중복 true를
+보내 가드가 기존 no-op 재검증 후 상태를 닫게 했다. 일반 연결 띠는 중복 true를
+무시하며 RTDB transport·presence·공개 API는 바뀌지 않는다. 실기기 순서를 재현하는
+위젯 회귀를 추가했고, 방 복구·공용 가드·연결 띠 관련 Flutter 68개 PASS/exit0,
+변경 8항목 analyze No issues/exit0이다. Node22
+`dart run :mosigame test session`은 Flutter263개·Functions215개·manifest·preflight·
+working-tree mutation 모두 PASS/exit0이다. 이 후속 후보의 FULL과 수정 빌드 실기기
+재확인은 대기다.

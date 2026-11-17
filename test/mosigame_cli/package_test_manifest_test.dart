@@ -6,7 +6,7 @@ import '../../tool/mosigame_cli/package_test_manifest.dart';
 import '../../tool/mosigame_cli/test_suites.dart';
 
 void main() {
-  test('FULL includes game_kit and all five registered games', () {
+  test('FULL includes game_kit and all registered games', () {
     expect(packageTestTargets.map((target) => target.name), [
       'game_kit',
       'game_liars_poker',
@@ -14,10 +14,11 @@ void main() {
       'game_mafia',
       'game_holdem',
       'game_yut',
+      'game_russian_roulette',
     ]);
     expect(
       packageTestTargets.map((target) => target.stepId).toSet(),
-      hasLength(6),
+      hasLength(7),
     );
     final workspace = File('pubspec.yaml').readAsStringSync();
     final workspacePackages =

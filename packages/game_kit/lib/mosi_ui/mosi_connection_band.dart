@@ -1,9 +1,9 @@
-// [mosi_connection_band.dart] 는 로비 화면 맨 아래에 서버 연결 상태를 알리는 띠를 그리는 파일이다.
+// [mosi_connection_band.dart] 는 로비와 게임 화면 맨 아래에 서버 연결 상태를 알리는 띠를 그리는 파일이다.
 //
 // - [Package] : 게임 공통 기반
 // - [Widget] : 끊김 → 다시 연결 중 → 복구 세 단계를 한 줄 띠로 보여 줌
 //
-// 즉, 로비에서 연결이 흔들릴 때 화면을 막지 않고 상태만 확실하게 알리기 위해 필요한 파일이다.
+// 즉, 연결이 흔들릴 때 현재 화면을 없애지 않고 상태만 일관되게 알리기 위해 필요한 파일이다.
 
 // ========================[ import ]==========================
 import 'dart:math' as math;
@@ -33,7 +33,7 @@ class MosiConnectionBandLabels {
   final String restored;
 }
 
-/// 로비 화면 맨 아래를 덮는 **가장자리 띠** 연결 알림입니다(시안 '서버 연결 알림' 2안).
+/// 로비·게임 화면 맨 아래를 덮는 **가장자리 띠** 연결 알림입니다.
 ///
 /// 화면을 막지 않고 아래 한 줄만 덮습니다. 흐름은 다음과 같습니다.
 ///
@@ -43,7 +43,7 @@ class MosiConnectionBandLabels {
 ///    Firebase가 스스로 다시 잇는 동안 화면을 그대로 두라고 알립니다.
 /// 3. 연결이 돌아오면 초록 '다시 연결됐어요'를 [restoredHold] 동안 보여 준 뒤 내려갑니다.
 ///
-/// 띠는 게임 화면에는 쓰지 않습니다. 게임은 각자의 복구·중단 안내가 있습니다.
+/// 같은 시각 언어를 쓰되 각 화면은 자기 연결·세션 상태에 맞는 문구를 넘깁니다.
 class MosiConnectionBandHost extends StatelessWidget {
   const MosiConnectionBandHost({
     super.key,
@@ -82,10 +82,16 @@ class MosiConnectionBand extends StatelessWidget {
     super.key,
     required this.phase,
     required this.labels,
+    this.trailingReserve = 0,
   });
 
   final MosiConnectionBandPhase phase;
   final MosiConnectionBandLabels labels;
+
+  /// 띠 오른쪽에 겹쳐 놓는 조작(예: 나가기 버튼)을 위해 비워 두는 너비입니다.
+  ///
+  /// 문구는 남은 영역의 가운데에 맞추므로 버튼과 겹치지 않습니다.
+  final double trailingReserve;
 
   static const double height = 36;
 
@@ -135,7 +141,10 @@ class MosiConnectionBand extends StatelessWidget {
                 height: height,
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16 + trailingReserve,
+                    ),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Row(

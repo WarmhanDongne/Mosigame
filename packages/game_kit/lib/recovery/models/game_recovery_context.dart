@@ -56,6 +56,8 @@ class GameRecoverySession extends ChangeNotifier with FrameSafeNotifier {
   RoomRecoveryBatch? preparationBatch;
   bool transportConnected = true;
   bool transportRecovering = false;
+  bool recoveryRetrying = false;
+  String? recoveryError;
 
   /// 휴대폰이 관찰한 진행 기기 접속 상태입니다.
   ///

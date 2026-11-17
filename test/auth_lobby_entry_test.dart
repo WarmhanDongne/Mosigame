@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 // Firebase가 함께 설치한 플랫폼의 공식 테스트 초기화 도구만 사용합니다.
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
@@ -23,11 +22,12 @@ import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_FirebaseCore());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   for (final reducedMotion in [false, true]) {
@@ -366,7 +366,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('참가자를 확인하는 중…'), findsOneWidget);
+    expect(find.text('참가자 확인 중…'), findsOneWidget);
     expect(
       tester
           .widget<MosiButton>(find.widgetWithText(MosiButton, '입장하기'))
@@ -377,7 +377,7 @@ void main() {
     provider.completePreview();
     await tester.pump();
 
-    expect(find.text('참가자를 확인하는 중…'), findsNothing);
+    expect(find.text('참가자 확인 중…'), findsNothing);
     expect(
       tester
           .widget<MosiButton>(find.widgetWithText(MosiButton, '입장하기'))
@@ -401,6 +401,16 @@ class _FirebaseCore extends MockFirebaseApp {
     final apps = await super.initializeCore();
     apps.single.options.storageBucket = 'test.appspot.com';
     return apps;
+  }
+
+  @override
+  Future<CoreInitializeResponse> initializeApp(
+    String appName,
+    CoreFirebaseOptions initializeAppRequest,
+  ) async {
+    final app = await super.initializeApp(appName, initializeAppRequest);
+    app.options.storageBucket = 'test.appspot.com';
+    return app;
   }
 }
 

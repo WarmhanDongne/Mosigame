@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
 import 'package:game_final_call/shared/providers/game_controller.dart';
+import 'package:game_final_call/tablet/animations/center_card_reveal.dart';
 import 'package:game_final_call/tablet/providers/game_stage.dart';
 import 'package:game_final_call/tablet/screens/seat_geometry.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
@@ -222,9 +223,17 @@ void main() {
       find.byKey(const ValueKey('final-call-blue-heart-0')),
       findsNWidgets(2),
     );
-    // Party Pop 테이블: 차례 알약과 덱 장수, 라운드 안내를 표시합니다.
+    // Party Pop 테이블: 차례 알약, 덱 카드 위 별 스티커(장수), 라운드
+    // 안내를 표시합니다. 덱 장수는 글자 대신 스티커 숫자로만 보입니다.
     expect(find.text('참가자 1 차례예요'), findsOneWidget);
-    expect(find.text('덱 17'), findsOneWidget);
+    expect(find.text('덱 17'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(FinalCallDeckCountSticker),
+        matching: find.text('17'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('2라운드 · 같은 색 = 맞은편 짝꿍'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

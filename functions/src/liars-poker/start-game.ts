@@ -9,7 +9,10 @@ import {gameRandomInt as randomInt} from "../common/transaction-random.js";
 import {getDatabase} from "firebase-admin/database";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
-import {createDeck} from "./common/deck.js";
+import {
+  createDeck,
+  unrevealedCardCountForPlayerCount,
+} from "./common/deck.js";
 import {dealCards} from "./common/deal-card.js";
 import {
   LiarsPokerGameState,
@@ -111,7 +114,10 @@ export const game_liars_poker_start_game =
         CARDS_PER_PLAYER,
       );
       const unrevealedCards = deck.slice(playerCount * CARDS_PER_PLAYER);
-      if (unrevealedCards.length !== 3) {
+      if (
+        unrevealedCards.length !==
+        unrevealedCardCountForPlayerCount(playerCount)
+      ) {
         throw new Error("분배 후 남은 카드 수가 올바르지 않습니다.");
       }
       const truthCardCount = deck.filter(

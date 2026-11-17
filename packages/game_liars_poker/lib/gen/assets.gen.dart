@@ -91,6 +91,10 @@ class $AssetsGamesLiarsPokerSoundsGen {
   String get aGitkeep =>
       'packages/game_liars_poker/assets/games/liars_poker/sounds/.gitkeep';
 
+  /// File path: assets/games/liars_poker/sounds/shuffle.mp3
+  String get shuffle =>
+      'packages/game_liars_poker/assets/games/liars_poker/sounds/shuffle.mp3';
+
   /// File path: assets/games/liars_poker/sounds/submit.mp3
   String get submit =>
       'packages/game_liars_poker/assets/games/liars_poker/sounds/submit.mp3';
@@ -104,7 +108,7 @@ class $AssetsGamesLiarsPokerSoundsGen {
       'packages/game_liars_poker/assets/games/liars_poker/sounds/win.mp3';
 
   /// List of all assets
-  List<String> get values => [aGitkeep, submit, voiceLiar, win];
+  List<String> get values => [aGitkeep, shuffle, submit, voiceLiar, win];
 }
 
 class $AssetsGamesLiarsPokerImagesBackgroundGen {

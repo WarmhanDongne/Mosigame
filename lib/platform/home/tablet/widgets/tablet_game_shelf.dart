@@ -92,10 +92,10 @@ class _TabletGameShelfState extends State<TabletGameShelf> {
             ? _lastVisibleGames
             : sourceGames;
 
-        final fg = widget.theme.fg;
         if (isLoading && visibleGames.isEmpty) {
-          return Center(child: CircularProgressIndicator(color: fg));
+          return _ShelfLoadingSkeleton(theme: widget.theme);
         }
+        final fg = widget.theme.fg;
         if (errorMessage != null) {
           return Center(
             child: Column(
@@ -132,58 +132,61 @@ class _TabletGameShelfState extends State<TabletGameShelf> {
                   .toList(growable: false)
             : visibleGames;
 
-        return Column(
-          children: [
-            Center(
-              child: _PlayableToggle(
-                value: widget.onlyPlayable && canFilter,
-                playerCount: playerCount,
-                theme: widget.theme,
-                onChanged: canFilter ? widget.onOnlyPlayableChanged : null,
-              ),
-            ),
-            const SizedBox(height: 18),
-            if (games.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Text(
-                    widget.onlyPlayable && canFilter
-                        ? GameLocale.select(
-                            ko: '지금 $playerCount명이 할 수 있는 게임이 없어요',
-                            en: 'No games support $playerCount players right now',
-                            zhHans: '目前没有适合 $playerCount 人的游戏',
-                            zhHant: '目前沒有適合 $playerCount 人的遊戲',
-                          )
-                        : GameLocale.select(
-                            ko: '선반에 게임이 없어요',
-                            en: 'There are no games on the shelf',
-                            zhHans: '书架上没有游戏',
-                            zhHant: '書架上沒有遊戲',
-                          ),
-                    style: MosiFonts.sans(
-                      locale: Localizations.maybeLocaleOf(context),
-                      size: 16,
-                      weight: FontWeight.w600,
-                      color: fg,
-                    ),
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: _ShelfBody(
-                  games: games,
-                  selected: _resolveSelected(games),
-                  roomProvider: widget.roomProvider,
+        return IgnorePointer(
+          ignoring: isLoading,
+          child: Column(
+            children: [
+              Center(
+                child: _PlayableToggle(
+                  value: widget.onlyPlayable && canFilter,
                   playerCount: playerCount,
                   theme: widget.theme,
-                  onSelect: widget.onSelect,
-                  onOpenDetail: widget.onOpenDetail,
-                  preparing: widget.preparing,
-                  selectedCoverKey: widget.selectedCoverKey,
+                  onChanged: canFilter ? widget.onOnlyPlayableChanged : null,
                 ),
               ),
-          ],
+              const SizedBox(height: 18),
+              if (games.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      widget.onlyPlayable && canFilter
+                          ? GameLocale.select(
+                              ko: '지금 $playerCount명이 할 수 있는 게임이 없어요',
+                              en: 'No games support $playerCount players right now',
+                              zhHans: '目前没有适合 $playerCount 人的游戏',
+                              zhHant: '目前沒有適合 $playerCount 人的遊戲',
+                            )
+                          : GameLocale.select(
+                              ko: '선반에 게임이 없어요',
+                              en: 'There are no games on the shelf',
+                              zhHans: '书架上没有游戏',
+                              zhHant: '書架上沒有遊戲',
+                            ),
+                      style: MosiFonts.sans(
+                        locale: Localizations.maybeLocaleOf(context),
+                        size: 16,
+                        weight: FontWeight.w600,
+                        color: fg,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: _ShelfBody(
+                    games: games,
+                    selected: _resolveSelected(games),
+                    roomProvider: widget.roomProvider,
+                    playerCount: playerCount,
+                    theme: widget.theme,
+                    onSelect: widget.onSelect,
+                    onOpenDetail: widget.onOpenDetail,
+                    preparing: widget.preparing,
+                    selectedCoverKey: widget.selectedCoverKey,
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -205,6 +208,224 @@ class _TabletGameShelfState extends State<TabletGameShelf> {
 
   bool _isPlayable(GameInfo game, int count) =>
       isGamePlayableWith(game, count, widget.roomProvider);
+}
+
+/// 카탈로그의 첫 응답을 기다리는 동안 실제 책장과 같은 무게감을 유지합니다.
+/// 이미 받아 둔 책이 있으면 [_lastVisibleGames]를 계속 보여 주므로 이 상태는
+/// 첫 진입처럼 화면이 비어 있는 경우에만 나타납니다.
+class _ShelfLoadingSkeleton extends StatelessWidget {
+  const _ShelfLoadingSkeleton({required this.theme});
+
+  final MosiShelfTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = GameLocale.select(
+      ko: '게임 책장을 불러오는 중',
+      en: 'Loading game shelf',
+      zhHans: '正在加载游戏书架',
+      zhHant: '正在載入遊戲書架',
+    );
+
+    return Semantics(
+      label: label,
+      container: true,
+      child: ExcludeSemantics(
+        child: Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final coverWidth = (constraints.maxWidth * .29)
+                  .clamp(156.0, 240.0)
+                  .toDouble();
+              final coverHeight = coverWidth * 4 / 3;
+              final spineWidth = coverWidth * .23;
+              final spineHeight = coverHeight * .88;
+              final shelfWidth = math
+                  .min(
+                    constraints.maxWidth * .88,
+                    coverWidth + spineWidth * 2 + 92,
+                  )
+                  .toDouble();
+              final shelfHeight = math
+                  .min(constraints.maxHeight * .86, coverHeight + 120)
+                  .toDouble();
+              final surface = theme.fg.withValues(alpha: .16);
+              final detail = theme.fg.withValues(alpha: .24);
+              final edge = theme.fg.withValues(alpha: .36);
+
+              return SizedBox(
+                key: const Key('shelf-loading-skeleton'),
+                width: shelfWidth,
+                height: shelfHeight,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: 26,
+                      bottom: 35,
+                      child: _ShelfSkeletonSpine(
+                        width: spineWidth,
+                        height: spineHeight,
+                        surface: surface,
+                        detail: detail,
+                        edge: edge,
+                        tilt: -.045,
+                      ),
+                    ),
+                    Positioned(
+                      right: 26,
+                      bottom: 35,
+                      child: _ShelfSkeletonSpine(
+                        width: spineWidth,
+                        height: spineHeight,
+                        surface: surface,
+                        detail: detail,
+                        edge: edge,
+                        tilt: .045,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 26,
+                      child: _ShelfSkeletonCover(
+                        width: coverWidth,
+                        height: coverHeight,
+                        surface: surface,
+                        detail: detail,
+                        edge: edge,
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        height: 29,
+                        decoration: BoxDecoration(
+                          color: surface,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(color: edge, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.deep.withValues(alpha: .24),
+                              blurRadius: 13,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShelfSkeletonCover extends StatelessWidget {
+  const _ShelfSkeletonCover({
+    required this.width,
+    required this.height,
+    required this.surface,
+    required this.detail,
+    required this.edge,
+  });
+
+  final double width;
+  final double height;
+  final Color surface;
+  final Color detail;
+  final Color edge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      padding: EdgeInsets.all(width * .12),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: edge, width: 2),
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: width * .08,
+            width: width * .52,
+            decoration: BoxDecoration(
+              color: detail,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 13),
+          Expanded(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: detail.withValues(alpha: .76),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+          const SizedBox(height: 13),
+          Container(
+            height: width * .055,
+            width: width * .36,
+            decoration: BoxDecoration(
+              color: detail,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShelfSkeletonSpine extends StatelessWidget {
+  const _ShelfSkeletonSpine({
+    required this.width,
+    required this.height,
+    required this.surface,
+    required this.detail,
+    required this.edge,
+    required this.tilt,
+  });
+
+  final double width;
+  final double height;
+  final Color surface;
+  final Color detail;
+  final Color edge;
+  final double tilt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: tilt,
+      child: Container(
+        width: width,
+        height: height,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: edge, width: 2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(
+            4,
+            (_) => Container(width: width * .5, height: 4, color: detail),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// 지금 인원으로 이 게임을 시작할 수 있는지 판단합니다.
@@ -231,7 +452,14 @@ String gamePlayerRangeLabel(GameInfo game, RoomProvider roomProvider) {
   final supported = game.id == 'yut'
       ? null
       : roomProvider.gameCatalog.find(game.id)?.supportedPlayerCounts;
-  if (supported != null) {
+  if (supported != null && supported.isNotEmpty) {
+    final ordered = supported.toSet().toList()..sort();
+    final consecutive = ordered.indexed
+        .skip(1)
+        .every((entry) => entry.$2 == ordered[entry.$1 - 1] + 1);
+    if (consecutive && ordered.length > 1) {
+      return _playerRangeLabel(ordered.first, ordered.last);
+    }
     return supported
         .map(
           (n) => GameLocale.select(
@@ -246,12 +474,7 @@ String gamePlayerRangeLabel(GameInfo game, RoomProvider roomProvider) {
   final minPlayers = game.id == 'yut' ? 2 : game.minPlayers;
   final maxPlayers = game.id == 'yut' ? 4 : game.maxPlayers;
   if (minPlayers > 0 && maxPlayers > 0) {
-    return GameLocale.select(
-      ko: '$minPlayers–$maxPlayers명',
-      en: '$minPlayers–$maxPlayers players',
-      zhHans: '$minPlayers–$maxPlayers 人',
-      zhHant: '$minPlayers–$maxPlayers 人',
-    );
+    return _playerRangeLabel(minPlayers, maxPlayers);
   }
   if (game.minPlayers > 0) {
     return GameLocale.select(
@@ -271,6 +494,13 @@ String gamePlayerRangeLabel(GameInfo game, RoomProvider roomProvider) {
   }
   return '';
 }
+
+String _playerRangeLabel(int minPlayers, int maxPlayers) => GameLocale.select(
+  ko: '$minPlayers–$maxPlayers명',
+  en: '$minPlayers–$maxPlayers players',
+  zhHans: '$minPlayers–$maxPlayers 人',
+  zhHant: '$minPlayers–$maxPlayers 人',
+);
 
 /// 시작할 수 없을 때 보여 줄 안내입니다. 시작할 수 있으면 null입니다.
 String? gameCannotStartMessage(

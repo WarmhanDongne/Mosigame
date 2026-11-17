@@ -7,6 +7,7 @@ import 'package:game_kit/core/diagnostics/recovery_metrics.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:project00/platform/home/room/services/room_leave_intent.dart';
+import 'package:project00/platform/home/room/services/deferred_room_leave.dart';
 import 'package:project00/platform/home/room/services/controller_presence.dart';
 import 'package:game_kit/session/controller_room_session_store.dart';
 import 'package:project00/platform/home/room/services/player_room_session_store.dart';
@@ -53,6 +55,9 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
        _currentUid = currentUidReader ?? _firebaseUid {
     try {
       _lifecycleBinding = WidgetsBinding.instance;
+      final lifecycle = _lifecycleBinding!.lifecycleState;
+      _isAppForeground =
+          lifecycle == null || lifecycle == AppLifecycleState.resumed;
       _lifecycleBinding!.addObserver(this);
     } catch (_) {
       /* pure Dart callers have no binding */
@@ -88,6 +93,8 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   StreamSubscription<String?>? statusSubscription;
   StreamSubscription<ControllerPresence>? controllerPresenceSubscription;
   StreamSubscription<bool>? roomExistenceSubscription;
+  final StreamController<bool> _networkGuardRecoverySignals =
+      StreamController<bool>.broadcast(sync: true);
 
   @override
   List<RoomPlayer> players = [];
@@ -100,6 +107,39 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   bool get isRemovingAnyPlayer => _removingPlayerUids.isNotEmpty;
   bool isRemovingPlayer(String uid) => _removingPlayerUids.contains(uid);
   bool get isInRoom => roomCode != null; // 사용자가 Room 안인지 판단하는 기준 변수.
+
+  /// 현재 앱이 사용자 입력을 받을 수 있는 foreground 상태입니다.
+  bool get isAppForeground => _isAppForeground;
+
+  /// foreground 복귀가 서버 확인까지 완료될 때마다 증가합니다.
+  ///
+  /// RoomProvider 밖에서 별도로 열은 game-status 구독도 이 세대가
+  /// 바뀌면 다시 열어, 서스펜드 후 멈춘 listener를 계속 재사용하지
+  /// 않게 합니다.
+  int get foregroundRefreshRevision => _foregroundRefreshRevision;
+
+  /// 마지막 방 연결 복구가 실패해 사용자의 수동 재시도를 기다리는 중입니다.
+  ///
+  /// RTDB 연결은 살아 있는데 callable·서버 확인만 실패하면 네트워크 가드의
+  /// 재시도 영역이 생기지 않습니다. 로비는 이 값으로 재시도 띠를 표시합니다.
+  bool get connectionRecoveryFailed => _connectionRecoveryFailed;
+
+  /// 복구 실패 뒤 사용자가 누르지 않아도 다시 시도하는 간격입니다.
+  ///
+  /// 실패 한 회차에 이 횟수만큼만 자동으로 시도합니다. 그 뒤에는 재시도 띠·
+  /// 앱 복귀·네트워크 재연결이 다음 복구를 시작합니다. 무한 polling이 아닙니다.
+  @visibleForTesting
+  List<Duration> recoveryAutoRetryDelays = const [
+    Duration(seconds: 3),
+    Duration(seconds: 10),
+  ];
+
+  /// 서버 요약이 새 접속을 아직 반영하지 않았을 때 다시 읽기 전 대기 시간입니다.
+  @visibleForTesting
+  List<Duration> playerSummaryConfirmRetryDelays = const [
+    Duration(milliseconds: 300),
+    Duration(milliseconds: 700),
+  ];
 
   /// 이 앱 인스턴스가 RTDB 서버에 연결된 상태인지입니다.
   ///
@@ -152,9 +192,25 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   Future<void>? _roomDeletionConfirmation;
   int _playerRemovalCheckId = 0;
   Future<void>? _connectionRecoveryFuture;
+  Future<void>? _realtimeResumeFuture;
   (String?, String?, int, int, String?)? _confirmedRecovery;
   bool _heartbeatPermissionRecoveryAttempted = false;
   bool _presencePaused = false;
+  bool _lifecycleDisconnectRequested = false;
+  bool _hiddenSinceForeground = false;
+  Future<void>? _foregroundProbeFuture;
+  bool _isAppForeground = true;
+  bool _foregroundValidationPending = false;
+  int _foregroundRecoveryGeneration = 0;
+  int _validatedForegroundRecoveryGeneration = 0;
+  int _foregroundRefreshRevision = 0;
+  int? _pendingForegroundRecoveryGeneration;
+  bool _pendingForegroundRequiresNewConnection = false;
+  bool _roomSubscriptionsNeedRefresh = false;
+  bool _connectionRecoveryFailed = false;
+  Timer? _recoveryAutoRetryTimer;
+  int _recoveryAutoRetryCount = 0;
+  String? _previewRoomCode;
   RoomRecoveryBatch? _requestedRecoveryOwner;
   GameRecoverySession? _reconnectSession;
   Future<void> Function()? _reconnectCallback;
@@ -363,6 +419,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   void listenRoomPreview(String rawRoomCode) {
     if (roomCode != null) return;
     final code = rawRoomCode.trim().toUpperCase();
+    _previewRoomCode = code;
     roomPreviewReady = false;
     playerSubscription?.cancel();
     playerSubscription = _service
@@ -384,6 +441,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
 
   void stopRoomPreview() {
     if (roomCode != null) return;
+    _previewRoomCode = null;
     playerSubscription?.cancel();
     _roomPreviewExpiryTimer?.cancel();
     _roomPreviewExpiryTimer = null;
@@ -401,6 +459,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   Future<bool> refreshRoomPreview(String rawRoomCode) async {
     if (roomCode != null) return false;
     final code = rawRoomCode.trim().toUpperCase();
+    _previewRoomCode = code;
     try {
       await _service.validateRoomJoin(code);
       final value = await _service.getRoomJoinPreview(code);
@@ -448,7 +507,20 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   }
 
   @override
-  Stream<bool> watchServerConnection() => _service.watchServerConnection();
+  Stream<bool> watchServerConnection() => Stream<bool>.multi((controller) {
+    final connection = _service.watchServerConnection().listen(
+      controller.add,
+      onError: controller.addError,
+    );
+    final recovery = _networkGuardRecoverySignals.stream.listen(
+      controller.add,
+      onError: controller.addError,
+    );
+    controller.onCancel = () async {
+      await connection.cancel();
+      await recovery.cancel();
+    };
+  }, isBroadcast: true);
 
   /// 태블릿이 방 화면을 열고 있는 동안 접속 표시를 유지합니다.
   Future<void> markControllerConnected() async {
@@ -697,17 +769,91 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _presencePaused = false;
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      _presencePaused = true;
-    }
     final code = roomCode;
-    if (_isDisposed || code == null) return;
+    _isAppForeground = state == AppLifecycleState.resumed;
+    if (_isDisposed) return;
     if (state == AppLifecycleState.resumed) {
-      unawaited(retryConnectionRecovery().catchError((Object _) {}));
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
+      // OS가 백그라운드에서 종료한 `.info/connected` 네이티브 스트림은
+      // Firebase의 자동 재접속만 기다리면 다시 열리지 않을 수 있습니다.
+      // 연결 신호가 false인 경로도 이 호출로 새 신호를 받을 수 있게 합니다.
+      unawaited(_resumeRealtimeTransport().catchError((Object _) {}));
+      final validateForeground = _foregroundValidationPending;
+      final foregroundGeneration = _foregroundRecoveryGeneration;
+      final requiresNewConnection = _lifecycleDisconnectRequested;
+      // inactive만 거친 복귀(알림·제어 센터·시스템 팝업)는 앱이 화면에서 내려간
+      // 적이 없으므로 RTDB 구독과 heartbeat가 계속 살아 있습니다.
+      final wasHidden = _hiddenSinceForeground;
+      _recoveryAutoRetryCount = 0;
+      _presencePaused = false;
+      _lifecycleDisconnectRequested = false;
+      _foregroundValidationPending = false;
+      _hiddenSinceForeground = false;
+      if (code == null) {
+        _validatedForegroundRecoveryGeneration = foregroundGeneration;
+        // 화면에서 내려갔다 온 경우에만 미리보기 구독을 다시 엽니다. 짧은 가림마다
+        // 다시 열면 닉네임·캐릭터 선택 화면이 준비 전 상태로 깜빡입니다.
+        final previewCode = _previewRoomCode;
+        if (previewCode != null && wasHidden) listenRoomPreview(previewCode);
+        notifyListeners();
+        return;
+      }
+      if (!_isServerConnected) {
+        _pendingForegroundRecoveryGeneration = validateForeground
+            ? foregroundGeneration
+            : null;
+        _pendingForegroundRequiresNewConnection = requiresNewConnection;
+        final uid = _currentUid();
+        if (uid != null) {
+          final session = GameRecoverySession.forRoom(code, uid);
+          session.transportRecovering = true;
+          session.invalidate();
+        }
+        notifyListeners();
+        return;
+      }
+      if (validateForeground &&
+          !wasHidden &&
+          !requiresNewConnection &&
+          _canProbeForegroundConnection(code)) {
+        // 게임 route 진입처럼 foreground를 기다리던 화면이 다시 판정하게 합니다.
+        notifyListeners();
+        final probe = _probeForegroundConnection(code, foregroundGeneration);
+        _foregroundProbeFuture = probe;
+        unawaited(
+          probe.whenComplete(() {
+            if (identical(_foregroundProbeFuture, probe)) {
+              _foregroundProbeFuture = null;
+            }
+          }),
+        );
+        return;
+      }
+      unawaited(
+        _retryConnectionRecovery(
+          forceValidation: validateForeground,
+          validateExistingConnection:
+              validateForeground && !requiresNewConnection,
+          foregroundGeneration: validateForeground
+              ? foregroundGeneration
+              : null,
+        ).catchError((Object _) {}),
+      );
+      return;
+    }
+
+    if (!_foregroundValidationPending) {
+      _foregroundValidationPending = true;
+      _foregroundRecoveryGeneration += 1;
+    }
+    notifyListeners();
+    final hiddenOrPaused =
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached;
+    if (hiddenOrPaused) _hiddenSinceForeground = true;
+    if (!hiddenOrPaused || code == null) return;
+    if (!_presencePaused) {
+      _presencePaused = true;
       _connectionEpoch++;
       _confirmedRecovery = null;
       _playerHeartbeatTimer?.cancel();
@@ -718,21 +864,92 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
         session.transportRecovering = true;
         session.invalidate();
       }
-      if (ControllerRoomSessionStore.instance.sessionIdForRoom(code) != null) {
-        unawaited(
-          _service.markControllerDisconnected(code).catchError((Object _) {}),
-        );
-      } else {
-        unawaited(
-          _service.markPlayerDisconnected(code).catchError((Object _) {}),
-        );
-      }
+    }
+
+    // hidden은 iOS/Android가 paused 앞에 합성하는 상태이며,
+    // 앱 스위처·짧은 다른 앱 확인에서도 순간적으로 들어올 수
+    // 있습니다. 여기서 즉시 disconnected를 쓰지 않고, 실제
+    // paused/detached에서만 서버 presence를 내립니다. paused가
+    // 생략되는 강제 종료는 RTDB onDisconnect가 담당합니다.
+    final shouldDisconnect =
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached;
+    if (!shouldDisconnect || _lifecycleDisconnectRequested) return;
+    _lifecycleDisconnectRequested = true;
+    if (ControllerRoomSessionStore.instance.sessionIdForRoom(code) != null) {
+      unawaited(
+        _service.markControllerDisconnected(code).catchError((Object _) {}),
+      );
+    } else {
+      unawaited(
+        _service.markPlayerDisconnected(code).catchError((Object _) {}),
+      );
     }
   }
 
-  Future<void> resumeControllerPresence() async {
-    _presencePaused = false;
-    if (roomCode != null) await retryConnectionRecovery();
+  /// 짧은 복귀를 입력 잠금 없이 heartbeat 한 번으로 확인해도 되는 상태인지입니다.
+  ///
+  /// 이미 복구가 진행 중이거나 실패·보호 상태라면 전체 복구 경로가 맡습니다.
+  bool _canProbeForegroundConnection(String code) {
+    if (_connectionRecoveryFuture != null || _connectionRecoveryFailed) {
+      return false;
+    }
+    final uid = _currentUid();
+    if (uid == null) return false;
+    final session = GameRecoverySession.forRoom(code, uid);
+    return !session.transportRecovering && session.transportConnected;
+  }
+
+  /// inactive만 거친 복귀에서 현재 접속이 서버에서 여전히 유효한지 확인합니다.
+  ///
+  /// 서버 Rules는 현재 접속이 아니거나 connected=false인 접속의 heartbeat를
+  /// 거절하므로, heartbeat 한 번의 성공이 접속 유효성의 근거입니다. 성공하면
+  /// 게임 세션·구독을 건드리지 않습니다. 실패하면 그때 전체 복구로 넘어갑니다.
+  Future<void> _probeForegroundConnection(
+    String code,
+    int foregroundGeneration,
+  ) async {
+    final uid = _currentUid();
+    final sessionEpoch = _sessionEpoch;
+    final connectionEpoch = _connectionEpoch;
+    final isController =
+        ControllerRoomSessionStore.instance.sessionIdForRoom(code) != null;
+    bool isCurrent() =>
+        !_isDisposed &&
+        roomCode == code &&
+        _currentUid() == uid &&
+        _sessionEpoch == sessionEpoch &&
+        !_isLeaving &&
+        !_foregroundValidationPending &&
+        foregroundGeneration == _foregroundRecoveryGeneration;
+    var valid = false;
+    try {
+      await (isController
+              ? _service.heartbeatController(code)
+              : _service.heartbeatPlayer(code))
+          .timeout(const Duration(seconds: 8));
+      valid = true;
+    } catch (_) {
+      // 아래에서 전체 복구로 넘깁니다.
+    }
+    if (!isCurrent()) return;
+    if (valid &&
+        _connectionEpoch == connectionEpoch &&
+        _connectionRecoveryFuture == null) {
+      _validatedForegroundRecoveryGeneration = foregroundGeneration;
+      return;
+    }
+    // 연결이 그사이 바뀌었거나 이미 복구가 돌고 있으면 그 경로가 이 세대를
+    // 이어받습니다. 오프라인이면 재연결 신호가 복구를 시작합니다.
+    if (!_isServerConnected ||
+        _validatedForegroundRecoveryGeneration >= foregroundGeneration) {
+      return;
+    }
+    await _retryConnectionRecovery(
+      forceValidation: true,
+      foregroundGeneration: foregroundGeneration,
+      afterForegroundProbe: true,
+    ).catchError((Object _) {});
   }
 
   Future<void> pauseControllerPresence() async {
@@ -1316,10 +1533,45 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       final code = roomCode;
       if (code != null) unawaited(_confirmRoomDeleted(code));
     }
+    final pendingForegroundGeneration = _pendingForegroundRecoveryGeneration;
+    if (_isAppForeground && pendingForegroundGeneration != null) {
+      final requiresNewConnection = _pendingForegroundRequiresNewConnection;
+      _pendingForegroundRecoveryGeneration = null;
+      _pendingForegroundRequiresNewConnection = false;
+      _wasServerDisconnected = false;
+      unawaited(
+        _retryConnectionRecovery(
+          forceValidation: true,
+          validateExistingConnection: !requiresNewConnection,
+          foregroundGeneration: pendingForegroundGeneration,
+        ).catchError((Object _) {}),
+      );
+      return;
+    }
     if (!_wasServerDisconnected) return;
     _wasServerDisconnected = false;
-    unawaited(retryConnectionRecovery().catchError((Object _) {}));
+    final unvalidatedGeneration = _unvalidatedForegroundGeneration;
+    unawaited(
+      (unvalidatedGeneration == null
+              ? retryConnectionRecovery()
+              : _retryConnectionRecovery(
+                  forceValidation: true,
+                  foregroundGeneration: unvalidatedGeneration,
+                ))
+          .catchError((Object _) {}),
+    );
   }
+
+  /// foreground로 돌아왔지만 아직 서버 확인을 끝내지 못한 복귀 세대입니다.
+  ///
+  /// 복구 도중 RTDB 연결이 한 번 흔들리면 뒤따르는 재시도가 이 세대를 이어받아야
+  /// 로비·게임 status 구독이 새로 열립니다.
+  int? get _unvalidatedForegroundGeneration =>
+      _isAppForeground &&
+          !_foregroundValidationPending &&
+          _validatedForegroundRecoveryGeneration < _foregroundRecoveryGeneration
+      ? _foregroundRecoveryGeneration
+      : null;
 
   //=============================[double check]=================================
   // 파베에서 방이 삭제됐는지 다시 확인한다.
@@ -1484,10 +1736,59 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   /// RTDB는 물리 네트워크가 돌아오면 자체 재연결하므로 `goOnline()`을 다시 부르는
   /// 대신, 연결 단절 중 실패했을 presence 예약과 서버의 참가 상태를 복구합니다.
   @override
-  Future<void> retryConnectionRecovery() async {
+  Future<void> retryConnectionRecovery() => _retryConnectionRecovery();
+
+  Future<void> _resumeRealtimeTransport() {
+    final active = _realtimeResumeFuture;
+    if (active != null) return active;
+    final resume = _service.resumeRealtimeConnection();
+    _realtimeResumeFuture = resume;
+    return resume.whenComplete(() {
+      if (identical(_realtimeResumeFuture, resume)) {
+        _realtimeResumeFuture = null;
+      }
+    });
+  }
+
+  Future<void> _retryConnectionRecovery({
+    bool forceValidation = false,
+    bool validateExistingConnection = false,
+    int? foregroundGeneration,
+    bool afterForegroundProbe = false,
+  }) async {
+    // 화면의 수동 재시도도 lifecycle 신호에 의존하지 않고 RTDB부터 깨웁니다.
+    // 이 단계가 없으면 종료된 `.info/connected` 구독이 false를 계속 재생해
+    // callable 복구가 성공해도 연결 띠가 풀리지 않습니다.
+    await _resumeRealtimeTransport();
+    // 짧은 복귀의 heartbeat 확인이 끝나기 전에는 접속이 확정된 것이 아닙니다.
+    // 그 결과(필요하면 뒤따르는 전체 복구까지)를 기다린 뒤 판정합니다.
+    final activeProbe = _foregroundProbeFuture;
+    if (activeProbe != null && !afterForegroundProbe) await activeProbe;
     final activeRecovery = _connectionRecoveryFuture;
     if (activeRecovery != null) {
-      await activeRecovery;
+      Object? activeError;
+      StackTrace? activeStackTrace;
+      try {
+        await activeRecovery;
+      } catch (error, stackTrace) {
+        activeError = error;
+        activeStackTrace = stackTrace;
+      }
+      // Give the owner of [activeRecovery] a chance to clear the completed
+      // future before the newest foreground request starts another episode.
+      await Future<void>.delayed(Duration.zero);
+      if (foregroundGeneration != null &&
+          !_foregroundValidationPending &&
+          foregroundGeneration == _foregroundRecoveryGeneration &&
+          _validatedForegroundRecoveryGeneration < foregroundGeneration) {
+        await _retryConnectionRecovery(
+          forceValidation: true,
+          validateExistingConnection: validateExistingConnection,
+          foregroundGeneration: foregroundGeneration,
+        );
+      } else if (activeError != null) {
+        Error.throwWithStackTrace(activeError, activeStackTrace!);
+      }
       return;
     }
 
@@ -1508,11 +1809,31 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       connectionEpoch,
       identity?.connectionId,
     );
-    if (_confirmedRecovery == scope && _isServerConnected) return;
-    final recovery = _recoverCurrentConnection();
+    if (!forceValidation && _confirmedRecovery == scope && _isServerConnected) {
+      return;
+    }
+    final recovery = _recoverCurrentConnection(
+      validateExistingConnection: validateExistingConnection,
+      foregroundGeneration: foregroundGeneration,
+    );
     _connectionRecoveryFuture = recovery;
     try {
       await recovery;
+      if (foregroundGeneration != null &&
+          !_foregroundValidationPending &&
+          foregroundGeneration == _foregroundRecoveryGeneration &&
+          !_isDisposed &&
+          roomCode == code &&
+          _currentUid() == uid) {
+        final session = code == null || uid == null
+            ? null
+            : GameRecoverySession.forRoom(code, uid);
+        if (session?.transportRecovering == false) {
+          _validatedForegroundRecoveryGeneration = foregroundGeneration;
+          _foregroundRefreshRevision += 1;
+          notifyListeners();
+        }
+      }
     } finally {
       if (identical(_connectionRecoveryFuture, recovery)) {
         _connectionRecoveryFuture = null;
@@ -1523,13 +1844,25 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
             code != null &&
             _currentUid() == uid &&
             !_isLeaving) {
-          await retryConnectionRecovery();
+          final unvalidatedGeneration = _unvalidatedForegroundGeneration;
+          if (unvalidatedGeneration == null) {
+            await retryConnectionRecovery();
+          } else {
+            await _retryConnectionRecovery(
+              forceValidation: true,
+              validateExistingConnection: validateExistingConnection,
+              foregroundGeneration: unvalidatedGeneration,
+            );
+          }
         }
       }
     }
   }
 
-  Future<void> _recoverCurrentConnection() async {
+  Future<void> _recoverCurrentConnection({
+    bool validateExistingConnection = false,
+    int? foregroundGeneration,
+  }) async {
     final uid = _currentUid();
     final code = roomCode;
     final epoch = _sessionEpoch;
@@ -1539,19 +1872,57 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
         : ControllerRoomSessionStore.instance.sessionIdForRoom(code);
     final batch = _requestedRecoveryOwner ?? RoomRecoveryBatch();
     _requestedRecoveryOwner = null;
+    _recoveryAutoRetryTimer?.cancel();
+    _recoveryAutoRetryTimer = null;
+    final recoveringAfterFailure = _connectionRecoveryFailed;
+    if (_connectionRecoveryFailed) {
+      _connectionRecoveryFailed = false;
+      notifyListeners();
+    }
     if (code != null && uid != null) {
       final session = GameRecoverySession.forRoom(code, uid);
       session.preparationBatch = batch;
       session.transportRecovering = true;
+      session.recoveryRetrying = true;
       session.invalidate();
     }
     RecoveryMetrics.instance.begin(newEpisode: false);
     RecoveryMetrics.instance.mark(RecoveryStage.connection);
     if (uid != null) RecoveryMetrics.instance.mark(RecoveryStage.auth);
+    RoomPlayer? confirmedPlayer;
+    var allocatedNewConnection = false;
+    var recoveryStage = 'begin';
     try {
       await batch.run(
         () async {
-          await _performConnectionRecovery();
+          var existingConnectionValid = false;
+          if (validateExistingConnection && _isServerConnected) {
+            try {
+              if (controllerSessionId != null) {
+                recoveryStage = 'validate-controller-heartbeat';
+                await _service.heartbeatController(code!);
+              } else {
+                recoveryStage = 'validate-player-heartbeat';
+                await _service.heartbeatPlayer(code!);
+                recoveryStage = 'validate-player-summary';
+                confirmedPlayer = await _confirmPlayerConnection(
+                  roomCode: code,
+                  uid: uid!,
+                  retryLaggingSummary: false,
+                );
+              }
+              existingConnectionValid = true;
+            } catch (_) {
+              // iOS can resume with a stale local `.info/connected=true`.
+              // A rejected server heartbeat means the old identity cannot be
+              // trusted, so fall through to the normal resume/join CAS.
+            }
+          }
+          if (!existingConnectionValid) {
+            recoveryStage = 'restore-connection';
+            await _performConnectionRecovery();
+            allocatedNewConnection = controllerSessionId == null;
+          }
           if (_isDisposed ||
               _currentUid() != uid ||
               roomCode != code ||
@@ -1565,9 +1936,20 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
                 controllerSessionId) {
               return;
             }
-            await _service.heartbeatController(code);
+            if (!existingConnectionValid) {
+              recoveryStage = 'confirm-controller-heartbeat';
+              await _service.heartbeatController(code);
+            }
           } else {
-            await _service.heartbeatPlayer(code);
+            if (!existingConnectionValid) {
+              recoveryStage = 'confirm-player-heartbeat';
+              await _service.heartbeatPlayer(code);
+              recoveryStage = 'confirm-player-summary';
+              confirmedPlayer = await _confirmPlayerConnection(
+                roomCode: code,
+                uid: uid!,
+              );
+            }
           }
         },
         isCurrent: () =>
@@ -1582,7 +1964,17 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
                   'unavailable',
                   'deadline-exceeded',
                   'aborted',
-                }.contains(error.code)),
+                }.contains(error.code)) ||
+            // A resumed iOS/Android client can receive a connection identity
+            // that has already been superseded while RTDB listeners are
+            // reopening. The first heartbeat is then rejected by the rules.
+            // Re-running the same bounded recovery reads the server's current
+            // sequence and allocates/adopts a usable identity; authorization
+            // failures from callable Functions remain definitive.
+            (error is FirebaseException &&
+                error is! FirebaseFunctionsException &&
+                error.plugin == 'firebase_database' &&
+                isPermissionDenied(error)),
       );
       if (_isDisposed ||
           _currentUid() != uid ||
@@ -1590,8 +1982,44 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
           code == null ||
           _isLeaving ||
           _sessionEpoch != epoch ||
-          _connectionEpoch != connectionEpoch) {
+          _connectionEpoch != connectionEpoch ||
+          (foregroundGeneration != null &&
+              (_foregroundValidationPending ||
+                  foregroundGeneration != _foregroundRecoveryGeneration))) {
+        // 더 새로운 연결·복귀 세대가 이 결과를 대체했습니다. 전송 보호는 다음
+        // 복구가 풀 때까지 유지하되, 끝난 요청의 진행 표시는 남기지 않습니다.
+        if (code != null && uid != null && roomCode == code && !_isDisposed) {
+          final session = GameRecoverySession.forRoom(code, uid);
+          if (session.recoveryRetrying) {
+            session.recoveryRetrying = false;
+            session.changed();
+          }
+        }
         return;
+      }
+      if (_roomSubscriptionsNeedRefresh ||
+          allocatedNewConnection ||
+          foregroundGeneration != null) {
+        _roomSubscriptionsNeedRefresh = false;
+        // iOS/Android가 오래 백그라운드에 있으면 기존 RTDB 구독이 새 연결 신원
+        // 변경을 놓칠 수 있습니다. 서버 확인 뒤에만 구독을 다시 열어, 로비와
+        // 게임이 같은 currentConnectionId/connectionSeq를 보게 합니다.
+        listenRoom();
+      }
+      if (confirmedPlayer != null) {
+        final current = confirmedPlayer!;
+        final index = players.indexWhere((player) => player.uid == current.uid);
+        players = index < 0
+            ? [...players, current]
+            : [
+                for (
+                  var playerIndex = 0;
+                  playerIndex < players.length;
+                  playerIndex += 1
+                )
+                  if (playerIndex == index) current else players[playerIndex],
+              ];
+        _pruneStaleReports(players);
       }
       // Periodic work must be created after leaving the bounded recovery Zone.
       // Late operation continuations retain its deadline; future heartbeats do not.
@@ -1619,20 +2047,167 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       if (uid != null) {
         final session = GameRecoverySession.forRoom(code, uid);
         session.transportRecovering = false;
+        session.recoveryRetrying = false;
+        session.recoveryError = null;
         session.changed();
       }
       _evaluateStalePlayers();
       errorMessage = null;
+      _connectionRecoveryFailed = false;
+      _recoveryAutoRetryCount = 0;
       notifyListeners();
+      // RTDB transport가 이미 true인 상태에서 방 세션의 자체 재시도가 성공하면
+      // AppNetworkGuard에는 새 transport 이벤트가 오지 않습니다. 실패 뒤 성공만
+      // 중복 true로 알려 가드가 마지막 no-op 검증을 거쳐 오래된 빨간 띠를 닫게
+      // 합니다. 일반 연결 띠는 이미 연결된 중복 true를 조용히 무시합니다.
+      if (recoveringAfterFailure &&
+          _isServerConnected &&
+          !_networkGuardRecoverySignals.isClosed) {
+        _networkGuardRecoverySignals.add(true);
+      }
       RecoveryMetrics.instance.mark(RecoveryStage.identity);
       if (_currentUid() == uid &&
           roomStatus != 'playing' &&
           GameRecoverySession.forRoom(code, uid ?? '').context == null) {
         RecoveryMetrics.instance.finish(success: true);
       }
-    } catch (_) {
+    } catch (error) {
+      if (code != null && uid != null && roomCode == code && !_isDisposed) {
+        _confirmedRecovery = null;
+        final session = GameRecoverySession.forRoom(code, uid);
+        session.recoveryRetrying = false;
+        session.recoveryError = '연결을 복구하지 못했어요. 다시 시도해주세요.';
+        session.changed();
+        errorMessage = '방 연결을 확인하지 못했어요. 아래 알림을 눌러 다시 연결해주세요.';
+        _connectionRecoveryFailed = true;
+        _scheduleRecoveryAutoRetry(code, uid);
+        notifyListeners();
+      }
+      if (kDebugMode) {
+        final errorCode = error is FirebaseException ? error.code : 'none';
+        final reason = _connectionRecoveryFailureReason(error);
+        debugPrint(
+          '[room_connection] event=connection_recovery_failed '
+          'stage=$recoveryStage errorType=${error.runtimeType} '
+          'code=$errorCode reason=$reason',
+        );
+      }
       RecoveryMetrics.instance.finish(success: false);
       rethrow;
+    }
+  }
+
+  /// 복구 실패 로그에는 사용자·방·payload 대신 고정된 원인 코드만 남깁니다.
+  ///
+  /// [RoomCommandException.message]는 화면 문구이므로 그대로 출력하지 않습니다.
+  /// 이미 reason을 가진 예외는 그 값을 우선하고, 현재 복구 경로의 기존 문구만
+  /// 안정적인 코드로 분류합니다.
+  String _connectionRecoveryFailureReason(Object error) {
+    if (error is TimeoutException) return 'timeout';
+    if (error is FirebaseException) return error.code;
+    if (error is! RoomCommandException) return 'unexpected';
+    final explicit = error.reason?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    return switch (error.message) {
+      '복구할 방 정보가 없습니다.' => 'room-missing',
+      '복구할 플레이어 정보가 없습니다.' => 'player-profile-missing',
+      '이 방에는 다시 참가할 수 없습니다.' => 'membership-mismatch',
+      '퇴장 결과를 먼저 확인해주세요.' => 'leave-pending',
+      '인증 정보가 없습니다.' || '사용자 인증에 실패했습니다.' => 'auth-missing',
+      '로그인 상태가 변경되었습니다.' => 'auth-changed',
+      _ => 'room-command-unspecified',
+    };
+  }
+
+  void _scheduleRecoveryAutoRetry(String code, String uid) {
+    _recoveryAutoRetryTimer?.cancel();
+    _recoveryAutoRetryTimer = null;
+    if (_recoveryAutoRetryCount >= recoveryAutoRetryDelays.length) return;
+    final delay = recoveryAutoRetryDelays[_recoveryAutoRetryCount];
+    _recoveryAutoRetryCount += 1;
+    final sessionEpoch = _sessionEpoch;
+    // 실패한 복구 묶음의 마감을 물려받지 않도록 세션 zone에서 만듭니다.
+    _recoveryAutoRetryTimer = _sessionZone.run(
+      () => Timer(delay, () {
+        _recoveryAutoRetryTimer = null;
+        if (_isDisposed ||
+            !_connectionRecoveryFailed ||
+            roomCode != code ||
+            _currentUid() != uid ||
+            _sessionEpoch != sessionEpoch ||
+            _isLeaving ||
+            !_isAppForeground ||
+            _presencePaused ||
+            !_isServerConnected ||
+            _connectionRecoveryFuture != null) {
+          return;
+        }
+        unawaited(
+          _retryConnectionRecovery(
+            forceValidation: true,
+            foregroundGeneration: _unvalidatedForegroundGeneration,
+          ).catchError((Object _) {}),
+        );
+      }),
+    );
+  }
+
+  /// 서버의 참가자 요약까지 새 접속 신원으로 바뀐 뒤에만 복구 성공을 허용합니다.
+  ///
+  /// callable 응답만 성공하고 players 구독이 이전 `isConnected=false`를 유지하면
+  /// 태블릿 로비에는 계속 연결 끊김으로 보입니다. 현재 identity와 서버에서 직접
+  /// 읽은 참가자 요약을 함께 확인해 그 상태를 성공으로 오인하지 않습니다.
+  ///
+  /// 새 접속을 할당한 직후에는 복귀 직후의 읽기가 이전 요약을 돌려줄 수 있습니다.
+  /// [retryLaggingSummary]이면 새 접속을 다시 할당하지 않고 같은 identity로 짧게
+  /// 다시 읽습니다. 전체 시간은 호출한 복구 묶음의 요청 제한 안에 있습니다.
+  Future<RoomPlayer> _confirmPlayerConnection({
+    required String roomCode,
+    required String uid,
+    bool retryLaggingSummary = true,
+  }) async {
+    final delays = retryLaggingSummary
+        ? playerSummaryConfirmRetryDelays
+        : const <Duration>[];
+    for (var attempt = 0; ; attempt += 1) {
+      final identity = RoomSessionIdentityStore.instance.current(
+        uid,
+        'player',
+        roomCode,
+      );
+      if (identity == null) {
+        throw const RoomCommandException(
+          '복구한 접속 정보를 확인할 수 없습니다.',
+          reason: 'player-identity-missing',
+        );
+      }
+      final player = await _service.getRoomPlayer(roomCode, uid);
+      if (player != null &&
+          player.isConnected &&
+          player.membershipId == identity.membershipId &&
+          player.currentConnectionId == identity.connectionId &&
+          player.connectionSeq == identity.connectionSeq) {
+        return player;
+      }
+      if (attempt >= delays.length ||
+          _isDisposed ||
+          this.roomCode != roomCode ||
+          _currentUid() != uid) {
+        throw RoomCommandException(
+          '서버에서 새 접속 상태를 확인하지 못했습니다.',
+          reason: switch (player) {
+            null => 'player-summary-missing',
+            _ when player.membershipId != identity.membershipId =>
+              'player-summary-membership-mismatch',
+            _ when player.currentConnectionId != identity.connectionId =>
+              'player-summary-connection-mismatch',
+            _ when player.connectionSeq != identity.connectionSeq =>
+              'player-summary-sequence-mismatch',
+            _ => 'player-summary-disconnected',
+          },
+        );
+      }
+      await Future<void>.delayed(delays[attempt]);
     }
   }
 
@@ -1679,8 +2254,29 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
         break;
       }
     }
-    final nickname = currentPlayer?.nickname ?? _joinedNickname;
-    final characterId = currentPlayer?.characterId ?? _joinedCharacterId;
+    var nickname = currentPlayer?.nickname ?? _joinedNickname;
+    var characterId = currentPlayer?.characterId ?? _joinedCharacterId;
+    if (nickname == null || characterId == null) {
+      // A foreground return can run before the reopened players subscription has
+      // replayed its cached value. The provider may also have been rebuilt while
+      // the waiting-room route is restored, so the join-only fields are not a
+      // durable recovery source. Use only the saved profile for this exact UID
+      // and room; another account or room must never supply reconnect metadata.
+      final stored = await PlayerRoomSessionStore.instance.load();
+      if (_isDisposed ||
+          _isLeaving ||
+          roomCode != code ||
+          _currentUid() != uid) {
+        return;
+      }
+      if (stored?.uid == uid && stored?.roomCode == code) {
+        final savedProfile = stored!;
+        nickname ??= savedProfile.nickname;
+        characterId ??= savedProfile.characterId;
+        _joinedNickname ??= savedProfile.nickname;
+        _joinedCharacterId ??= savedProfile.characterId;
+      }
+    }
     if (nickname == null || characterId == null) {
       throw const RoomCommandException('복구할 플레이어 정보가 없습니다.');
     }
@@ -1758,6 +2354,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     if (expectedRoomCode != null && roomCode != expectedRoomCode) return;
 
     if (_isLeaving) return;
+    _roomSubscriptionsNeedRefresh = true;
     DevErrorLog.instance.add(
       error: error,
       context: 'room/subscription',
@@ -2012,6 +2609,40 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     );
   }
 
+  /// 인터넷이 끊긴 대기실에서 나갑니다. 기기에서는 즉시 방을 떠나고, 서버 퇴장은
+  /// 연결이 돌아오면 보냅니다.
+  ///
+  /// 연결돼 있거나 진행 기기(태블릿)이면 일반 [leaveRoom]과 같습니다. 오프라인
+  /// 퇴장은 퇴장 의도를 먼저 기록해 연결 복구가 이 방으로 다시 참가시키지 못하게
+  /// 하고, [DeferredRoomLeave]가 화면과 무관하게 서버 퇴장을 마무리합니다. 그동안
+  /// 다른 참가자에게는 연결 끊김으로 보입니다.
+  Future<bool> leaveRoomDeferred() async {
+    final code = roomCode;
+    if (code == null || _leaveRequestInFlight) return false;
+    if (_isServerConnected ||
+        ControllerRoomSessionStore.instance.sessionIdForRoom(code) != null) {
+      return leaveRoom();
+    }
+    _isLeaving = true;
+    _sessionEpoch += 1;
+    RoomLeaveIntent.begin(code);
+    final uid = _currentUid();
+    if (uid != null) {
+      final session = GameRecoverySession.forRoom(code, uid);
+      session.leaving = true;
+      session.invalidate();
+    }
+    _playerHeartbeatTimer?.cancel();
+    _playerHeartbeatTimer = null;
+    DeferredRoomLeave.start(_service, code);
+    // 저장된 방 세션은 지우지 않습니다. 이번 실행에서 연결이 돌아오지 않으면
+    // 다음 실행의 이전 세션 확인이 이 퇴장을 마무리하는 근거입니다.
+    wasKicked = false;
+    _hasJoined = false;
+    clearRoom(expectedRoomCode: code);
+    return true;
+  }
+
   /// 게임 중 퇴장: 서버가 다음 턴 또는 인원 부족 종료까지 결정합니다.
   @override
   Future<bool> leaveGame(String gameId) {
@@ -2179,7 +2810,21 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     _sessionEpoch += 1;
     _wasServerDisconnected = false;
     _isServerConnected = false;
+    _presencePaused = false;
+    _lifecycleDisconnectRequested = false;
+    _hiddenSinceForeground = false;
+    _foregroundProbeFuture = null;
+    _foregroundValidationPending = false;
+    _pendingForegroundRecoveryGeneration = null;
+    _pendingForegroundRequiresNewConnection = false;
     _roomMissingCandidate = false;
+    _roomSubscriptionsNeedRefresh = false;
+    _connectionRecoveryFailed = false;
+    _recoveryAutoRetryTimer?.cancel();
+    _recoveryAutoRetryTimer = null;
+    _recoveryAutoRetryCount = 0;
+    _validatedForegroundRecoveryGeneration = _foregroundRecoveryGeneration;
+    _previewRoomCode = null;
     _roomDeletionConfirmation = null;
     _playerRemovalCheckId += 1;
     _connectionRecoveryFuture = null;
@@ -2204,9 +2849,11 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     controllerPresenceSubscription?.cancel();
     roomExistenceSubscription?.cancel();
     _controllerHeartbeatTimer?.cancel();
+    _recoveryAutoRetryTimer?.cancel();
     _playerHeartbeatTimer?.cancel();
     _controllerPresenceTimer?.cancel();
     _playerPresenceTimer?.cancel();
+    unawaited(_networkGuardRecoverySignals.close());
     super.dispose();
   }
 }

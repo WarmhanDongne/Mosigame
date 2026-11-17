@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:game_kit/recovery/models/game_recovery_context.dart';
 import 'package:game_kit/recovery/widgets/connection_notice_host.dart';
 import 'package:game_kit/recovery/widgets/game_connection_led.dart';
@@ -37,10 +38,10 @@ void main() {
     connection.add(true);
     await tester.pump();
 
-    expect(find.text('on'), findsOneWidget);
+    expect(find.text('다시 연결됐어요'), findsOneWidget);
     expect(find.text('보존된 게임 화면'), findsOneWidget);
     expect(session.canSend, isFalse);
-    await tester.tap(find.text('재시도'));
+    await tester.tap(find.textContaining('재시도'));
     expect(recoveryRetries, 1);
     expect(commandRetries, 0);
 
@@ -50,7 +51,7 @@ void main() {
       ..paused = false;
     session.changed();
     await tester.pump();
-    await tester.tap(find.text('재시도'));
+    await tester.tap(find.textContaining('재시도'));
     expect(session.canSend, isTrue);
     expect(commandRetries, 1);
     expect(recoveryRetries, 1);
@@ -68,7 +69,7 @@ void main() {
     expect(step(60000), 5);
   });
 
-  testWidgets('게임 LED 띠는 oFF → 2-5 → on 순서로 바뀐다', (tester) async {
+  testWidgets('게임 연결 표시도 공통 상태 띠의 끊김 → 복구 중 → 완료 순서를 쓴다', (tester) async {
     final connection = StreamController<bool>.broadcast();
     addTearDown(connection.close);
     await tester.pumpWidget(
@@ -81,18 +82,22 @@ void main() {
     );
     connection.add(false);
     await tester.pump(const Duration(milliseconds: 1600));
-    expect(find.text('oFF'), findsOneWidget);
     expect(find.text('연결이 끊겼어요'), findsOneWidget);
+    expect(
+      tester.widget<MosiConnectionBand>(find.byType(MosiConnectionBand)).phase,
+      MosiConnectionBandPhase.lost,
+    );
 
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('1-5'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1100));
-    expect(find.text('2-5'), findsOneWidget);
     expect(find.text('다시 연결하는 중…'), findsOneWidget);
+    expect(
+      tester.widget<MosiConnectionBand>(find.byType(MosiConnectionBand)).phase,
+      MosiConnectionBandPhase.reconnecting,
+    );
 
     connection.add(true);
     await tester.pump();
-    expect(find.text('on'), findsOneWidget);
     expect(find.text('다시 연결됐어요'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
   });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import test from 'node:test';
+import {mockPlatformMaintenanceInactive} from './mock-platform-maintenance.mjs';
 
 const require = createRequire(import.meta.url);
 const adminDatabase = require('firebase-admin/database');
@@ -92,6 +93,7 @@ function lifecycleRequest(overrides = {}) {
 
 function setup(t) {
   const database = new ColdCacheDatabase();
+  mockPlatformMaintenanceInactive(t);
   t.mock.method(adminDatabase, 'getDatabase', () => database);
   t.mock.method(onboarding, 'assertOnboardingComplete', async () => {});
   return database;
@@ -145,6 +147,7 @@ test('creation starts onboarding and mapping reads together and waits for both b
   database.beforeGet = path => path === 'controllerRooms/test-controller' ? mappingReady.promise : undefined;
   const creating = createRealtimeRoom.run({auth: {uid: 'test-controller'},
     data: {presenceProtocol: 2, operationId: 'create-operation'}});
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(onboardingStarted, true);
   assert.deepEqual(database.reads, ['controllerRooms/test-controller']);
   assert.equal(database.values.size, 0);
@@ -203,6 +206,7 @@ for (const failingPrerequisite of ['onboarding', 'operation', 'mapping']) {
     const outcome = assert.rejects(creating, error =>
       failingPrerequisite === 'onboarding' ? error === onboardingError :
         failingPrerequisite === 'operation' ? error.code === 'invalid-argument' : error === databaseError);
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(onboardingStarted, true);
     assert.equal(initializationCalls, 1);
     await new Promise(resolve => setImmediate(resolve));

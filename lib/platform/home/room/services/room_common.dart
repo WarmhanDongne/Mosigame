@@ -9,9 +9,8 @@ abstract final class RoomLimits {
 
 /// 로컬에 저장된 플레이어 세션으로 무엇을 복원할 수 있는지입니다.
 ///
-/// `bool`이 아니라 종류를 돌려주는 이유: 사용자에게 `게임 다시 참여`와
-/// `그룹 다시 참여` 중 무엇을 보여 줄지 화면이 알아야 합니다(P-01). 판정 근거는
-/// 이미 이 함수 안에 있었으므로 밖으로 꺼내기만 합니다.
+/// `bool`이 아니라 종류를 돌려주는 이유: 진행 중 게임은 자동 복귀하고 대기실은
+/// 복귀 여부를 물어야 하므로, 화면이 두 흐름을 구분해야 합니다.
 enum RestorableSession {
   /// 복원할 것이 없습니다. 저장 세션을 지워야 합니다.
   none,
@@ -36,7 +35,11 @@ RestorableSession restorablePlayerSession({
   required String? gameStatus,
   required bool privateGameDataExists,
 }) {
-  if (!playerExists || playerStatus != 'active') return RestorableSession.none;
+  // 초기 스키마의 참가자 노드는 status가 없습니다. 서버 join 정책과 RoomPlayer
+  // 모델처럼 누락은 active로 호환하되, 명시적인 inactive 값은 복원을 막습니다.
+  if (!playerExists || (playerStatus != null && playerStatus != 'active')) {
+    return RestorableSession.none;
+  }
   if (roomStatus == 'closed' || roomStatus == 'finished') {
     return RestorableSession.none;
   }

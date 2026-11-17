@@ -29,6 +29,7 @@ workspace:
   - packages/game_mafia
   - packages/game_holdem
   - packages/game_yut
+  - packages/game_russian_roulette
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -47,6 +48,7 @@ dependencies:
   game_mafia: any
   game_holdem: any
   game_yut: any
+  game_russian_roulette: any
 
   firebase_core: ^4.14.0
   firebase_database: ^12.5.0

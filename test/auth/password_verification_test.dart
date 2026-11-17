@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -15,11 +14,12 @@ import 'package:project00/platform/auth/services/auth_service.dart';
 import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_Core());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await SignupConsentStore().save(
@@ -230,7 +230,7 @@ class _PasswordProvider implements UserInfo {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _Core extends MockFirebaseApp {
+class _Core extends FirebaseTestCore {
   @override
   Future<List<CoreInitializeResponse>> initializeCore() async {
     final apps = await super.initializeCore();

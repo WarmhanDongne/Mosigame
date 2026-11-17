@@ -47,6 +47,7 @@ class DeckShowcaseShuffleAnimation extends StatefulWidget {
     this.titleStyle,
     this.showcaseHold = defaultShowcaseHold,
     this.play = true,
+    this.onShufflePassStarted,
     this.onCompleted,
   });
 
@@ -79,6 +80,11 @@ class DeckShowcaseShuffleAnimation extends StatefulWidget {
 
   /// false인 동안에는 덱만 중앙에 놓아 두고 안내가 끝나기를 기다립니다.
   final bool play;
+
+  /// 마지막 덱 섞기의 각 패스가 시작될 때 0부터 차례로 호출합니다.
+  ///
+  /// 게임이 카드 움직임에 맞춰 짧은 효과음을 내는 용도로 사용할 수 있습니다.
+  final ValueChanged<int>? onShufflePassStarted;
 
   final VoidCallback? onCompleted;
 
@@ -153,6 +159,7 @@ class _DeckShowcaseShuffleAnimationState
   static const _fallbackCardCount = 10;
 
   List<List<int>>? _cachedOrders;
+  int _notifiedShufflePassCount = 0;
 
   late final AnimationController _entry;
   late final AnimationController _shuffle;
@@ -168,12 +175,15 @@ class _DeckShowcaseShuffleAnimationState
           )
           ..addStatusListener(_onEntryStatus)
           ..forward();
-    _shuffle = AnimationController(
-      vsync: this,
-      duration: DeckShowcaseShuffleAnimation.shuffleDurationFor(
-        widget.showcaseHold,
-      ),
-    )..addStatusListener(_onShuffleStatus);
+    _shuffle =
+        AnimationController(
+            vsync: this,
+            duration: DeckShowcaseShuffleAnimation.shuffleDurationFor(
+              widget.showcaseHold,
+            ),
+          )
+          ..addStatusListener(_onShuffleStatus)
+          ..addListener(_notifyShufflePassStarted);
     _animation = Listenable.merge([_entry, _shuffle]);
   }
 
@@ -195,6 +205,7 @@ class _DeckShowcaseShuffleAnimationState
       ..dispose();
     _shuffle
       ..removeStatusListener(_onShuffleStatus)
+      ..removeListener(_notifyShufflePassStarted)
       ..dispose();
     super.dispose();
   }
@@ -205,6 +216,20 @@ class _DeckShowcaseShuffleAnimationState
 
   void _onShuffleStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) widget.onCompleted?.call();
+  }
+
+  void _notifyShufflePassStarted() {
+    if (_time < _shuffleStart) return;
+    final elapsed = _time - _shuffleStart;
+    final passLength = _shuffleLength / _passCount;
+    final reachedCount = math.min(
+      (elapsed / passLength).floor() + 1,
+      _passCount,
+    );
+    while (_notifiedShufflePassCount < reachedCount) {
+      widget.onShufflePassStarted?.call(_notifiedShufflePassCount);
+      _notifiedShufflePassCount += 1;
+    }
   }
 
   void _startWhenReady() {

@@ -1,12 +1,10 @@
 // recovery/widgets의 연결 차단·안내 흐름을 실제 서버 없이 검증합니다.
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:game_kit/recovery/widgets/app_network_guard.dart';
-import 'package:game_kit/recovery/widgets/network_unavailable_modal.dart';
 
 void main() {
   testWidgets(
@@ -44,10 +42,75 @@ void main() {
   );
 
   testWidgets(
-    'failed recovery exposes retry immediately and success releases the guard',
+    'a locked lobby can still leave through the exit button in the band',
     (tester) async {
       final connection = StreamController<bool>.broadcast();
       addTearDown(connection.close);
+      var exits = 0;
+      var retries = 0;
+      await _mount(
+        tester,
+        AppNetworkGuard(
+          connectionChanges: connection.stream,
+          showExitInBand: true,
+          exitLabel: '나가기',
+          onExit: () => exits++,
+          onRetry: () async => retries++,
+          noticeDelay: Duration.zero,
+          child: const Text('대기실'),
+        ),
+      );
+      final exit = find.byKey(const ValueKey('network-band-exit'));
+      expect(exit, findsNothing, reason: 'only while the connection is lost');
+
+      connection.add(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.byType(MosiConnectionBand), findsOneWidget);
+      expect(exit, findsOneWidget);
+
+      await tester.tap(exit);
+      await tester.pump();
+      expect(exits, 1);
+      expect(retries, 0, reason: 'the exit button is not a retry tap');
+
+      // 버튼 밖의 화면과 띠는 계속 재시도입니다.
+      await tester.tapAt(tester.getCenter(find.text('대기실')));
+      await tester.pump();
+      expect(retries, 1);
+      expect(exits, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('the band has no exit button unless the screen asks for one', (
+    tester,
+  ) async {
+    final connection = StreamController<bool>.broadcast();
+    addTearDown(connection.close);
+    await _mount(
+      tester,
+      AppNetworkGuard(
+        connectionChanges: connection.stream,
+        onExit: () {},
+        noticeDelay: Duration.zero,
+        child: const Text('게임 화면'),
+      ),
+    );
+    connection.add(false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.byType(MosiConnectionBand), findsOneWidget);
+    expect(find.byKey(const ValueKey('network-band-exit')), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'failed recovery retries from anywhere and ignores repeated taps in flight',
+    (tester) async {
+      final connection = StreamController<bool>.broadcast();
+      addTearDown(connection.close);
+      final manualRecovery = Completer<void>();
       var attempts = 0;
       await _mount(
         tester,
@@ -56,6 +119,7 @@ void main() {
           onRetry: () async {
             attempts++;
             if (attempts == 1) throw TimeoutException('failed recovery');
+            await manualRecovery.future;
           },
           child: const Text('게임 화면'),
         ),
@@ -65,52 +129,98 @@ void main() {
       connection.add(true);
       await tester.pump();
       await tester.pump();
-      expect(find.byType(NetworkUnavailableModal), findsOneWidget);
+      expect(find.byType(MosiConnectionBand), findsOneWidget);
+      expect(find.textContaining('눌러서 다시 시도'), findsOneWidget);
       expect(attempts, 1);
-      await tester.tap(find.byKey(NetworkUnavailableModal.retryButtonKey));
-      await tester.pump();
+      // 하단 띠가 아닌 잠긴 게임 화면 가운데를 눌러도 같은 복구를 시작합니다.
+      await tester.tapAt(tester.getCenter(find.text('게임 화면')));
       await tester.pump();
       expect(attempts, 2);
+      expect(find.text('최신 상황을 불러오는 중…'), findsOneWidget);
+      await tester.tapAt(tester.getCenter(find.text('게임 화면')));
+      await tester.tapAt(tester.getCenter(find.text('게임 화면')));
+      await tester.pump();
+      expect(attempts, 2, reason: '진행 중인 복구와 동시에 새 요청을 보내지 않는다');
+      manualRecovery.complete();
+      await tester.pump();
+      await tester.pump();
       expect(_gameInputIsBlocked(tester), false);
-      expect(find.byType(NetworkUnavailableModal), findsNothing);
+      expect(find.byType(MosiConnectionBand), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 
-  testWidgets('recovery modal keeps exit usable during an in-flight retry', (
-    tester,
-  ) async {
-    final connection = StreamController<bool>.broadcast();
-    addTearDown(connection.close);
-    final recovery = Completer<void>();
-    var exits = 0;
-    await _mount(
-      tester,
-      AppNetworkGuard(
-        connectionChanges: connection.stream,
-        onRetry: () => recovery.future,
-        onExit: () => exits++,
-        exitLabel: '게임 나가기',
-        child: const Text('게임 화면'),
-      ),
-    );
-    connection.add(false);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 11));
-    connection.add(true);
-    await tester.pump();
-    expect(
-      tester
-          .widget<NetworkUnavailableModal>(find.byType(NetworkUnavailableModal))
-          .isRetrying,
-      true,
-    );
-    await tester.tap(find.text('게임 나가기'));
-    expect(exits, 1);
-    await tester.pumpWidget(const SizedBox.shrink());
-    recovery.complete();
-    await tester.pump();
-  });
+  testWidgets(
+    'locked offline screen starts one manual recovery before RTDB reconnects',
+    (tester) async {
+      final connection = StreamController<bool>.broadcast();
+      addTearDown(connection.close);
+      final recovery = Completer<void>();
+      var attempts = 0;
+      await _mount(
+        tester,
+        AppNetworkGuard(
+          connectionChanges: connection.stream,
+          onRetry: () {
+            attempts++;
+            return recovery.future;
+          },
+          child: const Text('잠긴 게임 화면'),
+        ),
+      );
+
+      connection.add(false);
+      await tester.pump();
+      await tester.tapAt(tester.getCenter(find.text('잠긴 게임 화면')));
+      await tester.pump();
+      expect(attempts, 1);
+      expect(
+        find.byKey(const ValueKey('network-recovery-tap-surface')),
+        findsNothing,
+        reason: '복구 진행 중에는 전체 화면 재시도 영역을 제거한다',
+      );
+      await tester.tapAt(tester.getCenter(find.text('잠긴 게임 화면')));
+      await tester.pump();
+      expect(attempts, 1);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      recovery.complete();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'recovery band keeps route exit usable during an in-flight retry',
+    (tester) async {
+      final connection = StreamController<bool>.broadcast();
+      addTearDown(connection.close);
+      final recovery = Completer<void>();
+      var exits = 0;
+      await _mount(
+        tester,
+        AppNetworkGuard(
+          connectionChanges: connection.stream,
+          onRetry: () => recovery.future,
+          blockChildInput: false,
+          child: TextButton(
+            onPressed: () => exits++,
+            child: const Text('게임 나가기'),
+          ),
+        ),
+      );
+      connection.add(false);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 11));
+      connection.add(true);
+      await tester.pump();
+      expect(find.text('최신 상황을 불러오는 중…'), findsOneWidget);
+      await tester.tap(find.text('게임 나가기'));
+      expect(exits, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      recovery.complete();
+      await tester.pump();
+    },
+  );
 
   testWidgets(
     'only foreground navigator route owns recovery notices and retry',
@@ -152,7 +262,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 11));
       expect(
-        find.byType(NetworkUnavailableModal, skipOffstage: false),
+        find.byType(MosiConnectionBand, skipOffstage: false),
         findsOneWidget,
       );
       connection.add(true);
@@ -164,7 +274,7 @@ void main() {
       await connection.close();
     },
   );
-  testWidgets('3초 미만 단절은 안내 없이 복구하고 그동안 입력을 막는다', (tester) async {
+  testWidgets('3초 미만 단절도 화면 터치는 복구만 시도하고 게임 입력은 막는다', (tester) async {
     final connection = StreamController<bool>.broadcast();
     addTearDown(connection.close);
     var taps = 0;
@@ -184,21 +294,20 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.tap(find.text('카드 제출'), warnIfMissed: false);
     expect(taps, 0);
-    expect(find.text('연결 확인 중…'), findsNothing);
-    expect(find.byType(NetworkUnavailableModal), findsNothing);
-    expect(recoveries, 0, reason: '오프라인에는 복구 callable을 호출하지 않는다');
+    expect(find.byType(MosiConnectionBand), findsNothing);
+    expect(recoveries, 1, reason: '잠긴 화면의 터치는 수동 복구로만 전달한다');
     connection.add(true);
     await tester.pump();
     // 복구 Future 완료 뒤 예약된 setState를 다음 프레임에 반영합니다.
     await tester.pump();
     expect(_gameInputIsBlocked(tester), isFalse);
     await tester.tap(find.text('카드 제출'));
-    expect(recoveries, 1);
+    expect(recoveries, 2, reason: '새 연결 세대의 최신 상태를 한 번 검증한다');
     expect(taps, 1);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('3초 배너, 10초 모달을 표시하고 끊김 반복으로 시간을 초기화하지 않는다', (tester) async {
+  testWidgets('3초 상태 띠, 10초 장기 대기 문구를 표시하며 시간을 초기화하지 않는다', (tester) async {
     final connection = StreamController<bool>.broadcast();
     addTearDown(connection.close);
     await _mount(
@@ -211,23 +320,17 @@ void main() {
     connection.add(false);
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('연결 확인 중…'), findsOneWidget);
-    expect(find.byType(NetworkUnavailableModal), findsNothing);
+    expect(find.text('네트워크 연결을 확인하는 중…'), findsOneWidget);
+    expect(find.byType(MosiConnectionBand), findsOneWidget);
     connection.add(false);
     await tester.pump();
     await tester.pump(const Duration(seconds: 7));
-    expect(find.byType(NetworkUnavailableModal), findsOneWidget);
-    expect(find.text('연결 확인 중…'), findsNothing);
+    expect(find.byType(MosiConnectionBand), findsOneWidget);
+    expect(find.text('네트워크 연결을 기다리는 중…'), findsOneWidget);
     expect(find.text('게임 화면'), findsOneWidget);
-    expect(
-      tester
-          .widget<NetworkUnavailableModal>(find.byType(NetworkUnavailableModal))
-          .retryEnabled,
-      isFalse,
-    );
     connection.add(true);
     await tester.pump();
-    expect(find.byType(NetworkUnavailableModal), findsNothing);
+    expect(find.byType(MosiConnectionBand), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -249,7 +352,7 @@ void main() {
     connection.add(true);
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('연결 확인 중…'), findsOneWidget);
+    expect(find.text('최신 상황을 불러오는 중…'), findsOneWidget);
     await tester.tap(find.text('CALL'), warnIfMissed: false);
     expect(taps, 0);
     recovery.complete();
@@ -258,7 +361,7 @@ void main() {
     expect(_gameInputIsBlocked(tester), isFalse);
     await tester.tap(find.text('CALL'));
     expect(taps, 1);
-    expect(find.text('연결 확인 중…'), findsNothing);
+    expect(find.byType(MosiConnectionBand), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -351,7 +454,7 @@ void main() {
     connection.add(false);
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('연결 확인 중…'), findsOneWidget);
+    expect(find.text('네트워크 연결을 확인하는 중…'), findsOneWidget);
     connection.add(true);
     await tester.pump();
     expect(outer, 1);
@@ -384,14 +487,7 @@ void main() {
 
 Future<void> _mount(WidgetTester tester, Widget child) async {
   tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-  await tester.pumpWidget(
-    MaterialApp(
-      home: DefaultAssetBundle(
-        bundle: _TestAssets(),
-        child: Scaffold(body: child),
-      ),
-    ),
-  );
+  await tester.pumpWidget(MaterialApp(home: Scaffold(body: child)));
 }
 
 bool _gameInputIsBlocked(WidgetTester tester) => tester
@@ -402,18 +498,3 @@ bool _gameInputIsBlocked(WidgetTester tester) => tester
       ),
     )
     .any((pointer) => pointer.absorbing);
-
-// 모달 이미지가 실제 번들 다운로드 상태에 의존하지 않도록 테스트용 PNG를 사용합니다.
-class _TestAssets extends CachingAssetBundle {
-  @override
-  Future<ByteData> load(String key) async {
-    if (key.endsWith('.png')) {
-      return ByteData.sublistView(
-        base64Decode(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-        ),
-      );
-    }
-    return rootBundle.load(key);
-  }
-}

@@ -54,13 +54,8 @@ class PhoneHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
             ),
             const SizedBox(width: 4),
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: MosiColors.white, width: 1.5),
-              ),
-              child: const LocaleSettingsButton(),
-            ),
+            // 지구 아이콘은 테두리 원 없이 그대로 둡니다.
+            const LocaleSettingsButton(),
             const SizedBox(width: 6),
             const PhoneProfile(),
           ],

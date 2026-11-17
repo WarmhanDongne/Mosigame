@@ -25,6 +25,109 @@ final _books = [
 ];
 
 void main() {
+  testWidgets('첫 게임 목록 로딩에는 책장 스켈레톤만 표시한다', (tester) async {
+    final room = RoomProvider(
+      service: _RoomService(),
+      gameService: _GameService(),
+    );
+    final games = GameProvider(
+      service: _GameService(),
+      bundleService: _BundleService(),
+    )..isLoading = true;
+    addTearDown(room.dispose);
+    addTearDown(games.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            height: 650,
+            child: TabletGameShelf(
+              gameProvider: games,
+              roomProvider: room,
+              selectedGameId: null,
+              onSelect: (_) {},
+              onOpenDetail: (_) {},
+              theme: MosiGameArt.liarsPoker.shelfTheme,
+              onlyPlayable: false,
+              onOnlyPlayableChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('shelf-loading-skeleton')), findsOneWidget);
+    expect(find.byType(TabletBookCarousel), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('기존 책을 유지한 재조회 중에는 선택과 상세 진입을 막는다', (tester) async {
+    final room = RoomProvider(
+      service: _RoomService(),
+      gameService: _GameService(),
+    );
+    final games = GameProvider(
+      service: _GameService(),
+      bundleService: _BundleService(),
+    )..games = _books;
+    addTearDown(room.dispose);
+    addTearDown(games.dispose);
+    var selected = 0;
+    var opened = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            height: 650,
+            child: TabletGameShelf(
+              gameProvider: games,
+              roomProvider: room,
+              selectedGameId: _books.first.id,
+              onSelect: (_) => selected++,
+              onOpenDetail: (_) => opened++,
+              theme: MosiGameArt.liarsPoker.shelfTheme,
+              onlyPlayable: false,
+              onOnlyPlayableChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    games
+      ..games = []
+      ..isLoading = true
+      ..notifyListeners();
+    await tester.pump();
+
+    expect(find.byType(TabletBookCarousel), findsOneWidget);
+    expect(find.byKey(const Key('shelf-loading-skeleton')), findsNothing);
+    await tester.tap(
+      find.byKey(const Key('shelf-selected-cover')),
+      warnIfMissed: false,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('shelf-spine-final_call')),
+      warnIfMissed: false,
+    );
+    await tester.drag(
+      find.byKey(const Key('book-carousel')),
+      const Offset(-120, 0),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+
+    expect(selected, 0);
+    expect(opened, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('휴대폰 카드 소개는 현재 언어의 Firestore 값을 사용한다', (tester) async {
     final game = GameInfo.fromJson({
       'id': 'liars',

@@ -271,6 +271,12 @@ String? _gameIdFromName(String? name) {
   if (lower.contains('final') || lower.contains('파이널')) return 'final_call';
   if (lower.contains('mafia') || lower.contains('마피아')) return 'mafia';
   if (lower.contains('hold') || lower.contains('홀덤')) return 'holdem';
+  if (lower.contains('russian') ||
+      lower.contains('러시안') ||
+      lower.contains('俄罗斯') ||
+      lower.contains('俄羅斯')) {
+    return 'russian_roulette';
+  }
   return null;
 }
 

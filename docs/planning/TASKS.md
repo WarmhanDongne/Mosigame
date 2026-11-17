@@ -18,16 +18,16 @@ E02~E12의 [구현 후보와 관련 검사](NETWORK_SESSION_E02_E12_IMPLEMENTATI
 
 | 분류 | 개수 |
 | --- | ---: |
-| 구현 검증 대기 | 7 |
+| 구현 검증 대기 | 8 |
 | 출시 전 필수 | 11 |
 | 출시 전 권장 | 11 |
 | 출시 후 작업 | 8 |
-| 합계 | 37 |
+| 합계 | 38 |
 
 ## 구현 검증 대기
 
 현재 `NET-RECOVERY-01`의 최신 후보는
-[11/8 live 방 보존·LIAR 첫 턴 UI](tasks/NET-RECOVERY-01.md#live-room-retention-liar-ui-20261108)다.
+[11/17 홈 복귀 저장 프로필·멤버십 복구](tasks/NET-RECOVERY-01.md#foreground-saved-profile-20261117)이다.
 시간 경과로 live 참가자/방을 자동 삭제하지 않고 종료된 방만 정리한다.
 라이어스 첫 제출 전 LIAR 버튼은 어둡게 비활성화했다. 관련 Functions72개·
 Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
@@ -41,6 +41,8 @@ Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 | [MAFIA-ROLE-SETUP-02](tasks/MAFIA-ROLE-SETUP-02.md#mafia-role-setup-02) | 마피아 신분카드 구성 화면 개선 | 검증 대기 | 사용자 승인 후 FULL, 실제 태블릿 터치·전환 확인 |
 | [GAME-DEVICE-BOARD-01](tasks/GAME-DEVICE-BOARD-01.md#game-device-board-01) | 게임 패키지 기기별 화면·흐름 구조 정리 | 검증 대기 — LP/FC 사전 문구 제거 targeted PASS | [11/9 휴대폰 시작 문구 제거](tasks/GAME-DEVICE-BOARD-01.md#phone-start-copy-removal-20261109) 후 사용자 승인 FULL, 실기기 확인 |
 | [YUT-GAMEPLAY-01](tasks/YUT-GAMEPLAY-01.md#yut-gameplay-01) | 윷놀이 3종 서버 게임·휴대폰/태블릿 플레이 화면 | 구현 완료, 개별 검사 PASS/최종 FULL 확인 대기 | [통합 검증](DEVELOP1_WAIT_REDUCTION_INTEGRATION_20261020.md)의 Draft PR 검토·CI 확인, 4인 실제 플레이 검증. 카탈로그 공개·Functions 배포는 별도 출시 승인 |
+
+| [RUSSIAN-ROULETTE-01](tasks/RUSSIAN-ROULETTE-01.md#russian-roulette-01) | 러시안 룰렛 서버 규칙·휴대폰/태블릿·로비 아트 | 1차 구현 완료, targeted PASS/FULL 대기 | 사용자 승인 후 FULL, 3~8인 실기기 플레이, 음원 수령 후 연결. 카탈로그 공개·Functions 배포는 별도 승인 |
 
 ## 출시 전 필수
 

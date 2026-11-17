@@ -1,6 +1,9 @@
 /* eslint-disable valid-jsdoc */
 
-import {createDeck} from "./common/deck.js";
+import {
+  createDeck,
+  unrevealedCardCountForPlayerCount,
+} from "./common/deck.js";
 import {dealCards} from "./common/deal-card.js";
 import {LiarsPokerGameState} from "./common/types.js";
 
@@ -23,7 +26,10 @@ export function restartRound(
   const deck = createDeck(alivePlayers.length);
   const hands = dealCards(deck, players, CARDS_PER_PLAYER);
   const unrevealedCards = deck.slice(alivePlayers.length * CARDS_PER_PLAYER);
-  if (unrevealedCards.length !== 3) {
+  if (
+    unrevealedCards.length !==
+    unrevealedCardCountForPlayerCount(alivePlayers.length)
+  ) {
     throw new Error("분배 후 남은 카드 수가 올바르지 않습니다.");
   }
   const truthCardCount = deck.filter((card) => card.rank === "TRUTH").length;

@@ -104,6 +104,7 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
   String? _readyAckKey;
   String? _identityKey;
   bool _transportRecovering = false;
+  int _staleReadyRefreshes = 0;
   Future<void>? _recoveryRetryFuture;
   Future<Object?> Function()? _lastCommand;
   Future<void> Function()? _prepareAssets;
@@ -159,6 +160,8 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
   Future<void> _retryRecovery() async {
     RecoveryMetrics.instance.begin(newEpisode: false);
     final session = recoverySession;
+    session.recoveryRetrying = true;
+    session.changed();
     _cancelPreparationWait();
     session.preparationBatch = RoomRecoveryBatch.current ?? RoomRecoveryBatch();
     try {
@@ -166,23 +169,42 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
         final reconnect = session.reconnect;
         if (reconnect == null) throw StateError('연결 복구를 시작할 수 없습니다.');
         await reconnect();
-        if (!ref.mounted || session.leaving) return;
+        if (!ref.mounted || session.leaving) {
+          session.recoveryRetrying = false;
+          session.changed();
+          return;
+        }
         if (session.transportRecovering || !session.transportConnected) {
           throw StateError('현재 연결을 확인하지 못했습니다.');
         }
       }
-      if (!ref.mounted || session.leaving) return;
+      if (!ref.mounted || session.leaving) {
+        session.recoveryRetrying = false;
+        session.changed();
+        return;
+      }
       retrySession();
       if (!_assetsReady && _prepareAssets != null) {
         await prepareScreen(_prepareAssets!);
       }
+      if (session.canSend) {
+        session.recoveryRetrying = false;
+        session.recoveryError = null;
+        session.changed();
+      }
     } catch (error) {
-      if (!ref.mounted || session.leaving) return;
+      if (!ref.mounted || session.leaving) {
+        session.recoveryRetrying = false;
+        session.changed();
+        return;
+      }
       _recordPreparationFailure('connection', error);
       _cancelPreparationWait();
       _preparationFailed = true;
       _preparationErrorMessage = '연결을 복구하지 못했어요. 다시 시도해주세요.';
       state = state.withError(_preparationErrorMessage);
+      session.recoveryRetrying = false;
+      session.recoveryError = _preparationErrorMessage;
       session.invalidate();
       RecoveryMetrics.instance.finish(success: false);
     }
@@ -218,6 +240,8 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     _preparationFailed = true;
     _preparationErrorMessage = message;
     state = state.withError(message);
+    recoverySession.recoveryRetrying = false;
+    recoverySession.recoveryError = message;
     recoverySession.invalidate();
     _reportedKey = null;
     unawaited(_report(false));
@@ -263,7 +287,55 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     _reportedKey = null;
     _readyAckKey = null;
     _screenReady = false;
+    _staleReadyRefreshes = 0;
     _bindSubscriptions();
+  }
+
+  /// 서버가 준비 보고를 '오래된 화면'으로 거절했는지와, 다시 불러올 수 있는지입니다.
+  ///
+  /// 앱 복귀 직후 구독이 캐시된 이전 공개·개인 상태를 먼저 전달하면 두 값이 서로는
+  /// 일치해 준비 보고까지 나갑니다. 서버는 현재 context와 함께 staleContext를
+  /// 돌려줍니다. 이때 바로 실패로 굳히지 않고 최신 상태를 다시 읽습니다. 같은 준비
+  /// 예산 안에서 최대 3회이며, 그래도 따라잡지 못하면 기존 실패 안내로 넘어갑니다.
+  bool _canRefreshStaleReady(Object? status, Object? serverContext) {
+    if (status != 'staleContext' || serverContext is! Map) return false;
+    final local = recoverySession.context;
+    if (local == null) return false;
+    final server = GameRecoveryContext.fromMap(serverContext);
+    final serverAhead =
+        server.gameInstanceId != local.gameInstanceId ||
+        server.dataSeq > local.dataSeq;
+    return serverAhead && _staleReadyRefreshes < 3;
+  }
+
+  Future<void> _refreshStaleReady() async {
+    _staleReadyRefreshes += 1;
+    _reportedKey = null;
+    final generation = _subscriptionGeneration;
+    try {
+      final snapshot = await query
+          .readPublicGame(roomCode)
+          .timeout(const Duration(seconds: 8));
+      if (!ref.mounted ||
+          generation != _subscriptionGeneration ||
+          _preparationFailed ||
+          recoverySession.leaving) {
+        return;
+      }
+      if (snapshot.exists && snapshot.value != null) {
+        _applyPublicSnapshot(snapshot.value);
+      }
+      if (!ref.mounted ||
+          generation != _subscriptionGeneration ||
+          _preparationFailed) {
+        return;
+      }
+      // 개인 상태도 새 구독으로 다시 받습니다. 확인된 공개 상태는 유지합니다.
+      _bindSubscriptions();
+    } catch (error) {
+      // 준비 대기의 마감이 계속 보호합니다. 여기서 실패를 확정하지 않습니다.
+      _recordPreparationFailure('stale_refresh', error);
+    }
   }
 
   void _identityChanged() {
@@ -554,6 +626,11 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
     if (usable && session.serverConfirmed) {
       _cancelPreparationWait();
       _hadUsable = true;
+      if (session.recoveryRetrying || session.recoveryError != null) {
+        session.recoveryRetrying = false;
+        session.recoveryError = null;
+        session.changed();
+      }
     } else {
       _watchPreparation();
     }
@@ -637,9 +714,15 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
           recoverySession.context?.key == context.key) {
         if (response['status'] == 'accepted') {
           _readyAckKey = context.key;
+          _staleReadyRefreshes = 0;
           recoverySession.serverConfirmed = true;
           RecoveryMetrics.instance.mark(RecoveryStage.ready);
           _updateReadiness();
+        } else if (_canRefreshStaleReady(
+          response['status'],
+          response['context'],
+        )) {
+          unawaited(_refreshStaleReady());
         } else {
           _recordPreparationFailure(
             'ready_response',

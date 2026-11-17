@@ -29,7 +29,7 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
     required this.table,
     this.truthCardCount = 0,
     this.lieCardCount = 0,
-    this.unrevealedCardCount = 3,
+    this.unrevealedCardCount = 0,
     required this.turnUid,
     required this.winnerUid,
     required this.penaltyTargetUid,
@@ -105,7 +105,8 @@ class LiarsPokerGameState implements GameSessionState<LiarsPokerGameState> {
   final String? finishReason; // 게임 종료 이유
   final String phase; // 현재 게임 진행 단계
   final String table; // 현재 테이블의 기준 카드 값
-  /// 이번 라운드 전체 덱의 공개된 구성입니다. 미확인 3장의 실제 종류는 공개하지 않습니다.
+  /// 이번 라운드 전체 덱의 공개된 구성입니다. 중앙에 남은 카드의 실제 종류는
+  /// 공개하지 않습니다.
   final int truthCardCount;
   final int lieCardCount;
   final int unrevealedCardCount;

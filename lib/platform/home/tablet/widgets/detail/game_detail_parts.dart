@@ -18,6 +18,7 @@ Widget? buildGameParts(String gameId, {int? playerCount}) => switch (gameId) {
   'yut' => const _YutParts(strategy: false),
   'strategy_yut' => const _YutParts(strategy: true),
   'strategy_yut_edition' => const _YutParts(strategy: true, edition: true),
+  'russian_roulette' => const _RussianRouletteParts(),
   _ => null,
 };
 
@@ -28,8 +29,165 @@ Widget? buildGameParts(String gameId, {int? playerCount}) => switch (gameId) {
 Color? gamePartsBackground(String gameId) => switch (gameId) {
   'liars_poker' => _liarPartsGround,
   'final_call' => FinalCallColors.night,
+  'russian_roulette' => roulette.RouletteColors.ink,
   _ => null,
 };
+
+class _RussianRouletteParts extends StatelessWidget {
+  const _RussianRouletteParts();
+
+  /// 라이어스·파이널콜과 같은 형식: 흰 블록 없이 게임 바탕(먹색) 위에
+  /// 리볼버 1정 · 방패 1인 1개 · 행동 카드 1인 3장을 놓고, 규칙만 흰 블록에 둡니다.
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.2),
+          radius: 1.1,
+          colors: [Color(0xFF2A1A17), Color(0xFF151211), Color(0xFF070606)],
+          stops: [0, 0.6, 1],
+        ),
+      ),
+      child: _PartsLayout(
+        plainParts: true,
+        plainLabelColor: roulette.RouletteColors.gold,
+        plainDividerColor: const Color(0x40ECE3D0),
+        parts: [
+          _Part(
+            label: GameLocale.select(
+              ko: '리볼버',
+              en: 'Revolver',
+              zhHans: '左轮手枪',
+              zhHant: '左輪手槍',
+            ),
+            count: GameLocale.select(
+              ko: '1정',
+              en: '×1',
+              zhHans: '1 把',
+              zhHant: '1 把',
+            ),
+            flex: 4,
+            child: Container(
+              width: 200,
+              height: 200,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: roulette.RouletteColors.red,
+                shape: BoxShape.circle,
+                border: Border.all(color: MosiColors.ink, width: 3),
+                boxShadow: const [
+                  BoxShadow(color: Color(0xFF000000), offset: Offset(4, 5)),
+                ],
+              ),
+              child: const roulette.RouletteRevolver(
+                size: 184,
+                angle: -math.pi / 6,
+                disc: false,
+              ),
+            ),
+          ),
+          _Part(
+            label: GameLocale.select(
+              ko: '방패',
+              en: 'Shield',
+              zhHans: '护盾',
+              zhHant: '護盾',
+            ),
+            count: GameLocale.select(
+              ko: '1인 1개',
+              en: '1 each',
+              zhHans: '每人 1 个',
+              zhHant: '每人 1 個',
+            ),
+            flex: 3,
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                roulette.RouletteShield(size: 114),
+                SizedBox(height: 18),
+                roulette.RouletteShieldTop(width: 150, shadowOpacity: .35),
+              ],
+            ),
+          ),
+          _Part(
+            label: GameLocale.select(
+              ko: '행동 카드',
+              en: 'Action cards',
+              zhHans: '行动卡',
+              zhHant: '行動卡',
+            ),
+            count: GameLocale.select(
+              ko: '1인 3장',
+              en: '3 each',
+              zhHans: '每人 3 张',
+              zhHant: '每人 3 張',
+            ),
+            flex: 4,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                roulette.RouletteActionCard(
+                  action: roulette.RouletteAction.spin,
+                  tilt: -8,
+                ),
+                SizedBox(width: 4),
+                roulette.RouletteActionCard(
+                  action: roulette.RouletteAction.shield,
+                ),
+                SizedBox(width: 4),
+                roulette.RouletteActionCard(
+                  action: roulette.RouletteAction.none,
+                  tilt: 8,
+                ),
+              ],
+            ),
+          ),
+        ],
+        rules: [
+          _Rule(
+            GameLocale.select(
+              ko: '몰래 고르기',
+              en: 'Choose secretly',
+              zhHans: '秘密选择',
+              zhHant: '秘密選擇',
+            ),
+            GameLocale.select(
+              ko: '돌리기·방패·아무것도 안 하기 중 하나를 동시에 골라요. 방패는 두 턴 연속 못 써요.',
+              en: 'Everyone picks Spin, Shield or Do nothing at once. No shield two turns in a row.',
+              zhHans: '所有人同时选择转动、护盾或什么都不做。护盾不能连续两回合使用。',
+              zhHant: '所有人同時選擇轉動、護盾或什麼都不做。護盾不能連續兩回合使用。',
+            ),
+          ),
+          _Rule(
+            GameLocale.select(
+              ko: '공개하고 돌리기',
+              en: 'Reveal and spin',
+              zhHans: '公开并转动',
+              zhHant: '公開並轉動',
+            ),
+            GameLocale.select(
+              ko: '총구 대상부터 차례로 공개하고, 돌린 사람 수만큼 총구가 한 칸씩 돌아요.',
+              en: 'Reveal from the target, then the gun turns one seat per Spin.',
+              zhHans: '从枪口对象开始依次公开，枪口按转动人数逐格转动。',
+              zhHant: '從槍口對象開始依次公開，槍口按轉動人數逐格轉動。',
+            ),
+          ),
+          _Rule(
+            GameLocale.select(ko: '발포', en: 'Fire', zhHans: '开枪', zhHant: '開槍'),
+            GameLocale.select(
+              ko: '멈춘 자리에 발포! 방패면 막고, 아니면 탈락. 최후의 1인이 이겨요.',
+              en: 'Fire at the stop. A shield blocks it, otherwise out. Last one standing wins.',
+              zhHans: '向停下的位置开枪！有护盾则挡住，否则淘汰。最后一人获胜。',
+              zhHant: '向停下的位置開槍！有護盾則擋住，否則淘汰。最後一人獲勝。',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 //=======================구성품 공통 틀==============================
 /// 구성품 한 칸입니다. [flex]는 윗줄에서 차지하는 폭의 비율입니다.
@@ -351,8 +509,16 @@ Widget _fan(List<Widget> cards, {double overlap = 18, double spread = 7}) {
   );
 }
 
-/// 인원별 카드 수입니다(서버 덱 구성과 같은 값: 인원×5 + 숨긴 3장).
-const _liarDecks = [(2, 13), (3, 18), (4, 23), (5, 28), (6, 33)];
+/// 인원별 전체 카드 수입니다. 서버 덱 규칙([liarsPokerDeckCounts])에서
+/// 바로 계산해, 규칙이 바뀌어도 구성품 숫자가 어긋나지 않게 합니다.
+/// (2·3인 15장, 4인부터 인원×5장)
+final _liarDecks = [
+  for (var players = 2; players <= 6; players++)
+    (
+      players,
+      liarsPokerDeckCounts(players).truth + liarsPokerDeckCounts(players).lie,
+    ),
+];
 
 /// 라이어스 카드와 같은 판화 색입니다.
 const _liarTruth = Color(0xFF2E6B4E);
@@ -379,7 +545,6 @@ class _LiarParts extends StatelessWidget {
         .firstOrNull;
     final (displayPlayers, displayTotal) = current ?? _liarDecks[2];
     final (:truth, :lie) = liarsPokerDeckCounts(displayPlayers);
-    assert(truth + lie == displayTotal);
     final truthCount = truth;
     final lieCount = lie;
 
@@ -608,7 +773,7 @@ class _LiarFaceStack extends StatelessWidget {
   );
 }
 
-/// 한 사람 5장과 끝까지 숨기는 3장, 지금 인원의 전체 장수를 보여 줍니다.
+/// 한 사람 5장과 끝까지 숨기는 카드(2인만 5장), 지금 인원의 전체 장수를 보여 줍니다.
 class _LiarRoundDeal extends StatelessWidget {
   const _LiarRoundDeal({
     required this.players,
@@ -651,6 +816,8 @@ class _LiarRoundDeal extends StatelessWidget {
       LiarsCardFace.truth,
       LiarsCardFace.lie,
     ];
+    // 2·3인은 덱이 15장이라 나눠 주고 남는 카드가 생길 수 있습니다.
+    final hidden = total - players * 5;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -670,19 +837,26 @@ class _LiarRoundDeal extends StatelessWidget {
         const SizedBox(height: 14),
         row(
           [
-            for (var i = 0; i < 3; i++)
+            for (var i = 0; i < math.min(hidden, 5); i++)
               const LiarsPokerCardView(
                 face: LiarsCardFace.back,
                 rounded: true,
                 width: 25,
               ),
           ],
-          GameLocale.select(
-            ko: '3장은 끝까지 숨김',
-            en: '3 stay hidden',
-            zhHans: '3 张全程隐藏',
-            zhHant: '3 張全程隱藏',
-          ),
+          hidden > 0
+              ? GameLocale.select(
+                  ko: '$hidden장은 끝까지 숨김',
+                  en: '$hidden stay hidden',
+                  zhHans: '$hidden 张全程隐藏',
+                  zhHant: '$hidden 張全程隱藏',
+                )
+              : GameLocale.select(
+                  ko: '숨기는 카드 없음',
+                  en: 'No hidden cards',
+                  zhHans: '没有隐藏牌',
+                  zhHant: '沒有隱藏牌',
+                ),
         ),
         const SizedBox(height: 16),
         Center(
@@ -716,11 +890,7 @@ class _LiarPlayerCountStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final columns = [
       for (final (players, _) in _liarDecks)
-        (
-          players: players,
-          minimumTruth: (players * 1.6).round(),
-          maximumTruth: (players * 1.9).round(),
-        ),
+        (players: players, truth: liarsPokerDeckCounts(players).truth),
     ];
     return Semantics(
       container: true,
@@ -778,8 +948,7 @@ class _LiarPlayerCountStrip extends StatelessWidget {
                       ),
                       child: _LiarTruthCountTile(
                         players: column.players,
-                        minimumTruth: column.minimumTruth,
-                        maximumTruth: column.maximumTruth,
+                        truth: column.truth,
                         highlighted: column.players == playerCount,
                       ),
                     ),
@@ -796,14 +965,12 @@ class _LiarPlayerCountStrip extends StatelessWidget {
 class _LiarTruthCountTile extends StatelessWidget {
   const _LiarTruthCountTile({
     required this.players,
-    required this.minimumTruth,
-    required this.maximumTruth,
+    required this.truth,
     required this.highlighted,
   });
 
   final int players;
-  final int minimumTruth;
-  final int maximumTruth;
+  final int truth;
   final bool highlighted;
 
   @override
@@ -815,10 +982,10 @@ class _LiarTruthCountTile extends StatelessWidget {
       zhHant: '$players人',
     );
     final truthLabel = GameLocale.select(
-      ko: '$minimumTruth ~ $maximumTruth장',
-      en: '$minimumTruth–$maximumTruth cards',
-      zhHans: '$minimumTruth～$maximumTruth张',
-      zhHant: '$minimumTruth～$maximumTruth張',
+      ko: '$truth장',
+      en: '$truth cards',
+      zhHans: '$truth张',
+      zhHant: '$truth張',
     );
     return Semantics(
       label: GameLocale.select(

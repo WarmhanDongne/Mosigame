@@ -189,11 +189,11 @@ void main() {
       expect(find.text('다시 연결하기'), findsNothing);
       await tester.pump(const Duration(seconds: 10));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('재시도'), findsOneWidget);
-      await tester.tap(find.text('재시도'));
+      expect(find.textContaining('재시도'), findsOneWidget);
+      await tester.tap(find.textContaining('재시도'));
       await tester.pumpWidget(screen());
       expect(retries, 1);
-      expect(find.text('재시도'), findsOneWidget);
+      expect(find.textContaining('재시도'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

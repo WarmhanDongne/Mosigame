@@ -13,6 +13,7 @@ import {
 } from "./game-catalog-translations.mjs";
 import {gameRules, localizedGameRules} from "./update-game-rules.mjs";
 import {yutGameCatalog} from "./yut-game-catalog.mjs";
+import {russianRouletteCatalog} from "./russian-roulette-catalog.mjs";
 
 export const PRODUCTION_PROJECT = "project0000-ec01e";
 
@@ -88,6 +89,7 @@ export const minimalGameCatalog = Object.freeze({
     minAppVersion: "1.0.0",
   }),
   ...yutGameCatalog,
+  ...russianRouletteCatalog,
 });
 
 const catalogIds = Object.freeze(Object.keys(minimalGameCatalog));

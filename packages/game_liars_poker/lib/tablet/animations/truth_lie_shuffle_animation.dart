@@ -22,6 +22,7 @@ class TruthLieShuffleAnimation extends StatelessWidget {
     required this.cardWidth,
     required this.cardRadius,
     this.play = true,
+    this.onShufflePassStarted,
     this.onCompleted,
   });
 
@@ -34,6 +35,8 @@ class TruthLieShuffleAnimation extends StatelessWidget {
 
   /// false인 동안에는 덱만 중앙에 놓아 두고 ROUND 안내가 끝나기를 기다립니다.
   final bool play;
+
+  final ValueChanged<int>? onShufflePassStarted;
 
   final VoidCallback? onCompleted;
 
@@ -66,6 +69,7 @@ class TruthLieShuffleAnimation extends StatelessWidget {
     ),
     showcaseHold: showcaseHold,
     play: play,
+    onShufflePassStarted: onShufflePassStarted,
     onCompleted: onCompleted,
   );
 }

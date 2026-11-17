@@ -64,13 +64,17 @@ double finalCallTabletScale(Size boardSize) => boardSize.shortestSide / 820;
 /// 가운데 둥근 테이블의 반지름입니다. 좌석 이름표 안쪽 가장자리보다 작습니다.
 double finalCallTableRadius(Size boardSize) => boardSize.shortestSide * 0.32;
 
-/// 테이블 가운데 덱·공개 카드 한 장의 폭입니다(시안 92).
+/// 테이블 가운데 덱·공개 카드 한 장의 폭입니다(시안 136).
+///
+/// 6인 + 4:3 태블릿(가장 좁은 배치)에서도 위 차례 알약과 좌석 프로필에
+/// 닿지 않는 최대 크기입니다.
 double finalCallCenterCardWidth(Size boardSize) =>
-    (92 * finalCallTabletScale(boardSize)).clamp(64.0, 120.0).toDouble();
+    (136 * finalCallTabletScale(boardSize)).clamp(96.0, 180.0).toDouble();
 
-/// 덱과 공개 카드 사이 간격입니다(시안 28).
+/// 덱과 공개 카드 사이 간격입니다(시안 36). 덱 숫자 스티커가 이 틈으로
+/// 조금 튀어나오므로 공개 카드와 붙지 않을 만큼 둡니다.
 double finalCallCenterCardGap(Size boardSize) =>
-    28 * finalCallTabletScale(boardSize);
+    36 * finalCallTabletScale(boardSize);
 
 /// 공개 카드의 중심입니다. 버린 카드가 날아가 앉는 자리입니다.
 Offset finalCallPublicCardCenter(Size boardSize) =>

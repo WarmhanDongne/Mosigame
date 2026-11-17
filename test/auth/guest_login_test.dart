@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -19,11 +18,12 @@ import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:project00/platform/home/home.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_Core());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('게스트 로그인은 Firebase 익명 API를 호출하고 비활성 오류를 안내한다', () async {
@@ -296,7 +296,7 @@ class _Result<T> implements HttpsCallableResult<T> {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _Core extends MockFirebaseApp {
+class _Core extends FirebaseTestCore {
   @override
   Future<List<CoreInitializeResponse>> initializeCore() async {
     final apps = await super.initializeCore();

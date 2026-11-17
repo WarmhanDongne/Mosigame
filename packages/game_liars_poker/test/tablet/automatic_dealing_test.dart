@@ -1,12 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/sound/app_sounds.dart';
 import 'package:game_kit/tablet/animations/card_deal_animation.dart';
+import 'package:game_liars_poker/game_sounds.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
 import 'package:game_liars_poker/tablet/animations/truth_lie_shuffle_animation.dart';
 import 'package:game_liars_poker/tablet/providers/game_stage.dart';
 import 'package:game_liars_poker/tablet/tablet_board.dart';
 
 void main() {
+  test('카드 섞기는 전용 음원 대신 미리 준비된 공용 분배음을 사용한다', () {
+    expect(LiarsPokerSounds.shufflePass, AppSounds.dealing);
+    expect(AppSounds.preloadTargets, contains(AppSounds.dealing));
+    expect(LiarsPokerSounds.preloadTargets, isNot(contains(AppSounds.dealing)));
+  });
+
+  testWidgets('공용 분배음 콜백은 마지막 세 번의 섞기 패스에 맞춰 호출된다', (tester) async {
+    tester.view.physicalSize = const Size(1180, 820);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final passes = <int>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TruthLieShuffleAnimation(
+          truthCardCount: 8,
+          lieCardCount: 12,
+          cardWidth: 140,
+          cardRadius: 9.8,
+          onShufflePassStarted: passes.add,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 620));
+    // 새 컨트롤러의 첫 틱에서 기준 시각을 잡은 뒤 실제 경과 시간을 보냅니다.
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 4210));
+    expect(passes, isEmpty);
+
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(passes, [0]);
+    await tester.pump(const Duration(milliseconds: 590));
+    expect(passes, [0, 1]);
+    await tester.pump(const Duration(milliseconds: 590));
+    expect(passes, [0, 1, 2]);
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+  });
+
   testWidgets('분배 전에는 진실 카드만 실제 장수만큼 앞면으로 깔고 장수 문구는 쓰지 않는다', (tester) async {
     tester.view.physicalSize = const Size(1180, 820);
     tester.view.devicePixelRatio = 1;
@@ -22,9 +63,9 @@ void main() {
             playerSeatIndexes: const [0, 1, 2, 3],
             dealPlayerSeatIndexes: const [0, 1, 2, 3],
             cardsPerPlayer: 5,
-            truthCardCount: 12,
-            lieCardCount: 11,
-            unrevealedCardCount: 3,
+            truthCardCount: 8,
+            lieCardCount: 12,
+            unrevealedCardCount: 0,
             roundNumber: 1,
             cardPileVersion: 1,
             table: 'TRUTH',
@@ -43,7 +84,7 @@ void main() {
 
     expect(find.text('이번 판 진실 카드'), findsOneWidget);
     // 거짓 카드도 덱에 뒷면으로 남아 함께 섞이므로 전체 장수만큼 그립니다.
-    expect(find.byType(LiarsPokerCardView), findsNWidgets(23));
+    expect(find.byType(LiarsPokerCardView), findsNWidgets(20));
     expect(find.textContaining('×'), findsNothing);
 
     // 진실 카드를 다 뒤집은 뒤(덱 등장 + 전시)에는 진실 앞면만 보이고 거짓
@@ -57,7 +98,7 @@ void main() {
       ))
         view.face,
     ];
-    expect(faces().where((face) => face == LiarsCardFace.truth), hasLength(12));
+    expect(faces().where((face) => face == LiarsCardFace.truth), hasLength(8));
     expect(faces().where((face) => face == LiarsCardFace.lie), isEmpty);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
@@ -75,9 +116,9 @@ void main() {
     final shuffle = tester.widget<TruthLieShuffleAnimation>(
       find.byType(TruthLieShuffleAnimation),
     );
-    expect(shuffle.truthCardCount, 7);
-    expect(shuffle.lieCardCount, 16);
-    expect(find.byType(LiarsPokerCardView), findsNWidgets(23));
+    expect(shuffle.truthCardCount, 8);
+    expect(shuffle.lieCardCount, 12);
+    expect(find.byType(LiarsPokerCardView), findsNWidgets(20));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
 
@@ -97,9 +138,9 @@ void main() {
             playerSeatIndexes: const [0, 1, 2, 3],
             dealPlayerSeatIndexes: const [0, 1, 2, 3],
             cardsPerPlayer: 5,
-            truthCardCount: 12,
-            lieCardCount: 11,
-            unrevealedCardCount: 3,
+            truthCardCount: 8,
+            lieCardCount: 12,
+            unrevealedCardCount: 0,
             roundNumber: 1,
             cardPileVersion: 1,
             table: 'TRUTH',
@@ -146,10 +187,8 @@ void main() {
       find.byType(CardDealAnimation),
     );
     expect(deal.playDeckEntry, isFalse);
-    expect(deal.reserveCardCount, 3);
-    for (var index = 0; index < 3; index++) {
-      expect(find.byKey(ValueKey('reserved-card-$index')), findsOneWidget);
-    }
+    expect(deal.reserveCardCount, 0);
+    expect(find.byKey(const ValueKey('reserved-card-0')), findsNothing);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
 
@@ -172,8 +211,8 @@ void main() {
 
 Widget _dealingLayer({
   required int roundNumber,
-  int truthCardCount = 12,
-  int lieCardCount = 11,
+  int truthCardCount = 8,
+  int lieCardCount = 12,
 }) => MaterialApp(
   home: Scaffold(
     body: LiarsPokerTabletGameLayer(
@@ -185,7 +224,7 @@ Widget _dealingLayer({
       cardsPerPlayer: 5,
       truthCardCount: truthCardCount,
       lieCardCount: lieCardCount,
-      unrevealedCardCount: 3,
+      unrevealedCardCount: 0,
       roundNumber: roundNumber,
       cardPileVersion: 1,
       table: 'TRUTH',

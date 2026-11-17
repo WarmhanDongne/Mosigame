@@ -38,6 +38,17 @@ class RealtimeConnectionMonitor {
         .map((event) => event.snapshot.value == true),
   );
 
+  /// OS 백그라운드 전환 뒤 RTDB 네이티브 연결과 `.info/connected` 구독을
+  /// 함께 다시 활성화합니다.
+  ///
+  /// iOS와 Android 모두 오래 백그라운드에 있으면 기존 `onValue` 스트림이
+  /// 종료될 수 있습니다. 채널의 마지막 `false`만 재생하면 새 구독자는 영원히
+  /// 오프라인으로 남으므로, foreground 복귀와 수동 재시도에서 호출합니다.
+  Future<void> resume(FirebaseDatabase database) async {
+    await database.goOnline();
+    await _channels[database]?.refresh();
+  }
+
   /// Firebase 없이 인스턴스별 구독 분리와 최신값 재생을 검증하기 위한 진입점입니다.
   @visibleForTesting
   Stream<bool> watchConnectionSource(
@@ -45,13 +56,18 @@ class RealtimeConnectionMonitor {
     Stream<bool> Function() createSource,
   ) => _watchSource(identity, createSource);
 
+  @visibleForTesting
+  Future<void> refreshConnectionSource(Object identity) async {
+    await _channels[identity]?.refresh();
+  }
+
   Stream<bool> _watchSource(
     Object identity,
     Stream<bool> Function() createSource,
   ) {
     final channel = _channels.putIfAbsent(
       identity,
-      () => _ConnectionChannel(createSource()),
+      () => _ConnectionChannel(createSource),
     );
     return channel.watch();
   }
@@ -65,15 +81,55 @@ class RealtimeConnectionMonitor {
 }
 
 class _ConnectionChannel {
-  _ConnectionChannel(Stream<bool> source) {
-    _subscription = source.listen(_emit, onError: (_) => _emit(false));
+  _ConnectionChannel(this._createSource) {
+    _listen();
   }
 
+  final Stream<bool> Function() _createSource;
   final StreamController<bool> _changes = StreamController<bool>.broadcast(
     sync: true,
   );
-  late final StreamSubscription<bool> _subscription;
+  StreamSubscription<bool>? _subscription;
+  Future<void>? _refreshFuture;
+  int _generation = 0;
   bool? _latest;
+
+  void _listen() {
+    final generation = ++_generation;
+    _subscription = _createSource().listen(
+      (value) {
+        if (generation == _generation) _emit(value);
+      },
+      onError: (_) {
+        if (generation == _generation) _emit(false);
+      },
+      onDone: () {
+        if (generation == _generation) _emit(false);
+      },
+    );
+  }
+
+  Future<void> refresh() {
+    final active = _refreshFuture;
+    if (active != null) return active;
+    final completed = Completer<void>();
+    _refreshFuture = completed.future;
+    unawaited(() async {
+      try {
+        final previous = _subscription;
+        _subscription = null;
+        _generation += 1;
+        await previous?.cancel();
+        _listen();
+        completed.complete();
+      } catch (error, stackTrace) {
+        completed.completeError(error, stackTrace);
+      } finally {
+        _refreshFuture = null;
+      }
+    }());
+    return completed.future;
+  }
 
   Stream<bool> watch() {
     return Stream<bool>.multi((controller) {
@@ -96,7 +152,9 @@ class _ConnectionChannel {
   }
 
   Future<void> dispose() async {
-    await _subscription.cancel();
+    _generation += 1;
+    await _subscription?.cancel();
+    _subscription = null;
     await _changes.close();
   }
 }

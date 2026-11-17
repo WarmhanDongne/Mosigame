@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:project00/platform/home/phone/widgets/controller_reconnect_guard.dart';
 import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
 import 'package:project00/platform/home/room/models/room_player.dart';
@@ -11,53 +12,53 @@ import 'package:project00/platform/home/room/services/controller_presence.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 
 void main() {
-  testWidgets('controller reconnect screen blocks game input until recovery', (
-    tester,
-  ) async {
-    final service = _GuardRoomService();
-    final provider =
-        RoomProvider(service: service, gameService: _NoopGameService())
-          ..roomCode = 'ABCDE'
-          ..listenRoom();
-    addTearDown(() async {
-      provider.dispose();
-      await service.dispose();
-    });
-    service.serverConnection.add(true);
-    await tester.pump();
-    provider.controllerPresenceState = ControllerPresenceState.reconnecting;
-    var gameTaps = 0;
+  testWidgets(
+    'controller reconnect uses the shared band without freezing input',
+    (tester) async {
+      final service = _GuardRoomService();
+      final provider =
+          RoomProvider(service: service, gameService: _NoopGameService())
+            ..roomCode = 'ABCDE'
+            ..listenRoom();
+      addTearDown(() async {
+        provider.dispose();
+        await service.dispose();
+      });
+      service.serverConnection.add(true);
+      await tester.pump();
+      provider.controllerPresenceState = ControllerPresenceState.reconnecting;
+      var gameTaps = 0;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ControllerReconnectGuard(
-          provider: provider,
-          onExit: () {},
-          child: Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: () => gameTaps += 1,
-                child: const Text('게임 입력'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ControllerReconnectGuard(
+            provider: provider,
+            child: Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => gameTaps += 1,
+                  child: const Text('게임 입력'),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('태블릿에 다시 연결하는 중'), findsOneWidget);
-    expect(find.textContaining('기다리면 이 화면에서 자동으로 이어져요.'), findsOneWidget);
-    await tester.tap(find.text('게임 입력'), warnIfMissed: false);
-    expect(gameTaps, 0);
+      expect(find.text('태블릿 연결을 기다리는 중…'), findsOneWidget);
+      expect(find.byType(MosiConnectionBand), findsOneWidget);
+      await tester.tap(find.text('게임 입력'));
+      expect(gameTaps, 1);
 
-    provider.controllerPresenceState = ControllerPresenceState.connected;
-    provider.notifyListeners();
-    await tester.pump();
+      provider.controllerPresenceState = ControllerPresenceState.connected;
+      provider.notifyListeners();
+      await tester.pump();
 
-    expect(find.text('태블릿에 다시 연결하는 중'), findsNothing);
-    await tester.tap(find.text('게임 입력'));
-    expect(gameTaps, 1);
-  });
+      expect(find.text('태블릿 연결을 기다리는 중…'), findsNothing);
+      await tester.tap(find.text('게임 입력'));
+      expect(gameTaps, 2);
+    },
+  );
 
   testWidgets(
     'phone offline screen takes precedence over tablet reconnect screen',
@@ -78,14 +79,13 @@ void main() {
         MaterialApp(
           home: ControllerReconnectGuard(
             provider: provider,
-            onExit: () {},
             child: const Scaffold(body: SizedBox.expand()),
           ),
         ),
       );
       await tester.pump();
 
-      expect(find.text('태블릿에 다시 연결하는 중'), findsNothing);
+      expect(find.text('태블릿 연결을 기다리는 중…'), findsNothing);
     },
   );
 
@@ -112,7 +112,6 @@ void main() {
                   MaterialPageRoute<void>(
                     builder: (_) => ControllerReconnectGuard(
                       provider: provider,
-                      onExit: () {},
                       child: Builder(
                         builder: (gameContext) => Scaffold(
                           key: const Key('game-route'),
