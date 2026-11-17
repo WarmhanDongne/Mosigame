@@ -425,8 +425,9 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     ).toUpperCase();
     final nextTruthCardCount = liarsPokerInteger(data['truthCardCount']) ?? 0;
     final nextLieCardCount = liarsPokerInteger(data['lieCardCount']) ?? 0;
-    final nextUnrevealedCardCount =
-        liarsPokerInteger(data['unrevealedCardCount']) ?? 3;
+    final parsedUnrevealedCardCount = liarsPokerInteger(
+      data['unrevealedCardCount'],
+    );
     final nextTurnUid = liarsPokerNullableString(data['turnUid']);
     final nextWinnerUid = liarsPokerNullableString(data['winnerUid']);
     final nextPenaltyTargetUid = liarsPokerNullableString(
@@ -465,6 +466,11 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     final Map<String, PhoneGamePlayer> nextPlayers = Map.unmodifiable(
       parseLiarsPokerPlayers(data['players']),
     );
+    final alivePlayerCount = nextPlayers.values
+        .where((player) => player.status == 'alive')
+        .length;
+    final nextUnrevealedCardCount =
+        parsedUnrevealedCardCount ?? (alivePlayerCount == 2 ? 5 : 0);
     final nextRoundPlays = mergeRoundPlays(
       roundPlaysValue: data['roundPlays'],
       lastPlayValue: data['lastPlay'],
@@ -515,6 +521,14 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     final shouldResetReveal =
         nextPhase == 'dealing' && (phase != 'dealing' || round != nextRound);
     final nextHasRevealedHand = shouldResetReveal ? false : hasRevealedHand;
+    // 새 라운드의 손패는 서버가 분배 완료 뒤에 다시 공개합니다. 그 전까지 이전
+    // 라운드에 남은 카드를 새 손패처럼 보여 주지 않도록 비웁니다. 앱을 잠시
+    // 떠나 분배 단계를 놓치고 다음 라운드로 바로 넘어온 경우도 포함합니다.
+    final shouldClearHand =
+        watchPrivateHand &&
+        _hasPublicSnapshot &&
+        handCards.isNotEmpty &&
+        (shouldResetReveal || round != nextRound);
     final playersChanged = !mapEquals(players, nextPlayers);
     final roundPlaysChanged = !listEquals(roundPlays, nextRoundPlays);
     final hasChanged =
@@ -540,6 +554,7 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
         liarVerdictIsFalse != nextLiarVerdictIsFalse ||
         isLiarVerdictPending != nextLiarVerdictPending ||
         hasRevealedHand != nextHasRevealedHand ||
+        shouldClearHand ||
         !_sameInterruption(interruption, nextInterruption) ||
         playersChanged ||
         roundPlaysChanged ||
@@ -622,6 +637,8 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
           liarVerdictIsFalse: nextLiarVerdictIsFalse,
           isLiarVerdictPending: nextLiarVerdictPending,
           hasRevealedHand: nextHasRevealedHand,
+          handCards: shouldClearHand ? const <PhoneHandCard>[] : null,
+          handCardAssets: shouldClearHand ? const <LiarsCardFace>[] : null,
           errorMessage: null,
           interruption: nextInterruption,
           isResolvingPenalty: keepResolving,
@@ -748,12 +765,14 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
     try {
       await service.command.submitCards(roomCode: roomCode, cardIds: cardIds);
       return true;
-    } catch (_) {
+    } catch (error) {
       // Callable 응답만 유실됐을 수 있으므로 RTDB 개인 손패에서 제출 카드가
       // 제거됐는지 잠시 확인합니다. 서버 재시도와 상태 확인까지 모두 실패한
       // 경우에만 손패 위젯에 false를 반환해 카드 복귀를 실행합니다.
       if (await _waitForSubmittedCardsToDisappear(cardIds)) return true;
-      failureMessage = '카드 제출 실패';
+      failureMessage =
+          userErrorMessage(error, context: UserErrorContext.gameCommand) ??
+          '카드 제출 실패';
       return false;
     } finally {
       final message = failureMessage;

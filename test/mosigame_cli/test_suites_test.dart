@@ -206,7 +206,6 @@ void main() {
         _expectInvocation(runner.invocations[0], 'flutter', <String>[
           'test',
           '--no-pub',
-          flutterUnitTestBackendArgument,
           ...sessionTestSuite.flutterTests,
         ], selectedFlutterTestTimeout);
         _expectInvocation(runner.invocations[1], 'npm', const <String>[

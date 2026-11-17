@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   createDeck,
+  totalCardCountForPlayerCount,
   truthCardCountForPlayerCount,
+  unrevealedCardCountForPlayerCount,
 } from "../lib/liars-poker/common/deck.js";
 import {dealCards} from "../lib/liars-poker/common/deal-card.js";
 import {recordCommand} from "../lib/liars-poker/common/commands.js";
@@ -38,9 +40,9 @@ function gameState(count = 3) {
       round: 1,
       revision: 1,
       table: "TRUTH",
-      truthCardCount: 9,
+      truthCardCount: 6,
       lieCardCount: 9,
-      unrevealedCardCount: 3,
+      unrevealedCardCount: 0,
       turnUid: null,
       turnDeadlineAt: null,
       lastPlay: null,
@@ -59,29 +61,36 @@ function gameState(count = 3) {
   };
 }
 
-test("2~6인 덱은 라운드마다 1.6~1.9배 범위의 진실 카드와 나머지 거짓으로 5N+3장이다", () => {
-  const expectedRange = {2: [3, 4], 3: [5, 6], 4: [6, 8], 5: [8, 10], 6: [10, 11]};
+test("2~6인 덱은 요청 수량과 2.1배 진실 카드 비율을 따른다", () => {
+  const expected = {
+    2: {total: 15, truth: 4, lie: 11},
+    3: {total: 15, truth: 6, lie: 9},
+    4: {total: 20, truth: 8, lie: 12},
+    5: {total: 25, truth: 11, lie: 14},
+    6: {total: 30, truth: 13, lie: 17},
+  };
   for (let count = 2; count <= 6; count += 1) {
     const deck = createDeck(count);
-    assert.equal(deck.length, count * 5 + 3);
+    assert.equal(deck.length, expected[count].total);
     const truthCount = deck.filter((card) => card.rank === "TRUTH").length;
     const lieCount = deck.filter((card) => card.rank === "LIE").length;
-    assert.ok(truthCount >= expectedRange[count][0]);
-    assert.ok(truthCount <= expectedRange[count][1]);
-    assert.equal(lieCount, count * 5 + 3 - truthCount);
+    assert.equal(truthCount, expected[count].truth);
+    assert.equal(lieCount, expected[count].lie);
     assert.equal(new Set(deck.map((card) => card.id)).size, deck.length);
   }
 });
 
-test("진실 카드 수는 비율 범위의 모든 정수 후보에서 고르게 뽑는다", () => {
-  assert.equal(truthCardCountForPlayerCount(4, () => 0), 6);
-  assert.equal(truthCardCountForPlayerCount(4, () => 1), 7);
-  assert.equal(truthCardCountForPlayerCount(4, () => 2), 8);
-  assert.equal(truthCardCountForPlayerCount(6, () => 0), 10);
-  assert.equal(truthCardCountForPlayerCount(6, () => 1), 11);
+test("덱 수량 계산은 2·3인 최소 15장과 2.1배 반올림을 적용한다", () => {
+  assert.equal(totalCardCountForPlayerCount(2), 15);
+  assert.equal(totalCardCountForPlayerCount(3), 15);
+  assert.equal(totalCardCountForPlayerCount(5), 25);
+  assert.equal(truthCardCountForPlayerCount(2), 4);
+  assert.equal(truthCardCountForPlayerCount(5), 11);
+  assert.equal(unrevealedCardCountForPlayerCount(2), 5);
+  assert.equal(unrevealedCardCountForPlayerCount(3), 0);
 });
 
-test("카드는 5장씩 분배되고 정확히 3장이 중앙 덱에 남는다", () => {
+test("카드는 5장씩 분배되고 2인에서만 5장이 중앙 덱에 남는다", () => {
   for (let count = 2; count <= 6; count += 1) {
     const gamePlayers = players(count);
     const deck = createDeck(count);
@@ -91,7 +100,10 @@ test("카드는 5장씩 분배되고 정확히 3장이 중앙 덱에 남는다",
       assert.equal(Object.keys(hand).length, 5);
     }
     const remaining = deck.slice(count * 5);
-    assert.equal(remaining.length, 3);
+    assert.equal(
+      remaining.length,
+      unrevealedCardCountForPlayerCount(count),
+    );
     const dealtIds = new Set(
       Object.values(hands).flatMap((hand) => Object.keys(hand)),
     );
@@ -117,8 +129,8 @@ test("새 라운드는 생존자에게만 손패를 재분배한다", () => {
   assert.equal(Object.keys(game.server.pendingHands.uid1.hand).length, 5);
   assert.equal(Object.keys(game.server.pendingHands.uid3.hand).length, 5);
   assert.equal(game.server.pendingHands.uid2, undefined);
-  assert.equal(game.server.unrevealedCards.length, 3);
-  assert.equal(game.public.unrevealedCardCount, 3);
+  assert.equal(game.server.unrevealedCards.length, 5);
+  assert.equal(game.public.unrevealedCardCount, 5);
 });
 
 test("게임 종료 시 승자와 종료 상태가 기록된다", () => {

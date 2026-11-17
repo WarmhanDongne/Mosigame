@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:game_kit/recovery/models/game_interruption.dart';
 import 'package:game_kit/recovery/models/game_recovery_context.dart';
 import 'package:game_kit/game_flow/game_screen_phase.dart';
@@ -74,9 +75,9 @@ void main() {
           ),
         ),
       );
-      expect(find.text('재시도'), findsOneWidget);
+      expect(find.textContaining('재시도'), findsOneWidget);
       expect(find.text('메뉴'), findsOneWidget);
-      await tester.tap(find.text('재시도'));
+      await tester.tap(find.textContaining('재시도'));
       expect(retries, 1);
       await tester.pumpWidget(const SizedBox.shrink());
       session.dispose();
@@ -312,13 +313,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('game-background')), findsOneWidget);
     expect(find.byType(GameRequestNotice), findsOneWidget);
-    expect(find.text('화면 준비 실패'), findsOneWidget);
+    expect(find.textContaining('화면 준비 실패'), findsOneWidget);
     expect(find.text('게임과 그룹 나가기'), findsNothing);
-    await tester.tap(find.text('재시도'));
+    await tester.tap(find.textContaining('재시도'));
     expect(retries, 1);
     await tester.tap(find.text('기존 메뉴 나가기'));
     expect(exits, 1);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('공용 복구 실패는 재시도 버튼으로 최신 상태 복구를 다시 시작한다', (tester) async {
+    final session = GameRecoverySession()
+      ..transportRecovering = true
+      ..recoveryError = '연결을 복구하지 못했어요. 다시 시도해주세요.';
+    addTearDown(session.dispose);
+    var retries = 0;
+    session.retry = () => retries++;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GameRecoveryLayer(
+            session: session,
+            request: const GameRequestRecovery(visible: false),
+            child: const Text('마지막 정상 게임 화면'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('마지막 정상 게임 화면'), findsOneWidget);
+    expect(
+      find.textContaining('연결을 복구하지 못했어요. 다시 시도해주세요.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('재시도'), findsOneWidget);
+    await tester.tap(find.textContaining('재시도'));
+    expect(retries, 1);
+
+    session.recoveryRetrying = true;
+    session.changed();
+    await tester.pump();
+    expect(find.text('최신 게임 상황을 불러오고 있습니다…'), findsOneWidget);
+    expect(
+      tester.widget<MosiConnectionBand>(find.byType(MosiConnectionBand)).phase,
+      MosiConnectionBandPhase.reconnecting,
+    );
+    expect(find.textContaining('재시도'), findsNothing);
   });
 
   testWidgets('서버 중단 중 본인 준비 실패도 안내 한 곳에서 재시도한다', (tester) async {
@@ -348,8 +388,8 @@ void main() {
       ),
     );
     expect(find.byType(GameRequestNotice), findsOneWidget);
-    expect(find.text('본인 화면 준비 실패'), findsOneWidget);
-    await tester.tap(find.text('재시도'));
+    expect(find.textContaining('본인 화면 준비 실패'), findsOneWidget);
+    await tester.tap(find.textContaining('재시도'));
     expect(retries, 1);
     expect(find.text('내가 나가기'), findsNothing);
     expect(find.text('게임과 그룹 나가기'), findsNothing);

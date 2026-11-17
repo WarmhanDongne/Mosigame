@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_kit/tablet/widgets/game_setup_back_button.dart';
 import 'package:game_kit/player_layouts/player_layout_model.dart';
@@ -30,6 +30,7 @@ import 'package:project00/platform/home/tablet/widgets/tablet_game_shelf.dart';
 import 'package:project00/platform/home/tablet/widgets/tablet_lobby_layout.dart';
 import 'package:project00/platform/home/tablet/widgets/tablet_room_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 final _game = GameInfo.fromJson({
   'id': 'liars_poker',
@@ -53,6 +54,12 @@ final _strategyYut = GameInfo.fromJson({
   'name': '전략 윷놀이',
   'minPlayers': 2,
   'maxPlayers': 4,
+});
+final _russianRoulette = GameInfo.fromJson({
+  'id': 'russian_roulette',
+  'name': '러시안 룰렛',
+  'minPlayers': 2,
+  'maxPlayers': 6,
 });
 const _players = [
   RoomPlayer(
@@ -79,12 +86,12 @@ const _players = [
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  TestFirebaseCoreHostApi.setUp(FirebaseTestCore());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     FirebaseAuthPlatform.instanceFor(
-      app: Firebase.app(),
+      app: FirebaseBackend.app,
       pluginConstants: {
         'APP_CURRENT_USER': [
           InternalUserInfo(
@@ -268,6 +275,19 @@ void main() {
       find.byType(PlayerLayoutEditor),
     );
     expect(editor.initialLayout.playerCount, 2);
+  });
+
+  test('러시안 룰렛의 연속 지원 인원을 짧은 범위로 표시한다', () {
+    final provider = _RoomProvider(
+      _RoomService(),
+      gameCatalog: const GameRegistry(),
+    );
+    addTearDown(provider.dispose);
+
+    expect(gamePlayerRangeLabel(_russianRoulette, provider), '2–6명');
+    expect(isGamePlayableWith(_russianRoulette, 2, provider), isTrue);
+    expect(isGamePlayableWith(_russianRoulette, 6, provider), isTrue);
+    expect(isGamePlayableWith(_russianRoulette, 7, provider), isFalse);
   });
 
   testWidgets('시작 인원이 부족하면 오류 메시지 대신 버튼 피드백을 요청한다', (tester) async {
@@ -657,47 +677,35 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('자리 대기 단절 모달은 복구 시 닫히며 실패한 퇴장은 재시도할 수 있다', (tester) async {
+  testWidgets('자리 대기 단절은 공통 상태 띠만 표시하고 화면을 막지 않는다', (tester) async {
     final provider = _RoomProvider(_RoomService())
       ..roomCode = 'ABCDE'
       ..roomStatus = 'seating'
       ..controllerPresenceState = ControllerPresenceState.reconnecting;
     addTearDown(provider.dispose);
-    final exit = Completer<bool>();
-    var exits = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: LobbyReconnectGuard(
             provider: provider,
-            onExit: () {
-              exits++;
-              return exit.future;
-            },
             child: const Text('자리 배치 대기'),
           ),
         ),
       ),
     );
-    expect(find.text('태블릿에 다시 연결하는 중'), findsOneWidget);
-    expect(find.byKey(const Key('lobby-reconnect-barrier')), findsOneWidget);
-    await tester.tap(find.text('그룹 나가고 홈으로'));
-    await tester.pump();
-    expect(exits, 1);
-    expect(tester.widget<MosiButton>(find.byType(MosiButton)).loading, isTrue);
-    exit.complete(false);
-    await tester.pump();
-    expect(find.text('그룹을 나가지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+    expect(find.text('태블릿 연결을 기다리는 중…'), findsOneWidget);
+    expect(find.byKey(const Key('lobby-reconnect-barrier')), findsNothing);
+    expect(find.text('자리 배치 대기'), findsOneWidget);
     provider.controllerPresenceState = ControllerPresenceState.connected;
     provider.notifyListeners();
     await tester.pump();
-    expect(find.text('태블릿에 다시 연결하는 중'), findsNothing);
+    expect(find.text('태블릿 연결을 기다리는 중…'), findsNothing);
     expect(find.text('자리 배치 대기'), findsOneWidget);
     provider.controllerPresenceState = ControllerPresenceState.reconnecting;
     provider.connected = false;
     provider.notifyListeners();
     await tester.pump();
-    expect(find.text('태블릿에 다시 연결하는 중'), findsNothing);
+    expect(find.text('태블릿 연결을 기다리는 중…'), findsNothing);
   });
 }
 

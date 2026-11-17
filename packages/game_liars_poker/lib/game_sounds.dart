@@ -8,6 +8,9 @@ import 'package:game_kit/sound/app_sounds.dart';
 /// Liar's Poker 전용 효과음 경로입니다.
 
 abstract final class LiarsPokerSounds {
+  /// 마지막 덱 섞기의 각 패스에 재사용하는 공용 카드 분배음입니다.
+  static const shufflePass = AppSounds.dealing;
+
   /// 좌석에서 중앙으로 패를 던질 때와, 그 패를 뒤집어 공개할 때 재생합니다.
   static const submit =
       'packages/game_liars_poker/assets/games/liars_poker/sounds/submit.mp3';

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -13,11 +12,12 @@ import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_join.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
 import 'package:project00/platform/home/phone/widgets/phone_own_game_list.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  TestFirebaseCoreHostApi.setUp(FirebaseTestCore());
+  setUpAll(initializeFirebaseAppsForTest);
 
   testWidgets('휴대폰 로비 단계는 기존 화면을 밀지 않고 대각선 그라데이션으로 덮는다', (tester) async {
     await tester.pumpWidget(

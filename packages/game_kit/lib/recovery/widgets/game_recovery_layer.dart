@@ -44,8 +44,9 @@ class GameRecoveryLayer extends StatelessWidget {
 
   Widget _build(BuildContext context) {
     final interruption = this.interruption;
+    final live = session;
     final waiting =
-        connection?.isWaiting == true || (session != null && !session!.canSend);
+        connection?.isWaiting == true || (live != null && !live.canSend);
     final state = interruption?.state;
     final interrupted =
         state != null &&
@@ -56,6 +57,12 @@ class GameRecoveryLayer extends StatelessWidget {
     final playerInterruption =
         interrupted &&
         interruption?.presentation == GameInterruptionPresentation.player;
+    final requestMessage = request?.message ?? live?.recoveryError;
+    final recoveryRetrying =
+        live?.recoveryRetrying == true && live?.recoveryError != null;
+    final requestBusy = (request?.busy == true && !waiting) || recoveryRetrying;
+    final requestVisible =
+        live?.recoveryError?.isNotEmpty == true || (request?.visible ?? true);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -63,27 +70,30 @@ class GameRecoveryLayer extends StatelessWidget {
         // content와 명령 서비스의 canSend 검사에서 차단합니다.
         child,
         // 실제 중단의 오류는 중단 안내 한 곳에서만 표시합니다.
-        if (request case final request?)
-          if (request.visible && !interrupted)
-            GameRequestNotice(
-              busy: request.busy && !waiting,
-              message: request.message,
-              onRetry: waiting
-                  ? connection?.onRetry ?? session?.retry
-                  : request.onRetry,
-              busyMessage: request.busyMessage,
-            ),
+        if (requestVisible &&
+            !interrupted &&
+            (requestBusy || requestMessage?.isNotEmpty == true))
+          GameRequestNotice(
+            busy: requestBusy,
+            message: requestMessage,
+            onRetry: waiting
+                ? connection?.onRetry ?? live?.retry
+                : request?.onRetry ?? live?.retry,
+            busyMessage: recoveryRetrying
+                ? '최신 게임 상황을 불러오고 있습니다…'
+                : request?.busyMessage ?? '서버 응답을 기다리고 있습니다…',
+          ),
         if (playerInterruption)
           GameRequestNotice(
             message:
                 interruption?.failureMessage ??
-                request?.message ??
+                requestMessage ??
                 '게임을 잠시 멈췄어요. 연결과 화면 준비를 기다리고 있어요.'.localized,
             onRetry:
-                session != null &&
-                    (!session!.localUsable || !session!.serverConfirmed) &&
-                    request?.message != null
-                ? connection?.onRetry ?? session?.retry
+                live != null &&
+                    (!live.localUsable || !live.serverConfirmed) &&
+                    requestMessage != null
+                ? connection?.onRetry ?? live.retry
                 : null,
           ),
         if (interrupted && !playerInterruption && interruption != null)

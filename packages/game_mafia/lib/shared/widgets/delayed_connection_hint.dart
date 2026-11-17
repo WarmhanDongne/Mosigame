@@ -2,12 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:game_kit/localization/game_locale.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 
 /// 짧은 네트워크 흔들림은 숨기고, 연결이 오래 끊겼을 때만 보여 주는 안내입니다.
 ///
 /// 게임 화면은 마지막으로 확인한 장면을 그대로 유지합니다. 따라서 이 안내는
 /// 화면을 막거나 로딩 화면으로 바꾸지 않고, 사용자가 앱이 멈춘 것으로 오해할
-/// 정도로 연결 지연이 길어졌을 때만 작게 나타납니다.
+/// 정도로 연결 지연이 길어졌을 때 공통 연결 상태 띠로 나타납니다.
 class MafiaDelayedConnectionHint extends StatefulWidget {
   const MafiaDelayedConnectionHint({
     super.key,
@@ -89,52 +90,23 @@ class _MafiaDelayedConnectionHintState
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
       child: IgnorePointer(
-        child: SafeArea(
-          child: Align(
-            alignment: widget.alignment,
-            child: AnimatedOpacity(
-              opacity: _visible ? 1 : 0,
-              duration: const Duration(milliseconds: 240),
-              child: Container(
-                key: const ValueKey('mafia-delayed-connection-hint'),
-                margin: widget.margin,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xE60B0E0D),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0x99B08A4A)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 12,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.wifi_find_rounded,
-                      color: Color(0xFFB08A4A),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '연결 확인 중…'.localized,
-                      style: const TextStyle(
-                        color: Color(0xFFD9C2A2),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+        child: AnimatedOpacity(
+          opacity: _visible ? 1 : 0,
+          duration: const Duration(milliseconds: 240),
+          child: SizedBox(
+            key: const ValueKey('mafia-delayed-connection-hint'),
+            width: double.infinity,
+            child: MosiConnectionBand(
+              phase: MosiConnectionBandPhase.lost,
+              labels: MosiConnectionBandLabels(
+                lost: '네트워크 연결을 확인하는 중…'.localized,
+                reconnecting: '최신 상황을 불러오는 중…'.localized,
+                restored: '다시 연결됐어요'.localized,
               ),
             ),
           ),

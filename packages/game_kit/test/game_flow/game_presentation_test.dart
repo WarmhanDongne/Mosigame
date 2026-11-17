@@ -166,12 +166,16 @@ void main() {
         ),
       ),
     );
+    // 안내는 한 줄 띠입니다. 진행 중에는 재시도 문구가 없고 눌러도 반응하지
+    // 않으며, 실패하면 띠 전체가 재시도 버튼입니다.
     await tester.pumpWidget(notice(true));
-    expect(find.text('재시도'), findsNothing);
+    expect(find.textContaining('재시도'), findsNothing);
+    await tester.tap(find.byType(GameRequestNotice), warnIfMissed: false);
+    expect(retries, 0);
     await tester.pumpWidget(notice(false));
-    await tester.tap(find.text('재시도'));
+    await tester.tap(find.text('전송하지 못했습니다. · 재시도'));
     expect(retries, 1);
-    expect(find.text('전송하지 못했습니다.'), findsOneWidget);
+    expect(find.textContaining('전송하지 못했습니다.'), findsOneWidget);
   });
 }
 

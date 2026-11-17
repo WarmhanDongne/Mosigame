@@ -10,11 +10,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:game_kit/localization/game_locale.dart';
-import 'package:game_kit/recovery/widgets/network_unavailable_modal.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
+import 'package:game_kit/mosi_ui/mosi_design.dart';
 
 // ============================================================
 
-/// 서버 연결이 필수인 화면에서만 사용하는 네트워크 연결 모달 레이어입니다.
+/// 서버 연결이 필수인 화면에서만 사용하는 네트워크 연결 상태 띠입니다.
 ///
 /// [connectionChanges]를 전달하지 않으면 아무 연결도 감시하지 않습니다. 앱 루트는
 /// 이 비활성 형태를 사용해 초기 Firebase 연결 수립 과정만으로 팝업이 나타나는 것을
@@ -29,6 +30,7 @@ class AppNetworkGuard extends StatefulWidget {
     this.onExit,
     this.exitLabel = '홈으로',
     this.blockChildInput = true,
+    this.showExitInBand = false,
     this.noticeDelay = const Duration(seconds: 3),
     this.showDelay = const Duration(seconds: 10),
   });
@@ -43,10 +45,16 @@ class AppNetworkGuard extends StatefulWidget {
   /// retaining access to recovery and exit controls. Lobby routes block input.
   final bool blockChildInput;
 
+  /// 연결 띠 오른쪽에 [onExit]을 부르는 나가기 버튼을 둡니다.
+  ///
+  /// 입력을 막는 화면(대기실)은 연결이 돌아오지 않으면 나갈 방법이 없으므로
+  /// 띠 안에 나가기를 둡니다. 띠의 나머지와 화면 전체는 계속 재시도입니다.
+  final bool showExitInBand;
+
   /// 이 시간 이전에는 안내를 숨깁니다. 게임 입력은 연결 단절 즉시 보호합니다.
   final Duration noticeDelay;
 
-  /// 단절부터 모달까지의 시간입니다. 작은 안내 이후 추가 시간이 아닙니다.
+  /// 단절 뒤 장기 대기 문구로 바뀌는 시간입니다. 작은 안내 이후 추가 시간이 아닙니다.
   final Duration showDelay;
 
   @override
@@ -191,19 +199,25 @@ class _AppNetworkGuardState extends State<AppNetworkGuard>
     _showTimer = Timer(widget.showDelay, () {
       _showTimer = null;
       if (mounted && _needsRecovery) {
-        _log('modal_shown', {'delayMs': widget.showDelay.inMilliseconds});
+        _log('long_wait_shown', {'delayMs': widget.showDelay.inMilliseconds});
         setState(() => _isModalVisible = true);
       }
     });
   }
 
-  Future<void> _retry() async {
-    // 오프라인에는 callable을 반복 호출하지 않고 SDK의 연결 복구를 기다립니다.
+  void _retryFromUserTap() {
+    if (_isRetrying || !_needsRecovery) return;
+    unawaited(_retry(allowDisconnected: true));
+  }
+
+  Future<void> _retry({bool allowDisconnected = false}) async {
+    // 자동 복구는 오프라인 callable 반복을 피합니다. 화면을 직접 누른 수동
+    // 재시도만 현재 연결 신호가 false여도 전체 세션 복구 파이프라인을 시작합니다.
     if (!_isCurrentRoute ||
         !_isForeground ||
         !_needsRecovery ||
         _isRetrying ||
-        !_isConnected) {
+        (!allowDisconnected && !_isConnected)) {
       return;
     }
     final subscriptionGeneration = _subscriptionGeneration;
@@ -299,10 +313,48 @@ class _AppNetworkGuardState extends State<AppNetworkGuard>
     if (_hasParentGuard || widget.connectionChanges == null) {
       return widget.child;
     }
-    // 다이얼로그가 위에 올라와도 child의 위치를 유지합니다. wrapper를 빼면
-    // 게임 State와 구독이 폐기되어 root Navigator의 결과 팝업만 남습니다.
-    // 가려진 화면에서는 안내·입력 차단만 비활성화합니다.
+    // 상태 띠가 올라와도 child의 위치를 유지합니다. wrapper를 빼면 게임 State와
+    // 구독이 폐기됩니다. 가려진 화면에서는 안내·입력 차단만 비활성화합니다.
     final active = _isCurrentRoute;
+    final showBand =
+        active &&
+        _needsRecovery &&
+        (_isNoticeVisible || _isModalVisible || _isRetrying);
+    final retryFailed =
+        _isConnected && _isModalVisible && !_isRetrying && _needsRecovery;
+    final canTapToRetry = active && _needsRecovery && !_isRetrying;
+    final useFullScreenRetrySurface = canTapToRetry && widget.blockChildInput;
+    final bandLabel = retryFailed
+        ? GameLocale.select(
+            ko: '연결을 복구하지 못했어요 · 눌러서 다시 시도',
+            en: 'Could not recover the connection · Tap to retry',
+            zhHans: '连接恢复失败 · 点按重试',
+            zhHant: '連線恢復失敗 · 點按重試',
+          )
+        : _isConnected && _isRetrying
+        ? GameLocale.select(
+            ko: '최신 상황을 불러오는 중…',
+            en: 'Loading the latest game state…',
+            zhHans: '正在加载最新游戏状态…',
+            zhHant: '正在載入最新遊戲狀態…',
+          )
+        : _isModalVisible
+        ? GameLocale.select(
+            ko: '네트워크 연결을 기다리는 중…',
+            en: 'Waiting for the network connection…',
+            zhHans: '正在等待网络连接…',
+            zhHant: '正在等待網路連線…',
+          )
+        : GameLocale.select(
+            ko: '네트워크 연결을 확인하는 중…',
+            en: 'Checking the network connection…',
+            zhHans: '正在检查网络连接…',
+            zhHant: '正在檢查網路連線…',
+          );
+    final showExit = showBand && widget.showExitInBand && widget.onExit != null;
+    final bandPhase = retryFailed || !_isConnected && !_isModalVisible
+        ? MosiConnectionBandPhase.lost
+        : MosiConnectionBandPhase.reconnecting;
     return _NetworkGuardScope(
       child: Stack(
         fit: StackFit.expand,
@@ -316,49 +368,58 @@ class _AppNetworkGuardState extends State<AppNetworkGuard>
               child: widget.child,
             ),
           ),
-          if (active && _isNoticeVisible && !_isModalVisible)
+          // 입력이 잠긴 화면은 빈 곳을 포함한 전체 영역이 재시도 버튼입니다.
+          // 첫 터치가 _isRetrying을 동기적으로 세우므로 빠른 연속 터치는 새 요청을
+          // 만들지 않습니다. 입력을 유지하는 화면은 기존 컨트롤을 가리지 않습니다.
+          if (useFullScreenRetrySurface)
+            Positioned.fill(
+              child: Semantics(
+                button: true,
+                label: GameLocale.select(
+                  ko: '화면을 눌러 다시 연결',
+                  en: 'Tap the screen to reconnect',
+                  zhHans: '点按屏幕重新连接',
+                  zhHant: '點按螢幕重新連線',
+                ),
+                child: GestureDetector(
+                  key: const ValueKey('network-recovery-tap-surface'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _retryFromUserTap,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          if (showBand)
             Positioned(
-              top: 12,
-              left: 16,
-              right: 16,
-              child: SafeArea(
-                child: IgnorePointer(
-                  child: Center(
-                    child: Material(
-                      color: Color(0xDD252535),
-                      borderRadius: BorderRadius.all(Radius.circular(20)),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 10,
-                        ),
-                        child: Text(
-                          '연결 확인 중…'.localized,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  onTap: canTapToRetry ? _retryFromUserTap : null,
+                  child: MosiConnectionBand(
+                    phase: bandPhase,
+                    trailingReserve: showExit ? _BandExitButton.reserve : 0,
+                    labels: MosiConnectionBandLabels(
+                      lost: bandLabel,
+                      reconnecting: bandLabel,
+                      restored: bandLabel,
                     ),
                   ),
                 ),
               ),
             ),
-          if (active && _isModalVisible)
-            Positioned.fill(
-              child: NetworkUnavailableModal(
-                isRetrying: _isRetrying,
-                retryEnabled: _isConnected,
-                onRetry: () => unawaited(_retry()),
-                onExit: widget.onExit,
-                exitLabel: widget.exitLabel.localized,
-                title: '인터넷 연결이 끊겼어요'.localized,
-                description: GameLocale.select(
-                  ko: '게임 화면은 그대로 있어요.\n와이파이나 모바일 데이터를 확인해 주세요.',
-                  en: 'Your game screen is still here.\nCheck Wi-Fi or mobile data.',
-                  zhHans: '游戏画面会保持不变。\n请检查 Wi-Fi 或移动数据。',
-                  zhHant: '遊戲畫面會保持不變。\n請檢查 Wi-Fi 或行動數據。',
+          // 재시도 영역 위에 두어 이 버튼의 터치만 나가기로 처리합니다.
+          if (showExit)
+            Positioned(
+              right: 8,
+              bottom: MediaQuery.paddingOf(context).bottom,
+              height: MosiConnectionBand.height,
+              child: Center(
+                child: _BandExitButton(
+                  label: widget.exitLabel.localized,
+                  onPressed: widget.onExit!,
                 ),
               ),
             ),
@@ -374,4 +435,53 @@ class _NetworkGuardScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_NetworkGuardScope oldWidget) => false;
+}
+
+/// 연결 띠 오른쪽의 흰 알약 모양 나가기 버튼입니다.
+class _BandExitButton extends StatelessWidget {
+  const _BandExitButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  /// 띠 문구가 버튼과 겹치지 않도록 띠가 비워 두는 너비입니다.
+  static const double reserve = 76;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const ValueKey('network-band-exit'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: reserve),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: MosiColors.white,
+              border: Border.all(color: MosiColors.ink, width: 2),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: MosiFonts.sans(
+                  locale: Localizations.maybeLocaleOf(context),
+                  size: 12,
+                  weight: FontWeight.w700,
+                  color: MosiColors.ink,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

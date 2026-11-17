@@ -117,7 +117,6 @@ void main() {
     _expectInvocation(runner.invocations[2], 'flutter', <String>[
       'test',
       '--no-pub',
-      flutterUnitTestBackendArgument,
       '--exclude-tags',
       'invocation-guard',
     ], _remainingBudgetMatcher);
@@ -126,7 +125,7 @@ void main() {
       _expectInvocation(
         runner.invocations[3 + i],
         'flutter',
-        const <String>['test', '--no-pub', flutterUnitTestBackendArgument],
+        const <String>['test', '--no-pub'],
         _remainingBudgetMatcher,
         workingDirectory: joinTestPath(
           testRepositoryRoot,

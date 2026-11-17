@@ -138,6 +138,16 @@ export {
   game_yut_leave_game,
 } from "./yut/callables.js";
 
+// ---------------------------------------------- 게임: 러시안 룰렛
+export {
+  game_russian_roulette_start_game,
+  game_russian_roulette_submit_action,
+  game_russian_roulette_timeout_turn,
+  game_russian_roulette_complete_phase,
+  game_russian_roulette_end_game,
+  game_russian_roulette_leave_game,
+} from "./russian-roulette/callables.js";
+
 // ---------------------------------------------- 게임 공용: 중단·재접속
 export {
   game_common_interruption_exclude_player,

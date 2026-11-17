@@ -4,6 +4,7 @@ import 'package:game_liars_poker/game_liars_poker.dart';
 import 'package:game_mafia/game_mafia.dart';
 import 'package:game_holdem/game_holdem.dart';
 import 'package:game_yut/game_yut.dart';
+import 'package:game_russian_roulette/game_russian_roulette.dart';
 
 final class GameRegistry implements GameCatalog {
   const GameRegistry();
@@ -17,6 +18,7 @@ final class GameRegistry implements GameCatalog {
     YutGame(),
     StrategyYutGame(),
     StrategyYutEditionGame(),
+    RussianRouletteGame(),
   ];
 
   @override

@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/core/error/room_command_exception.dart';
 import 'package:game_kit/recovery/models/room_session_identity.dart';
 import 'package:game_kit/recovery/services/room_recovery_batch.dart';
 import 'package:game_kit/recovery/services/room_session_identity_store.dart';
@@ -55,6 +56,75 @@ void main() {
     roomCode: 'ABCDE',
     nickname: 'Tester',
     characterId: 'frog',
+  );
+
+  test(
+    'foreground recovery selects only its own record from an iOS roster snapshot',
+    () async {
+      await RoomSessionIdentityStore.instance.save(
+        identity,
+        completedOperationId: 'pending',
+      );
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      final own = {
+        'status': 'active',
+        'membershipId': 'member',
+        'currentConnectionId': 'old',
+        'connectionSeq': 1,
+        'isConnected': false,
+      };
+      final roster = {
+        'another-player': {
+          ...own,
+          'membershipId': 'other',
+          'isConnected': true,
+        },
+        identity.uid: own,
+      };
+      database.values['rooms/ABCDE/players/${identity.uid}'] = roster;
+      functions.reply = (name, data) async {
+        expect(name, 'joinRealtimeRoom');
+        expect(data['membershipId'], 'member');
+        expect(data['expectedConnectionSeq'], 1);
+        own.addAll({
+          'currentConnectionId': 'new',
+          'connectionSeq': 2,
+          'isConnected': true,
+        });
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'member',
+          'connectionId': 'new',
+          'connectionSeq': 2,
+        };
+      };
+      expect(
+        (await service.getRoomPlayer('ABCDE', identity.uid))!.isConnected,
+        isFalse,
+      );
+      await restore();
+      await service.heartbeatPlayer('ABCDE');
+      final current = await service.getRoomPlayer('ABCDE', identity.uid);
+      expect(current!.membershipId, 'member');
+      expect(current.currentConnectionId, 'new');
+      expect(current.connectionSeq, 2);
+      expect(current.isConnected, isTrue);
+
+      roster.remove(identity.uid);
+      expect(await service.getRoomPlayer('ABCDE', identity.uid), isNull);
+      expect(await service.hasActivePlayerNode('ABCDE'), isFalse);
+      await expectLater(
+        restore(),
+        throwsA(
+          isA<RoomCommandException>().having(
+            (error) => error.reason,
+            'reason',
+            'player-not-active',
+          ),
+        ),
+      );
+      expect(functions.names, ['joinRealtimeRoom']);
+    },
   );
   test(
     'fresh join reads room and membership concurrently before sending',
@@ -172,6 +242,77 @@ void main() {
     },
   );
   test(
+    'stale pending membership reconnects with the confirmed current member',
+    () async {
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'active',
+        'membershipId': 'new-member',
+        'connectionSeq': 4,
+      };
+      var joins = 0;
+      functions.reply = (name, data) async {
+        if (name == 'fetchRealtimeRoomSession') {
+          return {
+            'roomInstanceId': 'room',
+            'membershipId': 'new-member',
+            'connectionId': 'current',
+            'connectionSeq': 4,
+          };
+        }
+        expect(name, 'joinRealtimeRoom');
+        joins++;
+        if (joins == 1) {
+          expect(data['operationId'], 'pending');
+          return {
+            'roomInstanceId': 'room',
+            'membershipId': 'member',
+            'connectionId': 'old-result',
+            'connectionSeq': 2,
+          };
+        }
+        expect(data['membershipId'], 'new-member');
+        expect(data['expectedConnectionSeq'], 4);
+        expect(data['preserveProfile'], true);
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'new-member',
+          'connectionId': 'replacement',
+          'connectionSeq': 5,
+        };
+      };
+
+      await restore();
+
+      expect(functions.names, [
+        'joinRealtimeRoom',
+        'fetchRealtimeRoomSession',
+        'joinRealtimeRoom',
+      ]);
+      final current = RoomSessionIdentityStore.instance.current(
+        identity.uid,
+        'player',
+        'ABCDE',
+      )!;
+      expect(current.membershipId, 'new-member');
+      expect(current.connectionId, 'replacement');
+      expect(current.connectionSeq, 5);
+      expect(
+        RoomSessionIdentityStore.instance.pending(
+          identity.uid,
+          'player',
+          'ABCDE',
+        ),
+        isNull,
+      );
+      await service.heartbeatPlayer('ABCDE');
+      expect(
+        database.writes.single,
+        'rooms/ABCDE/connections/${identity.uid}/replacement/lastSeen',
+      );
+    },
+  );
+  test(
     'disconnected pending replay requests a fresh connection for the same member',
     () async {
       database.values['rooms/ABCDE/roomInstanceId'] = 'room';
@@ -219,6 +360,232 @@ void main() {
       expect(
         database.writes.single,
         'rooms/ABCDE/connections/${identity.uid}/replacement/lastSeen',
+      );
+    },
+  );
+
+  test(
+    'foreground restore accepts a legacy active player without status',
+    () async {
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'membershipId': 'member',
+        'connectionSeq': 2,
+      };
+      functions.reply = (name, data) async {
+        expect(name, 'joinRealtimeRoom');
+        if (data['operationId'] == 'pending') {
+          throw FirebaseFunctionsException(
+            code: 'aborted',
+            message: 'disconnected pending connection',
+            details: {'reason': 'staleConnection'},
+          );
+        }
+        expect(data['membershipId'], 'member');
+        expect(data['expectedConnectionSeq'], 2);
+        expect(data['preserveProfile'], true);
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'member',
+          'connectionId': 'replacement',
+          'connectionSeq': 3,
+        };
+      };
+
+      await restore();
+
+      expect(functions.names, ['joinRealtimeRoom', 'joinRealtimeRoom']);
+      expect(
+        RoomSessionIdentityStore.instance
+            .current(identity.uid, 'player', 'ABCDE')!
+            .connectionId,
+        'replacement',
+      );
+      await service.heartbeatPlayer('ABCDE');
+      expect(
+        database.writes.single,
+        'rooms/ABCDE/connections/${identity.uid}/replacement/lastSeen',
+      );
+    },
+  );
+
+  test(
+    'foreground restore still rejects an explicitly inactive player',
+    () async {
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'inactive',
+        'membershipId': 'member',
+        'connectionSeq': 2,
+      };
+      functions.reply = (name, data) async {
+        expect(name, 'joinRealtimeRoom');
+        throw FirebaseFunctionsException(
+          code: 'aborted',
+          message: 'disconnected pending connection',
+          details: {'reason': 'staleConnection'},
+        );
+      };
+
+      await expectLater(
+        restore(),
+        throwsA(
+          isA<RoomCommandException>().having(
+            (error) => error.reason,
+            'reason',
+            'player-not-active',
+          ),
+        ),
+      );
+      expect(functions.names, ['joinRealtimeRoom']);
+    },
+  );
+
+  test(
+    'foreground restore confirms and adopts a newer same-room membership',
+    () async {
+      await RoomSessionIdentityStore.instance.save(
+        identity,
+        completedOperationId: 'pending',
+      );
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'active',
+        'membershipId': 'new-member',
+        'connectionSeq': 4,
+      };
+      functions.reply = (name, data) async {
+        if (name == 'fetchRealtimeRoomSession') {
+          return {
+            'roomInstanceId': 'room',
+            'membershipId': 'new-member',
+            'connectionId': 'current',
+            'connectionSeq': 4,
+          };
+        }
+        expect(name, 'joinRealtimeRoom');
+        expect(data['roomInstanceId'], 'room');
+        expect(data['membershipId'], 'new-member');
+        expect(data['expectedConnectionSeq'], 4);
+        expect(data['preserveProfile'], true);
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'new-member',
+          'connectionId': 'replacement',
+          'connectionSeq': 5,
+        };
+      };
+
+      await restore();
+
+      expect(functions.names, ['fetchRealtimeRoomSession', 'joinRealtimeRoom']);
+      final current = RoomSessionIdentityStore.instance.current(
+        identity.uid,
+        'player',
+        'ABCDE',
+      )!;
+      expect(current.membershipId, 'new-member');
+      expect(current.connectionId, 'replacement');
+      expect(current.connectionSeq, 5);
+      await service.heartbeatPlayer('ABCDE');
+      expect(
+        database.writes.single,
+        'rooms/ABCDE/connections/${identity.uid}/replacement/lastSeen',
+      );
+    },
+  );
+
+  test(
+    'foreground restore adopts the authoritative lookup over a stale cached read',
+    () async {
+      await RoomSessionIdentityStore.instance.save(
+        identity,
+        completedOperationId: 'pending',
+      );
+      // 복귀 직후의 `get()`은 아직 되살아나지 않은 연결의 SDK 캐시를 돌려줄 수
+      // 있습니다. 저장 신원과도, 서버와도 다른 이 값으로 거절하면 캐시가 오래된
+      // 동안 모든 복구가 같은 이유로 막힙니다.
+      database.values['rooms/ABCDE/roomInstanceId'] = 'stale-room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'active',
+        'membershipId': 'stale-member',
+        'connectionSeq': 4,
+      };
+      functions.reply = (name, data) async {
+        if (name == 'fetchRealtimeRoomSession') {
+          return {
+            'roomInstanceId': 'room',
+            'membershipId': 'current-member',
+            'connectionId': 'current',
+            'connectionSeq': 7,
+          };
+        }
+        expect(name, 'joinRealtimeRoom');
+        expect(data['roomInstanceId'], 'room');
+        expect(data['membershipId'], 'current-member');
+        expect(data['expectedConnectionSeq'], 7);
+        expect(data['preserveProfile'], true);
+        return {
+          'roomInstanceId': 'room',
+          'membershipId': 'current-member',
+          'connectionId': 'replacement',
+          'connectionSeq': 8,
+        };
+      };
+
+      await restore();
+
+      expect(functions.names, ['fetchRealtimeRoomSession', 'joinRealtimeRoom']);
+      final current = RoomSessionIdentityStore.instance.current(
+        identity.uid,
+        'player',
+        'ABCDE',
+      )!;
+      expect(current.roomInstanceId, 'room');
+      expect(current.membershipId, 'current-member');
+      expect(current.connectionId, 'replacement');
+      expect(current.connectionSeq, 8);
+      expect(
+        RoomSessionIdentityStore.instance.pending(
+          identity.uid,
+          'player',
+          'ABCDE',
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'foreground restore still refuses a membership the server rejects',
+    () async {
+      await RoomSessionIdentityStore.instance.save(
+        identity,
+        completedOperationId: 'pending',
+      );
+      database.values['rooms/ABCDE/roomInstanceId'] = 'room';
+      database.values['rooms/ABCDE/players/${identity.uid}'] = {
+        'status': 'active',
+        'membershipId': 'new-member',
+        'connectionSeq': 4,
+      };
+      functions.reply = (name, data) async {
+        expect(name, 'fetchRealtimeRoomSession');
+        throw FirebaseFunctionsException(
+          code: 'permission-denied',
+          message: 'removed',
+        );
+      };
+
+      await expectLater(restore(), throwsA(isA<FirebaseFunctionsException>()));
+
+      // 자격을 잃은 참가자에게 자동 복구가 새 참가를 만들지 않습니다.
+      expect(functions.names, ['fetchRealtimeRoomSession']);
+      expect(
+        RoomSessionIdentityStore.instance
+            .current(identity.uid, 'player', 'ABCDE')!
+            .membershipId,
+        'member',
       );
     },
   );

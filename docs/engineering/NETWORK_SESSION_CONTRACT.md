@@ -147,6 +147,20 @@ public/private 불일치는 하나의 최대 30초 준비 묶음에서 현재 �
 | 소진 뒤 | 미확정 ID/domain 유지, 결과 확인 후 실제 수동 재시도 |
 | 재연결/foreground | UID·방·수명 확인 후 새 제한 묶음; 중첩 소유자 없음 |
 
+foreground 복구의 callable 응답과 heartbeat 전송만으로 성공을 판정하지 않는다.
+휴대폰은 서버 `players/{uid}`를 본인 단일 경로로 다시 읽어
+`isConnected=true`와 현재 로컬 identity의 membershipId·connectionId·connectionSeq가
+모두 일치해야 transport 보호를 해제한다. 새 접속이 할당되면 방·player
+구독을 새로 열고 확인한 본인 요약을 현재 목록에 반영한다. 서버 요약이
+아직 옛 접속이거나 disconnected이면 복구를 실패로 남겨 입력을 보호하고,
+현재 확정 Future를 비워 화면 터치의 수동 재시도가 새 복구를 실제로 시작하게 한다.
+새 접속 할당 직후의 요약 읽기는 같은 identity로 짧게(0.3초·0.7초) 두 번까지 다시
+읽으며, 그동안 새 접속을 다시 할당하지 않는다. 기존 접속 검증 경로는 한 번만 읽는다.
+RTDB 연결은 살아 있는데 복구만 실패한 로비는 화면 아래 재시도 띠
+(`RoomRecoveryRetryBand`)가 수동 재시도 경로다. 이 띠는 화면 입력을 막지 않는다.
+복구 도중 연결이 다시 바뀌어 뒤따르는 재시도는 미확인 foreground 세대를 이어받아
+성공 시 foreground revision을 증가시킨다.
+
 시작은 기존 UID/role identity에 pendingGameStart(functionName/input/payload)를 전송 전에
 직렬 저장한다. 같은 roomInstanceId/membershipId의 접속 교체·새 서비스·앱 재실행은
 원래 ID와 옵션을 이어받는다. 저장 실패면 전송하지 않으며 TTL로 버리지 않는다.
@@ -238,6 +252,28 @@ room/member/id/seq 변경 시 기존 scope를 취소하고 시각을 unknown으�
 peer 권한 오류는 unknown과 한 번의 10초 재구독으로 처리하며 본인 transport 복구로 승격하지 않는다.
 본인 current false는 foreground에서 한 회차 CAS 복구를 시작하지만 의도적으로 paused/detached한
 동안에는 자동 복구·heartbeat를 시작하지 않는다. 로비 heartbeat는 계속 10초다.
+
+앱 생명주기의 presence 소유자는 `RoomProvider` 하나다. `inactive`는 알림·제어
+센터·앱 스위처처럼 짧은 포커스 이탈일 수 있으므로 heartbeat나 서버 presence를
+내리지 않는다. `hidden`은 로컬 heartbeat·입력만 멈추고 disconnected를 쓰지 않는다.
+실제 background인 `paused`/`detached`만 한 세대에 한 번 disconnected를 쓴다.
+`resumed`는 RTDB `.info/connected=true`를 먼저 기다린 뒤 현재 heartbeat·membership·
+connection id/seq·server player summary를 확인한다. 이 확인이 성공해야만 복구
+잠금을 풀고 foreground revision을 증가시킨다. 그 revision을 본 로비·게임
+status 구독은 새로 열리며, 서버 확인 전에는 게임 route 진입·종료 정리를
+시작하지 않는다. 방 참가 전 닉네임·캐릭터 미리보기 구독도 foreground
+복귀 시 새로 열어 기존 앱을 재실행하지 않고 입장 흐름을 계속한다.
+태블릿 화면은 fullscreen UI만 생명주기에서 다루고 presence를 별도 쓰지 않는다.
+
+2026-11-16 사용자 결정: `inactive`만 거치고 `hidden`·`paused`에 들어가지 않은 짧은
+복귀는 위의 전체 확인을 하지 않는다. 앱이 화면에서 내려간 적이 없어 구독과 주기
+heartbeat가 살아 있으므로, 현재 접속의 heartbeat 한 번으로 유효성만 확인한다. 이
+동안 게임 세션을 무효화하거나 입력을 잠그지 않고, 구독을 다시 열지 않으며
+foreground revision도 올리지 않는다. heartbeat가 거절·실패하거나 그사이 연결이
+바뀌면 새 접속을 할당하는 전체 복구로 넘어간다. 이미 복구 중이거나 실패·단절
+상태이면 처음부터 전체 복구를 쓴다. 확인이 끝나기 전의 수동 재시도는 그 결과를
+기다린다. 방 참가 전 미리보기 구독도 `hidden` 이상을 거친 복귀에서만 다시 연다.
+
 playing player의 1초 검사, controller의 10초 검사와 age > 20초 조건을 유지한다.
 신고는 관찰 당시 current id/seq/lastSeen을 함께 보내고 서버가 같은 root CAS에서 재검증한다.
 presence true 자체는 ready가 아니다. timer의 last-normal/first pause/none/0/턴 상한과 ready barrier를 유지한다.
@@ -444,6 +480,70 @@ lastSeen이 현재보다 미래가 아니며20초 이내인 기기만1회 현재
 표식을 검사하지 않는다. 이 후보는 새 테스트 Firebase 프로젝트에서 먼저 검증한다.
 
 
+## 2026-11-17 — 복구 전 자격 확인의 권위 출처(미배포)
+
+실기기에서 복귀 후 `reason=membership-mismatch`로 모든 복구·수동 재시도가 거절되는
+현상을 확인했다. 자동 복구의 join 준비는 저장 신원과 RTDB `players/{uid}` 읽기를 서로
+비교해 다르면 거절했다. 복귀 직후의 `get()`은 아직 되살아나지 않은 연결의 SDK 캐시를
+돌려줄 수 있고 저장 신원은 중단된 재참가 뒤 한 세대 뒤처질 수 있으므로, 두 로컬 값의
+불일치는 자격 상실의 근거가 아니다. 캐시가 오래된 동안 같은 이유로 모든 재시도가
+막혔다.
+
+이제 저장 신원의 roomInstanceId 또는 membershipId가 읽은 요약과 다르면
+`fetchRealtimeRoomSession`을 한 번 호출하고, 그 응답의 roomInstanceId·membershipId·
+connectionSeq를 join 준비 값으로 채택한다. 두 로컬 값과의 일치를 요구하지 않는다.
+이 조회는 현재 참가 자격이 없으면 서버가 permission-denied로 거절하므로, 자동 복구가
+새 참가를 만들지 않는다는 기존 계약은 유지된다. 최종 판정은 기존 joinRealtimeRoom
+transaction의 CAS가 그대로 수행하며, 채택한 값이 그사이 밀리면 staleConnection으로
+거절되어 기존 재시도 예산 안에서 다시 시도한다. 명시적으로
+`players/{uid}.status`가 active가 아닌 경우의 거절(`player-not-active`)은 유지한다.
+서버 함수·Rules·영속 데이터 형식 변경은 없다.
+
+후속 재현의 `reason=player-not-active`는 참가자 노드 자체가 없어서가 아니라 초기
+스키마의 `players/{uid}`에 `status` 필드가 없는 경우였다. 서버 join 정책과
+`RoomPlayer.fromJson`은 누락을 active로 호환하지만, 클라이언트 복구 사전 판정 세 곳은
+문자열 `active`만 허용해 정상 참가자를 거절했다. 복구 가능 세션 판정·실제 reconnect·
+퇴장 완료 확인을 같은 규칙으로 맞춘다. 참가자 노드가 없거나 `inactive`가 명시된 경우는
+계속 거절한다.
+
+두 번째 후속 재현에서는 참가자 요약의 연결 끊김은 정상으로 돌아왔지만 공용
+`AppNetworkGuard`의 실패 띠만 남았다. transport가 이미 true인 상태에서
+`RoomProvider`의 자체 재시도가 성공하면 `.info/connected` 값은 바뀌지 않아 가드가
+성공을 관찰할 수 없었다. 실패 뒤 방 세션 복구가 성공한 경우에만 provider의 화면용
+연결 스트림에 중복 true를 보낸다. 가드는 기존 `retryConnectionRecovery`의 즉시 반환으로
+최종 검증하고 실패 상태를 닫으며, 일반 연결 띠는 이미 연결된 중복 true를 무시한다.
+실제 false/true transport 의미와 서버 presence 데이터는 바꾸지 않는다.
+
+## 2026-11-16 — 오프라인 대기실 퇴장(미배포)
+
+사용자 결정: 인터넷이 끊긴 휴대폰 대기실에서도 나갈 수 있다. 연결이 끊긴 동안 화면
+아래 연결 띠 오른쪽에 `나가기` 버튼을 둔다(`AppNetworkGuard.showExitInBand`). 띠의
+나머지와 화면 전체는 계속 `눌러서 재시도`다. 게임 화면은 기존 상단 메뉴의 나가기를
+쓰므로 띠 버튼을 두지 않는다.
+
+버튼을 누르면 기기에서는 즉시 방을 떠나 홈으로 간다. 퇴장 의도를 먼저 기록해 연결
+복구·자동 복원이 이 방으로 다시 참가시키지 않는다. 서버 퇴장은 기존
+`leaveRealtimeRoom`과 durable 퇴장 작업을 그대로 쓰며, `DeferredRoomLeave`가 화면·
+provider와 무관하게 즉시 한 번, 이후 연결될 때마다 최대 6회 다시 보낸다. 그동안
+다른 참가자에게는 연결 끊김으로 보인다. 저장된 방 세션은 퇴장 확정 전에는 지우지
+않으며, 이번 실행에서 확정하지 못하면 다음 실행의 이전 세션 확인이 같은 퇴장을
+마무리한다. 연결돼 있거나 진행 기기이면 일반 퇴장과 같다. 새 callable·영속 필드·
+서버 규칙 변경은 없다. 게임 중 오프라인 퇴장은 게임별 퇴장 callable이 필요해 이
+범위에 넣지 않았다.
+
+## 2026-11-16 — 오래된 화면의 준비 보고와 새 라운드 손패(미배포)
+
+준비 보고가 `staleContext`로 거절되고 서버 context가 로컬보다 앞서 있으면 준비 실패로
+굳히지 않는다. 앱 복귀 직후 구독이 캐시된 이전 공개·개인 상태를 먼저 전달한 경우이므로
+공개 상태를 다시 읽고 구독을 다시 연 뒤 같은 준비 예산 안에서 다시 보고한다. 한 준비
+회차에 최대 3회이며, 그래도 따라잡지 못하거나 `dataMissing`·`stale`·그 밖의 미승인
+응답이면 기존 실패 안내와 명시 재시도를 유지한다. 승인 전 입력 보호는 그대로다.
+
+라이어스 포커 휴대폰은 공개 상태의 라운드가 바뀌거나 새 분배 단계에 들어가면 이전
+라운드의 손패를 비운다. 서버는 분배 완료 전 개인 노드를 비우므로, 새 라운드와 대응하는
+개인 손패가 도착하기 전에 이전 카드를 새 손패처럼 보여 주지 않는다. 서버 규칙·데이터
+형식 변경은 없다.
+
 ## 2026-11-06 — 앱 복귀 후 입력 잠금 해소 후보(미배포)
 
 GameSessionController.retryRecovery는 transportRecovering 또는 transportConnected=false일
@@ -475,11 +575,31 @@ AppNetworkGuard/CriticalNetworkGuard의 blockChildInput은 기본 true를 유지
 현재 game status를 확인한다. 이 확인이 끝나기 전에는 어느 기기도 로비를 먼저
 노출하지 않는다.
 
-이전 세션이 있으면 휴대폰과 태블릿 모두 사용자에게 복귀 여부를 묻는다. 진행 게임은
-게임 복귀, 대기 방은 그룹 복귀로 구분한다. 휴대폰은 수락 전 참가자 복원/heartbeat를
-시작하지 않는다. 태블릿은 controller 소유권과 방 연결을 보존하되 게임 화면은 수락
-전 자동으로 열지 않는다. 거절은 서버에서 퇴장·방 종료가 확인된 뒤에만 안내를 닫는다.
-확인 실패를 `이전 게임 없음`으로 간주하지 않으며 재시도 경로를 남긴다.
+2026-11-16 사용자 결정으로 아래와 같이 바꿨다. 이전의 `휴대폰·태블릿 모두 복귀 여부를
+묻는다`는 계약은 폐기한다.
+
+진행 중인 게임은 묻지 않고 자동으로 복귀한다. 휴대폰은 저장된 membership으로 참가자를
+복원해 같은 자리·손패로 게임 화면에 들어가고, 태블릿은 controller 방을 복원한 뒤 게임
+화면을 연다. 자동 복귀가 실패하면 `이전 게임 없음`으로 간주하지 않고 재시도 경로를
+남긴다. 게임이 시작되지 않은 대기 방만 그룹 복귀 여부를 묻는다. 대기 방의 거절은
+서버에서 퇴장·방 종료가 확인된 뒤에만 안내를 닫는다.
+
+연결 문제도 같은 원칙이다. 묻는 화면·전체 화면 안내 대신 자동 재연결을 먼저 시도하고,
+실패하면 화면 아래 띠를 눌러 다시 연결한다. 방 연결 복구가 실패하면 3초·10초 뒤 두 번
+자동으로 다시 시도하고, 그래도 실패하면 재시도 띠·앱 복귀·네트워크 재연결이 다음 복구를
+시작한다. 무한 자동 polling은 추가하지 않는다.
+
+foreground 복구가 참가자 프로필을 다시 전송할 때는 현재 players 구독 값을 우선하고,
+구독 재생 전이라 값이 없으면 메모리의 가입 값, 마지막으로 같은 UID·같은 방에 저장된
+`PlayerRoomSession`의 공개 닉네임·캐릭터를 사용한다. 다른 UID나 방의 저장값은 사용하지
+않는다. 이 fallback은 새 참가 자격을 만들지 않으며, 서버의 `preserveProfile`
+검증을 그대로 거친다. 로컬 identity의 membership만 서버보다 오래되었다면 같은
+roomInstance의 active player이고 `fetchRealtimeRoomSession`이 RTDB의 현재
+membership·connectionSeq를 동일하게 확인한 경우만 그 membership으로 새 연결을
+발급받는다. 다른 roomInstance이거나 player가 없음·비활성·확인값 불일치면
+계속 거부한다. 이전 connection 발급 pending이 남았어도 같은 roomInstance의
+현재 active membership을 위 조회가 확인하면 오래된 pending을 완료 처리한 뒤 그
+membership으로 새 connection을 발급한다. 제거된 membership은 위 조회가 거부한다.
 
 Final Call 라운드 결과에서는 팀원의 직접 life loss가 0이어도 teammate elimination
 문구를 카드 공개 전에 표시하지 않는다. 좌석 plate의 기존 탈락 표시는 유지하고,

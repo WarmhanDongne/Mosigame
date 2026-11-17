@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -12,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/widgets/game_exit_route.dart';
 import 'package:game_kit/phone/widgets/result_dialog.dart';
 import 'package:game_kit/recovery/services/game_interruption_command_service.dart';
@@ -22,15 +21,16 @@ import 'package:game_liars_poker/shared/services/command_service.dart';
 import 'package:game_liars_poker/shared/services/game_service.dart';
 import 'package:game_liars_poker/shared/services/query_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  TestFirebaseCoreHostApi.setUp(FirebaseTestCore());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     FirebaseAuthPlatform.instanceFor(
-      app: Firebase.app(),
+      app: FirebaseBackend.app,
       pluginConstants: {
         'APP_CURRENT_USER': [
           InternalUserInfo(
@@ -42,7 +42,7 @@ void main() {
         ],
       },
     );
-    expect(FirebaseAuth.instance.currentUser?.uid, 'phone');
+    expect(FirebaseBackend.auth.currentUser?.uid, 'phone');
   });
 
   var roomNumber = 0;

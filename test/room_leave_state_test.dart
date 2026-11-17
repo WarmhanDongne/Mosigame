@@ -447,6 +447,9 @@ class _LeaveRoomService implements RoomService {
   Stream<bool> watchServerConnection() => serverConnection.stream;
 
   @override
+  Future<void> resumeRealtimeConnection() async {}
+
+  @override
   Stream<ControllerPresence> watchControllerPresence(String roomCode) =>
       controllerPresence.stream;
 

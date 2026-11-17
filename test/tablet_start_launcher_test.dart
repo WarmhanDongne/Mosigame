@@ -21,6 +21,7 @@ import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:project00/platform/home/tablet/tablet_game_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 const _identity = RoomSessionIdentity(
   uid: 'launcher-controller',
@@ -52,7 +53,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_Core());
   setUpAll(() async {
-    await Firebase.initializeApp();
+    await initializeFirebaseAppsForTest();
     if (FirebaseBackend.isLocal) {
       await Firebase.initializeApp(
         name: FirebaseBackend.appName,

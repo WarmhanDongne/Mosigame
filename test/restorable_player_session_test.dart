@@ -17,6 +17,20 @@ void main() {
       );
     });
 
+    test('treats a legacy player without status as active', () {
+      expect(
+        restorablePlayerSession(
+          playerExists: true,
+          playerStatus: null,
+          roomStatus: 'waiting',
+          selectedGameId: null,
+          gameStatus: null,
+          privateGameDataExists: false,
+        ),
+        RestorableSession.waitingRoom,
+      );
+    });
+
     test('allows an active player to return while seating is in progress', () {
       expect(
         restorablePlayerSession(

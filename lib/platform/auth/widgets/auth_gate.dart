@@ -16,7 +16,6 @@ import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_design.dart';
 import 'package:project00/platform/home/home.dart';
 import 'package:game_kit/template_game.dart';
-import 'package:project00/platform/widgets/platform_components.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
 
 class AuthGate extends StatefulWidget {
@@ -115,7 +114,8 @@ class _AuthGateState extends State<AuthGate> {
         return _AuthSurfaceTransition(
           child: KeyedSubtree(
             key: ValueKey(view is Home ? 'home' : 'auth'),
-            child: view is Home
+            // 오류 화면은 보라 바탕 + 아래 시트를 직접 그리므로 틀 없이 둡니다.
+            child: view is Home || view is _GateErrorView
                 ? view
                 : MosiAuthScaffold(child: MosiAuthTransition(child: view)),
           ),
@@ -482,6 +482,10 @@ class _LegacyRecoveryViewState extends State<_LegacyRecoveryView> {
   }
 }
 
+/// 계정·가입 상태를 불러오지 못했을 때의 화면입니다(시안 07-B).
+///
+/// 로비와 같은 보라 점무늬 바탕에 노란 느낌표 스티커와 큰 안내를 두고,
+/// 아래 흰 시트에 원인 한 줄과 로그아웃 · 다시 시도 버튼을 나란히 둡니다.
 class _GateErrorView extends StatelessWidget {
   const _GateErrorView({required this.message, required this.onRetry});
 
@@ -490,22 +494,209 @@ class _GateErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        PlatformNotice(message: message, style: PlatformNoticeStyle.danger),
-        const SizedBox(height: 12),
-        PlatformButton(label: '다시 시도'.localized, onPressed: onRetry),
-        const SizedBox(height: 8),
-        TextButton(
-          // 누를 때 찾습니다. 빌드할 때 찾으면 Firebase 준비가 늦거나 실패한
-          // 상황에서 **이 오류 화면 자체가 다시 터집니다.**
-          onPressed: () => unawaited(FirebaseBackend.auth.signOut()),
-          child: Text('로그아웃'.localized),
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    return Material(
+      color: MosiColors.violet,
+      child: CustomPaint(
+        painter: const _GateDotsPainter(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 48, 28, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ExcludeSemantics(
+                        child: Transform.rotate(
+                          angle: -0.1,
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: MosiColors.sun,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: MosiColors.ink,
+                                width: 4,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: MosiColors.navy,
+                                  offset: Offset(0, 7),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              '!',
+                              style: MosiFonts.sans(
+                                size: 52,
+                                weight: FontWeight.w800,
+                                color: MosiColors.ink,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        GameLocale.select(
+                          ko: '계정 상태를\n불러오지 못했어요',
+                          en: 'Couldn’t load\nyour account',
+                          zhHans: '无法加载\n账号状态',
+                          zhHant: '無法載入\n帳號狀態',
+                        ),
+                        style: MosiFonts.sans(
+                          size: 30,
+                          weight: FontWeight.w700,
+                          color: MosiColors.white,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        GameLocale.select(
+                          ko: '잠깐 연결이 불안했을 수 있어요.\n로그인 정보는 지워지지 않았어요.',
+                          en: 'The connection may have dropped for a moment.\nYou are still signed in.',
+                          zhHans: '可能是网络短暂不稳定。\n登录信息没有被删除。',
+                          zhHant: '可能是網路短暫不穩定。\n登入資訊沒有被刪除。',
+                        ),
+                        style: MosiFonts.sans(
+                          size: 15,
+                          color: const Color(0xFFD9D3FF),
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.fromLTRB(22, 22, 22, 24 + bottomInset),
+              decoration: const BoxDecoration(
+                color: MosiColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(color: MosiColors.ink, width: 4),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    liveRegion: true,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: MosiColors.cream,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: MosiColors.ink, width: 3),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            margin: const EdgeInsets.only(top: 5),
+                            decoration: BoxDecoration(
+                              color: MosiColors.coral,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: MosiColors.ink,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              message,
+                              style: MosiFonts.sans(
+                                size: 13,
+                                weight: FontWeight.w600,
+                                color: MosiColors.navy,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: MosiButton(
+                          label: '로그아웃'.localized,
+                          expand: true,
+                          height: 56,
+                          radius: 14,
+                          shadowOffset: 5,
+                          background: MosiColors.white,
+                          foreground: MosiColors.red,
+                          // 누를 때 찾습니다. 빌드할 때 찾으면 Firebase 준비가 늦거나 실패한
+                          // 상황에서 **이 오류 화면 자체가 다시 터집니다.**
+                          onPressed: () =>
+                              unawaited(FirebaseBackend.auth.signOut()),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 8,
+                        child: MosiButton(
+                          label: '다시 시도'.localized,
+                          expand: true,
+                          height: 56,
+                          fontSize: 17,
+                          radius: 14,
+                          shadowOffset: 5,
+                          background: MosiColors.lime,
+                          foreground: MosiColors.ink,
+                          onPressed: onRetry,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
+}
+
+/// 로비와 같은 옅은 흰 점무늬입니다.
+class _GateDotsPainter extends CustomPainter {
+  const _GateDotsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0x21FFFFFF);
+    const gap = 22.0;
+    for (var y = gap / 2; y < size.height; y += gap) {
+      for (var x = gap / 2; x < size.width; x += gap) {
+        canvas.drawCircle(Offset(x, y), 1.8, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// 앱을 준비하는 동안 보여 주는 화면입니다.

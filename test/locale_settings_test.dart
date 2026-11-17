@@ -1,4 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +15,7 @@ import 'package:project00/platform/localization/locale_settings.dart';
 import 'package:project00/platform/localization/locale_settings_button.dart';
 import 'package:project00/platform/theme/platform_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 Widget _app(LocaleSettings settings, Widget home, {double scale = 1}) =>
     LocaleSettingsScope(
@@ -44,7 +44,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_FirebaseCore());
   setUpAll(() async {
-    await Firebase.initializeApp();
+    await initializeFirebaseAppsForTest();
     for (final (family, files) in const [
       ('IBMPlexSansKR', ['IBMPlexSansKR-Regular', 'IBMPlexSansKR-Bold']),
       ('SpaceGrotesk', ['SpaceGrotesk-Bold']),
@@ -289,7 +289,7 @@ class _FailingSettings extends LocaleSettings {
   Future<bool> save(AppLanguage nextLanguage, String nextRegion) async => false;
 }
 
-class _FirebaseCore extends MockFirebaseApp {
+class _FirebaseCore extends FirebaseTestCore {
   @override
   Future<List<CoreInitializeResponse>> initializeCore() async {
     final apps = await super.initializeCore();

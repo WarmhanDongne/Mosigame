@@ -121,10 +121,11 @@ abstract final class LiarsPokerFonts {
 // 덱 구성
 // ---------------------------------------------------------------------------
 /// 서버 덱 규칙(functions/src/liars-poker/common/deck.ts)과 같은 인원별 장수입니다.
-/// 전체는 인원×5+3장이고, 진실은 인원×1.65를 반올림한 장수(2~6인 3·5·7·8·10장)입니다.
+/// 전체는 2·3인 15장, 4인부터 인원×5장이고, 진실은 인원×2.1을 반올림한
+/// 장수(2~6인 4·6·8·11·13장)입니다.
 ({int truth, int lie}) liarsPokerDeckCounts(int playerCount) {
-  final total = playerCount * 5 + 3;
-  final truth = (playerCount * 1.65).round();
+  final total = playerCount * 5 < 15 ? 15 : playerCount * 5;
+  final truth = (playerCount * 2.1).round();
   return (truth: truth, lie: total - truth);
 }
 

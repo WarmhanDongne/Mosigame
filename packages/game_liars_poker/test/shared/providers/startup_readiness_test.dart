@@ -207,6 +207,147 @@ void main() {
       expect(game.errorMessage, isNull);
     },
   );
+
+  testWidgets('a new round never shows the previous round hand as its own', (
+    tester,
+  ) async {
+    start();
+    query.pub.add(_Event(_public('playing')));
+    query.priv.add(_Event(_private('liars-startup')));
+    await tester.pump();
+    expect(game.handCards, hasLength(1));
+
+    // 앱을 잠시 떠나 분배 단계를 놓치고 다음 라운드의 공개 상태만 먼저 받습니다.
+    final nextRound = {
+      ..._public('playing'),
+      'round': 2,
+      'phaseSeq': 3,
+      'turnSeq': 4,
+      'dataSeq': 9,
+      'revision': 9,
+    };
+    query.pub.add(_Event(nextRound));
+    await tester.pump();
+    expect(
+      game.handCards,
+      isEmpty,
+      reason: 'the previous round cards are not the new hand',
+    );
+    expect(game.isEntryDataReady, false);
+    expect(game.localUsable, false);
+
+    query.priv.add(
+      _Event(
+        _private(
+          'liars-startup',
+          phaseSeq: 3,
+          turnSeq: 4,
+          dataSeq: 9,
+          cards: 5,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(game.handCards, hasLength(5));
+    expect(game.isEntryDataReady, true);
+    // 준비 대기 타이머는 화면 폐기와 함께 정리됩니다.
+    container.dispose();
+  });
+
+  testWidgets('dealing for a new round hides the previous round hand', (
+    tester,
+  ) async {
+    start();
+    query.pub.add(_Event(_public('playing')));
+    query.priv.add(_Event(_private('liars-startup')));
+    await tester.pump();
+    expect(game.handCards, hasLength(1));
+
+    query.pub.add(
+      _Event({
+        ..._public('dealing'),
+        'round': 2,
+        'phaseSeq': 2,
+        'turnSeq': 2,
+        'dataSeq': 5,
+        'revision': 5,
+      }),
+    );
+    // 서버는 분배 중 개인 노드를 비웁니다.
+    query.priv.add(_Event(null));
+    await tester.pump();
+    expect(game.handCards, isEmpty);
+    // 준비 대기 타이머는 화면 폐기와 함께 정리됩니다.
+    container.dispose();
+  });
+
+  testWidgets(
+    'a ready report rejected as stale reloads the latest state instead of failing',
+    (tester) async {
+      start();
+      // 복귀 직후 구독이 캐시된 이전 공개·개인 상태를 먼저 전달합니다.
+      query.pub.add(
+        _Event({
+          ..._public('playing'),
+          'recovery': {'paused': false},
+        }),
+      );
+      query.priv.add(_Event(_private('liars-startup')));
+      await tester.pump();
+      final latest = {
+        ..._public('playing'),
+        'round': 2,
+        'phaseSeq': 3,
+        'turnSeq': 4,
+        'dataSeq': 9,
+        'revision': 9,
+        'recovery': {'paused': false},
+      };
+      reports.responses.add({
+        'status': 'staleContext',
+        'context': {
+          'gameInstanceId': 'liars-startup',
+          'phaseSeq': 3,
+          'turnSeq': 4,
+          'dataSeq': 9,
+        },
+      });
+      query.latestPublic = latest;
+
+      final prepared = game.prepareScreen(() async {});
+      await tester.pump();
+      await tester.pump();
+      await prepared;
+      await tester.pump();
+      await tester.pump();
+
+      expect(reports.ready, [true]);
+      expect(query.publicReads, 1, reason: 'the stale screen is reloaded');
+      expect(game.errorMessage, isNull);
+      expect(game.handCards, isEmpty);
+
+      query.priv.add(
+        _Event(
+          _private(
+            'liars-startup',
+            phaseSeq: 3,
+            turnSeq: 4,
+            dataSeq: 9,
+            cards: 5,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(game.handCards, hasLength(5));
+      expect(reports.ready, [true, true]);
+      expect(game.errorMessage, isNull);
+      expect(game.recoverySession.serverConfirmed, true);
+      expect(game.recoverySession.canSend, true);
+    },
+  );
 }
 
 Map<String, dynamic> _public(String phase) => {
@@ -226,15 +367,22 @@ Map<String, dynamic> _public(String phase) => {
   'recovery': {'paused': true, 'pauseId': 'startup'},
 };
 
-Map<String, dynamic> _private(String gameId) => {
+Map<String, dynamic> _private(
+  String gameId, {
+  int phaseSeq = 1,
+  int turnSeq = 1,
+  int dataSeq = 1,
+  int cards = 1,
+}) => {
   '_context': {
     'gameInstanceId': gameId,
-    'phaseSeq': 1,
-    'turnSeq': 1,
-    'dataSeq': 1,
+    'phaseSeq': phaseSeq,
+    'turnSeq': turnSeq,
+    'dataSeq': dataSeq,
   },
   'hand': {
-    'card-1': {'rank': 'TRUTH'},
+    for (var index = 1; index <= cards; index += 1)
+      'card-$dataSeq-$index': {'rank': 'TRUTH'},
   },
 };
 
@@ -262,8 +410,13 @@ class _Query extends Fake implements LiarsPokerQueryService {
     required String roomCode,
     required String uid,
   }) => priv.stream;
+  Object? latestPublic;
+  int publicReads = 0;
   @override
-  Future<DataSnapshot> readPublicGame(String roomCode) async => _Snapshot(null);
+  Future<DataSnapshot> readPublicGame(String roomCode) async {
+    publicReads += 1;
+    return _Snapshot(latestPublic);
+  }
 }
 
 class _Commands extends Fake implements LiarsPokerCommandService {
@@ -281,6 +434,7 @@ class _Commands extends Fake implements LiarsPokerCommandService {
 
 class _Reports extends Fake implements GameInterruptionCommandService {
   final ready = <bool>[];
+  final responses = <Map<String, dynamic>>[];
   @override
   Future<Map<String, dynamic>> report({
     required String roomCode,
@@ -289,6 +443,7 @@ class _Reports extends Fake implements GameInterruptionCommandService {
     required bool ready,
   }) async {
     this.ready.add(ready);
+    if (responses.isNotEmpty) return responses.removeAt(0);
     return {'status': 'accepted'};
   }
 }

@@ -1,13 +1,13 @@
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:project00/platform/localization/lobby_connection_band.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/mosi_ui/mosi_game_art.dart';
 import 'package:game_kit/localization/game_locale.dart';
-import 'package:project00/platform/home/phone/widgets/phone_game_card.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_leave_transition.dart';
 import 'package:game_kit/core/diagnostics/crash_reporting.dart';
@@ -22,7 +22,6 @@ import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_leave_button.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
-import 'package:project00/platform/home/phone/widgets/phone_room_participant_list.dart';
 import 'package:project00/platform/home/phone/widgets/controller_reconnect_guard.dart';
 import 'package:project00/platform/home/phone/widgets/lobby_reconnect_guard.dart';
 import 'package:project00/platform/theme/platform_theme.dart';
@@ -47,6 +46,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     with TickerProviderStateMixin {
   StreamSubscription<String?>? _gameStatusSubscription;
   String? _subscribedRoomCode;
+  int _subscribedForegroundRevision = -1;
   String? _latestGameStatus;
   bool _isOpeningGame = false;
   bool _isHandlingForcedExit = false;
@@ -212,17 +212,22 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
       unawaited(_gameStatusSubscription?.cancel());
       _gameStatusSubscription = null;
       _subscribedRoomCode = null;
+      _subscribedForegroundRevision = -1;
       _latestGameStatus = null;
       return;
     }
 
-    if (_subscribedRoomCode == roomCode && _gameStatusSubscription != null) {
+    final foregroundRevision = widget.provider.foregroundRefreshRevision;
+    if (_subscribedRoomCode == roomCode &&
+        _subscribedForegroundRevision == foregroundRevision &&
+        _gameStatusSubscription != null) {
       _openGameIfReady(roomCode);
       return;
     }
 
     unawaited(_gameStatusSubscription?.cancel());
     _subscribedRoomCode = roomCode;
+    _subscribedForegroundRevision = foregroundRevision;
     _latestGameStatus = null;
     _gameStatusSubscription = widget.provider.watchGameStatus(roomCode).listen((
       status,
@@ -242,6 +247,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     if (_latestGameStatus != 'playing' ||
         _isOpeningGame ||
         widget.provider.isLeaving ||
+        !widget.provider.isAppForeground ||
         !mounted) {
       return;
     }
@@ -290,7 +296,10 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
         );
       return;
     }
-    if (!mounted) {
+    if (!mounted ||
+        !widget.provider.isAppForeground ||
+        widget.provider.roomCode != roomCode ||
+        widget.provider.selectedGameId != game.id) {
       _isOpeningGame = false;
       return;
     }
@@ -310,9 +319,6 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
         ),
         child: ControllerReconnectGuard(
           provider: widget.provider,
-          onExit: () => unawaited(
-            _leaveGameFromReconnect(gameContext: gameContext, game: game),
-          ),
           child: game.buildPhoneScreen(
             roomCode: roomCode,
             provider: widget.provider,
@@ -345,6 +351,20 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     final left = await widget.provider.leaveGame(game.id);
     if (!gameContext.mounted || !left) return;
     Navigator.of(gameContext).pop(true);
+  }
+
+  /// 연결 띠의 나가기입니다. 기기에서는 바로 홈으로 가고 서버 퇴장은 연결 뒤에
+  /// 보냅니다. 그사이 연결이 돌아왔다면 일반 퇴장과 같습니다.
+  Future<void> _leaveRoomWhileDisconnected() async {
+    if (_leaveStage == PhoneRoomLeaveStage.leaving || !mounted) return;
+    if (widget.provider.isServerConnected) {
+      await _leaveRoomWithTransition();
+      return;
+    }
+    final left = await widget.provider.leaveRoomDeferred();
+    if (!left || !mounted) return;
+    unawaited(AppSystemUi.showPlatformSystemBars());
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   Future<bool> _leaveRoomWithTransition() async {
@@ -459,15 +479,12 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
   Widget _buildBody(BuildContext context) {
     final guarded = CriticalNetworkGuard(
       provider: widget.provider,
-      onExit: () {
-        unawaited(AppSystemUi.showPlatformSystemBars());
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      },
+      // 연결이 끊긴 동안에도 띠의 나가기 버튼으로 방을 떠날 수 있습니다.
+      showExitInBand: true,
+      exitLabel: '나가기',
+      onExit: () => unawaited(_leaveRoomWhileDisconnected()),
       child: LobbyReconnectGuard(
         provider: widget.provider,
-        onExit: () async {
-          return _leaveRoomWithTransition();
-        },
         child: AnimatedBuilder(
           animation: widget.provider,
           builder: (context, _) {
@@ -720,14 +737,14 @@ class _GroupWaitingContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _WaitingHero(
-          title: finished
-              ? '게임이 끝났어요'.localized
-              : '태블릿에서 게임을\n고르는 중이에요'.localized,
+        _TabletPickingHero(
+          title: finished ? '게임이 끝났어요'.localized : '게임 고르는 중…'.localized,
           message: finished
               ? '태블릿에서 다음 게임을 고르는 중입니다'.localized
-              : '고르면 이 화면이 바로 바뀌어요'.localized,
-          characterIds: [for (final player in players) player.characterId],
+              : '고르면 이 화면이 바로 시작 화면으로 바뀌어요'.localized,
+          games: provider.groupGamesLoadStatus == RoomDataLoadStatus.loaded
+              ? provider.groupGames
+              : const [],
         ),
         Expanded(
           // 위쪽 테두리만 검은 선으로 보이도록 검은 판 위에 흰 판을 3px 내려 겹칩니다.
@@ -747,7 +764,7 @@ class _GroupWaitingContent extends StatelessWidget {
                   child: ListView(
                     padding: EdgeInsets.fromLTRB(20, 26, 24, 28 + bottomInset),
                     children: [
-                      PhoneRoomParticipantList(
+                      _ParticipantSummary(
                         players: players,
                         myUid: FirebaseBackend.auth.currentUser?.uid,
                       ),
@@ -766,7 +783,12 @@ class _GroupWaitingContent extends StatelessWidget {
                             : null,
                       ),
                       const SizedBox(height: 12),
-                      _GroupGamesContent(provider: provider),
+                      _GroupGamesContent(
+                        provider: provider,
+                        playerCount: players
+                            .where((player) => player.isPlayer)
+                            .length,
+                      ),
                       if (provider.errorMessage != null) ...[
                         const SizedBox(height: 12),
                         PlatformNotice(
@@ -820,99 +842,349 @@ class _SheetSectionTitle extends StatelessWidget {
   );
 }
 
-/// 보라 바탕 위의 큰 안내 문구와 참여자 얼굴 묶음입니다.
-class _WaitingHero extends StatelessWidget {
-  const _WaitingHero({
+/// 보라 바탕 위에 기울어진 태블릿 그림과 안내 문구를 둡니다.
+///
+/// 태블릿 화면 속 그룹 게임 표지가 차례로 떠오르고, 손가락이 그 표지를
+/// 톡톡 누르는 모습으로 "태블릿에서 고르는 중"임을 보여 줍니다.
+class _TabletPickingHero extends StatefulWidget {
+  const _TabletPickingHero({
     required this.title,
     required this.message,
-    required this.characterIds,
+    required this.games,
   });
 
   final String title;
   final String message;
-  final List<String> characterIds;
+  final List<GameInfo> games;
+
+  @override
+  State<_TabletPickingHero> createState() => _TabletPickingHeroState();
+}
+
+class _TabletPickingHeroState extends State<_TabletPickingHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+  int _highlight = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      // 손가락이 한 번 누를 때마다 다음 표지로 넘어갑니다.
+      setState(() => _highlight++);
+      _controller.forward(from: 0);
+    });
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final faces = characterIds.take(4).toList();
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (reduceMotion && _controller.isAnimating) _controller.stop();
+    final games = widget.games.take(3).toList(growable: false);
+    final count = games.isEmpty ? 3 : games.length;
+    final highlighted = _highlight % count;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
         children: [
+          ExcludeSemantics(
+            child: SizedBox(
+              width: 270,
+              height: 178,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: 10,
+                    top: 8,
+                    child: Transform.rotate(
+                      angle: -4 * math.pi / 180,
+                      child: Container(
+                        width: 250,
+                        height: 150,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B1B1F),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: MosiColors.violetDeep,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2B1E6B),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (var i = 0; i < count; i++) ...[
+                                if (i > 0) const SizedBox(width: 8),
+                                _PickingCover(
+                                  game: games.isEmpty ? null : games[i],
+                                  highlighted: i == highlighted,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 고르는 표지 쪽으로 손가락이 따라가며 톡톡 누릅니다.
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 380),
+                    curve: Curves.easeOutCubic,
+                    left: 135 + (highlighted - (count - 1) / 2) * 60 - 4,
+                    top: 118,
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) {
+                        final tap = math.sin(_controller.value * math.pi);
+                        return Transform.translate(
+                          offset: Offset(-4 * tap, -10 * tap),
+                          child: child,
+                        );
+                      },
+                      child: const Icon(
+                        Icons.touch_app_rounded,
+                        size: 44,
+                        color: MosiColors.white,
+                        shadows: [
+                          Shadow(color: MosiColors.ink, offset: Offset(2, 2)),
+                          Shadow(
+                            color: MosiColors.ink,
+                            offset: Offset(-1.5, -1),
+                          ),
+                          Shadow(
+                            color: MosiColors.ink,
+                            offset: Offset(1.5, -1),
+                          ),
+                          Shadow(color: MosiColors.ink, offset: Offset(-1, 2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            widget.title,
+            textAlign: TextAlign.center,
+            style: MosiFonts.sans(
+              size: 22,
+              weight: FontWeight.w700,
+              color: MosiColors.white,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _WaitingStatusBanner(message: widget.message, center: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// 태블릿 그림 속 작은 게임 표지입니다. 고르는 표지는 노란 테두리로 떠오릅니다.
+class _PickingCover extends StatelessWidget {
+  const _PickingCover({required this.game, required this.highlighted});
+
+  final GameInfo? game;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final game = this.game;
+    final cover = game == null
+        ? Container(
+            width: 52,
+            height: 70,
+            decoration: BoxDecoration(
+              color: const Color(0x33FFFFFF),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          )
+        : MosiGameCover(
+            gameId: game.id,
+            width: 52,
+            shadow: 0,
+            fallbackName: game.name,
+            fallbackImageUrl: game.imageUrl,
+            displayName: game.localizedName(Localizations.localeOf(context)),
+            englishName: game.englishName,
+          );
+    return AnimatedScale(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutBack,
+      scale: highlighted ? 1.12 : 1,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutBack,
+        offset: Offset(0, highlighted ? -.1 : 0),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: highlighted ? MosiColors.sun : Colors.transparent,
+              width: 3,
+            ),
+          ),
+          child: cover,
+        ),
+      ),
+    );
+  }
+}
+
+/// 흰 시트 맨 위의 참여자 요약입니다. 겹친 얼굴과 빈 자리, 이름 한 줄.
+class _ParticipantSummary extends StatelessWidget {
+  const _ParticipantSummary({required this.players, required this.myUid});
+
+  final List<RoomPlayer> players;
+  final String? myUid;
+
+  @override
+  Widget build(BuildContext context) {
+    final faces = players.take(5).toList(growable: false);
+    final emptySlots = math.max(0, math.min(2, 6 - players.length));
+    final names = [
+      for (final player in players)
+        player.uid == myUid
+            ? GameLocale.select(
+                ko: '${player.nickname}(나)',
+                en: '${player.nickname} (me)',
+                zhHans: '${player.nickname}（我）',
+                zhHant: '${player.nickname}（我）',
+              )
+            : player.nickname,
+    ].join(', ');
+    const size = 48.0;
+    const step = 36.0;
+    final slots = faces.length + emptySlots;
+    return Semantics(
+      container: true,
+      label: GameLocale.select(
+        ko: '참여자 ${players.length}명: $names',
+        en: '${players.length} players: $names',
+        zhHans: '${players.length} 名玩家：$names',
+        zhHant: '${players.length} 名玩家：$names',
+      ),
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          SizedBox(
+            width: slots == 0 ? 0 : size + (slots - 1) * step,
+            height: size,
+            child: Stack(
+              children: [
+                for (var i = emptySlots - 1; i >= 0; i--)
+                  Positioned(
+                    left: (faces.length + i) * step,
+                    child: Container(
+                      width: size,
+                      height: size,
+                      decoration: BoxDecoration(
+                        color: MosiColors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFBDB7D9),
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                for (final (i, player) in faces.indexed.toList().reversed)
+                  Positioned(
+                    left: i * step,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        MosiFace(
+                          characterId: player.characterId,
+                          size: size,
+                          ring: true,
+                        ),
+                        if (player.uid == myUid)
+                          Positioned(
+                            right: -2,
+                            bottom: -4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: MosiColors.lime,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: MosiColors.ink,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Text(
+                                '나'.localized,
+                                style: MosiFonts.sans(
+                                  size: 10,
+                                  weight: FontWeight.w700,
+                                  color: MosiColors.ink,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: MosiColors.sun,
-                    border: Border.all(color: MosiColors.ink, width: 2),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '대기실'.localized,
-                    style: MosiFonts.sans(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: MosiColors.ink,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Text(
-                  title,
+                  players.isEmpty ? '아직 참여자가 없습니다.'.localized : names,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: MosiFonts.sans(
-                    size: 25,
+                    size: 16,
                     weight: FontWeight.w700,
-                    color: MosiColors.white,
+                    color: MosiColors.navy,
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 10),
-                _WaitingStatusBanner(message: message),
+                const SizedBox(height: 2),
+                Text(
+                  GameLocale.select(
+                    ko: '${players.length}명 참여 중',
+                    en: '${players.length} joined',
+                    zhHans: '${players.length} 人已加入',
+                    zhHant: '${players.length} 人已加入',
+                  ),
+                  style: MosiFonts.sans(size: 12, color: MosiColors.muted),
+                ),
               ],
             ),
           ),
-          if (faces.isNotEmpty) ...[
-            const SizedBox(width: 12),
-            ExcludeSemantics(
-              child: SizedBox(
-                width: 55 + (faces.length - 1) * 20,
-                height: 67,
-                child: Stack(
-                  children: [
-                    for (final (i, id) in faces.indexed)
-                      Positioned(
-                        left: i * 20,
-                        top: i.isEven ? 0 : 12,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: MosiColors.violetDeep,
-                                offset: Offset(3, 3),
-                              ),
-                            ],
-                          ),
-                          child: MosiFace(
-                            characterId: id,
-                            size: 52,
-                            ring: true,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -939,9 +1211,12 @@ class _SheetPaper extends StatelessWidget {
 }
 
 class _GroupGamesContent extends StatelessWidget {
-  const _GroupGamesContent({required this.provider});
+  const _GroupGamesContent({required this.provider, required this.playerCount});
 
   final RoomProvider provider;
+
+  /// 지금 방의 플레이어 수입니다. 최소 인원보다 적은 게임은 흐리게 둡니다.
+  final int playerCount;
 
   @override
   Widget build(BuildContext context) {
@@ -996,11 +1271,111 @@ class _GroupGamesContent extends StatelessWidget {
         ),
       );
     }
-    return Column(
-      children: [
-        for (final game in provider.groupGames)
-          PhoneGameCard(gameInfo: game, inset: false),
-      ],
+    // 표지 3열입니다. 인원이 모자란 게임은 흐리게 두고 몇 명부터인지 적습니다.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const columns = 3;
+        const spacing = 12.0;
+        final cellWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 16,
+          children: [
+            for (final game in provider.groupGames)
+              SizedBox(
+                width: cellWidth,
+                child: _GroupGameTile(game: game, playerCount: playerCount),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 그룹 게임 표지 한 칸: 표지 · 이름 · 인원과 시간.
+class _GroupGameTile extends StatelessWidget {
+  const _GroupGameTile({required this.game, required this.playerCount});
+
+  final GameInfo game;
+  final int playerCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    final name = game.localizedName(locale);
+    final short = game.minPlayers > 0 && playerCount < game.minPlayers;
+    final meta = [
+      if (game.minPlayers > 0)
+        GameLocale.select(
+          ko: '${game.minPlayers}–${game.maxPlayers}명',
+          en: '${game.minPlayers}–${game.maxPlayers}P',
+          zhHans: '${game.minPlayers}–${game.maxPlayers} 人',
+          zhHant: '${game.minPlayers}–${game.maxPlayers} 人',
+        ),
+      if (game.playTime > 0)
+        GameLocale.select(
+          ko: '${game.playTime}분',
+          en: '${game.playTime} min',
+          zhHans: '${game.playTime} 分钟',
+          zhHant: '${game.playTime} 分鐘',
+        ),
+    ].join(' · ');
+    return Opacity(
+      opacity: short ? .5 : 1,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            MosiGameCover(
+              gameId: game.id,
+              width: constraints.maxWidth - 4,
+              shadow: 4,
+              fallbackName: game.name,
+              fallbackImageUrl: game.imageUrl,
+              displayName: name,
+              englishName: game.englishName,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MosiFonts.sans(
+                size: 13,
+                weight: FontWeight.w700,
+                color: MosiColors.navy,
+              ),
+            ),
+            if (meta.isNotEmpty)
+              Text(
+                meta,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MosiFonts.sans(
+                  size: 11,
+                  weight: FontWeight.w600,
+                  color: MosiColors.muted,
+                ),
+              ),
+            if (short)
+              Text(
+                GameLocale.select(
+                  ko: '${game.minPlayers}명부터',
+                  en: 'Needs ${game.minPlayers}+',
+                  zhHans: '${game.minPlayers} 人起',
+                  zhHant: '${game.minPlayers} 人起',
+                ),
+                style: MosiFonts.sans(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: MosiColors.violet,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1770,9 +2145,12 @@ class _DotGridPainter extends CustomPainter {
 
 /// 보라 바탕 위에서 깜빡이는 점과 함께 기다리는 중임을 알립니다.
 class _WaitingStatusBanner extends StatefulWidget {
-  const _WaitingStatusBanner({required this.message});
+  const _WaitingStatusBanner({required this.message, this.center = false});
 
   final String message;
+
+  /// 가운데 정렬된 안내(태블릿 그림 아래)에서 씁니다.
+  final bool center;
 
   @override
   State<_WaitingStatusBanner> createState() => _WaitingStatusBannerState();
@@ -1800,6 +2178,10 @@ class _WaitingStatusBannerState extends State<_WaitingStatusBanner>
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: widget.center ? MainAxisSize.min : MainAxisSize.max,
+      mainAxisAlignment: widget.center
+          ? MainAxisAlignment.center
+          : MainAxisAlignment.start,
       children: [
         AnimatedBuilder(
           animation: _controller,
@@ -1826,12 +2208,13 @@ class _WaitingStatusBannerState extends State<_WaitingStatusBanner>
           },
         ),
         const SizedBox(width: 6),
-        Expanded(
+        Flexible(
+          fit: widget.center ? FlexFit.loose : FlexFit.tight,
           child: Text(
             widget.message,
             style: MosiFonts.sans(
               color: const Color(0xFFD9D1EE),
-              size: 14,
+              size: widget.center ? 13 : 14,
               weight: FontWeight.w700,
             ),
           ),

@@ -14,7 +14,6 @@ const fullValidationTimeout = Duration(minutes: 13);
 const fullValidationFinalSnapshotReserve = gitSnapshotTimeout;
 const fullValidationProcessCleanupReserve = Duration(seconds: 10);
 const fullValidationSnapshotCleanupReserve = Duration(seconds: 10);
-const flutterUnitTestBackendArgument = '--dart-define=MOSIGAME_BACKEND=server';
 
 typedef DoctorCheckRunner = Future<List<CliCheckResult>> Function();
 typedef ProgressWriter = void Function(String value);
@@ -415,7 +414,6 @@ final _pipeline = <_ValidationStepSpecification>[
     arguments: <String>[
       'test',
       '--no-pub',
-      flutterUnitTestBackendArgument,
       '--exclude-tags',
       'invocation-guard',
     ],
@@ -425,11 +423,7 @@ final _pipeline = <_ValidationStepSpecification>[
     _ValidationStepSpecification(
       id: target.stepId,
       executable: 'flutter',
-      arguments: const <String>[
-        'test',
-        '--no-pub',
-        flutterUnitTestBackendArgument,
-      ],
+      arguments: const <String>['test', '--no-pub'],
       relativeWorkingDirectory: target.directory,
       timeout: flutterTestTimeout,
     ),

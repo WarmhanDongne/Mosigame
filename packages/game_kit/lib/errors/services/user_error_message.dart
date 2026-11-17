@@ -8,6 +8,7 @@
 // ========================[ import ]==========================
 import 'dart:async';
 import 'dart:io';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:game_kit/errors/models/app_exception.dart';
@@ -59,11 +60,16 @@ String? userErrorMessage(Object? error, {required UserErrorContext context}) {
   //    iOS 플러그인의 긴 unknown Stacktrace를 화면에 덮지 않습니다.
   if (_isTransientNativeNoise(error)) return null;
 
-  // 3. 우리 서버가 준 안내도 알려진 문구는 현재 표시 언어로 바꿉니다.
+  // 3. 서버가 이미 다음 턴·단계로 넘어간 요청은 실패 재시도를 권하지 않고,
+  //    최신 화면을 따르면 된다는 상태 안내로 바꿉니다.
+  final superseded = _supersededGameCommandMessage(error, context);
+  if (superseded != null) return superseded;
+
+  // 4. 우리 서버가 준 안내도 알려진 문구는 현재 표시 언어로 바꿉니다.
   final serverMessage = _koreanServerMessage(error);
   if (serverMessage != null) return serverMessage.localized;
 
-  // 4. 코드·타입별 매핑.
+  // 5. 코드·타입별 매핑.
   if (_isNetworkError(error)) {
     return switch (context) {
       UserErrorContext.leaveRoom => UserErrorCopy.leaveRoomNetwork,
@@ -84,7 +90,7 @@ String? userErrorMessage(Object? error, {required UserErrorContext context}) {
       return UserErrorCopy.roomFull;
   }
 
-  // 5. 정체를 모르는 오류는 문맥별 일반 안내로 덮습니다.
+  // 6. 정체를 모르는 오류는 문맥별 일반 안내로 덮습니다.
   return switch (context) {
     UserErrorContext.leaveRoom => UserErrorCopy.leaveRoomFailed,
     UserErrorContext.leaveGame => UserErrorCopy.leaveGameFailed,
@@ -93,6 +99,23 @@ String? userErrorMessage(Object? error, {required UserErrorContext context}) {
     UserErrorContext.roomCommand ||
     UserErrorContext.gameCommand => UserErrorCopy.requestFailed,
   };
+}
+
+String? _supersededGameCommandMessage(Object error, UserErrorContext context) {
+  if (context != UserErrorContext.gameCommand ||
+      error is! FirebaseFunctionsException ||
+      error.code != 'failed-precondition') {
+    return null;
+  }
+  final details = error.details;
+  final reason = details is Map ? details['reason'] : null;
+  if (reason != 'staleContext') return null;
+  return GameLocale.select(
+    ko: '턴이 이미 종료되어 다음 차례로 넘어갔어요.',
+    en: 'That turn has ended. The game moved to the next turn.',
+    zhHans: '该回合已结束，游戏已进入下一回合。',
+    zhHant: '該回合已結束，遊戲已進入下一回合。',
+  );
 }
 
 /// 사용자에게 아무것도 표시하지 않아야 하는 오류인지입니다.

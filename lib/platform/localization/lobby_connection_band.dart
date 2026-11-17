@@ -9,9 +9,8 @@ import 'package:flutter/widgets.dart';
 import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
 
-/// 로비 화면 맨 아래 서버 연결 띠입니다(시안 '서버 연결 알림' 2안 · 가장자리 띠).
-///
-/// 게임 화면에는 쓰지 않습니다. 게임은 각자의 복구·중단 안내가 있습니다.
+/// 로비 화면 맨 아래 서버 연결 띠입니다. 게임 화면도 같은 공통 띠를 사용하고,
+/// 이 어댑터는 플랫폼 로비 번역 문구만 담당합니다.
 class LobbyConnectionBand extends StatelessWidget {
   const LobbyConnectionBand({
     super.key,

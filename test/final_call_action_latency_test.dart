@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -16,15 +14,17 @@ import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_final_call/shared/providers/session_provider.dart';
 import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_kit/game_flow/phone_game_shell.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  TestFirebaseCoreHostApi.setUp(FirebaseTestCore());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() {
     FirebaseAuthPlatform.instanceFor(
-      app: Firebase.app(),
+      app: FirebaseBackend.app,
       pluginConstants: {
         'APP_CURRENT_USER': [
           InternalUserInfo(
@@ -36,7 +36,7 @@ void main() {
         ],
       },
     );
-    expect(FirebaseAuth.instance.currentUser?.uid, 'phone');
+    expect(FirebaseBackend.auth.currentUser?.uid, 'phone');
   });
 
   for (final accepted in [true, false]) {

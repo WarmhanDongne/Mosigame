@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:project00/platform/home/phone/widgets/phone_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_participant_list.dart';
@@ -22,17 +23,22 @@ import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:project00/platform/home/room/services/room_leave_intent.dart';
 import 'package:project00/platform/theme/platform_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:project00/firebase_bootstrap.dart';
 
 class _Rooms extends Fake implements RoomService {
   Completer<void>? leaveGate;
   Object? leaveError;
   int leaveCalls = 0;
+  int gameStatusWatchCalls = 0;
 
   @override
   Stream<bool> watchServerConnection() =>
       Stream.multi((sink) => sink.add(true));
   @override
-  Stream<String?> watchGameStatus(String roomCode) => const Stream.empty();
+  Stream<String?> watchGameStatus(String roomCode) {
+    gameStatusWatchCalls++;
+    return const Stream.empty();
+  }
 
   @override
   Future<void> leaveRoom(String roomCode) async {
@@ -44,6 +50,20 @@ class _Rooms extends Fake implements RoomService {
 }
 
 class _Games extends Fake implements GameService {}
+
+class _ForegroundProvider extends RoomProvider {
+  _ForegroundProvider({required super.service, required super.gameService});
+
+  int _revision = 0;
+
+  @override
+  int get foregroundRefreshRevision => _revision;
+
+  void completeForegroundRecovery() {
+    _revision++;
+    notifyListeners();
+  }
+}
 
 RoomPlayer _player(
   int index, {
@@ -84,12 +104,15 @@ Widget _app(RoomProvider provider) => MaterialApp(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(() async {
+    await Firebase.initializeApp();
+    if (FirebaseBackend.isTest) await initializeFirebaseBackend();
+  });
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     RoomLeaveIntent.resetForTesting();
     FirebaseAuthPlatform.instanceFor(
-      app: Firebase.app(),
+      app: FirebaseBackend.app,
       pluginConstants: {
         'APP_CURRENT_USER': [
           InternalUserInfo(
@@ -102,6 +125,30 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'foreground recovery reopens the waiting-room game status stream',
+    (tester) async {
+      final rooms = _Rooms();
+      final provider =
+          _ForegroundProvider(service: rooms, gameService: _Games())
+            ..roomCode = 'ABCDE'
+            ..roomStatus = 'waiting'
+            ..selectedGameId = 'holdem'
+            ..selectedGame = GameInfo.fromJson({'id': 'holdem', 'name': '홀덤'})
+            ..selectedGameLoadStatus = RoomDataLoadStatus.loaded;
+      addTearDown(provider.dispose);
+
+      await tester.pumpWidget(_app(provider));
+      await tester.pump();
+      expect(rooms.gameStatusWatchCalls, 1);
+
+      provider.completeForegroundRecovery();
+      await tester.pump();
+      expect(rooms.gameStatusWatchCalls, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('그룹 나가기는 즉시 테마 전환을 열고 실패 복귀 뒤 같은 요청을 재시도한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);

@@ -10,8 +10,8 @@ import 'package:flutter/foundation.dart';
 abstract final class FirebaseBackend {
   static const mode = String.fromEnvironment(
     'MOSIGAME_BACKEND',
-    // This branch is dedicated to device testing against ban-pick-simulator.
-    // Production builds must come from develop, whose default remains server.
+    // TEST is dedicated to device testing against ban-pick-simulator.
+    // Production builds come from develop, whose default remains server.
     defaultValue: 'test',
   );
   static const isLocal = mode == 'local';

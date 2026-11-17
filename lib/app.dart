@@ -23,6 +23,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/games/game_registry.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:project00/platform/theme/platform_theme.dart';
+import 'package:project00/platform/update/app_update_gate.dart';
 
 class App extends StatelessWidget {
   const App({
@@ -66,8 +67,11 @@ class App extends StatelessWidget {
             theme: PlatformTheme.light(locale: settings.language.locale),
             darkTheme: PlatformTheme.dark(locale: settings.language.locale),
             themeMode: ThemeMode.light,
-            builder: (context, child) =>
-                AppNetworkGuard(child: child ?? const SizedBox.shrink()),
+            // 서버가 요구하는 최소 빌드보다 낮으면 모든 화면 위에 스토어 업데이트
+            // 안내를 덮습니다. 확인하지 못하면 그대로 통과합니다.
+            builder: (context, child) => AppUpdateGate(
+              child: AppNetworkGuard(child: child ?? const SizedBox.shrink()),
+            ),
             // 새 패치가 있으면 받는 동안만 패치 화면을 덮습니다. 확인 중에는
             // 화면을 막지 않고, 패치가 없거나 실패하면 그대로 통과합니다.
             home: ShorebirdPatchGate(

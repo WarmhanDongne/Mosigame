@@ -1283,25 +1283,35 @@ class _PlayerTileState extends State<_PlayerTile> {
               ],
             ),
           ),
-          // 정상 연결은 따로 표시하지 않고, 끊긴 참가자에게만 상태 알약을 붙입니다.
-          // 좁은 카드에서는 알약을 줄여 내보내기 단추가 밀려나지 않게 합니다.
-          if (!player.isConnected) ...[
-            const SizedBox(width: 6),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: MosiPill(
-                  key: ValueKey('disconnected-player-${player.uid}'),
-                  label: context.l10n.connectionLost,
-                  color: MosiColors.red,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                ),
-              ),
+          // 상태 알약이 생겼다 사라져도 닉네임과 X 단추가 움직이지 않도록
+          // 오른쪽 상태 영역을 항상 같은 폭으로 예약합니다.
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 82,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 140),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: player.isConnected
+                  ? const SizedBox(
+                      key: ValueKey('connected-player-status-placeholder'),
+                    )
+                  : FittedBox(
+                      key: ValueKey('disconnected-player-${player.uid}-fit'),
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: MosiPill(
+                        key: ValueKey('disconnected-player-${player.uid}'),
+                        label: context.l10n.connectionLost,
+                        color: MosiColors.red,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                      ),
+                    ),
             ),
-          ],
+          ),
           const SizedBox(width: 6),
           SizedBox(
             width: 36,

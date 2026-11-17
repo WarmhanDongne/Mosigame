@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+// ignore: depend_on_referenced_packages
+import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/recovery/services/controller_room_session_store.dart';
 import 'package:game_kit/template_game.dart';
+import 'package:project00/firebase_bootstrap.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
 import 'package:project00/platform/home/gamelist/provider/game_list_provider.dart';
@@ -15,10 +20,17 @@ import 'package:project00/platform/home/room/services/controller_presence.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:project00/platform/home/tablet/widgets/tablet_room_panel.dart';
 import 'package:project00/platform/home/tablet/screens/tablet_home.dart';
+import 'package:project00/platform/home/tablet/widgets/tablet_lobby_layout.dart';
+import 'package:project00/platform/widgets/app_startup_surface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
+  setUpAll(() async {
+    await Firebase.initializeApp();
+    if (FirebaseBackend.isTest) await initializeFirebaseBackend();
+  });
   late _Service service;
   late RoomProvider provider;
   setUp(() async {
@@ -51,24 +63,74 @@ void main() {
     expect(provider.roomCode, 'ABCDE');
   });
 
-  testWidgets('태블릿 시작은 기존 게임을 자동으로 열지 않고 복귀 여부를 묻는다', (tester) async {
-    final tabletProvider = _TabletProvider();
-    addTearDown(tabletProvider.dispose);
+  testWidgets('태블릿 시작은 진행 중 게임을 묻지 않고 자동으로 연다', (tester) async {
+    service
+      ..failRestore = false
+      ..activeGame = true;
+    provider.selectedGameId = 'unknown-game';
     await tester.pumpWidget(
       MaterialApp(
         home: TabletHome(
           gameCatalog: const EmptyGameCatalog(),
-          roomProvider: tabletProvider,
+          roomProvider: provider,
           gameProvider: _GameProvider(),
           storeProvider: _GameProvider(scope: GameListScope.store),
         ),
       ),
     );
+    // ControllerRoomSessionStore/SharedPreferences는 FakeAsync 바깥 zone에서
+    // 초기화되므로 복원 Future가 실제 event loop에서 완료될 시간을 줍니다.
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    });
+    for (
+      var attempt = 0;
+      attempt < 20 && find.byType(AppStartupSurface).evaluate().isNotEmpty;
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(find.text('진행 중인 게임이 있어요'), findsNothing);
+    expect(find.text('게임으로 돌아가기'), findsNothing);
+    expect(find.text('기존 방 종료'), findsNothing);
+    expect(find.byType(AppStartupSurface), findsNothing);
+    expect(find.byType(TabletLobbyLayout), findsOneWidget);
+  });
+
+  testWidgets('foreground recovery reopens the tablet game status stream', (
+    tester,
+  ) async {
+    provider.dispose();
+    provider = _ForegroundRoomProvider(
+      service: service,
+      gameService: _Games(),
+      currentUidReader: () => 'tablet',
+    );
+    service.failRestore = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TabletHome(
+          gameCatalog: const EmptyGameCatalog(),
+          roomProvider: provider,
+          gameProvider: _GameProvider(),
+          storeProvider: _GameProvider(scope: GameListScope.store),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      service.gameStatus.add(null);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    });
+    await tester.pump(const Duration(milliseconds: 20));
+    final initialWatches = service.gameStatusWatchCalls;
+    expect(initialWatches, greaterThan(0));
+
+    (provider as _ForegroundRoomProvider).completeForegroundRecovery();
     await tester.pump();
-    await tester.pump();
-    expect(find.text('진행 중인 게임이 있어요'), findsOneWidget);
-    expect(find.text('게임으로 돌아가기'), findsOneWidget);
-    expect(find.text('기존 방 종료'), findsOneWidget);
+    expect(service.gameStatusWatchCalls, initialWatches + 1);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   test(
@@ -219,6 +281,8 @@ class _Service implements RoomService {
   final players = StreamController<List<RoomPlayer>>.broadcast();
   final connection = StreamController<bool>.broadcast();
   final gameStatus = StreamController<String?>.broadcast();
+  int gameStatusWatchCalls = 0;
+  bool activeGame = false;
   bool failRestore = true, failClose = false;
   Completer<String?>? gate;
   final closedCodes = <String>[];
@@ -279,7 +343,10 @@ class _Service implements RoomService {
   @override
   Stream<String?> watchRoomStatus(String code) => const Stream.empty();
   @override
-  Stream<String?> watchGameStatus(String code) => gameStatus.stream;
+  Stream<String?> watchGameStatus(String code) {
+    gameStatusWatchCalls++;
+    return activeGame ? Stream<String?>.value('playing') : gameStatus.stream;
+  }
 
   @override
   Stream<ControllerPresence> watchControllerPresence(String code) =>
@@ -295,6 +362,24 @@ class _Games implements GameService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ForegroundRoomProvider extends RoomProvider {
+  _ForegroundRoomProvider({
+    required super.service,
+    required super.gameService,
+    required super.currentUidReader,
+  });
+
+  int _revision = 0;
+
+  @override
+  int get foregroundRefreshRevision => _revision;
+
+  void completeForegroundRecovery() {
+    _revision++;
+    notifyListeners();
+  }
+}
+
 class _GameProvider extends ChangeNotifier implements GameProvider {
   _GameProvider({this.scope = GameListScope.library});
 
@@ -302,29 +387,12 @@ class _GameProvider extends ChangeNotifier implements GameProvider {
   final GameListScope scope;
   @override
   final List<GameInfo> games = <GameInfo>[];
-
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TabletProvider extends ChangeNotifier implements RoomProvider {
+  bool isLoading = false;
   @override
-  String? roomCode;
-
+  String? errorMessage;
   @override
-  Future<void> restoreControllerRoom() async {
-    roomCode = 'ABCDE';
-    notifyListeners();
-  }
-
-  @override
-  Stream<String?> watchGameStatus(String code) => Stream.value('playing');
-
-  @override
-  Stream<bool> watchServerConnection() => Stream.value(true);
-
-  @override
-  Future<void> pauseControllerPresence() async {}
+  Future<void> fetchGames() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

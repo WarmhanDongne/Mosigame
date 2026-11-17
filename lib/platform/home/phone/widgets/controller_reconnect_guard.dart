@@ -1,30 +1,20 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:game_kit/mosi_ui/mosi_connection.dart';
-import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/localization/game_locale.dart';
+import 'package:game_kit/mosi_ui/mosi_connection_band.dart';
 import 'package:game_kit/widgets/game_route_exit.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 
-/// 태블릿 진행 기기가 잠시 사라졌을 때 현재 게임 화면과 상태를 보존한 채
-/// 참가자 입력만 차단합니다.
+/// 태블릿 진행 기기가 잠시 사라졌을 때 현재 게임 화면을 보존하고 공통 상태 띠를
+/// 표시합니다. 게임 명령의 허용 여부는 서버 상태와 각 게임의 명령 가드가 결정합니다.
 class ControllerReconnectGuard extends StatefulWidget {
   const ControllerReconnectGuard({
     super.key,
     required this.provider,
     required this.child,
-    required this.onExit,
-    this.exitDelay = const Duration(seconds: 10),
   });
 
   final RoomProvider provider;
   final Widget child;
-  final VoidCallback onExit;
-
-  /// 이 시간이 지나도 연결되지 않으면 나가기 버튼을 보여 줍니다(확정 2026-08).
-  /// 일시적인 끊김에 바로 나가 버리지 않도록 잠깐 기다리게 합니다.
-  final Duration exitDelay;
 
   @override
   State<ControllerReconnectGuard> createState() =>
@@ -76,96 +66,24 @@ class _ControllerReconnectGuardState extends State<ControllerReconnectGuard> {
           children: [
             ?child,
             if (reconnecting)
-              Positioned.fill(
-                child: _TabletLostSheet(
-                  characterId: widget.provider.currentCharacterId,
-                  exitDelay: widget.exitDelay,
-                  onExit: widget.onExit,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: MosiConnectionBand(
+                    phase: MosiConnectionBandPhase.reconnecting,
+                    labels: MosiConnectionBandLabels(
+                      lost: '태블릿 연결을 확인하는 중'.localized,
+                      reconnecting: '태블릿 연결을 기다리는 중…'.localized,
+                      restored: '태블릿에 다시 연결됐어요'.localized,
+                    ),
+                  ),
                 ),
               ),
           ],
         );
       },
-    );
-  }
-}
-
-/// 시안 '게임 중 태블릿 연결 끊김'입니다.
-class _TabletLostSheet extends StatefulWidget {
-  const _TabletLostSheet({
-    required this.characterId,
-    required this.exitDelay,
-    required this.onExit,
-  });
-
-  final String? characterId;
-  final Duration exitDelay;
-  final VoidCallback onExit;
-
-  @override
-  State<_TabletLostSheet> createState() => _TabletLostSheetState();
-}
-
-class _TabletLostSheetState extends State<_TabletLostSheet> {
-  Timer? _timer;
-  bool _showsExit = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer(widget.exitDelay, () {
-      if (mounted) setState(() => _showsExit = true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MosiConnectionLayout(
-      semanticLabel: '태블릿 연결 끊김'.localized,
-      background: MosiColors.violet,
-      scene: MosiTabletLostScene(characterId: widget.characterId),
-      tag: GameLocale.select(
-        ko: '게임 중 · 태블릿',
-        en: 'In game · Tablet',
-        zhHans: '游戏中 · 平板',
-        zhHant: '遊戲中 · 平板',
-      ),
-      tagColor: mosiConnectionLavender,
-      title: '태블릿에 다시 연결하는 중'.localized,
-      body: GameLocale.select(
-        ko: '태블릿 연결이 잠깐 끊겼어요.\n기다리면 이 화면에서 자동으로 이어져요.',
-        en: 'The tablet disconnected briefly.\nThis screen will resume automatically.',
-        zhHans: '平板暂时断开连接。\n请稍候，此画面会自动恢复。',
-        zhHant: '平板暫時中斷連線。\n請稍候，此畫面會自動恢復。',
-      ),
-      status: MosiConnectionStatus(
-        text: GameLocale.select(
-          ko: '내 자리와 손패는 그대로예요',
-          en: 'Your seat and hand are safe',
-          zhHans: '座位和手牌都会保留',
-          zhHant: '座位和手牌都會保留',
-        ),
-      ),
-      actions: [
-        MosiConnectionButton(
-          label: '게임과 그룹 나가기'.localized,
-          onPressed: widget.onExit,
-        ),
-      ],
-      footnote: _showsExit
-          ? GameLocale.select(
-              ko: '나가면 이번 게임에서 빠지게 돼요',
-              en: 'Leaving removes you from this game',
-              zhHans: '离开后将退出本局游戏',
-              zhHant: '離開後將退出本局遊戲',
-            )
-          : null,
     );
   }
 }

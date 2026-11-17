@@ -10,8 +10,8 @@ import {CardRank, GameCard} from "./types.js";
 /**
  * 플레이어 수에 맞는 진실·거짓 덱을 생성하고 안전하게 섞습니다.
  *
- * 각 생존 플레이어는 5장을 받고, 정확히 3장은 서버에만 남습니다.
- * 진실 카드는 매 라운드 인원 × 1.6~1.9 장 범위에서 무작위로 정하고,
+ * 각 생존 플레이어는 5장을 받습니다. 전체 덱은 2·3인 15장,
+ * 4인부터 인원 × 5장이며, 진실 카드는 인원 × 2.1장을 반올림합니다.
  * 나머지는 모두 거짓 카드입니다.
  */
 export function createDeck(playerCount: number): GameCard[] {
@@ -31,31 +31,38 @@ export function createDeck(playerCount: number): GameCard[] {
   return deck;
 }
 
-/** 인원 1명당 진실 카드 비율의 이번 라운드 하한·상한입니다. */
-export const MIN_TRUTH_CARDS_PER_PLAYER = 1.6;
-export const MAX_TRUTH_CARDS_PER_PLAYER = 1.9;
+/** 인원 1명당 진실 카드 비율입니다. */
+export const TRUTH_CARDS_PER_PLAYER = 2.1;
 
-/** 이번 라운드의 진실 카드 수를 인원 비율 범위 안에서 고릅니다. */
-export function truthCardCountForPlayerCount(
-  playerCount: number,
-  draw: (maxExclusive: number) => number = randomInt,
-): number {
+/** 플레이어 수가 라이어스 포커의 지원 범위인지 확인합니다. */
+function assertSupportedPlayerCount(playerCount: number): void {
   if (!Number.isInteger(playerCount) || playerCount < 2 || playerCount > 6) {
     throw new Error("지원하지 않는 플레이어 수입니다.");
   }
-  // 카드 수는 정수여야 하므로 양 끝 비율을 반올림한 모든 정수를 같은 확률로
-  // 고릅니다. 예: 4명은 6·7·8장 중 하나가 되어, 라운드마다 심리전 밀도가 달라집니다.
-  const minimum = Math.round(playerCount * MIN_TRUTH_CARDS_PER_PLAYER);
-  const maximum = Math.round(playerCount * MAX_TRUTH_CARDS_PER_PLAYER);
-  return minimum + draw(maximum - minimum + 1);
+}
+
+/** 플레이어 수에 따른 전체 덱 장수입니다. */
+export function totalCardCountForPlayerCount(playerCount: number): number {
+  assertSupportedPlayerCount(playerCount);
+  return Math.max(15, playerCount * 5);
+}
+
+/** 이번 라운드의 진실 카드 수를 고정 비율로 계산합니다. */
+export function truthCardCountForPlayerCount(playerCount: number): number {
+  assertSupportedPlayerCount(playerCount);
+  return Math.round(playerCount * TRUTH_CARDS_PER_PLAYER);
+}
+
+/** 모든 플레이어에게 5장씩 나눠 준 뒤 중앙 덱에 남는 장수입니다. */
+export function unrevealedCardCountForPlayerCount(
+  playerCount: number,
+): number {
+  return totalCardCountForPlayerCount(playerCount) - playerCount * 5;
 }
 
 /** 플레이어 수별 덱 구성을 반환합니다. */
 function deckCounts(playerCount: number): Record<CardRank, number> {
-  if (!Number.isInteger(playerCount) || playerCount < 2 || playerCount > 6) {
-    throw new Error("지원하지 않는 플레이어 수입니다.");
-  }
-  const totalCards = playerCount * 5 + 3;
+  const totalCards = totalCardCountForPlayerCount(playerCount);
   const truthCount = truthCardCountForPlayerCount(playerCount);
   return {TRUTH: truthCount, LIE: totalCards - truthCount};
 }

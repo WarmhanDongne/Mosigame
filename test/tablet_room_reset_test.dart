@@ -260,6 +260,50 @@ void main() {
       provider.dispose();
     });
 
+    testWidgets('좁은 폭과 큰 글자에서도 끊김 표시가 행 배치를 바꾸지 않는다', (tester) async {
+      RoomPlayer player(bool connected) => RoomPlayer(
+        uid: 'responsive-player',
+        nickname: '아주긴닉네임플레이어',
+        characterId: 'frog',
+        isConnected: connected,
+        seatIndex: 0,
+        role: 'player',
+        status: 'active',
+        penaltyAttemptCount: 0,
+      );
+
+      // 실제 태블릿 로비에서 사용하는 패널 최소 폭(약 290px)부터 확인합니다.
+      // 250px 이하는 QR/방 코드 헤더 자체의 지원 폭 밖이라 이 행 테스트와 분리합니다.
+      for (final width in [290.0, 310.0, 380.0]) {
+        for (final textScale in [1.0, 1.4]) {
+          final provider = _provider(_FakeRoomService())
+            ..roomCode = 'ABCDE'
+            ..players = [player(true)];
+          await _pumpPanel(
+            tester,
+            provider,
+            width: width,
+            textScale: textScale,
+          );
+          await tester.pumpAndSettle();
+          final close = find.byTooltip('내보내기');
+          final name = find.text('아주긴닉네임플레이어');
+          final closeRect = tester.getRect(close);
+          final nameLeft = tester.getRect(name).left;
+
+          provider
+            ..players = [player(false)]
+            ..notifyListeners();
+          await tester.pumpAndSettle();
+
+          expect(tester.getRect(close), closeRect);
+          expect(tester.getRect(name).left, nameLeft);
+          expect(tester.takeException(), isNull);
+          provider.dispose();
+        }
+      }
+    });
+
     testWidgets('참가자는 오른쪽에서 들어오고 퇴장할 때 오른쪽으로 사라진다', (tester) async {
       final provider = _provider(_FakeRoomService())..roomCode = 'ABCDE';
       await _pumpPanel(tester, provider);
@@ -477,12 +521,20 @@ Future<void> _pumpPanel(
   Color coverGemColor = MosiColors.navy,
   Color startBackground = MosiColors.lime,
   Color startForeground = MosiColors.navy,
+  double width = 310,
+  double textScale = 1,
 }) {
   return tester.pumpWidget(
     MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: Scaffold(
         body: SizedBox(
-          width: 310,
+          width: width,
           height: 800,
           child: TabletRoomPanel(
             provider: provider,

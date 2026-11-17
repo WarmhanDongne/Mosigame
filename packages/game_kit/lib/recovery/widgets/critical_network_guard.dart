@@ -21,6 +21,7 @@ class CriticalNetworkGuard extends StatefulWidget {
     this.onExit,
     this.exitLabel = '홈으로',
     this.blockChildInput = true,
+    this.showExitInBand = false,
   });
 
   final GameRoomContext provider;
@@ -28,6 +29,7 @@ class CriticalNetworkGuard extends StatefulWidget {
   final VoidCallback? onExit;
   final String exitLabel;
   final bool blockChildInput;
+  final bool showExitInBand;
 
   @override
   State<CriticalNetworkGuard> createState() => _CriticalNetworkGuardState();
@@ -58,6 +60,7 @@ class _CriticalNetworkGuardState extends State<CriticalNetworkGuard> {
       onExit: widget.onExit,
       exitLabel: widget.exitLabel,
       blockChildInput: widget.blockChildInput,
+      showExitInBand: widget.showExitInBand,
       child: widget.child,
     );
   }

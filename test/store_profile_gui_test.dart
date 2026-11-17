@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -23,11 +22,12 @@ import 'package:project00/platform/profile/widgets/tablet_profile.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile_modal.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_FirebaseCore());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     ProfileUpdateController.instance.resetForTest();
@@ -660,6 +660,7 @@ void main() {
     ('final_call', '파이널콜'),
     ('mafia', '마피아'),
     ('holdem', '텍사스 홀덤'),
+    ('russian_roulette', '러시안 룰렛'),
   ]) {
     testWidgets('$name 설정에 책 커버를 게임 포스터로 표시한다', (tester) async {
       tester.view.physicalSize = const Size(1194, 834);
@@ -700,7 +701,7 @@ void main() {
   }
 }
 
-class _FirebaseCore extends MockFirebaseApp {
+class _FirebaseCore extends FirebaseTestCore {
   @override
   Future<List<CoreInitializeResponse>> initializeCore() async {
     final apps = await super.initializeCore();

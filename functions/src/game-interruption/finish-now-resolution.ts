@@ -15,6 +15,8 @@ import {completeGameInterruption, InterruptibleRoom} from "./state.js";
 import {InterruptibleGameState} from "./types.js";
 import {finishForInsufficientPlayers} from "../yut/game.js";
 import {YutGameState} from "../yut/types.js";
+import {finishRussianRouletteForInsufficientPlayers} from "../russian-roulette/game.js";
+import {RussianRouletteGameState} from "../russian-roulette/types.js";
 
 /**
  * 인원 부족 종료를 지원하는 게임 표입니다. **게임을 추가하면 여기에 한 줄
@@ -46,6 +48,8 @@ const FINISH_FOR_INSUFFICIENT_PLAYERS: Record<
   yut: (game, now) => finishForInsufficientPlayers(game as unknown as YutGameState, now),
   strategy_yut: (game, now) => finishForInsufficientPlayers(game as unknown as YutGameState, now),
   strategy_yut_edition: (game, now) => finishForInsufficientPlayers(game as unknown as YutGameState, now),
+  russian_roulette: (game, now) =>
+    finishRussianRouletteForInsufficientPlayers(game as unknown as RussianRouletteGameState, now),
 };
 
 export interface FinishNowRoom extends InterruptibleRoom {

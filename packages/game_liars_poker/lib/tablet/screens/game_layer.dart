@@ -47,8 +47,7 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
 
   // 장수를 아직 보내지 않는 서버에서도 섞기 전 구성 화면을 보여 주도록,
   // 서버 덱 규칙([liarsPokerDeckCounts])으로 장수를 채웁니다.
-  bool get _hasServerCounts =>
-      widget.truthCardCount + widget.lieCardCount > 0;
+  bool get _hasServerCounts => widget.truthCardCount + widget.lieCardCount > 0;
   ({int truth, int lie}) get _ruleCounts =>
       liarsPokerDeckCounts(widget.playerSeatIndexes.length);
   int get _truthCardCount =>
@@ -90,6 +89,10 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
                   cardWidth: _cardWidth,
                   cardRadius: _cardRadius,
                   play: !_showRoundIntro,
+                  // 1.725초짜리 전용 섞기 음원 대신, 세 번의 섞기 패스가
+                  // 실제로 시작되는 프레임마다 짧은 공용 분배음을 냅니다.
+                  onShufflePassStarted: (_) =>
+                      SoundEffects.play(context, LiarsPokerSounds.shufflePass),
                   onCompleted: () {
                     if (mounted) setState(() => _shuffleCompleted = true);
                   },

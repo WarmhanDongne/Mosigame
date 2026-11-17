@@ -609,6 +609,13 @@ const _commonUiCopy = <String, (String, String, String)>{
   '업데이트를 받는 중': ('Downloading update', '正在下载更新', '正在下載更新'),
   '나중에 하기': ('Later', '稍后', '稍後'),
   '업데이트를 마쳤어요': ('Update downloaded', '更新下载完成', '更新下載完成'),
+  '업데이트가 필요해요': ('Update required', '需要更新', '需要更新'),
+  '최신 버전으로 업데이트한 뒤 이용해 주세요': (
+    'Please update to the latest version to continue',
+    '请更新到最新版本后继续使用',
+    '請更新到最新版本後繼續使用',
+  ),
+  '업데이트하기': ('Update', '立即更新', '立即更新'),
   '앱을 다시 켜면 적용됩니다': (
     'Restart the app to apply it',
     '重新启动应用后生效',
@@ -621,6 +628,23 @@ const _commonUiCopy = <String, (String, String, String)>{
     '遊戲已暫停，正在等待連線與畫面恢復。',
   ),
   '연결이 끊겼어요': ('Connection lost', '连接已断开', '連線已中斷'),
+  '네트워크 연결을 확인하는 중…': (
+    'Checking the network connection…',
+    '正在检查网络连接…',
+    '正在檢查網路連線…',
+  ),
+  '최신 상황을 불러오는 중…': (
+    'Loading the latest game state…',
+    '正在加载最新游戏状态…',
+    '正在載入最新遊戲狀態…',
+  ),
+  '태블릿 연결을 확인하는 중': ('Checking the tablet connection', '正在检查平板连接', '正在檢查平板連線'),
+  '태블릿 연결을 기다리는 중…': (
+    'Waiting for the tablet connection…',
+    '正在等待平板连接…',
+    '正在等待平板連線…',
+  ),
+  '태블릿에 다시 연결됐어요': ('Reconnected to the tablet', '已重新连接平板', '已重新連線平板'),
   '다시 연결하는 중…': ('Reconnecting…', '正在重新连接…', '正在重新連線…'),
   '다시 연결됐어요': ('Reconnected', '已重新连接', '已重新連線'),
   '구성품': ('Components', '组件', '配件'),

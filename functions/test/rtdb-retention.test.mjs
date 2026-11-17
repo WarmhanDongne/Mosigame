@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import test from 'node:test';
 import {CleanupDatabase} from './fake-cleanup-database.mjs';
+import {mockPlatformMaintenanceInactive} from './mock-platform-maintenance.mjs';
 
 const require = createRequire(import.meta.url);
 const admin = require('firebase-admin/database');
@@ -15,6 +16,7 @@ const NOW = 10_000_000;
 
 function setup(t) {
   const database = new CleanupDatabase();
+  mockPlatformMaintenanceInactive(t);
   const logs = [];
   t.mock.method(admin, 'getDatabase', () => database);
   t.mock.method(logger, 'info', (message, counters) => logs.push({message, counters}));

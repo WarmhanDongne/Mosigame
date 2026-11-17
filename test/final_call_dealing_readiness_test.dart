@@ -1,7 +1,6 @@
 import 'dart:async';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
-import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
@@ -12,16 +11,18 @@ import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_final_call/shared/providers/session_provider.dart';
 import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/recovery/models/game_recovery_context.dart';
+import 'support/firebase_test_bootstrap.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
-  setUpAll(() async => Firebase.initializeApp());
+  setUpAll(initializeFirebaseAppsForTest);
   setUp(() {
     FirebaseAuthPlatform.instanceFor(
-      app: Firebase.app(),
+      app: FirebaseBackend.app,
       pluginConstants: {
         'APP_CURRENT_USER': [
           InternalUserInfo(
@@ -58,6 +59,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
       final completed = tester
           .widget<FinalCallTabletGameLayer>(
             find.byType(FinalCallTabletGameLayer),

@@ -8,6 +8,7 @@ import {assertRoomTarget, allocateRoomConnection} from '../lib/room/session-cont
 import {reportStaleController} from '../lib/game-interruption/recovery-state.js';
 import {createRequire} from 'node:module';
 import {CleanupDatabase} from './fake-cleanup-database.mjs';
+import {mockPlatformMaintenanceInactive} from './mock-platform-maintenance.mjs';
 const require = createRequire(import.meta.url);
 const admin = require('firebase-admin/database');
 const {logger} = require('firebase-functions');
@@ -18,6 +19,7 @@ const {createRealtimeRoom} = require('../lib/room/create-room.js');
 
 function setup(t) {
   const database = new CleanupDatabase();
+  mockPlatformMaintenanceInactive(t);
   const original = database.ref.bind(database);
   t.mock.method(database, 'ref', path => Object.assign(original(path), {
     key:path.split('/').at(-1), parent:{key:path.split('/').at(-2)}}));

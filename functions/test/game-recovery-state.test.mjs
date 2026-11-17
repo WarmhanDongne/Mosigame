@@ -47,7 +47,16 @@ test("최초 게임 준비는 모든 기기 ready까지 입력을 막고 initial
   assert.equal(room.game.public.recovery.paused, false);
 });
 
-for (const gameType of ['liars_poker', 'final_call', 'mafia', 'holdem', 'yut', 'strategy_yut', 'strategy_yut_edition']) {
+for (const gameType of [
+  'liars_poker',
+  'final_call',
+  'mafia',
+  'holdem',
+  'yut',
+  'strategy_yut',
+  'strategy_yut_edition',
+  'russian_roulette',
+]) {
   test(`${gameType}: new protocol-2 game isolates phones but preserves controller pause`, () => {
     const room = fixture();
     room.presenceProtocol = 2;

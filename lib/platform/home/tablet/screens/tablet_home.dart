@@ -19,6 +19,7 @@ import 'package:project00/game_assets/game_asset_prepare.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/gamelist/provider/game_list_provider.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
+import 'package:project00/platform/home/room/widgets/room_recovery_retry_band.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:project00/platform/home/room/services/room_restore_to_waiting.dart';
 import 'package:project00/platform/home/store/screens/tablet_store_screen.dart';
@@ -88,6 +89,7 @@ class _TabletHomeState extends State<TabletHome>
   bool _onlyPlayable = false;
   StreamSubscription<String?>? _restoredGameStatusSubscription;
   String? _restoredStatusRoomCode;
+  int _restoredStatusForegroundRevision = -1;
   String? _restoredGameStatus;
   Future<bool>? _restoredFinishedCleanup;
   bool _isOpeningRestoredGame = false;
@@ -134,26 +136,23 @@ class _TabletHomeState extends State<TabletHome>
       // decision even if the game-status read could not be classified.
     }
     if (!mounted || roomProvider.roomCode != code) return;
+    final activeGame = gameStatus == 'playing';
     setState(() {
-      _restorable = gameStatus == 'playing'
-          ? RestorableSession.activeGame
+      _restorable = activeGame
+          ? RestorableSession.none
           : RestorableSession.waitingRoom;
       _checkingPreviousRoom = false;
     });
+    if (activeGame) unawaited(_openRestoredGameIfReady(code));
   }
 
   Future<void> _acceptPreviousSession() async {
     if (_returnDecisionBusy) return;
     setState(() => _returnDecisionBusy = true);
-    final session = _restorable;
-    final code = roomProvider.roomCode;
     setState(() {
       _restorable = RestorableSession.none;
       _returnDecisionBusy = false;
     });
-    if (session == RestorableSession.activeGame && code != null) {
-      await _openRestoredGameIfReady(code);
-    }
   }
 
   Future<void> _declinePreviousSession() async {
@@ -185,16 +184,20 @@ class _TabletHomeState extends State<TabletHome>
     final code = roomProvider.roomCode;
     if (code == null) {
       _restoredStatusRoomCode = null;
+      _restoredStatusForegroundRevision = -1;
       _restoredGameStatus = null;
       unawaited(_restoredGameStatusSubscription?.cancel());
       _restoredGameStatusSubscription = null;
       return;
     }
-    if (_restoredStatusRoomCode == code) {
+    final foregroundRevision = roomProvider.foregroundRefreshRevision;
+    if (_restoredStatusRoomCode == code &&
+        _restoredStatusForegroundRevision == foregroundRevision) {
       _restoreFinishedRoomIfReady(code);
       return;
     }
     _restoredStatusRoomCode = code;
+    _restoredStatusForegroundRevision = foregroundRevision;
     _restoredGameStatus = null;
     unawaited(_restoredGameStatusSubscription?.cancel());
     _restoredGameStatusSubscription = roomProvider.watchGameStatus(code).listen(
@@ -203,14 +206,10 @@ class _TabletHomeState extends State<TabletHome>
           return;
         }
         _restoredGameStatus = status;
-        if (status == 'playing' &&
-            _restorable == RestorableSession.waitingRoom &&
-            mounted) {
-          setState(() => _restorable = RestorableSession.activeGame);
-        }
-        if (status == 'playing' &&
-            _restorable == RestorableSession.none &&
-            !_checkingPreviousRoom) {
+        if (status == 'playing' && !_checkingPreviousRoom) {
+          if (_restorable != RestorableSession.none && mounted) {
+            setState(() => _restorable = RestorableSession.none);
+          }
           unawaited(_openRestoredGameIfReady(code));
         }
         if (status == 'finished') _restoreFinishedRoomIfReady(code);
@@ -224,6 +223,7 @@ class _TabletHomeState extends State<TabletHome>
         roomProvider.roomCode != roomCode ||
         _restoredGameStatus != 'finished' ||
         !roomProvider.isRoomFinished ||
+        !roomProvider.isAppForeground ||
         !mounted ||
         ModalRoute.of(context)?.isCurrent != true ||
         _isOpeningRestoredGame ||
@@ -254,6 +254,7 @@ class _TabletHomeState extends State<TabletHome>
         _isOpeningStore ||
         _isStarting ||
         _isDetailOpen ||
+        !roomProvider.isAppForeground ||
         !mounted ||
         ModalRoute.of(context)?.isCurrent != true) {
       return;
@@ -298,7 +299,9 @@ class _TabletHomeState extends State<TabletHome>
         );
       return;
     }
-    if (!mounted || roomProvider.roomCode != roomCode) {
+    if (!mounted ||
+        !roomProvider.isAppForeground ||
+        roomProvider.roomCode != roomCode) {
       _isOpeningRestoredGame = false;
       return;
     }
@@ -357,17 +360,6 @@ class _TabletHomeState extends State<TabletHome>
       if (mounted && ModalRoute.of(context)?.isCurrent == true) {
         unawaited(AppSystemUi.enterTabletPlatformFullscreen());
       }
-      unawaited(roomProvider.resumeControllerPresence());
-      return;
-    }
-    //=======================일시적인 inactive는 끊김이 아닙니다==============================
-    // iOS는 제어 센터를 내리거나 앱 스위처를 띄우기만 해도 inactive를 보냅니다.
-    // 그때마다 controllerPresence.connected를 false로 내리면, 휴대폰들이 그 값을
-    // '태블릿이 방을 닫았다'로 읽고 전원 방에서 나가 버립니다. 실제로 앱이
-    // 내려간 paused/detached에서만 연결 해제로 처리합니다.
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      unawaited(roomProvider.pauseControllerPresence());
     }
   }
 
@@ -446,7 +438,10 @@ class _TabletHomeState extends State<TabletHome>
         game: game,
         provider: roomProvider,
         ensureSelection: _selection.prepare,
-        isCurrent: () => mounted && _selection.game?.id == game.id,
+        isCurrent: () =>
+            mounted &&
+            roomProvider.isAppForeground &&
+            _selection.game?.id == game.id,
         onLaunched: () {
           _isDetailOpen = false;
           _selection.didLaunch();
@@ -549,12 +544,12 @@ class _TabletHomeState extends State<TabletHome>
     if (_checkingPreviousRoom) return const AppStartupSurface();
     if (_restorable != RestorableSession.none) {
       return SessionReturnPrompt(
-        session: _restorable,
+        // 진행 중 게임은 위 복원 단계에서 자동으로 열리므로 이 화면에는
+        // 진행 전 대기실 세션만 도달합니다.
+        session: RestorableSession.waitingRoom,
         isBusy: _returnDecisionBusy,
         declineLabel: '기존 방 종료',
-        returnLabel: _restorable == RestorableSession.activeGame
-            ? '게임으로 돌아가기'
-            : '그룹으로 돌아가기',
+        returnLabel: '그룹으로 돌아가기',
         onReturn: () => unawaited(_acceptPreviousSession()),
         onDecline: () => unawaited(_declinePreviousSession()),
       );
@@ -581,7 +576,14 @@ class _TabletHomeState extends State<TabletHome>
               connectionChanges: roomProvider.isInRoom
                   ? _serverConnection
                   : null,
-              child: body!,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  body!,
+                  // 진행 기기의 방 연결 복구가 실패하면 여기서 다시 시도합니다.
+                  RoomRecoveryRetryBand(provider: roomProvider),
+                ],
+              ),
             ),
             child: Scaffold(backgroundColor: ground, body: child),
           ),

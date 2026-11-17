@@ -47,6 +47,7 @@ BUNDLED_GAME_PACKAGES = {
     "game_holdem",
     "game_mafia",
     "game_yut",
+    "game_russian_roulette",
 }
 
 REQUIRED_WORKSPACE_PACKAGES = FIXED_APP_PACKAGES | BUNDLED_GAME_PACKAGES

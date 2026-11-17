@@ -51,7 +51,7 @@ class _PhoneHomeState extends State<PhoneHome> {
   bool _detectionInFlight = false;
   bool _detectionFailed = false;
 
-  /// 돌아갈 수 있는 세션입니다. none이 아니면 복귀 안내 화면을 띄웁니다.
+  /// 돌아갈 수 있는 대기실 세션입니다. 진행 중 게임은 확인 뒤 자동 복귀합니다.
   RestorableSession _restorable = RestorableSession.none;
 
   /// 이 앱 실행에서 사용자가 이미 복귀를 거절했습니다.
@@ -88,8 +88,7 @@ class _PhoneHomeState extends State<PhoneHome> {
 
   /// 돌아갈 세션이 있는지 **서버에 쓰지 않고** 확인만 합니다.
   ///
-  /// 예전에는 여기서 곧바로 복원하고 대기 화면을 띄웠습니다. 게임을 그만두려고
-  /// 앱을 껐어도 다시 켜면 그 방으로 끌려 들어갔습니다(P-01).
+  /// 진행 중 게임은 자동 복귀하고, 진행 전 대기실만 사용자에게 복귀 여부를 묻습니다.
   Future<void> _detectPreviousRoom() async {
     if (_restoreInFlight ||
         _waitingRoomOpen ||
@@ -113,7 +112,14 @@ class _PhoneHomeState extends State<PhoneHome> {
     try {
       final restorable = await _restoredRoomProvider.detectRestorableSession();
       if (!mounted || _declined) return;
-      setState(() => _restorable = restorable);
+      if (restorable == RestorableSession.activeGame) {
+        // 진행 중 게임은 사용자가 이미 참가 중인 세션입니다. 로비에 선택 화면을
+        // 만들지 않고 같은 membership·자리·손패를 복원해 게임으로 돌아갑니다.
+        setState(() => _restorable = RestorableSession.none);
+        unawaited(_acceptReturn(automatic: true));
+      } else {
+        setState(() => _restorable = restorable);
+      }
     } catch (_) {
       if (mounted && !_declined) setState(() => _detectionFailed = true);
     } finally {
@@ -122,8 +128,8 @@ class _PhoneHomeState extends State<PhoneHome> {
     }
   }
 
-  /// 사용자가 복귀를 골랐습니다. 이제서야 서버에 참가자를 되살립니다.
-  Future<void> _acceptReturn() async {
+  /// 진행 중 게임은 자동으로, 대기실은 사용자가 선택한 뒤 참가자를 되살립니다.
+  Future<void> _acceptReturn({bool automatic = false}) async {
     if (_restoreInFlight || _waitingRoomOpen || !mounted) return;
     // 라우트 확인을 복원 호출보다 먼저 합니다. restorePlayerRoom()은 서버에
     // 참가자를 다시 만들고 heartbeat를 시작하므로, 결과를 버릴 상황이면 애초에
@@ -140,6 +146,7 @@ class _PhoneHomeState extends State<PhoneHome> {
     setState(() {
       _restoreInFlight = false;
       if (restored) _restorable = RestorableSession.none;
+      if (!restored && automatic) _detectionFailed = true;
     });
     if (!restored) return;
     await _openWaitingRoom();
