@@ -557,9 +557,18 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                 LengthLimitingTextInputFormatter(nicknameMaxLength),
               ],
               style: mosiFieldTextStyle(),
+              // 앱 테마의 입력칸 테두리(눌렀을 때 생기는 네모 선)를 모두 끕니다.
+              // 바깥 크림색 칸이 테두리 역할을 합니다.
               decoration: InputDecoration(
                 isCollapsed: true,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
                 counterText: '',
                 hintText: GameLocale.select(
                   ko: '닉네임 · 최대 $nicknameMaxLength자',
@@ -588,30 +597,65 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
             ),
           ),
           if (nickname.isNotEmpty)
-            Text(
-              taken
-                  ? GameLocale.select(
-                      ko: '이미 있어요',
-                      en: 'Taken',
-                      zhHans: '已被使用',
-                      zhHant: '已被使用',
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: taken
+                  ? Text(
+                      GameLocale.select(
+                        ko: '이미 있어요',
+                        en: 'Taken',
+                        zhHans: '已被使用',
+                        zhHant: '已被使用',
+                      ),
+                      key: const ValueKey('nickname-taken'),
+                      style: MosiFonts.sans(
+                        size: 12,
+                        weight: FontWeight.w700,
+                        color: MosiColors.red,
+                      ),
                     )
-                  : GameLocale.select(
-                      ko: '✓ 가능',
-                      en: '✓ OK',
-                      zhHans: '✓ 可用',
-                      zhHant: '✓ 可用',
-                    ),
-              style: MosiFonts.sans(
-                size: 12,
-                weight: FontWeight.w700,
-                color: taken ? MosiColors.red : const Color(0xFF2E7D32),
-              ),
+                  : const _NicknameOkBadge(key: ValueKey('nickname-ok')),
             ),
         ],
       ),
     );
   }
+}
+
+/// 닉네임을 쓸 수 있을 때 칸 오른쪽에 붙는 초록 체크 배지입니다.
+class _NicknameOkBadge extends StatelessWidget {
+  const _NicknameOkBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: GameLocale.select(
+      ko: '사용 가능한 닉네임',
+      en: 'Nickname available',
+      zhHans: '昵称可用',
+      zhHant: '暱稱可用',
+    ),
+    excludeSemantics: true,
+    child: Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: const Color(0xFF3FAE5A),
+        shape: BoxShape.circle,
+        border: Border.all(color: MosiColors.ink, width: 2.5),
+        boxShadow: const [
+          BoxShadow(color: MosiColors.navy, offset: Offset(0, 2)),
+        ],
+      ),
+      child: const Icon(
+        Icons.check_rounded,
+        size: 18,
+        color: MosiColors.white,
+        weight: 800,
+      ),
+    ),
+  );
 }
 
 /// 보라 바탕 위 뒤로가기 · 제목 · 이미 들어온 사람 얼굴입니다.
