@@ -48,7 +48,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="project0000-ec01e.firebaseapp.com"
+                    android:host="ban-pick-simulator.firebaseapp.com"
                     android:pathPrefix="/__/auth/links" />
             </intent-filter>
         </activity>

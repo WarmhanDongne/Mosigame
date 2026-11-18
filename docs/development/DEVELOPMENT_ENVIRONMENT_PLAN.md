@@ -1,5 +1,8 @@
 # Mosigame development environment living plan
 
+> 과거 환경 구축 계획이다. 현재 실행 절차는 [`DEVELOPMENT_GUIDE.md`](DEVELOPMENT_GUIDE.md)를
+> 따른다.
+
 이 문서는 바이브 코딩 개발환경의 현재 상태와 다음 결정을 계속 갱신하는 tracked
 계획서다. 과거 계획보다 현재 코드, 테스트, 설정과 canonical 문서를 우선한다.
 

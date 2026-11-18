@@ -1,43 +1,52 @@
-# Mosigame documentation
+# Mosigame 문서 지도
 
-이 디렉터리는 사람이 읽는 tracked canonical 문서를 역할별로 관리한다. 에이전트의
-저장소 진입점과 작업별 문서 라우팅은 루트 [`AGENTS.md`](../AGENTS.md)가 담당하고,
-실행 가능한 Skill과 metadata는 `.agents/`에 둔다.
+AI는 루트 [`AGENTS.md`](../AGENTS.md) 하나에서 시작합니다. 모든 문서를 미리 읽지 않고
+작업에 필요한 활성 문서만 추가로 읽습니다.
 
-## Engineering
+## 활성 문서
 
-- [`Engineering Contract`](engineering/ENGINEERING_CONTRACT.md)
-- [`Architecture Reference`](engineering/ARCHITECTURE.md)
-- [`Package Migration`](engineering/PACKAGE_MIGRATION.md) — 게임별 패키지 분리와 게임 다운로드 계획
-- [`Cloud Functions`](engineering/CLOUD_FUNCTIONS.md) — 배포된 함수 69개 전수 정리
-- [`game_kit 채택 규칙`](engineering/GAME_KIT_ADOPTION.md) — 새 게임이 무엇을 반드시 쓰고 무엇이 선택인지
-- [`Project CLI`](engineering/PROJECT_CLI.md)
+| 문서 | 역할 |
+| --- | --- |
+| [`CURRENT_PROJECT.md`](CURRENT_PROJECT.md) | 현재 버전, 게임 공개 계획, 패키지·Functions 기준 |
+| [`ENGINEERING_CONTRACT.md`](engineering/ENGINEERING_CONTRACT.md) | 완료 조건, 작업 트리 보호, 승인 경계 |
+| [`ARCHITECTURE.md`](engineering/ARCHITECTURE.md) | 앱·게임·서버·데이터 책임과 패키지 구조 |
+| [`PROJECT_CLI.md`](engineering/PROJECT_CLI.md) | 검증 명령, 플랫폼 실행 경로, exit code |
+| [`CLOUD_FUNCTIONS.md`](engineering/CLOUD_FUNCTIONS.md) | 현재 Functions source inventory와 배포 경계 |
+| [`NEW_GAME_GUIDE.md`](engineering/NEW_GAME_GUIDE.md) | 새 게임의 패키지·서버·카탈로그·검증 순서 |
+| [`DEVELOPMENT_GUIDE.md`](development/DEVELOPMENT_GUIDE.md) | 개발환경, TEST·local 실행, dependency 준비 |
+| [`TEST_AND_RELEASE_GUIDE.md`](operations/TEST_AND_RELEASE_GUIDE.md) | TEST 실기기 검증과 스토어·운영 배포 절차 |
+| [`TASKS.md`](planning/TASKS.md) | 현재 작업 상태와 다음 행동 |
 
-## Development
+## 작업 상세과 과거 증거
 
-- [`Agent Setup`](development/AGENT_SETUP.md)
-- [`Development Setup`](development/DEVELOPMENT_SETUP.md)
-- [`Development Environment Plan`](development/DEVELOPMENT_ENVIRONMENT_PLAN.md)
+다음 자료는 삭제하지 않지만 기본 개발 문맥이 아닙니다.
 
-## Operations
+- `planning/tasks/`: 작업별 완료 조건과 아직 남은 범위
+- `planning/logs/`: 날짜별 실행·검증 기록
+- 날짜가 붙은 `planning/*.md`: 과거 설계·통합·인수인계
+- 날짜가 붙은 `operations/*.md`: 과거 실기기·성능·배포 증거
+- `COMPLETED_TASKS.md`: 완료 판정과 당시 한계
 
-- [`Firebase MCP RTDB Read-only Pilot`](operations/FIREBASE_MCP.md)
-- [`Emulator Pilot`](operations/EMULATOR_PILOT.md)
-- [`Auth/Network/Session Technical Reference`](operations/AUTH_NETWORK_SESSION_TECHNICAL_REFERENCE.md)
-- [`네트워크 복구와 세션 관리 동작 명세`](operations/SESSION_EVENT_FLOWS.md) — 현재 구현의 상태 전이·의사코드·18개 대표 시나리오와 구현 공백
-- [`Real-device Auth/Network/Session Checklist`](operations/REAL_DEVICE_AUTH_NETWORK_SESSION_CHECKLIST.md)
-- [`개발 전 현재 기준 수동 테스트`](operations/PRE_DEVELOPMENT_AUTH_NETWORK_SESSION_TEST.md) — 과거 완료·현재 문제를 함께 재검증하고 task 후보를 기록
-- [`AI Emulator 테스트 재구축 참고`](operations/EMULATOR_TEST_EXECUTION.md) — 제거한 환경의 설계·실행 근거·한계와 62개 재구축 분류
-- [`User Auth/Network/Session Guide`](operations/USER_AUTH_NETWORK_SESSION_GUIDE.md)
+과거 문서의 버전, 함수 수, 게임 수, 브랜치와 검증 결과를 현재 상태로 재사용하지 않습니다.
+현재 문서가 근거로 연결했을 때만 해당 기록을 확인합니다.
 
-## Planning
+## 참고 자료
 
-- [`작업 목록`](planning/TASKS.md): 구현 검증 대기·출시 전 필수·권장·출시 후 작업의 분류·상태·다음 행동 요약 표
-- [`작업별 상세`](planning/tasks/): 작업 ID별 목적·범위·근거·완료 조건
-- [`작업 관리 방법`](planning/TASK_MANAGEMENT.md): 상태·분류 관리, 완료 처리와 출시 판정 기준
-- [`완료 작업`](planning/COMPLETED_TASKS.md): 최종 변경, 완료일, 검증 근거와 한계
-- [`월별 작업 기록`](planning/logs/): 월별 파일 안에서 태스크별 과정과 날짜별 목차 관리
-  — [2026년 8월](planning/logs/2026-08.md)·[2026년 9월](planning/logs/2026-09.md)·[2026년 10월](planning/logs/2026-10.md)
+- [`GAME_KIT_ADOPTION.md`](engineering/GAME_KIT_ADOPTION.md): 공용 게임 기반의 세부 채택 규칙
+- [`PACKAGE_MIGRATION.md`](engineering/PACKAGE_MIGRATION.md): 패키지 전환의 과거 결정과 현재 번들 정책 근거
+- [`NETWORK_SESSION_CONTRACT.md`](engineering/NETWORK_SESSION_CONTRACT.md): 인증·세션 상태 전이 변경 시 필요한 상세 계약
+- [`FIREBASE_MCP.md`](operations/FIREBASE_MCP.md): 승인된 production RTDB 단일 경로 읽기
+- [`FIREBASE_SERVER_LOGS.md`](operations/FIREBASE_SERVER_LOGS.md): 승인 범위의 정제된 서버 로그 읽기
+- [`MOSIGAME_SYSTEM_MAP.html`](engineering/MOSIGAME_SYSTEM_MAP.html): 시각적 개발자 운영 Map.
+  기능 브랜치를 개발자 이름 브랜치에 합치기 전에 현재 코드로 갱신
 
-진행 과정은 기록에, 현재 구현 설명은 Engineering/Operations의 해당 기술 문서에 둔다.
-문서 작성·이동과 상태 관리 방법은 [작업 관리 방법](planning/TASK_MANAGEMENT.md)을 따른다.
+## 더 이상 현재 기준으로 사용하지 않는 자료
+
+- `GAME_PACKAGE_FILE_REFERENCE.md`: 2026-09 시점 자동 추출본으로 현재 패키지와 링크가 다름
+- `cloud-functions.tsv`: 과거 67개 목록으로 현재 `functions/src/index.ts`와 다름
+- `GAME_CODE_REVIEW_GUIDE.md`: 과거 세 게임 중심 리뷰 순서. 현재 구조는 Architecture 우선
+- `STORE_RELEASE_CHECKLIST.md`: 1.0.0 출시 준비 기록. 현재 절차는 Test and release guide 우선
+- `DEVELOPMENT_ENVIRONMENT_PLAN.md`: 환경 구축 과정 기록. 현재 절차는 Development guide 우선
+
+이 파일들은 과거 의사결정과 검증 근거 보존을 위해 남깁니다. 새 작업의 source of truth로
+사용하지 않습니다.

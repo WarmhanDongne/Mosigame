@@ -15,6 +15,7 @@ import 'package:project00/platform/auth/services/auth_service.dart';
 import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_design.dart';
 import 'package:project00/platform/home/home.dart';
+import 'package:project00/platform/notifications/push_notification_host.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
 
@@ -138,6 +139,7 @@ class _AuthGateState extends State<AuthGate> {
     }
     final user = authSnapshot.data;
     if (user == null) {
+      unawaited(PushDeviceRegistration.clearSignedOutToken());
       _clearOnboardingWatch();
       final link = _emailLink;
       if (link != null) {
@@ -234,7 +236,10 @@ class _AuthGateState extends State<AuthGate> {
       OnboardingStatus.settingProfile => ProfileSetupScreen(
         passwordFirst: onboarding.provider == OnboardingProvider.legacyPassword,
       ),
-      OnboardingStatus.complete => Home(gameCatalog: widget.gameCatalog),
+      OnboardingStatus.complete => Home(
+        gameCatalog: widget.gameCatalog,
+        pushUid: user.uid,
+      ),
     };
   }
 

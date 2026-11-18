@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>aps-environment</key>
+	<string>$(PUSH_APS_ENVIRONMENT)</string>
 	<!-- Sign In with Apple은 유료 개발자 계정(Apple Developer Program)이 필요합니다.
 	     개인 개발자 팀(Personal Team)으로 서명하면 프로비저닝 프로파일 생성이 실패합니다. -->
 	<key>com.apple.developer.applesignin</key>
@@ -12,7 +14,7 @@
 	     AASA 파일과 Team ID·bundle ID가 일치해야 합니다. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:project0000-ec01e.firebaseapp.com</string>
+		<string>applinks:ban-pick-simulator.firebaseapp.com</string>
 	</array>
 </dict>
 </plist>
