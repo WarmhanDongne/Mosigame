@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   catalogCommand,
   minimalGameCatalog,
-  PRODUCTION_PROJECT,
+  TEST_PROJECT,
   rebuildGameCatalog,
 } from "../scripts/rebuild-game-catalog.mjs";
 
@@ -132,7 +132,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
 test("catalog command requires a matching confirmation for every write target", () => {
   assert.deepEqual(catalogCommand([]), {
     apply: false,
-    projectId: PRODUCTION_PROJECT,
+    projectId: TEST_PROJECT,
   });
   assert.deepEqual(catalogCommand(["--project=mosigame-test-project"]), {
     apply: false,

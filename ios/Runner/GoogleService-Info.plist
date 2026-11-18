@@ -3,36 +3,34 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>93097008048-m72v2b01l0kpidn3nkah94mt7om8ub3g.apps.googleusercontent.com</string>
+	<string>127477049099-mgdb3u9psnah10llpmd574cm7hdoodlk.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.93097008048-m72v2b01l0kpidn3nkah94mt7om8ub3g</string>
-	<key>ANDROID_CLIENT_ID</key>
-	<string>93097008048-9i8e9eb98brn8uimr7j7b23fo6l67f7r.apps.googleusercontent.com</string>
+	<string>com.googleusercontent.apps.127477049099-mgdb3u9psnah10llpmd574cm7hdoodlk</string>
 	<key>API_KEY</key>
-	<string>AIzaSyC-OYxr_0iywf5G9uWpPG32TWva416WcnY</string>
+	<string>AIzaSyDTgUYuAvW017Ufb4WHKkDvFfNuwjkfQh8</string>
 	<key>GCM_SENDER_ID</key>
-	<string>93097008048</string>
+	<string>127477049099</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.warmhandongne.msg</string>
 	<key>PROJECT_ID</key>
-	<string>project0000-ec01e</string>
+	<string>ban-pick-simulator</string>
 	<key>STORAGE_BUCKET</key>
-	<string>project0000-ec01e.firebasestorage.app</string>
+	<string>ban-pick-simulator.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
-	<false></false>
+	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>
-	<false></false>
+	<false/>
 	<key>IS_APPINVITE_ENABLED</key>
-	<true></true>
+	<true/>
 	<key>IS_GCM_ENABLED</key>
-	<true></true>
+	<true/>
 	<key>IS_SIGNIN_ENABLED</key>
-	<true></true>
+	<true/>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:93097008048:ios:7cc378f1a02877ffd49475</string>
+	<string>1:127477049099:ios:7325f1c2b41106d7dd640e</string>
 	<key>DATABASE_URL</key>
-	<string>https://project0000-ec01e-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+	<string>https://ban-pick-simulator-default-rtdb.asia-southeast1.firebasedatabase.app</string>
 </dict>
 </plist>

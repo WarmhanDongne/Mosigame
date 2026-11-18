@@ -23,7 +23,7 @@ void main() {
       final users = StreamController<User?>.broadcast(sync: true);
       final service = _PendingEmailLinkService();
       final link = Uri.parse(
-        'https://project0000-ec01e.firebaseapp.com/__/auth/links?mode=signIn&oobCode=test',
+        'https://ban-pick-simulator.firebaseapp.com/__/auth/links?mode=signIn&oobCode=test',
       );
       await tester.pumpWidget(
         MaterialApp(
@@ -95,7 +95,7 @@ void main() {
 
     emailLinks.add(
       Uri.parse(
-        'https://project0000-ec01e.firebaseapp.com/__/auth/links'
+        'https://ban-pick-simulator.firebaseapp.com/__/auth/links'
         '?mode=signIn&oobCode=test-code',
       ),
     );
