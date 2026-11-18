@@ -1,5 +1,9 @@
 # Mosigame agent environment setup
 
+> 현재 AI 진입점은 루트 `AGENTS.md`, 사람용 환경 절차는
+> [`DEVELOPMENT_GUIDE.md`](DEVELOPMENT_GUIDE.md)다. 이 파일은 기존 setup 실행 계약의
+> 상세 근거로 보존한다.
+
 이 문서는 Codex가 기존 working tree를 보존하면서 Mosigame 개발환경을 점검하고
 repository-local 준비를 수행하는 실행 계약이다.
 

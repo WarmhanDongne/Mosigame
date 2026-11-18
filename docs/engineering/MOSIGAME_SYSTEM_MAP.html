@@ -330,12 +330,12 @@
 </head>
 <body>
   <div class="shell">
-    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.17 · 앱 1.0.1+9</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button><button type="button" data-sheet="recovery">05 · 재연결·복구</button></nav></div></div>
+    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.18 · 앱 1.0.1+9</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button><button type="button" data-sheet="recovery">05 · 재연결·복구</button></nav></div></div>
     <header class="hero">
       <div class="hero-copy">
         <div class="eyebrow">개발자 참고 문서</div>
         <h1>코드 구조와 <span>함수 찾기</span></h1>
-        <p>화면을 수정할 파일, 서버 함수를 찾을 경로, 상태가 저장되는 위치를 정리했습니다. 탭을 고르고 필요한 항목을 선택하면 관련 코드와 처리 순서를 볼 수 있습니다.</p>
+        <p>화면을 수정할 파일, 서버 함수를 찾을 경로, 상태가 저장되는 위치를 정리했습니다. 탭을 고르고 필요한 항목을 선택하면 관련 코드와 처리 순서를 볼 수 있습니다. 함수 목록의 최종 기준은 <code>functions/src/index.ts</code>이며 이 시각 자료에 없는 로컬 후보가 있을 수 있습니다.</p>
       </div>
       <div class="shelf-scene" aria-hidden="true">
         <div class="shelf-books"><div class="shelf-cover liar"><span>MOSIGAME</span><b>LIAR'S<br>POKER</b><span>01 · CARD GAME</span></div><div class="shelf-cover final"><span>MOSIGAME</span><b>FINAL<br>CALL</b><span>02 · TEAM GAME</span></div><div class="shelf-cover mafia"><span>MOSIGAME</span><b>MAFIA</b><span>03 · ROLE GAME</span></div></div>
@@ -343,6 +343,11 @@
         <div class="room-ticket"><small>GROUP ROOM</small><strong>BOOK → PLAY</strong><em>게임 선택하기</em></div>
       </div>
     </header>
+    <p class="developer-note"><strong>병합 전 갱신 규칙</strong> · 기능 개발이 끝나
+      <code>&lt;개발자&gt;_&lt;기능&gt;</code> 브랜치를 <code>hajun</code> 또는
+      <code>jinsung</code> 브랜치에 합치기 전에 이 Map을 같은 기능 브랜치에서 갱신합니다.
+      변경된 화면, 기능 흐름, 파일 위치, Functions, Firebase 데이터 경계와 상단 확인일을
+      현재 코드에 맞추는 것이 병합 조건입니다.</p>
     <nav class="bookmarks" role="tablist" aria-label="책갈피로 페이지 선택">
       <button id="tab-front" role="tab" type="button" data-sheet="front" aria-controls="front" aria-selected="true"><span>01</span> 프론트</button>
       <button id="tab-game" role="tab" type="button" data-sheet="game" aria-controls="game" aria-selected="false"><span>02</span> 게임</button>
@@ -532,7 +537,7 @@
         </section>
       </article>
     </main>
-    <footer class="footer">이 문서는 로컬 코드 기준입니다. 함수나 파일 구조를 바꾸면 내용을 다시 확인하세요. <a href="ARCHITECTURE.md">상세 구조 문서</a> · <a href="NEW_GAME_GUIDE.md">새 게임 가이드</a></footer>
+    <footer class="footer">이 문서는 로컬 코드 기준입니다. 기능 브랜치를 개발자 이름 브랜치에 합치기 전에 변경된 함수·화면·흐름·파일 구조와 확인일을 갱신하세요. <a href="ARCHITECTURE.md">상세 구조 문서</a> · <a href="NEW_GAME_GUIDE.md">새 게임 가이드</a></footer>
   </div>
   <dialog id="code-inspector" class="code-inspector" aria-labelledby="inspector-title">
     <div class="inspector-header"><div><span class="label">코드 설명</span><h2 id="inspector-title"></h2><code id="inspector-path"></code></div><button id="inspector-close" type="button" aria-label="코드 설명 닫기">×</button></div>
@@ -841,8 +846,8 @@
       liars:[
         {tablet:'liars_tablet_dealing',phone:'liars_phone_dealing',note:'시작 함수 실행 후 dealing 상태입니다. 휴대폰은 개인 손패를 받기 전이어서 배경만 보입니다.'},
         {tablet:'liars_tablet_dealing',phone:'liars_phone_dealing',note:'태블릿 카드 분배 애니메이션의 정지 프레임입니다. 휴대폰은 서버의 분배 완료를 기다립니다.'},
-        {tablet:'liars_tablet_table',phone:'liars_phone_turn',note:'태블릿은 6명 테이블, 휴대폰은 3명 게임의 내 차례 예시입니다.'},
-        {tablet:'liars_tablet_reveal',phone:'liars_phone_challenge',note:'공개 화면과 마지막 카드 도전 화면을 각각 캡처했습니다.'},
+        {tablet:'liars_tablet_table',phone:null,note:'태블릿은 6명 테이블입니다. 휴대폰 내 차례 화면은 별도 캡처가 없습니다.'},
+        {tablet:null,phone:'liars_phone_challenge',note:'휴대폰의 마지막 카드 도전 화면입니다. 태블릿 공개 화면은 별도 캡처가 없습니다.'},
         {tablet:'liars_tablet_roulette',phone:'liars_phone_penalty',note:'룰렛은 정지 프레임이며 실제 앱에서는 회전합니다.'},
         {tablet:'liars_tablet_winner',phone:null,note:'태블릿 우승 화면입니다. 휴대폰의 같은 시점 결과 화면은 캡처하지 않았습니다.'},
       ],
@@ -863,7 +868,7 @@
         {tablet:'mafia_tablet_result',phone:'mafia_phone_result',note:'게임 종료 테스트 상태입니다.'},
       ],
       holdem:[
-        {tablet:'holdem_tablet_dealing',phone:'holdem_phone_dealing',note:'dealing 상태에서 실제 위젯을 렌더링했습니다. 카드가 공개되기 전 프레임입니다.'},
+        {tablet:'holdem_tablet_dealing',phone:null,note:'태블릿 dealing 상태의 실제 위젯입니다. 휴대폰의 같은 단계는 별도 캡처가 없습니다.'},
         {tablet:'holdem_tablet_preflop',phone:'holdem_phone_preflop',note:'프리플롭 베팅 상태입니다.'},
         {tablet:'holdem_tablet_flop',phone:'holdem_phone_flop',note:'플롭과 베팅 선택 상태입니다.'},
         {tablet:'holdem_tablet_turn',phone:'holdem_phone_turn',note:'턴 카드가 공개된 상태입니다. 리버는 그다음 단계입니다.'},
@@ -873,7 +878,7 @@
       yut:[
         {tablet:'yut_tablet_start',phone:'yut_phone_start',note:'게임 시작 후 첫 턴의 실제 윷놀이 화면입니다.'},
         {tablet:'yut_tablet_select',phone:'yut_phone_select',note:'전략형 윷놀이의 선택 단계입니다.'},
-        {tablet:'yut_tablet_roll',phone:'yut_phone_roll',note:'일반 윷놀이의 윷 던지기 단계입니다.'},
+        {tablet:null,phone:'yut_phone_roll',note:'휴대폰의 일반 윷놀이 윷 던지기 단계입니다. 태블릿은 별도 캡처가 없습니다.'},
         {tablet:'yut_tablet_move',phone:'yut_phone_move',note:'말 이동 단계입니다.'},
         {tablet:'yut_tablet_next',phone:'yut_phone_next',note:'다른 플레이어의 턴을 기다리는 단계입니다.'},
         {tablet:'yut_tablet_result',phone:'yut_phone_result',note:'게임 종료 테스트 상태입니다.'},
@@ -881,7 +886,7 @@
       russian:[
         {tablet:'russian_tablet_selecting',phone:'russian_phone_selecting',note:'30초 제한과 행동 버튼이 표시된 실제 Flutter 위젯입니다. 캡처에는 4명 예시 상태를 사용했습니다.'},
         {tablet:'russian_tablet_revealing',phone:'russian_phone_revealing',note:'비공개 행동 제출을 마친 뒤 공개하는 단계입니다.'},
-        {tablet:'russian_tablet_rotating',phone:'russian_phone_rotating',note:'태블릿 총 회전 연출의 정지 프레임입니다.'},
+        {tablet:'russian_tablet_rotating',phone:null,note:'태블릿 총 회전 연출의 정지 프레임입니다. 휴대폰은 별도 캡처가 없습니다.'},
         {tablet:'russian_tablet_firing',phone:'russian_phone_firing',note:'발사 연출의 정지 프레임입니다. 캐릭터 이미지가 아직 로드되지 않은 테스트 초기 프레임입니다.'},
         {tablet:'russian_tablet_outcome',phone:'russian_phone_outcome',note:'서버가 확정한 방패 또는 탈락 결과를 표시합니다.'},
         {tablet:'russian_tablet_finished',phone:'russian_phone_finished',note:'마지막 생존자 결과 화면입니다.'},

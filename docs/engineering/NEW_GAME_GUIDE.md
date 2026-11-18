@@ -4,10 +4,14 @@
 휴대폰·태블릿 화면, 서버 상태와 callable, Firebase 보안 경계, Firestore 카탈로그,
 검증과 공개 순서를 한곳에서 연결한다.
 
-세부 구현 규칙은 [game_kit 채택 규칙](GAME_KIT_ADOPTION.md), 패키지·다운로드 방식은
-[Package Migration](PACKAGE_MIGRATION.md), 서버 함수 이름과 배포 방식은
+세부 구현 규칙은 [game_kit 채택 규칙](GAME_KIT_ADOPTION.md), 현재 패키지 구조는
+[Architecture](ARCHITECTURE.md), 서버 함수 이름과 배포 방식은
 [Cloud Functions](CLOUD_FUNCTIONS.md)를 따른다. 실제 출발점은
 [`game_template`](../../packages/game_template/lib/README.md)이다.
+
+사용자의 기획 설명과 첨부 자료를 구현 가능한 계약으로 정리하고, 미확정 질문·프론트 요소·
+에셋·검증 순서를 빠뜨리지 않기 위한 재사용 프롬프트는
+[신규 게임 추가 실행 프롬프트](NEW_GAME_PROMPT.md)를 사용한다.
 
 ## 1. 공개 전 기본 원칙
 
@@ -64,8 +68,9 @@
 | `buildPhoneScreen` | 휴대폰 게임 route의 최상위 화면 |
 | `buildTabletScreen` | 진행 태블릿 게임 route의 최상위 화면 |
 
-번들 게임의 `requiredAssetVersion`은 0이다. 다운로드형 게임은
-[Package Migration](PACKAGE_MIGRATION.md)의 manifest·에셋 규칙에 따라 1 이상을 사용한다.
+모든 현재 게임은 코드와 에셋을 앱에 함께 번들하고 `requiredAssetVersion`은 0으로 둔다.
+Firebase Storage에서 Dart 코드를 내려받거나 새 게임을 런타임 다운로드형으로 추가하지
+않는다. 다운로드 정책을 다시 도입하려면 architecture·스토어 배포 계약을 별도 승인받는다.
 
 ### 2.3 화면과 상태를 연결한다
 
@@ -239,7 +244,8 @@ minAppVersion: "1.0.0"                    # 이 게임 코드가 포함된 최�
 
 ### 4.2 Console에서 저장하는 순서
 
-1. Firebase project `project0000-ec01e`의 Firestore `games` 컬렉션을 연다.
+1. 대상이 TEST인지 production인지 사용자와 확인한다. production이면 별도 승인을 받은 뒤
+   project `project0000-ec01e`의 Firestore `games` 컬렉션을 연다.
 2. 문서 ID를 정확한 `gameId`로 생성한다.
 3. 위 네 locale map과 한국어 legacy 필드, 인원·시간·정렬·접근 필드를 입력한다.
 4. `enabled`를 boolean `false`, `storeVisible`을 boolean `false`로 저장한다.
@@ -288,7 +294,7 @@ Firestore 문서를 먼저 활성화하지 않는다. catalog에는 게임이 �
 - 복구: 휴대폰·태블릿 단절, 앱 재실행, 참가자 제외, 인원 부족 종료
 - locale: `ko`, `en`, `zh-Hans`, `zh-Hant`의 목록·상세·규칙·게임 화면
 - 레이아웃: 휴대폰/태블릿, 작은 화면, 긴 번역, 화면 회전 정책
-- 에셋: 번들 또는 다운로드 manifest, 오프라인 캐시와 버전 불일치
+- 에셋: 번들 경로·package 이름·오프라인 실행과 누락 자산
 
 빠른 검사 뒤 저장소 루트에서 관련 Project CLI suite를 실행하고, 최종 후보는 사용자 승인
 후 `dart run :mosigame validate --full`을 실행한다. 운영 Firebase 등록, Functions/rules
