@@ -1,5 +1,5 @@
 import {
-  replayGameCommand,
+  replayGameCommandFromRoom,
   runGameCommandTransaction,
 } from "../game-interruption/game-command-transaction.js";
 /* eslint-disable valid-jsdoc */
@@ -55,17 +55,16 @@ export const game_liars_poker_start_game =
       const roomRef = getDatabase().ref(
         `rooms/${roomCode}`,
       );
-      const replay = await replayGameCommand(
-        roomRef, request, "game_liars_poker_start_game",
-      );
-      if (replay) return replay;
-
       /*
        * 방 전체에 바로 트랜잭션을 걸면 첫 콜백에서
        * null이 전달될 수 있으므로 먼저 서버 데이터를 읽습니다.
        */
       const roomSnapshot = await roomRef.get();
       const rawRoom = roomSnapshot.val();
+      const replay = replayGameCommandFromRoom(
+        rawRoom, request, "game_liars_poker_start_game",
+      );
+      if (replay) return replay;
 
       assertRoomExists(rawRoom);
 

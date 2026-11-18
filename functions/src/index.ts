@@ -58,6 +58,21 @@ export {
   cleanupIncompleteAccounts,
 } from "./auth/cleanup-incomplete-accounts.js";
 
+// ---------------------------------------------- 플랫폼 운영 공지
+export {
+  updatePlatformAnnouncement,
+} from "./operations/announcements.js";
+export {
+  sendOperationsPushNotification,
+} from "./operations/push-alerts.js";
+
+// ---------------------------------------------- 게임 참가자 기기 알림
+export {
+  registerPushDevice,
+  unregisterPushDevice,
+} from "./notifications/push-devices.js";
+export {pushGameStatus, pushGameTurn} from "./notifications/game-push.js";
+
 // ---------------------------------------------- 게임: Liar's Poker
 export {game_liars_poker_start_game} from "./liars-poker/start-game.js";
 export {

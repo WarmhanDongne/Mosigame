@@ -11,6 +11,7 @@ import 'package:project00/platform/auth/models/nickname_policy.dart';
 import 'package:project00/platform/auth/services/auth_service.dart';
 import 'package:project00/platform/home/room/services/player_room_session_store.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
+import 'package:project00/platform/notifications/push_notification_host.dart';
 import 'package:project00/platform/profile/providers/profile_update_controller.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile.dart';
 
@@ -181,6 +182,7 @@ class _TabletProfileModalState extends State<TabletProfileModal> {
     FocusScope.of(context).unfocus();
     setState(() => _isLoggingOut = true);
     try {
+      await PushDeviceRegistration.unregisterBeforeSignOut();
       await FirebaseBackend.auth.signOut();
       _profileUpdates.clear();
       // 상점 등에서 연 프로필도 로그인 위에 이전 route를 남기지 않습니다.

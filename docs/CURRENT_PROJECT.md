@@ -1,6 +1,6 @@
 # Mosigame 현재 프로젝트 기준
 
-확인 기준: 2026-11-18, 문서 정리 전 `develop` 기준 `cb13e579`. 이 문서는 코드에 등록된
+확인 기준: 2026-11-18, `develop`·`jinsung` 기준 HEAD `cb13e579`. 이 문서는 코드에 등록된
 기능과 사용자가 확정한 공개 계획을 구분합니다. 운영 Firebase의 실제 배포·활성 상태를
 조회했다는 뜻은 아닙니다.
 
@@ -72,7 +72,9 @@ RussianRouletteGame
 
 정확한 현재 export source of truth는 `functions/src/index.ts`입니다.
 
-- 현재 HEAD export: 93개
+- 통합 전 `cb13e579` export: 93개
+- 2026-11-18 `jinsung` 통합 후보 export: 99개
+- 추가 후보: 공지 1개, 운영 알림 발송 1개, push device 2개, 게임 push trigger 2개
 - 실제 운영 배포 개수와 revision: 별도 승인된 metadata 조회 없이는 미확정
 
 문서에 적힌 과거 67·69·79·81개 수치를 현재 배포 수로 사용하지 않습니다.

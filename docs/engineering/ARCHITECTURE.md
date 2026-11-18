@@ -44,6 +44,8 @@ packages/game_<game>/      게임별 Flutter 구현과 자체 번들 assets
 functions/src/auth/        인증·온보딩 서버 작업
 functions/src/room/        방 lifecycle과 접속 상태 서버 작업
 functions/src/<game>/      게임별 타입, 검증과 상태 전이
+functions/src/notifications/ TEST 후보의 push 기기·게임 알림
+functions/src/operations/  TEST 후보의 운영 공지 관리
 test/                      Flutter/Project CLI 테스트
 functions/test/            Functions 테스트
 tool/mosigame_cli/         Mosigame Project CLI 구현

@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>aps-environment</key>
+	<string>$(PUSH_APS_ENVIRONMENT)</string>
 	<!-- Sign In with Apple은 유료 개발자 계정(Apple Developer Program)이 필요합니다.
 	     개인 개발자 팀(Personal Team)으로 서명하면 프로비저닝 프로파일 생성이 실패합니다. -->
 	<key>com.apple.developer.applesignin</key>

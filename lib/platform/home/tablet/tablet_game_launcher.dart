@@ -26,6 +26,7 @@ import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:project00/platform/home/room/services/room_restore_to_waiting.dart';
 import 'package:project00/platform/home/tablet/tablet_game_start.dart';
+import 'package:project00/platform/home/tablet/tablet_game_tutorial.dart';
 import 'package:game_kit/localization/game_locale.dart';
 
 /// 로비를 유지한 채 자리 배치에서 게임으로 이어지는 기존 시작 흐름입니다.
@@ -433,6 +434,13 @@ class _TabletGameLauncher {
           }),
           startGame: () => templateGame.startGame(roomCode, options: options),
           isCurrent: sameAttempt,
+          // 처음 하는 사람이 있으면 시작 명령 전에 태블릿·휴대폰 튜토리얼을 띄웁니다.
+          beforeStart: () => runTabletTutorialIfNeeded(
+            context: layoutContext,
+            game: templateGame,
+            roomCode: roomCode,
+            layout: completedLayout,
+          ),
         );
         if (!prepared) {
           if (layoutContext.mounted && provider.roomCode == roomCode) {

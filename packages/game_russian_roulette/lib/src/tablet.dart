@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_turn_countdown_face.dart';
@@ -195,9 +196,11 @@ class _RussianRouletteTabletScreenState
     final since = _phaseKey == '${game.status}:${game.phase}:${game.round}'
         ? _nowMs - _phaseStartedAt
         : 0;
+    // 응답이 오는 동안 화면이 멈춰 보이지 않게 끝나기 조금 전에 요청합니다.
+    final lead = RussianRouletteTiming.phaseRequestLead.inMilliseconds;
     _armPhase(
       key,
-      Duration(milliseconds: math.max(0, delay.inMilliseconds - since)),
+      Duration(milliseconds: math.max(0, delay.inMilliseconds - lead - since)),
     );
   }
 
@@ -227,8 +230,25 @@ class _RussianRouletteTabletScreenState
     _armPhase(key, _phaseRetryDelay);
   }
 
-  Future<void> _timeout() async {
-    await _run(() => _service.command.timeout(widget.roomCode));
+  /// 마감이 지나면 시간 초과를 보냅니다. 실패하면(네트워크, 서버 시각 오차)
+  /// 같은 마감의 선택 단계가 그대로일 때만 몇 번 더 보내 턴이 멈추지 않게 합니다.
+  Future<void> _timeout(int deadline) async {
+    for (var attempt = 0; attempt <= _maxPhaseAttempts; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(_phaseRetryDelay);
+        if (!mounted) return;
+        final latest = RussianRouletteView.fromPublic(
+          ref.read(russianRouletteSessionProvider(_args)).publicState,
+        );
+        if (latest.phase != 'selecting' ||
+            latest.paused ||
+            latest.deadlineAt != deadline) {
+          return;
+        }
+      }
+      final ok = await _run(() => _service.command.timeout(widget.roomCode));
+      if (ok || !mounted) return;
+    }
   }
 
   Future<void> _restart() async {
@@ -258,10 +278,14 @@ class _RussianRouletteTabletScreenState
   int _gunStartedAt = 0;
 
   int get _nowMs => DateTime.now().millisecondsSinceEpoch;
+  int get _serverNow => ServerClock.nowMillis();
 
   // 게임 시작 연출: 1턴 선택이 막 시작됐을 때(남은 시간이 넉넉할 때) 한 번만.
   int? _introStartedAt;
   int _introDeadline = 0;
+
+  /// 시작 연출을 보여 준 게임의 시작 시각입니다.
+  int _introGame = 0;
 
   int? _introMs(RussianRouletteView game) {
     final fresh =
@@ -270,10 +294,19 @@ class _RussianRouletteTabletScreenState
         !game.paused &&
         game.deadlineAt != 0 &&
         game.deadlineAt != _introDeadline &&
-        game.deadlineAt - _nowMs > 22000;
+        // 첫 턴 마감은 서버가 '시작 연출 + 30초'로 잡습니다. 중간에 멈췄다가
+        // 이어진 첫 턴은 30초 이하라 연출을 다시 틀지 않습니다.
+        game.deadlineAt - _serverNow >
+            RussianRouletteTiming.turn.inMilliseconds + 1500;
     if (fresh) {
       _introDeadline = game.deadlineAt;
-      _introStartedAt = _nowMs;
+      _introGame = game.startedAt;
+      // 휴대폰 버튼 잠금과 같은 시점에 끝나도록, 늦게 받았으면 그만큼 앞에서 시작합니다.
+      final introStart =
+          game.deadlineAt -
+          RussianRouletteTiming.turn.inMilliseconds -
+          rouletteIntroLength(game.aliveCount);
+      _introStartedAt = _nowMs - math.max(0, _serverNow - introStart);
     }
     final started = _introStartedAt;
     if (started == null) return null;
@@ -305,7 +338,13 @@ class _RussianRouletteTabletScreenState
     final key = '${game.status}:${game.phase}:${game.round}';
     if (key != _phaseKey) {
       _phaseKey = key;
-      _phaseStartedAt = _nowMs;
+      // 서버의 단계 시작 시각에 맞춰 휴대폰과 같은 장면을 보여 주고, 단계 진행
+      // 예약도 같은 기준으로 잡습니다.
+      _phaseStartedAt = rouletteLocalPhaseStart(
+        localNow: _nowMs,
+        serverNow: ServerClock.hasSynced ? ServerClock.nowMillis() : null,
+        phaseStartedAt: game.phaseStartedAt,
+      );
     }
     return Duration(milliseconds: _nowMs - _phaseStartedAt);
   }
@@ -479,7 +518,7 @@ class _RussianRouletteTabletScreenState
     }
     final holdIntro = rouletteShouldHoldIntroFrame(
       game,
-      presentedDeadline: _introDeadline,
+      presentedStartedAt: _introGame,
     );
     final intro = _introMs(game);
     if (intro != null || holdIntro) {
@@ -504,15 +543,17 @@ class _RussianRouletteTabletScreenState
         'play',
         GameTurnCountdownFace(
           expiresAt: game.deadlineAt == 0 ? null : game.deadlineAt,
-          onTimeout: () => unawaited(_timeout()),
+          onTimeout: () => unawaited(_timeout(game.deadlineAt)),
           builder: (_, remaining) => RouletteStage(
             model: frame.build(
               aim,
               wedge: wedge,
+              // 첫 턴은 시작 연출 동안 마감이 30초보다 멀어 꽉 찬 채로 기다립니다.
               timerFraction:
-                  (remaining?.inMilliseconds ??
-                      RussianRouletteTiming.turn.inMilliseconds) /
-                  RussianRouletteTiming.turn.inMilliseconds,
+                  ((remaining?.inMilliseconds ??
+                              RussianRouletteTiming.turn.inMilliseconds) /
+                          RussianRouletteTiming.turn.inMilliseconds)
+                      .clamp(0.0, 1.0),
             ),
           ),
         ),

@@ -4,7 +4,7 @@ import {assertRoomTarget, SessionRoom} from "../room/session-contract.js";
 import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/common/types.js";
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
-import {RUSSIAN_ROULETTE_TURN_MS} from "../russian-roulette/game.js";
+import {RUSSIAN_ROULETTE_TURN_MS, russianRouletteFirstTurnMs} from "../russian-roulette/game.js";
 
 export interface GameContext {
   gameInstanceId: string;
@@ -138,8 +138,14 @@ export function beginRecoveryPause(
       game.public.phase === "lastCardChallenge" ? LAST_CARD_CHALLENGE_DURATION_MS : undefined) :
     game.public.gameType === "final_call" ? FINAL_CALL_TURN_MS :
       ["yut", "strategy_yut", "strategy_yut_edition"].includes(String(game.public.gameType)) ? YUT_TURN_MS : undefined;
+  // 러시안 룰렛 첫 턴은 준비가 끝난 뒤 시작 연출이 먼저 나오므로, 처음 준비
+  // 대기에서만 연출 길이만큼 더 보관해 재개 뒤 연출이 끝나야 30초가 흐릅니다.
+  const rouletteFirstTurn = purpose === "initialReadiness" && game.public.round === 1 &&
+    game.public.phase === "selecting";
+  const rouletteAlive = Object.values(game.public.players ?? {})
+    .filter((player) => player.status === "alive").length;
   const resolvedTurnLimit = game.public.gameType === "russian_roulette" ?
-    RUSSIAN_ROULETTE_TURN_MS : turnLimit;
+    (rouletteFirstTurn ? russianRouletteFirstTurnMs(rouletteAlive) : RUSSIAN_ROULETTE_TURN_MS) : turnLimit;
   if (resolvedTurnLimit !== undefined && typeof deadline === "number" && Number.isFinite(deadline)) {
     timerReferenceAt = Math.max(timerReferenceAt, deadline - resolvedTurnLimit);
   }

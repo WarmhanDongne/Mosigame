@@ -22,6 +22,8 @@ export interface RussianRoulettePublicState {
   revision: number;
   targetUid: string | null;
   turnDeadlineAt: number | null;
+  /** 지금 단계가 시작된 서버 시각입니다. 휴대폰·태블릿이 같은 시점부터 연출을 셉니다. */
+  phaseStartedAt?: number;
   choiceCount: number;
   revealedActions: Record<string, RussianRouletteAction>;
   spinCount: number;

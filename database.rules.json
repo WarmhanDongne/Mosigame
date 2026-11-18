@@ -91,6 +91,42 @@
           ".read": "auth != null && (root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid || root.child('rooms').child($roomCode).child('players').child(auth.uid).exists())",
           ".write": false
         },
+        "tutorial": {
+          ".read": "auth != null && (root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid || root.child('rooms').child($roomCode).child('players').child(auth.uid).exists())",
+          "session": {
+            ".write": "auth != null && root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid && root.child('rooms').child($roomCode).child('status').val() == 'seating'",
+            ".validate": "newData.hasChildren(['id', 'gameId', 'round', 'step', 'phase'])",
+            "id": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "gameId": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "round": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000" },
+            "step": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 100" },
+            "phase": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10" },
+            "ended": { ".validate": "newData.isBoolean()" },
+            "result": { ".validate": "newData.isString() && newData.val() == 'start'" },
+            "players": {
+              "$index": { ".validate": "newData.isString() && root.child('rooms').child($roomCode).child('players').child(newData.val()).exists()" }
+            },
+            "updatedAt": { ".validate": "newData.isNumber() && newData.val() <= now + 10000" },
+            "$other": { ".validate": false }
+          },
+          "players": {
+            "$playerUid": {
+              ".write": "auth != null && auth.uid == $playerUid && root.child('rooms').child($roomCode).child('players').child(auth.uid).child('status').val() == 'active' && root.child('rooms').child($roomCode).child('status').val() == 'seating'",
+              "gameId": { ".validate": "newData.isString() && newData.val().length <= 40" },
+              "seen": { ".validate": "newData.isBoolean()" },
+              "sid": { ".validate": "newData.isString() && newData.val().length <= 40" },
+              "round": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000" },
+              "step": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() < 100" },
+              "phase": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10" },
+              "done": { ".validate": "newData.isBoolean()" },
+              "value": { ".validate": "newData.isString() && newData.val().length <= 64" },
+              "memo": { ".validate": "newData.isString() && newData.val().length <= 64" },
+              "skip": { ".validate": "newData.isBoolean()" },
+              "choice": { ".validate": "newData.isString() && (newData.val() == 'start' || newData.val() == 'replay')" },
+              "$other": { ".validate": false }
+            }
+          }
+        },
         "players": {
           ".read": "auth != null && (root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid || root.child('rooms').child($roomCode).child('players').child(auth.uid).exists())",
           "$playerUid": {

@@ -7,14 +7,16 @@
 
 | 기준 | export 수 | 의미 |
 | --- | ---: | --- |
-| `cb13e579` | 93 | 문서 정리 전 `develop`에 커밋된 source |
+| `cb13e579` HEAD | 93 | 현재 `develop`에 커밋된 source |
+| `jinsung` 통합 후보 | 99 | 공지 1, 운영 알림 발송 1, push device 2, 게임 push trigger 2 추가 |
 
-현재 HEAD의 그룹별 export 수는 다음과 같다.
+로컬 후보의 그룹별 export 수는 다음과 같다.
 
 | 영역 | 수 |
 | --- | ---: |
 | 방·세션·room trigger | 18 |
 | 인증·계정 정리 | 9 |
+| 운영 공지·push | 6 |
 | Liar's Poker | 11 |
 | Final Call | 12 |
 | Mafia | 13 |
@@ -181,6 +183,25 @@ connected=true만으로 타이머를 재개하지 않는다.
 vote_to_continue/finish_now는 현재 index export와 소비자에서 제거했다.
 
 ## 5. RTDB 트리거와 주기 작업
+
+### 게임 기기 푸시 후보 (미배포)
+
+`registerPushDevice`와 `unregisterPushDevice`는 인증된 사용자만 호출한다. 서버는
+FCM 토큰을 해시한 ID로 `pushDevices`에 UID·토큰·언어·갱신 시각을 저장하며,
+클라이언트의 Firestore 직접 접근은 막는다. 계정 삭제 시 등록 기기도 제거한다.
+
+`pushGameStatus`는 게임의 `public/status`가 `playing` 또는 `finished`로
+바뀌었을 때, `pushGameTurn`은 유효한 `turnDeadlineAt`이 시작됐을 때 방의 활성
+휴대폰 참가자에게만 일반 문구를 발송한다. 방 코드·게임 비공개 정보는 FCM 본문에
+포함하지 않는다. 방 내부 `pushDispatch` 표식은 중복 발송을 억제한다. 마피아와
+러시안 룰렛처럼 개인 `turnUid`가 없는 게임에는 내 차례 알림을 보내지 않는다.
+서버 함수와 앱, 모바일 Firebase 설정을 같은 TEST 프로젝트에 맞춰 배포·설치한
+실기기에서 검증해야 한다. 이 절은 배포 완료를 의미하지 않는다.
+
+게임 푸시의 FCM API 수락·거절 건수와 마지막 요청 시각만
+`pushDeliveryStatus/current`에 누적한다. TEST 운영 콘솔은 `operationsAdmin`에게만
+이 집계를 보여준다. 실제 기기 수신 확인이 아니며 토큰·UID·방 코드를 저장하지 않는다.
+운영자가 일반 알림을 발송하는 `sendOperationsPushNotification`과 그 이력은 별도 기능이다.
 
 | RTDB 함수 (싱가포르) | 경로·역할 |
 | --- | --- |

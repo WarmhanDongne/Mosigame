@@ -1,4 +1,5 @@
 import 'package:game_kit/firebase/firebase_backend.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:project00/platform/localization/lobby_connection_band.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -427,6 +428,41 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
       );
   }
 
+  /// 게임이 튜토리얼을 주면 자리 배치 대기 화면을 튜토리얼 문으로 감쌉니다.
+  Widget _withTutorial({
+    required bool enabled,
+    required String? gameId,
+    required Widget header,
+    required Widget child,
+  }) {
+    final tutorial = gameId == null
+        ? null
+        : widget.provider.gameCatalog.find(gameId)?.tutorial;
+    final uid = FirebaseBackend.auth.currentUser?.uid;
+    final roomCode = widget.provider.roomCode;
+    if (!enabled || tutorial == null || uid == null || roomCode == null) {
+      return child;
+    }
+    return GameTutorialPhoneGate(
+      key: ValueKey('tutorial-gate-$roomCode-$gameId'),
+      roomCode: roomCode,
+      uid: uid,
+      tutorial: tutorial,
+      header: header,
+      players: [
+        for (final player in widget.provider.players)
+          if (player.isPlayer)
+            TutorialPlayer(
+              uid: player.uid,
+              nickname: player.nickname,
+              characterId: player.characterId,
+              seatIndex: player.seatIndex,
+            ),
+      ],
+      child: child,
+    );
+  }
+
   @override
   void dispose() {
     widget.provider.removeListener(_onRoomProviderChanged);
@@ -519,12 +555,10 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
                 ? _WaitingGameColors.of(selectedGameId).ground
                 : MosiColors.violet;
             final content = isArrangingSeats
-                ? _PhoneSeatingView(
-                    key: ValueKey(
-                      isStarting ? 'phone-starting' : 'phone-seating',
-                    ),
-                    starting: isStarting,
-                    provider: widget.provider,
+                ? _withTutorial(
+                    // 자리 배치가 끝나 튜토리얼이 열리면 대기 화면 대신 튜토리얼을 봅니다.
+                    enabled: isSeating && !isStarting,
+                    gameId: selectedGameId,
                     header:
                         widget.headerForTesting ??
                         _PhoneRoomHeader(
@@ -533,6 +567,21 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
                           onPressed: () =>
                               unawaited(_leaveRoomWithTransition()),
                         ),
+                    child: _PhoneSeatingView(
+                      key: ValueKey(
+                        isStarting ? 'phone-starting' : 'phone-seating',
+                      ),
+                      starting: isStarting,
+                      provider: widget.provider,
+                      header:
+                          widget.headerForTesting ??
+                          _PhoneRoomHeader(
+                            provider: widget.provider,
+                            dark: true,
+                            onPressed: () =>
+                                unawaited(_leaveRoomWithTransition()),
+                          ),
+                    ),
                   )
                 : Scaffold(
                     backgroundColor: Colors.transparent,

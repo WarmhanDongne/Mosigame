@@ -77,18 +77,18 @@ void main() {
     expect(view.finished, isFalse);
   });
 
-  test('presentation timing uses the slower tension pacing', () {
+  test('presentation timing keeps tension without dragging the turn', () {
     expect(
       RussianRouletteTiming.revealing(5),
-      const Duration(milliseconds: 6900),
+      const Duration(milliseconds: 5300),
     );
     expect(
       RussianRouletteTiming.rotating(3),
-      const Duration(milliseconds: 5400),
+      const Duration(milliseconds: 3800),
     );
     expect(
       RussianRouletteTiming.firingHold,
-      const Duration(milliseconds: 2200),
+      const Duration(milliseconds: 1400),
     );
     expect(
       RussianRouletteTiming.outcome(blocked: true),
@@ -97,6 +97,68 @@ void main() {
     expect(
       RussianRouletteTiming.outcome(blocked: false),
       const Duration(milliseconds: 4200),
+    );
+  });
+
+  test('phase clock follows the server start time when it is trustworthy', () {
+    expect(
+      rouletteLocalPhaseStart(
+        localNow: 10000,
+        serverNow: 50400,
+        phaseStartedAt: 50000,
+      ),
+      9600,
+    );
+    // 서버 값이 없거나 보정 전이면 받은 순간부터 셉니다.
+    expect(
+      rouletteLocalPhaseStart(
+        localNow: 10000,
+        serverNow: null,
+        phaseStartedAt: 50000,
+      ),
+      10000,
+    );
+    expect(
+      rouletteLocalPhaseStart(
+        localNow: 10000,
+        serverNow: 50400,
+        phaseStartedAt: 0,
+      ),
+      10000,
+    );
+    // 시계 오차로 음수이거나 지나치게 오래된 값은 믿지 않습니다.
+    expect(
+      rouletteLocalPhaseStart(
+        localNow: 10000,
+        serverNow: 49000,
+        phaseStartedAt: 50000,
+      ),
+      10000,
+    );
+    expect(
+      rouletteLocalPhaseStart(
+        localNow: 10000,
+        serverNow: 200000,
+        phaseStartedAt: 50000,
+      ),
+      10000,
+    );
+    expect(
+      RussianRouletteView.fromPublic(const {
+        'phaseStartedAt': 1234,
+      }).phaseStartedAt,
+      1234,
+    );
+  });
+
+  test('early phase request stays inside every phase tail', () {
+    final lead = RussianRouletteTiming.phaseRequestLead;
+    expect(lead < RussianRouletteTiming.revealTail, isTrue);
+    expect(lead < RussianRouletteTiming.rotationTail, isTrue);
+    expect(lead < RussianRouletteTiming.firingHold, isTrue);
+    expect(
+      RussianRouletteTiming.gunTurn < RussianRouletteTiming.rotationStep,
+      isTrue,
     );
   });
 
@@ -112,21 +174,21 @@ void main() {
     );
     expect(
       RussianRouletteTiming.showsSpinSummary(
-        const Duration(milliseconds: 4699),
+        const Duration(milliseconds: 3899),
         4,
       ),
       isFalse,
     );
     expect(
       RussianRouletteTiming.showsSpinSummary(
-        const Duration(milliseconds: 4700),
+        const Duration(milliseconds: 3900),
         4,
       ),
       isTrue,
     );
     expect(
       RussianRouletteTiming.completedRotationSteps(
-        const Duration(milliseconds: 799),
+        const Duration(milliseconds: 499),
         3,
       ),
       0,
@@ -181,27 +243,36 @@ void main() {
     });
 
     test('첫 시작 준비 중에는 공개된 선택 화면 대신 어두운 시작 프레임을 유지한다', () {
+      // 멈춘 동안 서버는 마감 시각을 비웁니다.
       final paused = RussianRouletteView.fromPublic({
         ...publicState(phase: 'selecting', paused: true),
         'round': 1,
-        'turnDeadlineAt': 31000,
+        'startedAt': 1000,
       });
       final running = RussianRouletteView.fromPublic({
         ...publicState(phase: 'selecting'),
         'round': 1,
-        'turnDeadlineAt': 31000,
+        'startedAt': 1000,
+        'turnDeadlineAt': 36340,
       });
 
+      // 아직 이 게임의 시작 연출을 보여 주지 않았으면 어둡게 기다립니다.
       expect(
-        rouletteShouldHoldIntroFrame(paused, presentedDeadline: 0),
+        rouletteShouldHoldIntroFrame(paused, presentedStartedAt: 0),
         isTrue,
       );
+      // 다시 시작한 새 게임도 연출 전이라 어둡게 기다립니다.
       expect(
-        rouletteShouldHoldIntroFrame(paused, presentedDeadline: 31000),
+        rouletteShouldHoldIntroFrame(paused, presentedStartedAt: 500),
+        isTrue,
+      );
+      // 연출을 이미 보여 준 첫 턴 중간 멈춤은 기존 화면을 유지합니다.
+      expect(
+        rouletteShouldHoldIntroFrame(paused, presentedStartedAt: 1000),
         isFalse,
       );
       expect(
-        rouletteShouldHoldIntroFrame(running, presentedDeadline: 0),
+        rouletteShouldHoldIntroFrame(running, presentedStartedAt: 0),
         isFalse,
       );
     });
