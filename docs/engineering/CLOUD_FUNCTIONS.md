@@ -8,8 +8,9 @@
 | 기준 | export 수 | 의미 |
 | --- | ---: | --- |
 | `cb13e579` | 93 | 문서 정리 전 `develop`에 커밋된 source |
+| `jinsung_푸시운영연동` 로컬 후보 | 98 | 공지 callable 1개, 기기 등록 callable 2개, 게임 푸시 trigger 2개 추가 |
 
-현재 HEAD의 그룹별 export 수는 다음과 같다.
+문서 정리 전 `cb13e579` source의 그룹별 export 수는 다음과 같다.
 
 | 영역 | 수 |
 | --- | ---: |
@@ -22,6 +23,11 @@
 | Yut 계열 | 7 |
 | Russian Roulette | 6 |
 | interruption·recovery·cleanup | 10 |
+
+로컬 후보의 게임 푸시는 FCM API의 수락·거절 건수와 마지막 요청 시각만
+`pushDeliveryStatus/current`에 누적한다. TEST 운영 콘솔은 `operationsAdmin`에게만
+이 문서를 읽어 보여준다. 집계는 실제 기기 수신 확인이 아니며 토큰·UID·방 코드를
+저장하지 않는다. TEST 배포와 기기 수신 검증은 아직 수행하지 않았다.
 
 이 수치는 source inventory이며 실제 운영 Firebase의 배포 이름·revision을 조회한 결과가
 아니다. TEST 프로젝트 검증과 운영 배포는

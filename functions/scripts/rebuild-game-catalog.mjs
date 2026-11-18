@@ -15,7 +15,7 @@ import {gameRules, localizedGameRules} from "./update-game-rules.mjs";
 import {yutGameCatalog} from "./yut-game-catalog.mjs";
 import {russianRouletteCatalog} from "./russian-roulette-catalog.mjs";
 
-export const PRODUCTION_PROJECT = "project0000-ec01e";
+export const TEST_PROJECT = "ban-pick-simulator";
 
 export const minimalGameCatalog = Object.freeze({
   liars: Object.freeze({
@@ -98,7 +98,7 @@ export async function rebuildGameCatalog(
   firestore,
   {
     apply = false,
-    projectId = PRODUCTION_PROJECT,
+    projectId = TEST_PROJECT,
     writeBackup: saveBackup,
   } = {},
 ) {
@@ -168,7 +168,7 @@ export async function rebuildGameCatalog(
 
 export function catalogCommand(args) {
   let apply = false;
-  let projectId = PRODUCTION_PROJECT;
+  let projectId = TEST_PROJECT;
   let confirmation;
   for (const argument of args) {
     if (argument === "--apply") {

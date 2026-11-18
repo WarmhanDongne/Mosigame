@@ -12,7 +12,7 @@
 	     AASA 파일과 Team ID·bundle ID가 일치해야 합니다. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:project0000-ec01e.firebaseapp.com</string>
+		<string>applinks:ban-pick-simulator.firebaseapp.com</string>
 	</array>
 </dict>
 </plist>

@@ -25,5 +25,14 @@
   },
   "database": {
     "rules": "database.rules.json"
+  },
+  "hosting": {
+    "site": "mosigame-operations-test",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   }
 }

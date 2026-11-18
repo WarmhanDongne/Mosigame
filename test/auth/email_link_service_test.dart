@@ -70,7 +70,7 @@ void main() {
     expect(settings.iOSBundleId, 'com.warmhandongne.msg');
     expect(
       settings.url,
-      'https://project0000-ec01e.firebaseapp.com/auth/email-link',
+      'https://ban-pick-simulator.firebaseapp.com/auth/email-link',
     );
   });
 
