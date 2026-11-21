@@ -67,6 +67,7 @@ void main() {
 
       expect(Firebase.app().name, '[DEFAULT]');
       expect(FirebaseBackend.app.name, 'mosigame-test');
+      expect(FirebaseBackend.defaultAppMatchesSelectedBackend, isFalse);
       expect(
         FirebaseBackend.app.options.projectId,
         TestFirebaseOptions.projectId,
