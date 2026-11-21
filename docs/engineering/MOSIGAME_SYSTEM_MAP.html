@@ -1192,7 +1192,7 @@
       'lib/platform/home/room/services/room_service.dart':['방 요청 서비스','방 생성·참가·선택·종료 같은 변경을 Cloud Functions에 요청합니다.','클라이언트 요청과 서버 응답 처리를 확인합니다.'],
       'lib/platform/home/room/providers/room_provider.dart':['방 화면 상태','RTDB에서 받은 방 정보를 로비와 참가 화면에서 쓰는 상태로 관리합니다.','방 구독과 화면 갱신 시점을 확인합니다.'],
       'packages/game_kit/lib/game_flow/game_flow_config.dart':['게임 흐름 설정','게임 단계별 화면, 문구, 애니메이션 시간과 입력 차단 설정을 담습니다.','단계별 표시 여부와 Duration 값을 확인합니다.'],
-      'packages/game_kit/lib/penalty/roulette.dart':['룰렛 UI·연출','레버 드래그, 회전 애니메이션, 서버 결과 칸 선택을 담당하는 공용 Flutter 위젯입니다.','확률 판정은 이 파일에서 하지 않습니다. 아래 시연의 원판·축·포인터·레버를 눌러 각 Flutter 코드를 확인하세요.'],
+      'packages/game_kit/lib/penalty/roulette.dart':['룰렛 UI·연출','원판 플릭, 칸 경계 촉각 피드백, 약한 플릭 안내, 회전 애니메이션과 서버 결과 칸 정지를 담당하는 공용 Flutter 위젯입니다.','확률 판정은 이 파일에서 하지 않습니다. 서버가 정한 결과를 받은 뒤 생존·탈락 칸에 멈추며 결과별 촉각 피드백을 제공합니다.'],
       'packages/game_liars_poker/lib/tablet/screens/game_penalty.dart':['라이어스 룰렛 화면','공용 PenaltyRoulette를 태블릿 벌칙 단계에 놓고 결과 반영 중 입력을 막습니다.','onPrepareResult와 onResult가 게임 controller에 연결되는 부분을 확인합니다.'],
       'packages/game_liars_poker/lib/shared/providers/penalty_coordinator.dart':['룰렛 서버 요청 순서','prepare()로 서버 결과를 받고 complete()로 같은 결과의 연출 완료를 알립니다.','resolutionId를 보관했다가 resolve 요청에 다시 전달합니다.'],
       'packages/game_liars_poker/lib/shared/providers/game_controller.dart':['라이어스 게임 상태','서버 스냅샷을 화면 상태로 옮기고 카드 제출·벌칙·복구 명령을 조율합니다.','prepareRoulette()와 resolveRoulette()의 재시도·복구 조건을 확인합니다.'],
