@@ -5,12 +5,52 @@
 //
 // 즉, 인원과 기기 크기에 맞춰 자리를 안정적으로 배치하기 위해 필요한 파일이다.
 
+enum SeatLayoutMode {
+  corners,
+  sides;
+
+  static SeatLayoutMode? fromWire(Object? value) => switch (value) {
+    'corners' => SeatLayoutMode.corners,
+    'sides' => SeatLayoutMode.sides,
+    _ => null,
+  };
+}
+
+/// 마지막으로 저장한 자리의 참가자 구성과 좌석 형태입니다.
+class SavedSeatLayout {
+  const SavedSeatLayout({required this.playerUids, this.mode});
+
+  final Set<String> playerUids;
+  final SeatLayoutMode? mode;
+
+  bool matches(Iterable<String> uids) {
+    final current = uids.toSet();
+    return current.length == playerUids.length &&
+        current.containsAll(playerUids);
+  }
+
+  static SavedSeatLayout? fromWire(Object? value) {
+    if (value is! Map) return null;
+    final rawUids = value['playerUids'];
+    if (rawUids is! List || rawUids.any((uid) => uid is! String)) {
+      return null;
+    }
+    final uids = rawUids.cast<String>().toSet();
+    if (uids.length != rawUids.length || uids.length < 2) return null;
+    return SavedSeatLayout(
+      playerUids: uids,
+      mode: SeatLayoutMode.fromWire(value['mode']),
+    );
+  }
+}
+
 class PlayerLayoutModel {
-  const PlayerLayoutModel({required this.players});
+  const PlayerLayoutModel({required this.players, this.seatLayoutMode});
 
   /// 게임에 참가한 플레이어와 각 플레이어가 차지한 좌석입니다.
   /// 목록 순서는 플레이어 인덱스로 사용하고, 실제 화면 자리는 [seatIndex]로 찾습니다.
   final List<PlayerLayoutPlayer> players;
+  final SeatLayoutMode? seatLayoutMode;
 
   int get playerCount => players.length;
 
@@ -44,6 +84,7 @@ class PlayerLayoutModel {
     }
 
     return PlayerLayoutModel(
+      seatLayoutMode: seatLayoutMode,
       players: List<PlayerLayoutPlayer>.unmodifiable(
         Iterable.generate(
           players.length,
@@ -52,6 +93,9 @@ class PlayerLayoutModel {
       ),
     );
   }
+
+  PlayerLayoutModel withSeatLayoutMode(SeatLayoutMode? mode) =>
+      PlayerLayoutModel(players: players, seatLayoutMode: mode);
 }
 
 class PlayerLayoutPlayer {

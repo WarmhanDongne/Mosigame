@@ -15,6 +15,7 @@ import 'package:game_final_call/shared/widgets/card_view.dart';
 import 'package:game_final_call/game_copy.dart';
 import 'package:game_final_call/game_theme.dart';
 import 'package:game_final_call/shared/widgets/party_pop.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 
 // ============================================================
 
@@ -25,9 +26,11 @@ class FinalCallTabletCallAnimation extends StatelessWidget {
     super.key,
     required this.controller,
     required this.playerCount,
+    this.seatLayoutMode = SeatLayoutMode.sides,
   });
   final FinalCallController controller;
   final int playerCount;
+  final SeatLayoutMode seatLayoutMode;
 
   @override
   Widget build(BuildContext context) {
@@ -378,11 +381,13 @@ class FinalCallTabletDiscardAnimation extends StatefulWidget {
     required this.controller,
     required this.event,
     required this.playerCount,
+    this.seatLayoutMode = SeatLayoutMode.sides,
   });
 
   final FinalCallController controller;
   final FinalCallDiscardEvent event;
   final int playerCount;
+  final SeatLayoutMode seatLayoutMode;
 
   @override
   State<FinalCallTabletDiscardAnimation> createState() =>
@@ -430,6 +435,7 @@ class _FinalCallTabletDiscardAnimationState
         final start = finalCallSeatCenters(
           playerCount: widget.playerCount,
           boardSize: boardSize,
+          mode: widget.seatLayoutMode,
         )[player.seatIndex];
         final end = finalCallPublicCardCenter(boardSize);
         final cardWidth = finalCallCenterCardWidth(boardSize);

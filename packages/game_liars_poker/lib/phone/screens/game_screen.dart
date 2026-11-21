@@ -24,6 +24,7 @@ import 'package:game_liars_poker/phone/widgets/exit_modal.dart';
 import 'package:game_liars_poker/phone/widgets/settings_dialog.dart';
 import 'package:game_liars_poker/phone/widgets/turn_timer.dart';
 import 'package:game_liars_poker/phone/widgets/top_bar.dart';
+import 'package:game_liars_poker/phone/widgets/truth_count_hint.dart';
 import 'package:game_liars_poker/phone/widgets/turn_action_switcher.dart';
 import 'package:game_liars_poker/shared/widgets/pressable_button.dart';
 import 'package:game_kit/phone/widgets/rulebook_dialog.dart';
@@ -321,6 +322,62 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
         title: "LIAR'S POKER",
         markdown: LiarsPokerCopy.tabletRules,
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 카드 분배 전 '태블릿을 봐 주세요!' 안내
+  // ---------------------------------------------------------------------------
+  //
+  // 서버 dealing 동안 빈 화면에 안내를 띄우고, 새 손패가 위에서 들어와 안내를
+  // 덮는 동안에도 유지합니다. 카드 덱이 도착해 펼치기(뒤집기)를 시작하는 순간
+  // (onRevealStarted → hasRevealedHand) 살짝 작아지며 사라져 카드로 자연스럽게
+  // 넘어갑니다. 손패 레이어보다 아래에 깔아야 카드가 안내를 덮습니다.
+  bool _shouldShowTruthCountHint(LiarsPokerController? controller) {
+    if (controller == null || controller.isInitialLoading) return false;
+    if (widget.showSpectatorTopBar || controller.isEliminated) return false;
+    if (controller.showPenaltyHandOverlay) return false;
+    if (controller.isFinished || controller.isNaturalResult) return false;
+    if (_isRevealInProgress || controller.hasRevealedHand) return false;
+    return controller.phase == 'dealing' || controller.handCards.isNotEmpty;
+  }
+
+  Widget _buildTruthCountHintLayer(
+    LiarsPokerController? controller, {
+    required Key key,
+    double top = 0,
+    double? height,
+  }) {
+    final visible = _shouldShowTruthCountHint(controller);
+    final child = IgnorePointer(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 360),
+        reverseDuration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1).animate(animation),
+            child: child,
+          ),
+        ),
+        child: visible
+            ? const Center(
+                key: ValueKey('liars-truth-count-hint'),
+                child: LiarsPokerTruthCountHint(),
+              )
+            : const SizedBox.shrink(key: ValueKey('liars-truth-count-off')),
+      ),
+    );
+    if (height == null) return Positioned.fill(key: key, child: child);
+    return Positioned(
+      key: key,
+      top: top,
+      left: 0,
+      right: 0,
+      height: height,
+      child: child,
     );
   }
 

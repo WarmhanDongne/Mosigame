@@ -8,6 +8,7 @@
 // ========================[ import ]==========================
 import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 
 // ============================================================
 
@@ -52,19 +53,70 @@ List<Offset> normalizedPlayerCenters(int playerCount) {
   }, growable: false);
 }
 
+/// 테이블의 네 면을 따라 고르게 놓인 좌석 중심입니다.
+///
+/// 2·3·4·6인은 게임 화면에서 가장 읽기 좋은 대칭 배치를 고정하고, 그 외
+/// 인원은 아래쪽 가운데에서 시작해 화면 테두리를 시계 반대 방향으로 나눕니다.
+List<Offset> normalizedSideSeatCenters(int playerCount) {
+  assert(playerCount > 0);
+  return switch (playerCount) {
+    1 => const [Offset(0.5, 0.84)],
+    2 => const [Offset(0.5, 0.84), Offset(0.5, 0.16)],
+    3 => const [Offset(0.5, 0.84), Offset(0.16, 0.5), Offset(0.84, 0.5)],
+    4 => const [
+      Offset(0.5, 0.84),
+      Offset(0.84, 0.5),
+      Offset(0.5, 0.16),
+      Offset(0.16, 0.5),
+    ],
+    6 => const [
+      Offset(0.35, 0.84),
+      Offset(0.65, 0.84),
+      Offset(0.84, 0.5),
+      Offset(0.65, 0.16),
+      Offset(0.35, 0.16),
+      Offset(0.16, 0.5),
+    ],
+    _ => List<Offset>.generate(playerCount, (index) {
+      final angle = math.pi / 2 - math.pi * 2 * index / playerCount;
+      final dx = math.cos(angle);
+      final dy = math.sin(angle);
+      final scale = 0.34 / math.max(dx.abs(), dy.abs());
+      return Offset(0.5 + dx * scale, 0.5 + dy * scale);
+    }, growable: false),
+  };
+}
+
+/// 자리 배치 선택에 맞는 정규화 좌석 중심입니다.
+List<Offset> normalizedSeatCenters(int playerCount, {SeatLayoutMode? mode}) =>
+    mode == SeatLayoutMode.sides
+    ? normalizedSideSeatCenters(playerCount)
+    : normalizedPlayerCenters(playerCount);
+
 /// 화면의 짧은 변을 기준으로 실제 원형 궤도에 배치된 플레이어 중심 좌표입니다.
 List<Offset> playerCentersForBoard({
   required int playerCount,
   required Size boardSize,
   double radiusFactor = defaultPlayerOrbitRadiusFactor,
+  SeatLayoutMode? mode,
 }) {
   assert(playerCount > 0);
   assert(radiusFactor > 0);
 
+  if (mode == SeatLayoutMode.sides) {
+    return normalizedSideSeatCenters(playerCount)
+        .map(
+          (normalized) => playerCenterFromNormalized(
+            normalizedCenter: normalized,
+            boardSize: boardSize,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   final center = Offset(boardSize.width / 2, boardSize.height / 2);
   final radius = boardSize.shortestSide * radiusFactor;
   final startAngle = _startAngleForPlayerCount(playerCount);
-
   return List<Offset>.generate(playerCount, (index) {
     final angle = startAngle + (math.pi * 2 * index / playerCount);
     return center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
@@ -83,6 +135,28 @@ List<Offset> seatingCardTopLeftPositions({
   required Size cardSize,
 }) {
   return normalizedPlayerCenters(playerCount)
+      .map(
+        (normalized) => playerCenterFromNormalized(
+          normalizedCenter: normalized,
+          boardSize: boardSize,
+        ),
+      )
+      .map(
+        (center) => Offset(
+          (center.dx - cardSize.width / 2) / boardSize.width,
+          (center.dy - cardSize.height / 2) / boardSize.height,
+        ),
+      )
+      .toList(growable: false);
+}
+
+/// 면 배치용 자리 카드의 좌측 상단 정규화 좌표입니다.
+List<Offset> sideSeatingCardTopLeftPositions({
+  required int playerCount,
+  required Size boardSize,
+  required Size cardSize,
+}) {
+  return normalizedSideSeatCenters(playerCount)
       .map(
         (normalized) => playerCenterFromNormalized(
           normalizedCenter: normalized,

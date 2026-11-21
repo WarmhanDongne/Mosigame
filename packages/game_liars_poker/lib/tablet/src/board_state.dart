@@ -648,6 +648,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
                     flowConfig: flowConfig,
                     playerCount: _playerCount,
                     playerSeatIndexes: _seatIndexes,
+                    seatLayoutMode: widget.playerLayout.seatLayoutMode,
                     dealPlayerSeatIndexes: _activeSeatIndexes,
                     cardsPerPlayer: cardsPerPlayer,
                     truthCardCount: game.truthCardCount,
@@ -695,6 +696,8 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
                               activePlayId: _activeAnimationPlayId,
                               playerCount: _playerCount,
                               playerSeatIndexes: _seatIndexes,
+                              seatLayoutMode:
+                                  widget.playerLayout.seatLayoutMode,
                               onCardsPlayed: _onCardsPlayed,
                               onCardsRevealed: _onCardsRevealed,
                             ),

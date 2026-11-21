@@ -7,6 +7,10 @@ import 'package:firebase_auth_platform_interface/firebase_auth_platform_interfac
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:game_kit/firebase/firebase_backend.dart';
+import 'package:game_kit/core/layout/app_orientation.dart';
+import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/template_game.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:project00/platform/home/phone/widgets/phone_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_participant_list.dart';
@@ -30,6 +34,7 @@ class _Rooms extends Fake implements RoomService {
   Object? leaveError;
   int leaveCalls = 0;
   int gameStatusWatchCalls = 0;
+  StreamController<String?>? gameStatusController;
 
   @override
   Stream<bool> watchServerConnection() =>
@@ -37,7 +42,7 @@ class _Rooms extends Fake implements RoomService {
   @override
   Stream<String?> watchGameStatus(String roomCode) {
     gameStatusWatchCalls++;
-    return const Stream.empty();
+    return gameStatusController?.stream ?? const Stream.empty();
   }
 
   @override
@@ -50,6 +55,38 @@ class _Rooms extends Fake implements RoomService {
 }
 
 class _Games extends Fake implements GameService {}
+
+class _GameCatalog implements GameCatalog {
+  static final game = _PhoneTestGame();
+
+  @override
+  Iterable<TemplateGame> get games => [game];
+
+  @override
+  TemplateGame? find(String id) => id == game.id ? game : null;
+}
+
+class _PhoneTestGame extends Fake implements TemplateGame {
+  @override
+  String get id => 'phone_test';
+
+  @override
+  int get requiredAssetVersion => 0;
+
+  @override
+  GameTutorial? get tutorial => null;
+
+  @override
+  PhoneGameOrientation get phoneOrientation =>
+      PhoneGameOrientation.portraitOnly;
+
+  @override
+  Widget buildPhoneScreen({
+    required String roomCode,
+    required GameRoomContext provider,
+    required Future<bool> Function() onExitRoom,
+  }) => const Scaffold(body: Center(child: Text('게임 화면')));
+}
 
 class _ForegroundProvider extends RoomProvider {
   _ForegroundProvider({required super.service, required super.gameService});
@@ -275,6 +312,82 @@ void main() {
       findsNothing,
     );
     expect(find.text('방에서 추방되었습니다.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('게임 중 강퇴되면 5초 안내를 표시한 뒤 같은 방에 복귀하지 않고 홈으로 간다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final gameStatus = StreamController<String?>.broadcast();
+    addTearDown(gameStatus.close);
+    final roomService = _Rooms()..gameStatusController = gameStatus;
+    final provider =
+        RoomProvider(
+            service: roomService,
+            gameService: _Games(),
+            gameCatalog: _GameCatalog(),
+          )
+          ..roomCode = 'ABCDE'
+          ..roomStatus = 'playing'
+          ..selectedGameId = 'phone_test'
+          ..selectedGame = GameInfo.fromJson({
+            'id': 'phone_test',
+            'name': '테스트 게임',
+          })
+          ..selectedGameLoadStatus = RoomDataLoadStatus.loaded;
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PlatformTheme.light(),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                PhoneFlowRoute<void>(
+                  builder: (_) => PhoneRoomWaiting(provider: provider),
+                ),
+              ),
+              child: const Text('홈'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('홈'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    gameStatus.add('playing');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('게임 화면'), findsOneWidget);
+
+    provider
+      ..roomCode = null
+      ..wasKicked = true
+      ..notifyListeners();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.byKey(const Key('phone-game-kick-notice')), findsOneWidget);
+    expect(find.text('게임에서 나왔어요'), findsOneWidget);
+    expect(find.text('방장이 이 게임에서 내보냈어요'), findsOneWidget);
+    expect(find.text('5초 뒤 자동으로 이동해요'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('게임 화면'), findsOneWidget);
+    expect(find.text('1초 뒤 자동으로 이동해요'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('홈'), findsOneWidget);
+    expect(find.text('게임 화면'), findsNothing);
+    expect(find.byKey(const Key('phone-game-kick-notice')), findsNothing);
+    expect(provider.wasKicked, isFalse);
+    expect(provider.roomCode, isNull);
     expect(tester.takeException(), isNull);
   });
 

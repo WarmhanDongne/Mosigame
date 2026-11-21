@@ -9,6 +9,7 @@ import {operationFingerprint, parseSessionId} from "./session-contract.js";
 import {reconcileTerminal, sameCleanupTarget} from "./room-cleanup.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {assertPlatformMaintenanceInactive} from "../operations/announcements.js";
+import {ROOM_MAX_PLAYERS} from "./room-seating-policy.js";
 
 async function abandonReservation(code: string, reservation: RoomReservation, uid: string, operationId: string, now: number): Promise<void> {
   const target = {...reservation, status: "terminal", controllerUid: uid, creationOperationId: operationId};
@@ -91,7 +92,7 @@ export const createRealtimeRoom = onCall({region: "asia-northeast3"}, async (req
       presenceProtocol: 2,
       roomInstanceId: reservation.roomInstanceId, allocationGeneration: reservation.allocationGeneration,
       controllerUid: uid, controllerSessionId: reservation.controllerSessionId,
-      creationOperationId: operationId, status: "waiting", membershipRevision: 0, maxPlayers: 12,
+      creationOperationId: operationId, status: "waiting", membershipRevision: 0, maxPlayers: ROOM_MAX_PLAYERS,
       controllerConnected: true, controllerConnectionSeq: 1,
       controllerCurrentConnectionId: reservation.connectionId,
       controllerPresence: {connected: true, lastSeen: now}, createdAt: reservation.createdAt,

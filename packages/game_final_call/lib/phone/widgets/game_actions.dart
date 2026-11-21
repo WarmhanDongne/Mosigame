@@ -92,6 +92,14 @@ class _TurnStartAction extends StatelessWidget {
     final discard = controller.discardCard;
     final canDraw = controller.canDraw;
     final lastSwap = controller.phase == 'finalTurns';
+    // 포카드면 카드를 가져오지 말고 바로 CALL하도록 CALL 버튼을 키웁니다.
+    if (controller.holdsFourCard && !lastSwap) {
+      return _FourCardTurnStart(
+        controller: controller,
+        onDraw: onDraw,
+        onCall: onCall,
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -202,10 +210,14 @@ class FinalCallHoldToCallButton extends StatefulWidget {
     super.key,
     required this.enabled,
     required this.onCall,
+    this.fourCard = false,
   });
 
   final bool enabled;
   final VoidCallback onCall;
+
+  /// 포카드일 때 버튼을 크게 키우고 금빛 고리와 보상 꼬리표를 붙입니다.
+  final bool fourCard;
 
   static const holdDuration = Duration(milliseconds: 650);
 
@@ -265,8 +277,9 @@ class _FinalCallHoldToCallButtonState extends State<FinalCallHoldToCallButton>
             animation: _hold,
             builder: (context, _) {
               final depth = 5 - 4 * _hold.value;
-              return SizedBox(
-                height: 67,
+              final fourCard = widget.fourCard;
+              final button = SizedBox(
+                height: fourCard ? 132 : 67,
                 child: Padding(
                   padding: EdgeInsets.only(top: 5 - depth, bottom: depth),
                   child: Container(
@@ -293,10 +306,18 @@ class _FinalCallHoldToCallButtonState extends State<FinalCallHoldToCallButton>
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            if (fourCard) ...[
+                              FinalCallPopTag(
+                                label: FinalCallCopy.fourCardReward,
+                                fontSize: 11,
+                                borderWidth: 2.5,
+                              ),
+                              const SizedBox(height: 6),
+                            ],
                             Text(
                               'CALL!',
                               style: finalCallPopText(
-                                26,
+                                fourCard ? 36 : 26,
                                 color: Colors.white,
                                 height: 1.1,
                                 shadows: finalCallPopOutline(),
@@ -313,12 +334,135 @@ class _FinalCallHoldToCallButtonState extends State<FinalCallHoldToCallButton>
                   ),
                 ),
               );
+              if (!fourCard || !enabled) return button;
+              return _GoldPulseRing(radius: 18, child: button);
             },
           ),
         ),
       ),
     );
   }
+}
+
+/// 포카드로 내 차례가 시작됐을 때의 조작부입니다.
+///
+/// 덱·공개 카드는 누를 수 있지만 작고 흐리게 두고, 가져오면 포카드가 깨질
+/// 수 있다고 알립니다. CALL 버튼은 크게 키워 바로 누르게 합니다.
+class _FourCardTurnStart extends StatelessWidget {
+  const _FourCardTurnStart({
+    required this.controller,
+    required this.onDraw,
+    required this.onCall,
+  });
+
+  final FinalCallController controller;
+  final ValueChanged<String> onDraw;
+  final VoidCallback onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final canDraw = controller.canDraw;
+    final discard = controller.discardCard;
+    Widget source(String label, VoidCallback? onPressed) => Expanded(
+      child: FinalCallPopButton(
+        semanticLabel: label,
+        onPressed: onPressed,
+        color: FinalCallColors.lilac,
+        height: 40,
+        radius: 12,
+        shadowDepth: 3,
+        child: Text(label, style: finalCallPopText(14)),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          FinalCallCopy.fourCardDrawWarning,
+          textAlign: TextAlign.center,
+          style: finalCallPopText(13, color: FinalCallColors.muted, height: 1.35),
+        ),
+        const SizedBox(height: 8),
+        Opacity(
+          opacity: .55,
+          child: Row(
+            children: [
+              source(
+                FinalCallCopy.deck,
+                canDraw && controller.deckRemainingCount > 0
+                    ? () => onDraw('deck')
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              source(
+                FinalCallCopy.publicCard,
+                canDraw && discard != null ? () => onDraw('discard') : null,
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        FinalCallHoldToCallButton(
+          enabled: controller.canCall,
+          onCall: onCall,
+          fourCard: true,
+        ),
+      ],
+    );
+  }
+}
+
+/// 포카드 CALL 버튼 둘레에서 맥박처럼 퍼지는 금빛 고리입니다.
+class _GoldPulseRing extends StatefulWidget {
+  const _GoldPulseRing({required this.radius, required this.child});
+
+  final double radius;
+  final Widget child;
+
+  @override
+  State<_GoldPulseRing> createState() => _GoldPulseRingState();
+}
+
+class _GoldPulseRingState extends State<_GoldPulseRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _pulse,
+    child: widget.child,
+    builder: (context, child) {
+      final t = _pulse.value;
+      final spread = 4 + 10 * Curves.easeOut.transform(t);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.radius + 4),
+          boxShadow: [
+            BoxShadow(
+              color: FinalCallColors.yellow.withValues(alpha: .8),
+              blurRadius: 18,
+              spreadRadius: 3,
+            ),
+            BoxShadow(
+              color: FinalCallColors.yellow.withValues(alpha: .45 * (1 - t)),
+              blurRadius: 4,
+              spreadRadius: spread,
+            ),
+          ],
+        ),
+        child: child,
+      );
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -625,6 +769,9 @@ class FinalCallWaitingPanel extends StatelessWidget {
     final score = finalCallBestCombination(controller.hand).score;
     final myTeam = controller.myTeam;
     final order = _turnOrder();
+    // 포카드면 다음 내 차례에 바로 CALL하도록 순서표에서 내 줄을 강조하고,
+    // 다른 사람이 먼저 CALL하면 효과가 없다는 점을 짧게 알립니다.
+    final fourCard = controller.holdsFourCard;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -637,6 +784,14 @@ class FinalCallWaitingPanel extends StatelessWidget {
               style: finalCallPopText(15, color: FinalCallColors.muted),
             ),
             const Spacer(),
+            if (fourCard) ...[
+              FinalCallPopTag(
+                label: FinalCallCopy.fourCardBadge,
+                fontSize: 12,
+                borderWidth: 2.5,
+              ),
+              const SizedBox(width: 6),
+            ],
             Text(
               '$score',
               style: finalCallPopText(
@@ -657,6 +812,26 @@ class FinalCallWaitingPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        if (fourCard) ...[
+          FinalCallPopBox(
+            color: FinalCallColors.yellow,
+            radius: 14,
+            borderWidth: 3,
+            shadowDepth: 0,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+            child: Column(
+              children: [
+                Text(FinalCallCopy.fourCardReady, style: finalCallPopText(16)),
+                Text(
+                  FinalCallCopy.fourCardCallNext,
+                  textAlign: TextAlign.center,
+                  style: finalCallPopText(11.5, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         Text(
           FinalCallCopy.turnOrder,
           style: finalCallPopText(14, color: FinalCallColors.muted),
@@ -679,17 +854,33 @@ class FinalCallWaitingPanel extends StatelessWidget {
                       note: order[index].uid == controller.turnUid
                           ? FinalCallCopy.now
                           : order[index].uid == controller.uid
-                          ? null
+                          ? (fourCard
+                                ? index == 1
+                                      ? FinalCallCopy.fourCardNextCall
+                                      : FinalCallCopy.fourCardCallReady
+                                : null)
                           : order[index].team == myTeam
                           ? FinalCallCopy.partner
                           : null,
                       isMe: order[index].uid == controller.uid,
+                      fourCard:
+                          fourCard && order[index].uid == controller.uid,
                     ),
                 ],
               ),
             ),
           ),
         ),
+        if (fourCard)
+          Text(
+            FinalCallCopy.fourCardOthersFirst,
+            textAlign: TextAlign.center,
+            style: finalCallPopText(
+              10.5,
+              color: const Color(0xFFD93A40),
+              height: 1.35,
+            ),
+          ),
       ],
     );
   }
@@ -701,8 +892,11 @@ class _TurnOrderRow extends StatelessWidget {
     required this.isCurrent,
     required this.note,
     required this.isMe,
+    this.fourCard = false,
   });
 
+  /// 포카드를 들고 있는 내 줄을 노랗게 강조합니다.
+  final bool fourCard;
   final FinalCallPlayer player;
   final bool isCurrent;
   final String? note;
@@ -717,10 +911,16 @@ class _TurnOrderRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: isCurrent
             ? Color.lerp(Colors.white, teamColor, 0.16)
+            : fourCard
+            ? const Color(0xFFFFF4CC)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isCurrent ? FinalCallColors.ink : Colors.transparent,
+          color: isCurrent
+              ? FinalCallColors.ink
+              : fourCard
+              ? FinalCallColors.yellow
+              : Colors.transparent,
           width: 2,
         ),
       ),
@@ -748,6 +948,8 @@ class _TurnOrderRow extends StatelessWidget {
                 13,
                 color: isCurrent
                     ? teamColor
+                    : fourCard
+                    ? const Color(0xFFB07A00)
                     : isMe
                     ? FinalCallColors.violet
                     : FinalCallColors.muted,

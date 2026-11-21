@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  assertOperationsTestProject,
+  assertOperationsProject,
   localizedPushCopy,
   parseOperationsPushRequest,
 } from "../lib/operations/push-alerts.js";
@@ -37,10 +37,11 @@ test("operations push selects copy for the registered device locale", () => {
   assert.deepEqual(localizedPushCopy(localized, "unknown"), localized.ko);
 });
 
-test("operations push cannot run against the production Firebase project", () => {
-  assert.doesNotThrow(() => assertOperationsTestProject("ban-pick-simulator"));
+test("operations push runs only in the two explicit Mosigame projects", () => {
+  assert.doesNotThrow(() => assertOperationsProject("ban-pick-simulator"));
+  assert.doesNotThrow(() => assertOperationsProject("project0000-ec01e"));
   assert.throws(
-    () => assertOperationsTestProject("project0000-ec01e"),
+    () => assertOperationsProject("another-project"),
     {code: "failed-precondition"},
   );
 });

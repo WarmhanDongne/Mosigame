@@ -63,7 +63,7 @@ export const minimalGameCatalog = Object.freeze({
     genres: localizedGameGenres.mafia.ko,
     localizedGenres: localizedGameGenres.mafia,
     minPlayers: 4,
-    maxPlayers: 12,
+    maxPlayers: 8,
     playTime: 30,
     order: 3,
     accessType: "paid",

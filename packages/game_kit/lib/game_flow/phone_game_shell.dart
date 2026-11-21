@@ -66,6 +66,7 @@ class PhoneGameShell<TStage extends Enum> extends StatefulWidget {
     this.contentReady = true,
     this.contentRevealed = true,
     this.onConnectingExit,
+    this.waitingHint,
   });
 
   /// 현재 화면 단계입니다. 게임의 서버 상태를 번역해 넘깁니다.
@@ -111,6 +112,12 @@ class PhoneGameShell<TStage extends Enum> extends StatefulWidget {
 
   /// 기존 호출부 호환용입니다. 퇴장은 topBar의 기존 기능을 사용합니다.
   final VoidCallback? onConnectingExit;
+
+  /// 카드를 받기 전 빈 화면(연결·분배 대기)에 띄울 안내입니다.
+  ///
+  /// 예: 가로로만 하는 게임의 '휴대폰을 가로로 돌려 주세요'
+  /// (`PhoneRotateLandscapeHint`). null이면 지금처럼 배경만 보입니다.
+  final Widget? waitingHint;
 
   @override
   State<PhoneGameShell<TStage>> createState() => _PhoneGameShellState<TStage>();
@@ -234,6 +241,24 @@ class _PhoneGameShellState<TStage extends Enum>
               // 애니메이션이 새로 만들어집니다.
               _ => _buildPlaying(flowStep),
             },
+            // 카드를 받기 전 빈 화면의 안내입니다. 분배가 끝나면 서서히 사라집니다.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  child:
+                      widget.waitingHint != null &&
+                          widget.stageRole == PhoneGameShellStageRole.connecting
+                      ? KeyedSubtree(
+                          key: const ValueKey('phone-waiting-hint'),
+                          child: widget.waitingHint!,
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('phone-waiting-hint-none'),
+                        ),
+                ),
+              ),
+            ),
             // 문구 슬롯은 phase가 바뀌어도 항상 같은 자리에 유지합니다.
             Positioned.fill(
               child: GameAnnouncementLayer(

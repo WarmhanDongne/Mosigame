@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:game_liars_poker/tablet/animations/card_play_animation.dart';
 import 'package:game_liars_poker/tablet/screens/card_presentation.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 
 // ============================================================
 
@@ -20,6 +21,7 @@ class LiarsPokerTabletGameAnimation extends StatelessWidget {
     required this.activePlayId,
     required this.playerCount,
     required this.playerSeatIndexes,
+    this.seatLayoutMode,
     required this.onCardsPlayed,
     required this.onCardsRevealed,
   });
@@ -28,6 +30,7 @@ class LiarsPokerTabletGameAnimation extends StatelessWidget {
   final String? activePlayId;
   final int playerCount;
   final List<int> playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
   final VoidCallback onCardsPlayed;
   final VoidCallback onCardsRevealed;
 
@@ -63,6 +66,7 @@ class LiarsPokerTabletGameAnimation extends StatelessWidget {
       key: ValueKey(play.eventId),
       playerCount: playerCount,
       playerSeatIndexes: playerSeatIndexes,
+      seatLayoutMode: seatLayoutMode,
       fromPlayerIndex: play.playerIndex,
       frontCardAssets: play.frontCardAssets,
       tableAlignment: _pileAlignment(pileIndex, boardSize),

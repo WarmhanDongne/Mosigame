@@ -11,6 +11,11 @@ import {
 
 const REGION = "asia-northeast3";
 const TEST_PROJECT_ID = "ban-pick-simulator";
+const PRODUCTION_PROJECT_ID = "project0000-ec01e";
+const OPERATIONS_PROJECT_IDS = new Set([
+  TEST_PROJECT_ID,
+  PRODUCTION_PROJECT_ID,
+]);
 const DISPATCH_COLLECTION = "operationsPushDispatches";
 const DEVICE_COLLECTION = "pushDevices";
 const ACTIVE_DEVICE_AGE_MS = 60 * 24 * 60 * 60 * 1000;
@@ -35,13 +40,13 @@ type PushDevice = {
   updatedAt?: unknown;
 };
 
-export function assertOperationsTestProject(
+export function assertOperationsProject(
   projectId: string | undefined,
 ): void {
-  if (projectId !== TEST_PROJECT_ID) {
+  if (!projectId || !OPERATIONS_PROJECT_IDS.has(projectId)) {
     throw new HttpsError(
       "failed-precondition",
-      "운영 알림은 TEST Firebase에서만 발송할 수 있습니다.",
+      "허용되지 않은 Firebase 프로젝트에서는 운영 알림을 발송할 수 없습니다.",
     );
   }
 }
@@ -98,7 +103,7 @@ export const sendOperationsPushNotification = onCall<SendOperationsPushData>(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
     requireOperationsAdmin(request);
-    assertOperationsTestProject(
+    assertOperationsProject(
       process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT,
     );
     const {commandId, localized} = parseOperationsPushRequest(request.data);

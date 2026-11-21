@@ -1,5 +1,14 @@
 import {traceRoomAction} from "./room-action-timing.js";
-import {decorateRecoveryCauses} from "../game-interruption/game-adapters.js";
+import {
+  decorateRecoveryCauses,
+  excludeRecoveryPlayer,
+  supportsRecoveryExclusion,
+} from "../game-interruption/game-adapters.js";
+import {finalizeGameMutation} from "../game-interruption/game-mutation.js";
+import {
+  transactionRandomSeed,
+  withTransactionRandom,
+} from "../common/transaction-random.js";
 import {assertRoomGroupMember, RoomAllocation} from "./room-allocation.js";
 /* eslint-disable max-len, valid-jsdoc, require-jsdoc */
 
@@ -494,11 +503,14 @@ export const beginRealtimeRoomSeating = onCall<RoomData>(
       roomCode,
       status: "seating",
       playerUids: Object.keys(committedRoom.players ?? {}),
+      // The controller already receives this roster via RTDB. Returning the
+      // committed snapshot avoids a separate client read after seating.
+      players: committedRoom.players ?? {},
     };
   },
 );
 
-/** 대기실 강퇴는 controller 세션과 게임 상태를 확인한 뒤 처리합니다. */
+/** 대기실·게임 강퇴는 controller 세션과 최신 게임 상태를 확인한 뒤 처리합니다. */
 export const removeRealtimeRoomPlayer = onCall<RemovePlayerData>(
   {region: REGION},
   async (request) => {
@@ -510,16 +522,47 @@ export const removeRealtimeRoomPlayer = onCall<RemovePlayerData>(
       throw new HttpsError("invalid-argument", "플레이어 정보가 필요합니다.");
     }
     const roomRef = getDatabase().ref(`rooms/${roomCode}`);
+    // RTDB transaction callback이 재실행돼도 게임의 무작위 결과는 같아야 합니다.
+    const seed = transactionRandomSeed();
+    const now = Date.now();
     // runPrimedTransaction keeps one server-value listener through completion.
     const result = await runPrimedTransaction(roomRef, (raw) => {
       if (raw === null) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");
       const room = raw as RealtimeRoom;
       assertControllerSession(room, uid, request.data?.controllerSessionId);
       assertRoomTarget(room as SessionRoom, request.data?.roomInstanceId, request.data?.presenceProtocol);
-      if (room.status === "playing" || room.game?.public?.status === "playing") {
-        throw new HttpsError("failed-precondition", "게임 중에는 게임 퇴장 절차를 사용해주세요.");
-      }
       if (room.players?.[playerUid]) {
+        const playing = room.status === "playing" ||
+          room.game?.public?.status === "playing";
+        if (playing) {
+          if (room.game?.public?.status !== "playing") {
+            throw new HttpsError(
+              "failed-precondition",
+              "진행 중인 게임 상태를 확인할 수 없습니다.",
+            );
+          }
+          if (!supportsRecoveryExclusion(room.selectedGame)) {
+            throw new HttpsError(
+              "failed-precondition",
+              "이 게임의 참가자 제외 처리를 확인할 수 없습니다.",
+            );
+          }
+          const recoveryRoom = room as unknown as RecoveryRoom;
+          const before = structuredClone(recoveryRoom.game!);
+          withTransactionRandom(
+            seed,
+            () => excludeRecoveryPlayer(recoveryRoom, playerUid, now),
+          );
+          if (recoveryRoom.game?.public.recovery) {
+            delete recoveryRoom.game.public.recovery.causes?.[`player:${playerUid}`];
+          }
+          finalizeGameMutation(
+            recoveryRoom,
+            before,
+            now,
+            String(before.public.gameInstanceId ?? ""),
+          );
+        }
         delete room.players[playerUid];
         room.membershipRevision = (room.membershipRevision ?? 0) + 1;
       }

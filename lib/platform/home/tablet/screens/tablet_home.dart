@@ -313,8 +313,18 @@ class _TabletHomeState extends State<TabletHome>
     final hasValidSavedSeats =
         savedSeats.length == players.length &&
         savedSeats.every((seat) => seat >= 0 && seat < players.length);
+    final savedSeatLayout = await roomProvider.getSavedSeatLayout();
+    if (!mounted || roomProvider.roomCode != roomCode) {
+      _isOpeningRestoredGame = false;
+      return;
+    }
+    final restoredMode =
+        savedSeatLayout?.matches(players.map((player) => player.uid)) == true
+        ? savedSeatLayout?.mode
+        : null;
     final layout = hasValidSavedSeats
         ? PlayerLayoutModel(
+            seatLayoutMode: restoredMode,
             players: List.unmodifiable(
               players.map(
                 (player) => PlayerLayoutPlayer(
@@ -326,7 +336,7 @@ class _TabletHomeState extends State<TabletHome>
               ),
             ),
           )
-        : PlayerLayoutFactory.create(players);
+        : PlayerLayoutFactory.create(players).withSeatLayoutMode(restoredMode);
 
     //================상태바 표시=================
     unawaited(AppSystemUi.enterGameFullscreen());

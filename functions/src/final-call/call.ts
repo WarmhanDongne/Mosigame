@@ -10,6 +10,7 @@ import {finalCallProcessed, recordFinalCallCommand} from "./commands.js";
 import {
   continueFinalCallTurn,
   orderedAlivePlayers,
+  resolveFinalCallFourCardCall,
   resolveFinalCallRound,
 } from "./game.js";
 import {FinalCallRoom} from "./types.js";
@@ -48,6 +49,14 @@ export const game_final_call_declare = onCall<Data>({region: FINAL_CALL_REGION},
     const pending = orderedAlivePlayers(game.public.players)
       .map((player) => player.uid).filter((playerUid) => playerUid !== uid);
     const now = transactionNow;
+    // 포카드로 CALL하면 다른 사람의 마지막 교체·최종 제출 없이 바로
+    // 선언자의 네 장만 공개하고 정산한 뒤 다음 라운드로 넘어갑니다.
+    if (resolveFinalCallFourCardCall(game, uid, now)) {
+      response = {success: true, type: "fourCardCalled", callerUid: uid,
+        turnUid: game.public.turnUid};
+      recordFinalCallCommand(game, commandId, uid, "fourCardCalled", now, response);
+      return room;
+    }
     game.public.callerUid = uid;
     game.public.finalTurnPendingUids = pending;
     if (pending.length === 0) {

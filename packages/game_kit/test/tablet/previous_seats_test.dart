@@ -30,6 +30,39 @@ class _Player implements GameRoomPlayer {
 }
 
 void main() {
+  group('SavedSeatLayout', () {
+    test('저장 명단과 현재 명단이 완전히 같을 때만 자동 복원한다', () {
+      final saved = SavedSeatLayout.fromWire({
+        'playerUids': ['c', 'a', 'b'],
+        'mode': 'sides',
+      });
+
+      expect(saved, isNotNull);
+      expect(saved!.mode, SeatLayoutMode.sides);
+      expect(saved.matches(['a', 'b', 'c']), isTrue);
+      expect(saved.matches(['a', 'b']), isFalse);
+      expect(saved.matches(['a', 'b', 'c', 'd']), isFalse);
+      expect(saved.matches(['a', 'b', 'd']), isFalse);
+    });
+
+    test('중복되거나 부족한 저장 명단은 복원하지 않는다', () {
+      expect(
+        SavedSeatLayout.fromWire({
+          'playerUids': ['a', 'a'],
+          'mode': 'corners',
+        }),
+        isNull,
+      );
+      expect(
+        SavedSeatLayout.fromWire({
+          'playerUids': ['a'],
+          'mode': 'corners',
+        }),
+        isNull,
+      );
+    });
+  });
+
   group('PlayerLayoutFactory.fromSavedSeats', () {
     test('지난 게임 자리를 참가자 순서 그대로 다시 만든다', () {
       final layout = PlayerLayoutFactory.fromSavedSeats(const [
@@ -100,15 +133,11 @@ void main() {
       return prepared;
     }
 
-    testWidgets('이전 자리를 누르면 지난 게임 배치로 시작하고, 새로 배치할 수도 있다', (tester) async {
+    testWidgets('이전 자리가 유효하면 버튼 없이 지난 배치가 기본값이다', (tester) async {
       final prepared = await pumpEditor(tester, previousLayout: previous);
       final button = find.widgetWithText(MosiButton, '이전 자리');
-      expect(button, findsOneWidget);
+      expect(button, findsNothing);
       expect(find.widgetWithText(MosiButton, '섞기'), findsOneWidget);
-
-      await tester.tap(button);
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(tester.widget<MosiButton>(button).onPressed, isNull);
 
       await tester.tap(find.widgetWithText(MosiButton, '설정 완료'));
       await tester.pump(const Duration(milliseconds: 1700));
@@ -118,9 +147,27 @@ void main() {
     });
 
     testWidgets('불러올 배치가 없으면 버튼을 보이지 않는다', (tester) async {
-      await pumpEditor(tester);
+      final prepared = await pumpEditor(tester);
       expect(find.widgetWithText(MosiButton, '이전 자리'), findsNothing);
       expect(find.widgetWithText(MosiButton, '섞기'), findsOneWidget);
+      await tester.tap(find.widgetWithText(MosiButton, '설정 완료'));
+      await tester.pump(const Duration(milliseconds: 1700));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(prepared.single.seatIndexes, [0, 1, 2]);
+    });
+
+    testWidgets('모서리에서 면 자리로 바꾸면 완료 배치에 형태가 포함된다', (tester) async {
+      final prepared = await pumpEditor(tester);
+      expect(find.text('면 자리'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('seat-layout-mode-toggle')));
+      await tester.pump();
+      expect(find.text('모서리 자리'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(MosiButton, '설정 완료'));
+      await tester.pump(const Duration(milliseconds: 1700));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(prepared.single.seatLayoutMode, SeatLayoutMode.sides);
     });
 
     testWidgets('세 글자 닉네임은 자리 카드에서 말줄임 없이 보인다', (tester) async {

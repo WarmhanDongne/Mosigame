@@ -30,6 +30,14 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
                 key: ValueKey('portrait-background-slot'),
                 child: _PhoneGameBackground(),
               ),
+              // 카드 분배 전 '태블릿을 봐 주세요!' 안내. 손패가 들어와 덮을 수
+              // 있게 손패 영역 가운데에 두고, 손패 레이어보다 먼저 쌓습니다.
+              _buildTruthCountHintLayer(
+                controller,
+                key: const ValueKey('portrait-truth-count-hint-slot'),
+                top: layout.handTop,
+                height: layout.handHeight,
+              ),
               if (showHeader)
                 Positioned(
                   key: const ValueKey('portrait-header-slot'),

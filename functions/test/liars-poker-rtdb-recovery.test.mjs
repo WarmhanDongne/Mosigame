@@ -40,6 +40,7 @@ function stored(value) {
 
 class RoomRef {
   constructor(count) {
+    this.getCount = 0;
     this.value = {roomInstanceId: 'room-current', status: 'seating', selectedGame: 'liars_poker',
       controllerUid: 'tablet', controllerSessionId: '11111111-1111-4111-8111-111111111111',
       controllerCurrentConnectionId: 'connection-tablet', controllerConnectionSeq: 1,
@@ -55,7 +56,7 @@ class RoomRef {
     }
   }
   snapshot() { return {val: () => structuredClone(this.value), exists: () => this.value !== null}; }
-  async get() { return this.snapshot(); }
+  async get() { this.getCount++; return this.snapshot(); }
   on(_event, listener) { listener(this.snapshot()); }
   off() {}
   async transaction(update) {
@@ -491,7 +492,9 @@ test('a pending phone join replays only a usable connection after connection los
   const request = ref.request('pending-phone-reconnect', 'player1', {
     expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', preserveProfile: true,
   });
+  const readsBeforeJoin = ref.getCount;
   const joined = await join.run(request);
+  assert.equal(ref.getCount, readsBeforeJoin, 'join uses the primed transaction snapshot');
   assert.deepEqual(await join.run(request), joined, 'live response-loss replay is idempotent');
   const oldId = joined.connectionId;
   ref.value.connections.player1[oldId].connected = false;
@@ -515,6 +518,16 @@ test('a pending phone join replays only a usable connection after connection los
   await syncConnection.run({params: {roomCode: 'ABCDE', uid: 'player1', connectionId: oldId},
     data: {after: {val: () => false}}});
   assert.equal(ref.value.players.player1.isConnected, true);
+});
+
+test('joining a deleted room still returns not-found without creating it', async t => {
+  const ref = await independentGame(t);
+  const request = ref.request('missing-room-join', 'player1', {
+    expectedConnectionSeq: 1, nickname: 'player1', characterId: 'bear', preserveProfile: true,
+  });
+  ref.value = null;
+  await assert.rejects(join.run(request), error => error.code === 'not-found');
+  assert.equal(ref.value, null);
 });
 
 
