@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   buildSeatingPreference,
   decideSeatSave,
+  resolveRoomMaxPlayers,
+  ROOM_MAX_PLAYERS,
 } from "../lib/room/room-seating-policy.js";
 
 //=======================자리 배치 중 참가자 변경 (C-13)==============================
@@ -20,8 +22,15 @@ const base = {
     ["c", 2],
   ],
   minPlayers: 2,
-  maxPlayers: 12,
+  maxPlayers: ROOM_MAX_PLAYERS,
 };
+
+test("예전 방의 12명 상한도 현재 플랫폼 상한 8명으로 제한한다", () => {
+  assert.equal(ROOM_MAX_PLAYERS, 8);
+  assert.equal(resolveRoomMaxPlayers(12), 8);
+  assert.equal(resolveRoomMaxPlayers(6), 6);
+  assert.equal(resolveRoomMaxPlayers(undefined), 8);
+});
 
 test("자리 배치 중이고 명단·좌석이 맞으면 저장한다", () => {
   assert.equal(decideSeatSave(base), "save");

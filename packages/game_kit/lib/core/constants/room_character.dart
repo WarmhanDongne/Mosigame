@@ -25,25 +25,17 @@ class RoomCharacter {
       'packages/game_kit/assets/images/character/${_artById[id] ?? id}.webp';
 }
 
-// 기존 서버에서 허용하는 ID 중 16개를 고를 수 있게 둡니다.
-// 티슈 상자(`rabbit`)는 선택지에서 뺐고, 이미 저장된 값은 아래에서 계속 그립니다.
+// 방 최대 인원과 같은 8개만 새로 고를 수 있게 둡니다.
+// 선택지에서 빠진 캐릭터도 이미 저장된 값은 아래 매핑으로 계속 그립니다.
 const roomCharacters = <RoomCharacter>[
-  RoomCharacter(id: 'frog', label: '버거 포장지'),
   RoomCharacter(id: 'cat', label: '팝콘통'),
   RoomCharacter(id: 'bear', label: '양동이'),
   RoomCharacter(id: 'bee', label: '냄비'),
   RoomCharacter(id: 'kindbear', label: '택배 상자'),
-  RoomCharacter(id: 'whale', label: '수박 헬멧'),
-  RoomCharacter(id: 'crab', label: '모자와 마스크'),
   RoomCharacter(id: 'hedgehog', label: '꽉 조인 후드'),
-  RoomCharacter(id: 'deer', label: '목도리'),
   RoomCharacter(id: 'elephant', label: '우주 헬멧'),
   RoomCharacter(id: 'shark', label: '용접 마스크'),
   RoomCharacter(id: 'owl', label: '물안경'),
-  RoomCharacter(id: 'snake', label: '변장 안경'),
-  RoomCharacter(id: 'penguin', label: '우유팩'),
-  RoomCharacter(id: 'octopus', label: '컵라면'),
-  RoomCharacter(id: 'giraffe', label: '전등갓'),
 ];
 
 const defaultRoomCharacterId = 'frog';
@@ -72,7 +64,23 @@ final Map<String, RoomCharacter> _roomCharactersById = Map.unmodifiable({
   for (final character in roomCharacters) character.id: character,
   // 리디자인 개발 빌드가 이미 저장한 이미지 ID도 읽고, 같은 얼굴의 중복을 막습니다.
   for (final character in roomCharacters) _artById[character.id]!: character,
-  // 선택지에서 뺀 티슈 상자도 예전 방·기기에 남은 값은 같은 그림으로 읽습니다.
+  // 선택지에서 뺀 캐릭터도 예전 방·기기에 남은 값은 같은 그림으로 읽습니다.
+  'frog': const RoomCharacter(id: 'frog', label: '버거 포장지'),
+  'burger': const RoomCharacter(id: 'frog', label: '버거 포장지'),
+  'whale': const RoomCharacter(id: 'whale', label: '수박 헬멧'),
+  'watermelon': const RoomCharacter(id: 'whale', label: '수박 헬멧'),
+  'crab': const RoomCharacter(id: 'crab', label: '모자와 마스크'),
+  'capmask': const RoomCharacter(id: 'crab', label: '모자와 마스크'),
+  'deer': const RoomCharacter(id: 'deer', label: '목도리'),
+  'scarf': const RoomCharacter(id: 'deer', label: '목도리'),
+  'snake': const RoomCharacter(id: 'snake', label: '변장 안경'),
+  'disguise': const RoomCharacter(id: 'snake', label: '변장 안경'),
+  'penguin': const RoomCharacter(id: 'penguin', label: '우유팩'),
+  'milk': const RoomCharacter(id: 'penguin', label: '우유팩'),
+  'octopus': const RoomCharacter(id: 'octopus', label: '컵라면'),
+  'cupnoodle': const RoomCharacter(id: 'octopus', label: '컵라면'),
+  'giraffe': const RoomCharacter(id: 'giraffe', label: '전등갓'),
+  'lampshade': const RoomCharacter(id: 'giraffe', label: '전등갓'),
   'rabbit': const RoomCharacter(id: 'rabbit', label: '티슈 상자'),
   'tissue': const RoomCharacter(id: 'rabbit', label: '티슈 상자'),
   // 대응하는 기존 서버 ID가 없는 세 그림은 읽기/장식 전용입니다.

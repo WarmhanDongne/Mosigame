@@ -30,6 +30,8 @@ import {
   buildSeatingPreference,
   decideSeatSave,
   SeatLayoutMode,
+  resolveRoomMaxPlayers,
+  ROOM_MAX_PLAYERS,
 } from "./room-seating-policy.js";
 import {currentPresence} from "./current-presence.js";
 import {runPrimedTransaction} from "./room-transaction.js";
@@ -94,10 +96,6 @@ export function roomProfileConflict(
   }
   return null;
 }
-
-// 마피아가 최대 12명이라 방 상한을 12로 올렸습니다. 게임별 인원 제한은 각
-// 게임의 start_game이 따로 확인합니다(예: 파이널콜은 4인 또는 6인).
-const DEFAULT_MAX_PLAYERS = 12;
 
 // 포커페이스 캐릭터 20종입니다. 예전 동물 id는 이미 배포된 앱이 보낼 수 있어
 // 함께 허용하고, 클라이언트가 포커페이스 얼굴로 바꿔 그립니다.
@@ -193,8 +191,7 @@ export const validateRealtimeRoom = onCall<ValidateRealtimeRoomData>(
     });
     const decisionError = joinDecisionError(decision);
     if (decisionError) throw decisionError;
-    const maxPlayers = typeof room.maxPlayers === "number" ?
-      room.maxPlayers : DEFAULT_MAX_PLAYERS;
+    const maxPlayers = resolveRoomMaxPlayers(room.maxPlayers);
     if (!(uid in players) && Object.values(players).filter(
       (player) => isRoomProfileReserved(player, Date.now()),
     ).length >= maxPlayers) {
@@ -401,8 +398,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           return currentRoom;
         }
 
-        const maxPlayers = typeof currentRoom.maxPlayers === "number" ?
-          currentRoom.maxPlayers : DEFAULT_MAX_PLAYERS;
+        const maxPlayers = resolveRoomMaxPlayers(currentRoom.maxPlayers);
         if (Object.values(players).filter(
           (player) => isRoomProfileReserved(player, now),
         ).length >= maxPlayers) {
@@ -562,7 +558,7 @@ export const saveRealtimePlayerSeatIndexes =
           playerIds,
           seatEntries,
           minPlayers: 2,
-          maxPlayers: DEFAULT_MAX_PLAYERS,
+          maxPlayers: ROOM_MAX_PLAYERS,
         });
         switch (decision) {
         case "not-seating":
@@ -586,7 +582,7 @@ export const saveRealtimePlayerSeatIndexes =
         case "too-many-players":
           rejection = new HttpsError(
             "failed-precondition",
-            `플레이어는 최대 ${DEFAULT_MAX_PLAYERS}명입니다.`,
+            `플레이어는 최대 ${ROOM_MAX_PLAYERS}명입니다.`,
           );
           return;
         case "roster-changed":

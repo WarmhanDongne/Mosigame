@@ -105,6 +105,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
   }
   assert.deepEqual(db.records.get("games/liars"), minimalGameCatalog.liars);
   assert.equal(db.records.get("games/mafia").enabled, false);
+  assert.equal(db.records.get("games/mafia").maxPlayers, 8);
   assert.equal(db.records.get("games/final_call").unnecessary, undefined);
   assert.deepEqual(db.records.get("games/russian_roulette").genres, [
     "파티", "심리전", "생존",

@@ -5,6 +5,19 @@ export type RoomSeatingDecision =
   "game-changed" |
   "invalid-player-count";
 
+/** 새 방과 기존 방에 공통으로 적용하는 플랫폼 참가 상한입니다. */
+export const ROOM_MAX_PLAYERS = 8;
+
+/**
+ * 저장된 예전 방 상한이 더 크더라도 현재 플랫폼 상한을 넘지 않게 합니다.
+ * @param {unknown} value 방에 저장된 maxPlayers입니다.
+ * @return {number} 현재 적용할 방 참가 상한입니다.
+ */
+export function resolveRoomMaxPlayers(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ?
+    Math.min(value, ROOM_MAX_PLAYERS) : ROOM_MAX_PLAYERS;
+}
+
 type RoomSeatingState = {
   roomStatus: unknown;
   gameStatus?: unknown;
@@ -33,8 +46,7 @@ export function resolveRoomPlayerRange(
   return {
     minPlayers: typeof catalogMin === "number" && catalogMin > 0 ?
       catalogMin : 2,
-    maxPlayers: typeof catalogMax === "number" && catalogMax > 0 ?
-      catalogMax : 12,
+    maxPlayers: resolveRoomMaxPlayers(catalogMax),
   };
 }
 
