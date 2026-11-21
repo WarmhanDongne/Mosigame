@@ -494,6 +494,9 @@ export const beginRealtimeRoomSeating = onCall<RoomData>(
       roomCode,
       status: "seating",
       playerUids: Object.keys(committedRoom.players ?? {}),
+      // The controller already receives this roster via RTDB. Returning the
+      // committed snapshot avoids a separate client read after seating.
+      players: committedRoom.players ?? {},
     };
   },
 );

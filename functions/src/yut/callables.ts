@@ -3,7 +3,7 @@ import {getDatabase} from "firebase-admin/database";
 import {CallableRequest, HttpsError, onCall} from "firebase-functions/v2/https";
 import {assertControllerSession} from "../room/controller-session.js";
 import {assertStartGameSnapshot, startGameFingerprint} from "../common/start-game-transaction.js";
-import {replayGameCommand, runGameCommandTransaction} from "../game-interruption/game-command-transaction.js";
+import {replayGameCommandFromRoom, runGameCommandTransaction} from "../game-interruption/game-command-transaction.js";
 import {applyClassicRoll, createYutGame, finishYutGame, moveYutPiece, normalizeYutGame, submitStrategyChoice, timeoutYutTurn} from "./game.js";
 import {YutGameId, YutGameState, YutRoom} from "./types.js";
 
@@ -16,9 +16,9 @@ export const game_yut_start_game = onCall<Data>({region: REGION}, async (request
   const roomCode = parseRoomCode(request.data?.roomCode);
   const gameId = parseGameId(request.data?.gameId);
   const ref = getDatabase().ref(`rooms/${roomCode}`);
-  const replay = await replayGameCommand(ref, request, "game_yut_start_game");
-  if (replay) return replay;
   const room = (await ref.get()).val() as YutRoom | null;
+  const replay = replayGameCommandFromRoom(room, request, "game_yut_start_game");
+  if (replay) return replay;
   if (!room) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");
   const fingerprint = startGameFingerprint(room);
   assertControllerSession(room, uid, request.data?.controllerSessionId);
@@ -97,7 +97,6 @@ function controllerMutation(request: CallableRequest<Data>, kind: string, action
 }
 async function mutate(request: CallableRequest<Data>, kind: string, action: (room: YutRoom, uid: string, now: number, data: Data) => Record<string, unknown>) {
   const uid = requireUid(request.auth?.uid); const roomCode = parseRoomCode(request.data?.roomCode); const ref = getDatabase().ref(`rooms/${roomCode}`);
-  const replay = await replayGameCommand(ref, request, kind); if (replay) return replay;
   let response: Record<string, unknown> | null = null;
   const result = await runGameCommandTransaction(ref, request, kind, (raw, now) => {
     if (!raw) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");

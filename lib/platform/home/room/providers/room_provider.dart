@@ -98,6 +98,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
 
   @override
   List<RoomPlayer> players = [];
+  int _playerRosterEpoch = 0;
   bool roomPreviewReady = false;
   List<GameInfo> groupGames = [];
   RoomDataLoadStatus groupGamesLoadStatus = RoomDataLoadStatus.idle;
@@ -1032,7 +1033,19 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       return false;
     }
     final result = await _runCommand<bool>(() async {
-      players = await _service.beginPlayerSeating(code);
+      final observedEpoch = _playerRosterEpoch;
+      final committedPlayers = await _service.beginPlayerSeating(code);
+      if (roomCode != code) return false;
+      // A roster event received while the callable was in flight may be newer
+      // than its committed response. Read current players only in that race.
+      if (_playerRosterEpoch == observedEpoch) {
+        players = committedPlayers;
+      } else {
+        final refreshEpoch = _playerRosterEpoch;
+        final refreshed = await _service.getRoomPlayers(code);
+        if (roomCode != code) return false;
+        if (_playerRosterEpoch == refreshEpoch) players = refreshed;
+      }
       notifyListeners();
       return true;
     });
@@ -1193,6 +1206,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
         .listen(
           (roomPlayer) {
             if (roomCode != listenedRoomCode) return;
+            _playerRosterEpoch += 1;
             players = roomPlayer;
             if (!_ownsControllerSession &&
                 roomPlayer.any(

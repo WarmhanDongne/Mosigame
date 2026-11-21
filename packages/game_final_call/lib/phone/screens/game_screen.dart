@@ -18,6 +18,7 @@ import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_final_call/shared/widgets/party_pop.dart';
 import 'package:game_final_call/phone/widgets/game_actions.dart';
 import 'package:game_final_call/phone/widgets/hand_card_stack.dart';
+import 'package:game_final_call/phone/widgets/four_card_call_splash.dart';
 import 'package:game_kit/phone/animations/control_entry_animation.dart';
 import 'package:game_kit/localization/game_locale.dart';
 
@@ -238,6 +239,9 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
                   ? _buildBoard(context)
                   : const SizedBox.shrink(),
             ),
+            // 포카드 CALL이면 최종 조합 제출 없이 바로 정산되므로, 결과가
+            // 태블릿에 펼쳐지는 동안 이 알림으로 무슨 일이 일어났는지 알려 줍니다.
+            FinalCallFourCardCallSplash(controller: controller),
           ],
         );
       },
@@ -286,6 +290,28 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 포카드 완성 축하
+  // ---------------------------------------------------------------------------
+  // 내 손패가 포카드가 되는 순간 카드가 통통 튀고 FOUR CARD! 도장이 찍힙니다.
+  // 같은 라운드의 같은 네 장이면 키가 같아서 다시 재생하지 않습니다.
+  // 이 연출은 내 휴대폰에만 나오고 태블릿에는 CALL 전까지 아무것도 보이지
+  // 않습니다.
+  String? _celebratedFourCard;
+
+  String? _fourCardCelebrationKey(bool fourCard) {
+    if (!fourCard) return null;
+    final ids = controller.hand.map((card) => card.id).toList()..sort();
+    final key = '${controller.round}:${ids.join(',')}';
+    if (_celebratedFourCard != key) {
+      _celebratedFourCard = key;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) GameFeedback.commit();
+      });
+    }
+    return key;
+  }
+
   Widget _buildLandscapeHand(double cardWidth) {
     final submitMode = controller.isFinalSubmitPhase;
     // 점수를 만든 카드 묶음은 고를 일이 없을 때만 손패 아래에 표시합니다.
@@ -297,7 +323,10 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
     final combination = showCombination
         ? finalCallBestCombination(controller.hand)
         : null;
+    final fourCard = handRevealed && controller.holdsFourCard;
     return FinalCallPhoneHandCardStack(
+      fourCard: fourCard,
+      celebrationKey: _fourCardCelebrationKey(fourCard),
       cards: controller.hand,
       isLandscape: true,
       isRevealed: handRevealed,

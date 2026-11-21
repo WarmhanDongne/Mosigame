@@ -52,6 +52,7 @@ import 'package:game_kit/shared/widgets/game_route_exit.dart';
 
 part 'src/board_state.dart';
 part 'screens/game_layer.dart';
+part 'screens/four_card_reveal.dart';
 
 // ============================================================================
 // 화면 흐름·연출 설정
@@ -403,6 +404,16 @@ class FinalCallTabletGameLayer extends StatelessWidget {
       return GameFlowAutoComplete(
         key: ValueKey('round-result-skipped-${controller.round}'),
         delay: flowStep.beforeDelay,
+        onCompleted: onRoundRevealCompleted,
+      );
+    }
+    // 포카드 CALL은 모두의 패를 비교하지 않고 선언자의 네 장만 펼친 뒤
+    // 상대팀 하트를 한꺼번에 깨뜨립니다.
+    if (result.callerFourOfAKind && result.callerUid != null) {
+      return _FourCardRevealTable(
+        key: ValueKey('four-card-result-${controller.round}'),
+        controller: controller,
+        result: result,
         onCompleted: onRoundRevealCompleted,
       );
     }

@@ -993,16 +993,24 @@ class RoomService {
 
   /// 서버에서 `waiting → seating`을 확정한 뒤 잠긴 최신 참가자 명단을 반환합니다.
   Future<List<RoomPlayer>> beginPlayerSeating(String roomCode) async {
-    await _call(
+    final result = await _call(
       'beginRealtimeRoomSeating',
       await _controllerEnvelope(roomCode),
     );
+    final data = result.data;
+    if (data is Map && data['players'] is Map) {
+      return _playersFromValue(data['players']);
+    }
+    // An older deployed function returns only playerUids.
     return getRoomPlayers(roomCode);
   }
 
   List<RoomPlayer> _playersFromSnapshot(DataSnapshot snapshot) {
-    final value = snapshot.value;
-    if (!snapshot.exists || value is! Map) {
+    return _playersFromValue(snapshot.value);
+  }
+
+  List<RoomPlayer> _playersFromValue(Object? value) {
+    if (value is! Map) {
       return const [];
     }
 

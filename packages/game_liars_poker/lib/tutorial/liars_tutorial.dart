@@ -24,6 +24,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
+import 'package:game_kit/penalty/roulette.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:game_liars_poker/game_assets.dart';
@@ -211,10 +212,10 @@ class LiarsPokerTutorial extends GameTutorial {
           '活下來也越來越危險',
         ),
         body: _t(
-          '룰렛을 돌릴 때마다 탈락 칸이 늘어나요(4/16 → 5/15 → 11/12). 룰렛을 피하는 게 최고예요.',
-          'Each spin adds more elimination slots (4/16 → 5/15 → 11/12). Best to avoid it.',
-          '每转一次轮盘，淘汰格就会变多（4/16 → 5/15 → 11/12）。最好别转。',
-          '每轉一次輪盤，淘汰格就會變多（4/16 → 5/15 → 11/12）。最好別轉。',
+          '태블릿 룰렛을 손가락으로 휙 돌려요. 돌릴 때마다 빨간 탈락 칸이 늘어나요(4/16 → 5/15 → 11/12). 룰렛을 피하는 게 최고예요.',
+          'Flick the wheel on the tablet to spin. Each spin adds more red slots (4/16 → 5/15 → 11/12). Best to avoid it.',
+          '用手指在平板上甩动轮盘。每转一次，红色淘汰格就会变多（4/16 → 5/15 → 11/12）。最好别转。',
+          '用手指在平板上甩動輪盤。每轉一次，紅色淘汰格就會變多（4/16 → 5/15 → 11/12）。最好別轉。',
         ),
       ),
       8 => (
@@ -563,7 +564,19 @@ class _LiarsTablet extends StatelessWidget {
               child: TutorialAppear(
                 fromScale: .6,
                 offset: Offset.zero,
-                child: const _Roulette(size: 300),
+                // 실제 게임의 벌칙 룰렛을 그대로 씁니다. 태블릿에서 손가락으로 돌려
+                // 볼 수 있고, 튜토리얼에서는 항상 생존으로 멈춥니다.
+                child: SizedBox.square(
+                  dimension: 480,
+                  child: PenaltyRoulette(
+                    attemptCount: 0,
+                    centerCharacterId: view.players.isEmpty
+                        ? null
+                        : view.players[_owner].characterId,
+                    onPrepareResult: () async => RouletteResult.safe,
+                    onResult: (_) {},
+                  ),
+                ),
               ),
             ),
           ),
@@ -1313,37 +1326,85 @@ class _RouletteState extends State<_Roulette>
   );
 }
 
+/// 실제 게임 벌칙 룰렛(금테 · 보랏빛 칸 · 빨간 탈락 칸 · 금색 축)을 작게 그립니다.
 class _RoulettePainter extends CustomPainter {
   const _RoulettePainter();
+
+  static const _gold = Color(0xFFC9A25B);
+  static const _goldLight = Color(0xFFF6DE9A);
+  static const _abyss = Color(0xFF0D0912);
+  static const _red = Color(0xFFE0243A);
+  static const _plumA = Color(0xFF24152E);
+  static const _plumB = Color(0xFF34204A);
+  static const _ivory = Color(0xFFF3EEE6);
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.width / 2;
+    final rim = Rect.fromCircle(center: c, radius: r);
+    final goldShader = const RadialGradient(
+      center: Alignment(-.3, -.4),
+      radius: .9,
+      colors: [_goldLight, _gold, Color(0xFF7A5A22)],
+      stops: [0, .45, 1],
+    ).createShader(rim);
+    canvas.drawCircle(c, r, Paint()..shader = goldShader);
+    canvas.drawCircle(c, r * .975, Paint()..color = _abyss);
     const slots = 16;
     const bad = {0, 4, 8, 12};
+    final inner = r * .908;
+    final sweep = 2 * math.pi / slots;
     for (var i = 0; i < slots; i++) {
-      final paint = Paint()
-        ..color = bad.contains(i)
-            ? _lie
-            : (i.isEven ? _bone : const Color(0xFFE2D5BC));
       canvas.drawArc(
-        Rect.fromCircle(center: c, radius: r - 3),
-        -math.pi / 2 + i * 2 * math.pi / slots,
-        2 * math.pi / slots,
+        Rect.fromCircle(center: c, radius: inner),
+        -math.pi / 2 + i * sweep,
+        sweep,
         true,
-        paint,
+        Paint()..color = bad.contains(i) ? _red : (i.isEven ? _plumA : _plumB),
       );
     }
+    final divider = Paint()
+      ..color = _ivory.withValues(alpha: .35)
+      ..strokeWidth = math.max(.6, r * .012);
+    for (var i = 0; i < slots; i++) {
+      final a = -math.pi / 2 + i * sweep;
+      canvas.drawLine(c, c + Offset(math.cos(a), math.sin(a)) * inner, divider);
+    }
+    // 가장자리를 살짝 어둡게 해 입체감을 줍니다.
     canvas.drawCircle(
       c,
-      r - 3,
+      inner,
       Paint()
-        ..color = _ink
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(3.0, r * .04),
+        ..shader = RadialGradient(
+          colors: [Colors.transparent, Colors.black.withValues(alpha: .45)],
+          stops: const [.55, 1],
+        ).createShader(Rect.fromCircle(center: c, radius: inner)),
     );
-    canvas.drawCircle(c, r * .16, Paint()..color = _ink);
+    canvas.drawCircle(c, r * .21, Paint()..color = _abyss);
+    canvas.drawCircle(
+      c,
+      r * .21,
+      Paint()
+        ..shader = goldShader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.5, r * .03),
+    );
+    canvas.drawCircle(c, r * .085, Paint()..shader = goldShader);
+    // 위쪽 포인터입니다.
+    final pointer = Path()
+      ..moveTo(c.dx, c.dy - r * .84)
+      ..lineTo(c.dx - r * .09, c.dy - r * 1.03)
+      ..quadraticBezierTo(c.dx, c.dy - r * 1.11, c.dx + r * .09, c.dy - r * 1.03)
+      ..close();
+    canvas.drawPath(pointer, Paint()..color = _ivory);
+    canvas.drawPath(
+      pointer,
+      Paint()
+        ..color = _abyss
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1, r * .02),
+    );
   }
 
   @override
@@ -1877,10 +1938,10 @@ class _PhoneMessage extends StatelessWidget {
         '在平板上查看本局的牌',
       ),
       7 => _t(
-        '태블릿에서 룰렛이 돌아가요',
-        'The roulette spins on the tablet',
-        '轮盘在平板上转动',
-        '輪盤在平板上轉動',
+        '태블릿 룰렛을 손가락으로 휙 돌려 봐요',
+        'Flick the wheel on the tablet',
+        '在平板上用手指甩动轮盘',
+        '在平板上用手指甩動輪盤',
       ),
       _ => _t('태블릿을 봐요', 'Look at the tablet', '看平板', '看平板'),
     };

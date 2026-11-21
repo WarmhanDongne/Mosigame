@@ -273,14 +273,6 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
 
     const database = getDatabase();
     const roomRef = database.ref(`rooms/${roomCode}`);
-    const roomSnapshot = await roomRef.get();
-    if (!roomSnapshot.exists()) {
-      throw new HttpsError(
-        "not-found",
-        "방을 찾을 수 없습니다.",
-      );
-    }
-
     let rejection: HttpsError | null = null;
     let reconnected = false;
     let savedNickname = nickname;
@@ -291,7 +283,10 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
       (currentValue) => {
         rejection = null;
         reconnected = false;
-        if (currentValue === null || typeof currentValue !== "object") return;
+        if (currentValue === null || typeof currentValue !== "object") {
+          rejection = new HttpsError("not-found", "방을 찾을 수 없습니다.");
+          return;
+        }
         const currentRoom = currentValue as Record<string, unknown> & {
           players?: Record<string, Record<string, unknown>>;
           game?: {public?: {status?: unknown}};

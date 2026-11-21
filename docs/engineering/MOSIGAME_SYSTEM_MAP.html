@@ -330,7 +330,7 @@
 </head>
 <body>
   <div class="shell">
-    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.18 · 앱 1.0.1+9</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button><button type="button" data-sheet="recovery">05 · 재연결·복구</button></nav></div></div>
+    <div class="topline"><div class="mark"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 84 84"><rect x="0" y="0" width="60" height="20" rx="6"/><rect x="64" y="0" width="20" height="60" rx="6"/><rect x="24" y="64" width="60" height="20" rx="6"/><rect x="0" y="24" width="20" height="60" rx="6"/></svg></span>모시겜 <small>/ 개발자용 코드 안내</small></div><div class="meta-control"><button id="meta-trigger" type="button" aria-label="현재 페이지 선택" aria-expanded="false" aria-controls="page-menu"><span id="page-current-label">프론트</span><span class="meta-stamp">확인일 2026.11.19 · 앱 1.0.1+9</span><span class="meta-chevron" aria-hidden="true">⌄</span></button><nav id="page-menu" aria-label="페이지 선택" hidden><button type="button" data-sheet="front" aria-current="page">01 · 프론트</button><button type="button" data-sheet="game">02 · 게임</button><button type="button" data-sheet="backend">03 · 백엔드·파이어베이스</button><button type="button" data-sheet="other">04 · 기타</button><button type="button" data-sheet="recovery">05 · 재연결·복구</button></nav></div></div>
     <header class="hero">
       <div class="hero-copy">
         <div class="eyebrow">개발자 참고 문서</div>
@@ -408,6 +408,7 @@
       <section id="journey" class="secondary-section">
         <details class="detail-section"><summary>로비에서 게임 시작까지의 코드 흐름</summary>
         <p class="developer-note">방은 게임을 선택하기 전에 만들어질 수 있습니다. 게임 선택, 자리 또는 역할 설정, 서버 시작 요청 순서로 확인하세요.</p>
+        <p class="developer-note">참가 명령은 별도 방 존재 조회 없이 서버 트랜잭션에서 판정합니다. 자리 배치 응답의 확정 참가자 명단은 태블릿이 바로 사용하며, 구형 서버 응답과 명단 경합에는 RTDB 재조회가 남습니다. 윷놀이 행동과 홀덤·마피아·윷놀이 시작의 중복 조회만 줄였고 서버의 방·턴 검증과 명령 재생은 유지합니다.</p>
         <div class="journey">
           <article class="journey-card"><div class="num">01 / TABLET</div><h3>책 표지·상세</h3><p>Firestore 카탈로그에서 보여 줄 게임을 조회하고, 패키지의 책 아트로 표지를 렌더링합니다.</p><span class="tag">games/{id}</span></article>
           <article class="journey-card"><div class="num">02 / ROOM</div><h3>방·QR·입장</h3><p>태블릿 controller가 방을 만들고 휴대폰 player가 QR 또는 코드로 들어옵니다.</p><span class="tag">create / join callable</span></article>
