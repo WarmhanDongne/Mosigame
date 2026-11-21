@@ -3,6 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/widgets/game_exit_route.dart';
 
 void main() {
+  testWidgets('material game route disables interactive back gestures', (
+    tester,
+  ) async {
+    late NavigatorState navigator;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            navigator = Navigator.of(context);
+            return const Scaffold(body: Center(child: Text('lobby')));
+          },
+        ),
+      ),
+    );
+
+    final route = GameExitMaterialPageRoute<void>(
+      builder: (_) => const Scaffold(body: Center(child: Text('game'))),
+    );
+    navigator.push(route);
+    await tester.pumpAndSettle();
+
+    expect(route.popGestureEnabled, isFalse);
+
+    navigator.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('lobby'), findsOneWidget);
+  });
+
   for (final instantEntry in [false, true]) {
     testWidgets('game exit covers the old screen then reveals the destination '
         '(${instantEntry ? 'instant' : 'material'} entry)', (tester) async {
