@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,7 +91,7 @@ void main() {
     );
     expect(
       RussianRouletteTiming.rotating(3),
-      const Duration(milliseconds: 3800),
+      const Duration(milliseconds: 4250),
     );
     expect(
       RussianRouletteTiming.firingHold,
@@ -205,7 +207,114 @@ void main() {
       ),
       1,
     );
+    expect(
+      RussianRouletteTiming.completedRotationSteps(
+        const Duration(milliseconds: 1549),
+        3,
+      ),
+      1,
+    );
+    expect(
+      RussianRouletteTiming.completedRotationSteps(
+        const Duration(milliseconds: 1550),
+        3,
+      ),
+      2,
+    );
   });
+
+  test('gun turn crosses the angle boundary clockwise without reversing', () {
+    final from = 350 * math.pi / 180;
+    final to = RouletteStageGeometry.clockwiseFrom(from, 10 * math.pi / 180);
+
+    expect(to, greaterThan(from));
+    var previous = from;
+    for (var step = 0; step <= 100; step++) {
+      final progress = RussianRouletteTiming.gunTurnCurve.transform(step / 100);
+      final angle = from + (to - from) * progress;
+      expect(angle, greaterThanOrEqualTo(previous));
+      expect(angle, lessThanOrEqualTo(to));
+      previous = angle;
+    }
+    expect(previous, closeTo(to, 1e-9));
+  });
+
+  test(
+    'new first turn replays the opening once even when screen setup is late',
+    () {
+      RussianRouletteView game({
+        int round = 1,
+        String phase = 'selecting',
+        bool paused = false,
+        int deadlineAt = 123000,
+      }) => RussianRouletteView.fromPublic({
+        'status': 'playing',
+        'phase': phase,
+        'round': round,
+        'targetUid': 'a',
+        'turnDeadlineAt': deadlineAt,
+        'startedAt': 90000,
+        'players': {
+          'a': {
+            'nickname': 'A',
+            'characterId': 'frog',
+            'seatIndex': 0,
+            'status': 'alive',
+          },
+          'b': {
+            'nickname': 'B',
+            'characterId': 'milk',
+            'seatIndex': 1,
+            'status': 'alive',
+          },
+        },
+        if (paused) 'recovery': {'paused': true},
+      });
+
+      // 화면 준비가 3초 이상 걸려 예전의 31.5초 조건 아래로 내려가도 재생합니다.
+      expect(
+        rouletteShouldStartIntro(
+          game(),
+          presentedStartedAt: 0,
+          serverNow: 100000,
+        ),
+        isTrue,
+      );
+      // 같은 게임을 이미 보여 줬거나 첫 턴 후반·중단 중이면 다시 재생하지 않습니다.
+      expect(
+        rouletteShouldStartIntro(
+          game(),
+          presentedStartedAt: 90000,
+          serverNow: 100000,
+        ),
+        isFalse,
+      );
+      expect(
+        rouletteShouldStartIntro(
+          game(deadlineAt: 122000),
+          presentedStartedAt: 0,
+          serverNow: 100000,
+        ),
+        isFalse,
+      );
+      expect(
+        rouletteShouldStartIntro(
+          game(paused: true),
+          presentedStartedAt: 0,
+          serverNow: 100000,
+        ),
+        isFalse,
+      );
+      expect(
+        rouletteShouldStartIntro(
+          game(round: 2),
+          presentedStartedAt: 0,
+          serverNow: 100000,
+        ),
+        isFalse,
+      );
+    },
+  );
 
   group('연출 단계 예약', () {
     Map<String, dynamic> publicState({

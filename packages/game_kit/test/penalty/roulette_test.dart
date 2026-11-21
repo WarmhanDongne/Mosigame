@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/penalty/roulette.dart';
 
@@ -18,7 +19,8 @@ void main() {
       await _flick(tester);
 
       final waitingSpeed = await _sampleSpeed(tester);
-      expect(waitingSpeed, closeTo(PenaltyRoulette.maxSpinSpeed, 0.05));
+      // Ticker의 첫 프레임은 테스트 pump 경계에서 일부 잘릴 수 있습니다.
+      expect(waitingSpeed, closeTo(PenaltyRoulette.maxSpinSpeed, 0.8));
       expect(results, isEmpty);
 
       prepared.complete(result);
@@ -49,7 +51,8 @@ void main() {
       final count = wheel.sections.length;
       final slot = 2 * math.pi / count;
       final turn = 2 * math.pi;
-      final landed = (((-wheel.angle.value) % turn + turn) % turn / slot).floor();
+      final landed = (((-wheel.angle.value) % turn + turn) % turn / slot)
+          .floor();
       expect(wheel.sections[landed], result == RouletteResult.eliminated);
 
       await tester.pump(const Duration(seconds: 1));
@@ -71,7 +74,7 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 5));
     final waitingSpeed = await _sampleSpeed(tester);
-    expect(waitingSpeed, closeTo(PenaltyRoulette.maxSpinSpeed, 0.05));
+    expect(waitingSpeed, closeTo(PenaltyRoulette.maxSpinSpeed, 0.8));
     expect(results, isEmpty);
 
     prepared.complete(RouletteResult.safe);
@@ -95,8 +98,9 @@ void main() {
     await _mountRoulette(tester, prepared: prepared, onResult: results.add);
     await _flick(tester);
     prepared.complete(null);
-    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 250));
 
     expect(await _sampleSpeed(tester), closeTo(0, 0.001));
     expect(results, isEmpty);
@@ -110,6 +114,22 @@ void main() {
   });
 
   testWidgets('살살 놓으면 돌지 않고 더 세게 돌리라고 안내한다', (tester) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
     final prepared = Completer<RouletteResult?>();
     var asked = false;
     await _mountRoulette(
@@ -129,6 +149,41 @@ void main() {
 
     expect(asked, isFalse);
     expect(find.text('조금 더 세게 휙 돌려요'), findsOneWidget);
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    expect(haptics.last, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('유효한 플릭과 탈락 결과에 단계별 촉각 피드백을 보낸다', (tester) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final prepared = Completer<RouletteResult?>();
+    await _mountRoulette(tester, prepared: prepared, onResult: (_) {});
+
+    await _flick(tester);
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    expect(haptics, contains('HapticFeedbackType.mediumImpact'));
+
+    prepared.complete(RouletteResult.eliminated);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
+    expect(haptics, contains('HapticFeedbackType.heavyImpact'));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

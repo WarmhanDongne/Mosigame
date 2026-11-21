@@ -285,31 +285,21 @@ class _RussianRouletteTabletScreenState
 
   // 게임 시작 연출: 1턴 선택이 막 시작됐을 때(남은 시간이 넉넉할 때) 한 번만.
   int? _introStartedAt;
-  int _introDeadline = 0;
 
   /// 시작 연출을 보여 준 게임의 시작 시각입니다.
   int _introGame = 0;
 
   int? _introMs(RussianRouletteView game) {
-    final fresh =
-        game.round == 1 &&
-        game.phase == 'selecting' &&
-        !game.paused &&
-        game.deadlineAt != 0 &&
-        game.deadlineAt != _introDeadline &&
-        // 첫 턴 마감은 서버가 '시작 연출 + 30초'로 잡습니다. 중간에 멈췄다가
-        // 이어진 첫 턴은 30초 이하라 연출을 다시 틀지 않습니다.
-        game.deadlineAt - _serverNow >
-            RussianRouletteTiming.turn.inMilliseconds + 1500;
+    final fresh = rouletteShouldStartIntro(
+      game,
+      presentedStartedAt: _introGame,
+      serverNow: _serverNow,
+    );
     if (fresh) {
-      _introDeadline = game.deadlineAt;
       _introGame = game.startedAt;
-      // 휴대폰 버튼 잠금과 같은 시점에 끝나도록, 늦게 받았으면 그만큼 앞에서 시작합니다.
-      final introStart =
-          game.deadlineAt -
-          RussianRouletteTiming.turn.inMilliseconds -
-          rouletteIntroLength(game.aliveCount);
-      _introStartedAt = _nowMs - math.max(0, _serverNow - introStart);
+      // 화면 준비가 늦어도 어두운 준비 → 좌석 점등 → 랜덤 총구 지정 순서를
+      // 건너뛰지 않고 새 게임마다 한 번 온전히 보여 줍니다.
+      _introStartedAt = _nowMs;
     }
     final started = _introStartedAt;
     if (started == null) return null;
@@ -378,7 +368,7 @@ class _RussianRouletteTabletScreenState
         ((_nowMs - _gunStartedAt) /
                 RussianRouletteTiming.gunTurn.inMilliseconds)
             .clamp(0.0, 1.0);
-    return from + (to - from) * Curves.easeOutBack.transform(t);
+    return from + (to - from) * RussianRouletteTiming.gunTurnCurve.transform(t);
   }
 
   @override
