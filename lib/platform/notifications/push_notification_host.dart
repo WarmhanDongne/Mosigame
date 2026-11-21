@@ -59,8 +59,7 @@ class _PushNotificationHostState extends State<PushNotificationHost> {
     if (kIsWeb ||
         FirebaseBackend.isLocal ||
         Firebase.apps.isEmpty ||
-        Firebase.app().options.projectId !=
-            FirebaseBackend.app.options.projectId ||
+        !FirebaseBackend.defaultAppMatchesSelectedBackend ||
         (defaultTargetPlatform != TargetPlatform.android &&
             defaultTargetPlatform != TargetPlatform.iOS)) {
       return;
@@ -141,8 +140,7 @@ abstract final class PushDeviceRegistration {
         (defaultTargetPlatform != TargetPlatform.android &&
             defaultTargetPlatform != TargetPlatform.iOS) ||
         FirebaseBackend.auth.currentUser != null ||
-        Firebase.app().options.projectId !=
-            FirebaseBackend.app.options.projectId) {
+        !FirebaseBackend.defaultAppMatchesSelectedBackend) {
       return;
     }
     signedOutTokenCleared = true;

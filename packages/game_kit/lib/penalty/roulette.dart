@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:game_kit/core/diagnostics/game_communication_log.dart';
+import 'package:game_kit/game_feedback.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/sound/app_sounds.dart';
 import 'package:game_kit/sound/providers/sound_provider.dart';
@@ -120,6 +121,7 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
 
   // 끄는 중
   double? _dragPointerAngle;
+  int? _lastHapticSlot;
 
   // 서버를 기다리며 도는 중
   double _velocity = 0;
@@ -135,8 +137,7 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
   /// dispose에서도 사운드를 멈춰야 해서 미리 잡아 둡니다.
   SoundProvider? _sound;
 
-  bool get _isBusy =>
-      _phase == _Phase.spinning || _phase == _Phase.settling;
+  bool get _isBusy => _phase == _Phase.spinning || _phase == _Phase.settling;
 
   List<bool> get _sections => switch (widget.attemptCount) {
     0 => _firstAttemptSections,
@@ -182,7 +183,10 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
       _phase = _Phase.dragging;
       _shownResult = null;
       _dragPointerAngle = _pointerAngle(details.localPosition);
+      _lastHapticSlot = (_angle.value / (2 * math.pi / _sections.length))
+          .floor();
     });
+    GameFeedback.select();
     _signPop.value = 0;
   }
 
@@ -195,6 +199,11 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
     if (delta < -math.pi) delta += 2 * math.pi;
     _dragPointerAngle = next;
     _angle.value += delta;
+    final slot = (_angle.value / (2 * math.pi / _sections.length)).floor();
+    if (slot != _lastHapticSlot) {
+      _lastHapticSlot = slot;
+      GameFeedback.select();
+    }
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -209,8 +218,10 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
     final omega = (r.dx * v.dy - r.dy * v.dx) / r.distanceSquared;
     if (omega.abs() < PenaltyRoulette.flickThreshold) {
       setState(() => _phase = _Phase.weak);
+      GameFeedback.alert();
       return;
     }
+    GameFeedback.commit();
     unawaited(_spin(omega));
   }
 
@@ -347,6 +358,12 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
       return;
     }
 
+    if (result == RouletteResult.eliminated) {
+      GameFeedback.declare();
+    } else {
+      GameFeedback.commit();
+    }
+
     GameCommunicationLog.instance.add(
       level: GameCommunicationLevel.info,
       title: '룰렛 회전 완료',
@@ -391,7 +408,8 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     // 결과 간판이 떠 있는 동안에는 안내를 숨깁니다.
     final showHint =
-        (_phase == _Phase.idle || _phase == _Phase.weak) && _shownResult == null;
+        (_phase == _Phase.idle || _phase == _Phase.weak) &&
+        _shownResult == null;
     return LayoutBuilder(
       builder: (context, constraints) => SizedBox(
         width: constraints.maxWidth,
@@ -419,6 +437,43 @@ class _PenaltyRouletteState extends State<PenaltyRoulette>
                     child: IgnorePointer(
                       child: _DragHint(
                         animation: reduceMotion ? null : _ambient,
+                      ),
+                    ),
+                  ),
+                if (_phase == _Phase.weak)
+                  Positioned(
+                    key: const Key('roulette-weak-hint'),
+                    left: 210,
+                    right: 210,
+                    bottom: 90,
+                    child: IgnorePointer(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xE6171518),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: const Color(0xFFF2E14C),
+                            width: 3,
+                          ),
+                        ),
+                        child: Text(
+                          GameLocale.select(
+                            ko: '조금 더 세게 휙 돌려요',
+                            en: 'Give it a stronger flick',
+                            zhHans: '再用力甩一下',
+                            zhHant: '再用力甩一下',
+                          ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFFF7F0DF),
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -542,7 +597,12 @@ class _SaloonWheelPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
     const c = Offset(500, 500);
-    const outerRect = Rect.fromLTWH(500 - _WheelGeometry.outer, 500 - _WheelGeometry.outer, _WheelGeometry.outer * 2, _WheelGeometry.outer * 2);
+    const outerRect = Rect.fromLTWH(
+      500 - _WheelGeometry.outer,
+      500 - _WheelGeometry.outer,
+      _WheelGeometry.outer * 2,
+      _WheelGeometry.outer * 2,
+    );
     final goldShader = const RadialGradient(
       center: Alignment(-.3, -.5),
       radius: .9,
@@ -630,7 +690,10 @@ class _SaloonWheelPainter extends CustomPainter {
         ..strokeWidth = 6 * _k
         ..strokeJoin = StrokeJoin.round,
     );
-    canvas.drawPath(triangle(62, 16, 16), Paint()..color = const Color(0xFFFFF6C8));
+    canvas.drawPath(
+      triangle(62, 16, 16),
+      Paint()..color = const Color(0xFFFFF6C8),
+    );
     final bulbCenter = top + const Offset(0, -8 * _k);
     _bulb(canvas, bulbCenter, 18 * _k, 1);
     canvas.drawCircle(
@@ -690,25 +753,74 @@ class _SaloonWheelPainter extends CustomPainter {
       ring.color = glowColor;
     } else {
       // 금색 그라데이션은 원판 기준이라 가운데로 옮긴 좌표에 맞춰 다시 만듭니다.
-      ring.shader = const RadialGradient(
-        center: Alignment(-.3, -.5),
-        radius: .9,
-        colors: [_goldLight, Color(0xFFE2C27E), _goldDeep],
-        stops: [0, .4, 1],
-      ).createShader(Rect.fromCircle(center: Offset.zero, radius: _WheelGeometry.hub));
+      ring.shader =
+          const RadialGradient(
+            center: Alignment(-.3, -.5),
+            radius: .9,
+            colors: [_goldLight, Color(0xFFE2C27E), _goldDeep],
+            stops: [0, .4, 1],
+          ).createShader(
+            Rect.fromCircle(center: Offset.zero, radius: _WheelGeometry.hub),
+          );
     }
     canvas.drawCircle(Offset.zero, _WheelGeometry.hub, ring);
     if (!done) _dashedCircle(canvas, Offset.zero, 80 * _k);
 
     if (out) {
-      _text(canvas, GameLocale.select(ko: '탈락', en: 'OUT', zhHans: '淘汰', zhHant: '淘汰'), const Offset(0, -2 * _k), size: 54 * _k, color: const Color(0xFFFFF1F2), glow: _neon, family: 'BlackHanSans');
-      _text(canvas, 'OUT', const Offset(0, 40 * _k), size: 16 * _k, color: const Color(0xFFFFD0D5), letterSpacing: 3 * _k, glow: _neon);
+      _text(
+        canvas,
+        GameLocale.select(ko: '탈락', en: 'OUT', zhHans: '淘汰', zhHant: '淘汰'),
+        const Offset(0, -2 * _k),
+        size: 54 * _k,
+        color: const Color(0xFFFFF1F2),
+        glow: _neon,
+        family: 'BlackHanSans',
+      );
+      _text(
+        canvas,
+        'OUT',
+        const Offset(0, 40 * _k),
+        size: 16 * _k,
+        color: const Color(0xFFFFD0D5),
+        letterSpacing: 3 * _k,
+        glow: _neon,
+      );
     } else if (safe) {
-      _text(canvas, GameLocale.select(ko: '생존', en: 'SAFE', zhHans: '生存', zhHant: '生存'), const Offset(0, -2 * _k), size: 54 * _k, color: const Color(0xFFC8F08A), glow: const Color(0xFF6BBF3A), family: 'BlackHanSans');
-      _text(canvas, 'SAFE', const Offset(0, 40 * _k), size: 16 * _k, color: const Color(0xFFA4D65E), letterSpacing: 3 * _k, glow: const Color(0xFF6BBF3A));
+      _text(
+        canvas,
+        GameLocale.select(ko: '생존', en: 'SAFE', zhHans: '生存', zhHant: '生存'),
+        const Offset(0, -2 * _k),
+        size: 54 * _k,
+        color: const Color(0xFFC8F08A),
+        glow: const Color(0xFF6BBF3A),
+        family: 'BlackHanSans',
+      );
+      _text(
+        canvas,
+        'SAFE',
+        const Offset(0, 40 * _k),
+        size: 16 * _k,
+        color: const Color(0xFFA4D65E),
+        letterSpacing: 3 * _k,
+        glow: const Color(0xFF6BBF3A),
+      );
     } else {
-      _text(canvas, 'LIAR', const Offset(0, -6 * _k), size: 38 * _k, color: const Color(0xFFE2C27E));
-      _text(canvas, 'WHEEL', const Offset(0, 24 * _k), size: 16 * _k, color: const Color(0xFFFF8A96), letterSpacing: 3 * _k, glow: _neon);
+      _text(
+        canvas,
+        'LIAR',
+        const Offset(0, -6 * _k),
+        size: 38 * _k,
+        color: const Color(0xFFE2C27E),
+      );
+      _text(
+        canvas,
+        'WHEEL',
+        const Offset(0, 24 * _k),
+        size: 16 * _k,
+        color: const Color(0xFFFF8A96),
+        letterSpacing: 3 * _k,
+        glow: _neon,
+      );
     }
     canvas.restore();
   }
@@ -736,8 +848,17 @@ class _SaloonWheelPainter extends CustomPainter {
         // 네온 테두리: 번진 빛을 먼저 그리고 선을 위에 그립니다.
         final inset = 2.2 * math.pi / 180;
         final outline = Path()
-          ..addArc(Rect.fromCircle(center: Offset.zero, radius: 262 * _k), start + inset, sweep - inset * 2)
-          ..arcTo(Rect.fromCircle(center: Offset.zero, radius: 96 * _k), start + sweep - inset, -(sweep - inset * 2), false)
+          ..addArc(
+            Rect.fromCircle(center: Offset.zero, radius: 262 * _k),
+            start + inset,
+            sweep - inset * 2,
+          )
+          ..arcTo(
+            Rect.fromCircle(center: Offset.zero, radius: 96 * _k),
+            start + sweep - inset,
+            -(sweep - inset * 2),
+            false,
+          )
           ..close();
         canvas.drawPath(
           outline,
@@ -758,7 +879,14 @@ class _SaloonWheelPainter extends CustomPainter {
         canvas.save();
         canvas.translate(math.cos(mid) * 196 * _k, math.sin(mid) * 196 * _k);
         canvas.rotate(mid + math.pi / 2);
-        _text(canvas, 'X', Offset.zero, size: 30 * _k, color: const Color(0xFFFFB3BC), glow: _neon);
+        _text(
+          canvas,
+          'X',
+          Offset.zero,
+          size: 30 * _k,
+          color: const Color(0xFFFFB3BC),
+          glow: _neon,
+        );
         canvas.restore();
       } else {
         canvas.drawCircle(
@@ -773,7 +901,11 @@ class _SaloonWheelPainter extends CustomPainter {
       ..strokeWidth = 2 * _k;
     for (var i = 0; i < n; i++) {
       final a = -math.pi / 2 + i * sweep;
-      canvas.drawLine(Offset.zero, Offset(math.cos(a), math.sin(a)) * r, divider);
+      canvas.drawLine(
+        Offset.zero,
+        Offset(math.cos(a), math.sin(a)) * r,
+        divider,
+      );
     }
   }
 
@@ -848,7 +980,10 @@ class _SaloonWheelPainter extends CustomPainter {
               ? null
               : [
                   Shadow(color: glow, blurRadius: size * .35),
-                  Shadow(color: glow.withValues(alpha: .6), blurRadius: size * .8),
+                  Shadow(
+                    color: glow.withValues(alpha: .6),
+                    blurRadius: size * .8,
+                  ),
                 ],
         ),
       ),
@@ -920,8 +1055,18 @@ class _SwipePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     const dashLength = 3 * _k / arcRadius;
     const gapLength = 16 * _k / arcRadius;
-    for (var a = -math.pi / 2 - half; a < -math.pi / 2 + half; a += dashLength + gapLength) {
-      canvas.drawArc(Rect.fromCircle(center: c, radius: arcRadius), a, dashLength, false, dash);
+    for (
+      var a = -math.pi / 2 - half;
+      a < -math.pi / 2 + half;
+      a += dashLength + gapLength
+    ) {
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: arcRadius),
+        a,
+        dashLength,
+        false,
+        dash,
+      );
     }
 
     // 0 → 0.1 나타남 · 0.1 → 0.22 꾹 누름 · 0.22 → 0.72 쓸기 · 0.72 → 0.88 사라짐
@@ -936,7 +1081,10 @@ class _SwipePainter extends CustomPainter {
       opacity = 0;
     }
     final sweep = Curves.easeInOut.transform(((t - .22) / .5).clamp(0.0, 1.0));
-    final rotation = (-40 + 80 * sweep + (t > .72 ? 6 * ((t - .72) / .28) : 0)) * math.pi / 180;
+    final rotation =
+        (-40 + 80 * sweep + (t > .72 ? 6 * ((t - .72) / .28) : 0)) *
+        math.pi /
+        180;
 
     canvas.save();
     canvas.translate(c.dx, c.dy);
@@ -952,7 +1100,10 @@ class _SwipePainter extends CustomPainter {
     canvas.drawCircle(
       const Offset(0, -232 * _k),
       34 * _k * math.max(.4, tap),
-      Paint()..color = const Color(0xFFF2E14C).withValues(alpha: .35 * opacity * (tap > 0 ? 1 : 0)),
+      Paint()
+        ..color = const Color(
+          0xFFF2E14C,
+        ).withValues(alpha: .35 * opacity * (tap > 0 ? 1 : 0)),
     );
     final icon = TextPainter(
       text: TextSpan(
@@ -963,14 +1114,23 @@ class _SwipePainter extends CustomPainter {
           fontSize: 96,
           color: Colors.white.withValues(alpha: opacity),
           shadows: [
-            Shadow(color: Colors.black.withValues(alpha: .8 * opacity), blurRadius: 4),
-            Shadow(color: Colors.black.withValues(alpha: .5 * opacity), blurRadius: 12),
+            Shadow(
+              color: Colors.black.withValues(alpha: .8 * opacity),
+              blurRadius: 4,
+            ),
+            Shadow(
+              color: Colors.black.withValues(alpha: .5 * opacity),
+              blurRadius: 12,
+            ),
           ],
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    icon.paint(canvas, Offset(-icon.width * .42, -232 * _k - icon.height * .08));
+    icon.paint(
+      canvas,
+      Offset(-icon.width * .42, -232 * _k - icon.height * .08),
+    );
     canvas.restore();
     canvas.restore();
   }
