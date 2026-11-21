@@ -2159,7 +2159,7 @@ class _RotationBody extends StatelessWidget {
                 child: TweenAnimationBuilder<double>(
                   tween: Tween(end: gunAngle),
                   duration: RussianRouletteTiming.gunTurn,
-                  curve: Curves.easeOutBack,
+                  curve: RussianRouletteTiming.gunTurnCurve,
                   builder: (context, angle, _) => Stack(
                     clipBehavior: Clip.none,
                     children: [

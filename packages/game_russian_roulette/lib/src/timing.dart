@@ -1,7 +1,8 @@
+import 'package:flutter/animation.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
 /// 러시안 룰렛 연출 타이밍입니다. 긴장감은 살리되 한 턴 구경 시간이 늘어지지
-/// 않게 맞췄습니다(공개 0.8초 간격, 회전 0.9초 간격, 발포 전 1.4초).
+/// 않게 맞췄습니다(공개 0.8초 간격, 회전 1.05초 간격, 발포 전 1.4초).
 ///
 /// 실기기 확정 전에는 이 파일의 값만 조정하면 휴대폰·태블릿
 /// 표시와 서버 연출 단계 진행 시점을 같이 바꿀 수 있습니다.
@@ -22,13 +23,20 @@ abstract final class RussianRouletteTiming {
   static const rotationLead = Duration(milliseconds: 500);
 
   /// 총이 한 사람씩 시계 방향으로 이동하는 간격입니다.
-  static const rotationStep = Duration(milliseconds: 900);
+  static const rotationStep = Duration(milliseconds: 1050);
 
   /// 마지막 회전 후 격발 표시로 넘어가기 전 여운입니다.
   static const rotationTail = Duration(milliseconds: 600);
 
   /// 총이 좌석 사이를 이동하는 실제 모션 길이입니다.
-  static const gunTurn = Duration(milliseconds: 600);
+  static const gunTurn = Duration(milliseconds: 750);
+
+  /// 목표 각도를 지나쳤다가 되돌아오지 않는 한 방향 회전 곡선입니다.
+  static const gunTurnCurve = Curves.easeInOutCubic;
+
+  /// 새 게임 화면이 다소 늦게 준비되어도 시작 연출을 한 번 보여 줄 수 있는
+  /// 첫 턴의 최소 남은 시간입니다.
+  static const introMinimumRemaining = Duration(seconds: 22);
 
   /// 격발 표시 후 피격 결과가 나오기 전 정지 시간입니다.
   static const firingHold = Duration(milliseconds: 1400);
@@ -83,6 +91,28 @@ abstract final class RussianRouletteTiming {
     return ((afterLead.inMilliseconds ~/ rotationStep.inMilliseconds) + 1)
         .clamp(0, total);
   }
+}
+
+/// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.
+///
+/// 서버의 첫 턴 마감에는 시작 연출 시간이 포함되지만 화면 전환·에셋 준비가
+/// 늦으면 그 시간이 일부 지나서 첫 상태를 받을 수 있습니다. 같은 게임에서는
+/// 한 번만 재생하고, 첫 턴 후반에 재접속한 화면에서는 다시 재생하지 않습니다.
+bool rouletteShouldStartIntro(
+  RussianRouletteView game, {
+  required int presentedStartedAt,
+  required int serverNow,
+}) {
+  if (game.round != 1 ||
+      game.phase != 'selecting' ||
+      game.paused ||
+      game.startedAt <= 0 ||
+      game.startedAt == presentedStartedAt ||
+      game.deadlineAt <= serverNow) {
+    return false;
+  }
+  return game.deadlineAt - serverNow >
+      RussianRouletteTiming.introMinimumRemaining.inMilliseconds;
 }
 
 /// 이 기기 시계로 본 지금 단계의 시작 시각을 돌려줍니다.
