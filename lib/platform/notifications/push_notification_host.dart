@@ -71,6 +71,13 @@ class _PushNotificationHostState extends State<PushNotificationHost> {
           permission.authorizationStatus != AuthorizationStatus.provisional) {
         return;
       }
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: false,
+          sound: true,
+        );
+      }
       _tokenSubscription = messaging.onTokenRefresh.listen((token) {
         unawaited(_register(token));
       });
