@@ -1270,11 +1270,37 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
               ),
             );
           },
-          onError: (Object error) => _handleSubscriptionError(
+          onError: (Object error) => _handlePlayerSubscriptionError(
             error,
             expectedRoomCode: listenedRoomCode,
           ),
         );
+  }
+
+  void _handlePlayerSubscriptionError(
+    Object error, {
+    required String expectedRoomCode,
+  }) {
+    _handleSubscriptionError(error, expectedRoomCode: expectedRoomCode);
+    if (roomCode != expectedRoomCode ||
+        _ownsControllerSession ||
+        _isLeaving ||
+        !_hasJoined) {
+      return;
+    }
+    final uid = _currentUid();
+    if (uid == null || uid.isEmpty) return;
+
+    // 강퇴 트랜잭션이 내 참가자 노드를 지우면 같은 순간 players 읽기 권한도
+    // 사라질 수 있습니다. 이 경우 빈 목록 이벤트 없이 permission-denied만
+    // 도착하므로, 평소 빈 목록 처리와 같은 서버 확인을 거쳐 강퇴를 확정합니다.
+    unawaited(
+      _verifyCurrentPlayerRemoval(
+        expectedRoomCode,
+        expectedUid: uid,
+        ignoreCachedRoster: true,
+      ),
+    );
   }
 
   /// 그룹 보유 게임은 활성 참가자 구성이 실제로 바뀔 때만 다시 조회합니다.
@@ -1680,6 +1706,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   Future<void> _verifyCurrentPlayerRemoval(
     String expectedRoomCode, {
     required String expectedUid,
+    bool ignoreCachedRoster = false,
   }) async {
     if (!_isServerConnected || _ownsControllerSession) return;
     final checkId = ++_playerRemovalCheckId;
@@ -1703,9 +1730,10 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
           _isLeaving) {
         return;
       }
-      if (players.any(
-        (player) => player.uid == expectedUid && player.isActive,
-      )) {
+      if (!ignoreCachedRoster &&
+          players.any(
+            (player) => player.uid == expectedUid && player.isActive,
+          )) {
         return;
       }
       // 서로 다른 경로의 조회 결과가 충돌하면 살아 있는 참가자 근거를 보존합니다.
