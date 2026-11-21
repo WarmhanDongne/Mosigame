@@ -22,6 +22,7 @@ import 'package:project00/platform/home/room/models/room_player.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'support/firebase_test_bootstrap.dart';
 
 void main() {
@@ -287,6 +288,40 @@ void main() {
     expect(errorRect.top, greaterThan(0));
     expect(errorRect.bottom, lessThan(buttonRect.top));
     expect(buttonRect.bottom, lessThanOrEqualTo(844));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
+  testWidgets('8개 캐릭터가 기존 4열 GUI로 스크롤 없이 한 화면에 보인다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final provider = _RoomProvider(_RoomService());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+
+    expect(roomCharacters, hasLength(8));
+    for (final character in roomCharacters) {
+      expect(find.text(character.localizedLabel), findsOneWidget);
+    }
+    final scrollable = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable &&
+          widget.axisDirection == AxisDirection.down &&
+          widget.physics is! NeverScrollableScrollPhysics,
+    );
+    expect(scrollable, findsOneWidget);
+    expect(
+      tester.state<ScrollableState>(scrollable).position.maxScrollExtent,
+      0,
+    );
+    expect(find.widgetWithText(MosiButton, '입장하기'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();

@@ -18,9 +18,13 @@ test("tablet preview descriptions cover the catalog and fit the target length", 
   }
 });
 
-test("client and server default room limits remain 12", () => {
+test("client and server room limits remain 8", () => {
   const serverSource = readFileSync(
-    new URL("../src/room/realtime-room-functions.ts", import.meta.url),
+    new URL("../src/room/room-seating-policy.ts", import.meta.url),
+    "utf8",
+  );
+  const createRoomSource = readFileSync(
+    new URL("../src/room/create-room.ts", import.meta.url),
     "utf8",
   );
   const clientSource = readFileSync(
@@ -30,6 +34,7 @@ test("client and server default room limits remain 12", () => {
     ),
     "utf8",
   );
-  assert.match(serverSource, /const DEFAULT_MAX_PLAYERS = 12;/);
-  assert.match(clientSource, /defaultMaxPlayers = 12;/);
+  assert.match(serverSource, /const ROOM_MAX_PLAYERS = 8;/);
+  assert.match(createRoomSource, /maxPlayers: ROOM_MAX_PLAYERS/);
+  assert.match(clientSource, /defaultMaxPlayers = 8;/);
 });

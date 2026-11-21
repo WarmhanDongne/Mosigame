@@ -1,5 +1,5 @@
 import {
-  replayGameCommand,
+  replayGameCommandFromRoom,
   runGameCommandTransaction,
 } from "../game-interruption/game-command-transaction.js";
 /* eslint-disable max-len, require-jsdoc */
@@ -33,10 +33,10 @@ export const game_holdem_start_game = onCall<Data>({region: HOLDEM_REGION}, asyn
   const roomCode = parseHoldemRoomCode(request.data?.roomCode);
   const restart = request.data?.restart === true;
   const roomRef = getDatabase().ref(`rooms/${roomCode}`);
-  const replay = await replayGameCommand(roomRef, request, "game_holdem_start_game");
-  if (replay) return replay;
   const snapshot = await roomRef.get();
   const rawRoom = snapshot.val();
+  const replay = replayGameCommandFromRoom(rawRoom, request, "game_holdem_start_game");
+  if (replay) return replay;
   assertHoldemRoom(rawRoom);
   const room = rawRoom as HoldemRoom;
   assertHoldemController(room, uid, request.data?.controllerSessionId);

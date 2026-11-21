@@ -403,6 +403,11 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
           closingMessage: closingMessage,
           introTextColor: Colors.white,
           background: const FinalCallPopBackground(),
+          // 가로로만 하는 게임이라, 첫 카드를 나눠 주기 전 빈 화면에서
+          // 휴대폰을 가로로 돌리라고 안내합니다(다음 라운드부터는 보이지 않음).
+          waitingHint: game.round <= 1
+              ? const PhoneRotateLandscapeHint()
+              : null,
           // 손패가 준비되고 펼치기가 끝나야 상단바가 등장합니다.
           contentReady: game.showsEliminated || game.hand.isNotEmpty,
           contentRevealed: game.showsEliminated || revealedRound == game.round,

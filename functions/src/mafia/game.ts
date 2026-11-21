@@ -45,7 +45,9 @@ export async function createMafiaPlayers(
   }
 
   const profileUrls = new Map<string, string>();
-  await Promise.all(Object.entries(roomPlayers).map(async ([uid, value]) => {
+  const activePlayers = Object.entries(roomPlayers).filter(([, value]) =>
+    value.role === "player" && value.status === "active");
+  await Promise.all(activePlayers.map(async ([uid, value]) => {
     const roomUrl = typeof value.profileImageUrl === "string" ?
       value.profileImageUrl.trim() : "";
     if (roomUrl) {
@@ -62,8 +64,7 @@ export async function createMafiaPlayers(
   }));
 
   const players: Record<string, MafiaPublicPlayer> = {};
-  for (const [uid, value] of Object.entries(roomPlayers)) {
-    if (value.role !== "player" || value.status !== "active") continue;
+  for (const [uid, value] of activePlayers) {
     if (!Number.isInteger(value.seatIndex)) {
       throw new HttpsError(
         "failed-precondition",

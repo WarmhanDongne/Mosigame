@@ -10,6 +10,7 @@ import 'package:game_kit/shared/animations/curve_intervals.dart';
 import 'package:game_kit/shared/animations/progress_sound_cue.dart';
 import 'package:game_kit/shared/widgets/game_card_face.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
 import 'package:game_kit/core/theme/game_shadow_colors.dart';
 
@@ -22,6 +23,7 @@ class CardPlayAnimation extends StatefulWidget {
     required this.frontCardAssets,
     this.playerCount = 5,
     this.playerSeatIndexes,
+    this.seatLayoutMode,
     this.fromPlayerIndex = 0,
     this.tableAlignment = Alignment.center,
     this.cardWidth = 245,
@@ -51,6 +53,7 @@ class CardPlayAnimation extends StatefulWidget {
   /// 공통 플레이어 배치에서 패를 던지는 플레이어입니다.
   final int playerCount;
   final List<int>? playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
   final int fromPlayerIndex;
 
   final Alignment tableAlignment;
@@ -292,6 +295,7 @@ class CardPlayAnimationState extends State<CardPlayAnimation>
     final source = playerCentersForBoard(
       playerCount: widget.playerCount,
       boardSize: size,
+      mode: widget.seatLayoutMode,
     )[seatIndex];
     final tableCenter = Offset(
       (widget.tableAlignment.x + 1) * size.width / 2,

@@ -11,6 +11,8 @@ const {closeRoom, removeRealtimeRoomPlayer} = require('../lib/room/realtime-room
 const {cleanupStaleRealtimeRooms, reconcileTerminal} = require('../lib/room/room-cleanup.js');
 const {terminalRoom} = require('../lib/room/room-allocation.js');
 const {game_common_operation_status: operationStatus} = require('../lib/room/session-functions.js');
+const {createRussianRouletteGame} = require('../lib/russian-roulette/game.js');
+const {withTransactionRandom} = require('../lib/common/transaction-random.js');
 
 function snapshot(value) {
   return {val: () => structuredClone(value), exists: () => value != null, child: key => snapshot(value?.[key] ?? null),
@@ -295,6 +297,56 @@ test('lobby kick rechecks a game starting during transaction rerun', async t => 
   assert.ok(database.values.get('rooms/ABCDE').players['test-phone']);
   assert.equal(database.values.get('rooms/ABCDE').membershipRevision, 4);
   assert.equal(database.activeListeners, 0);
+});
+
+function playingRouletteRoom(playerUids) {
+  const room = lifecycleRoom();
+  room.status = 'playing';
+  room.selectedGame = 'russian_roulette';
+  room.players = Object.fromEntries(playerUids.map((uid, seatIndex) => [uid, {
+    membershipId: `member-${uid}`, role: 'player', status: 'active', seatIndex,
+  }]));
+  room.game = withTransactionRandom(Buffer.alloc(32, 7), () => createRussianRouletteGame(
+    playerUids.map((uid, seatIndex) => ({uid, nickname: uid, characterId: '', seatIndex})),
+    1000,
+  ));
+  Object.assign(room.game.public, {
+    gameInstanceId: 'game-instance', phaseSeq: 1, turnSeq: 1,
+    dataSeq: 1, resumeEpoch: 0,
+  });
+  return room;
+}
+
+test('game kick removes the current player and advances to a remaining participant', async t => {
+  const database = setup(t);
+  const room = playingRouletteRoom(['test-phone', 'next-phone', 'last-phone']);
+  room.game.public.targetUid = 'test-phone';
+  database.values.set('rooms/ABCDE', room);
+
+  assert.equal((await removeRealtimeRoomPlayer.run(lifecycleRequest())).success, true);
+
+  const committed = database.values.get('rooms/ABCDE');
+  assert.equal(committed.players['test-phone'], undefined);
+  assert.equal(committed.membershipRevision, 5);
+  assert.equal(committed.game.public.players['test-phone'].status, 'eliminated');
+  assert.equal(committed.game.public.targetUid, 'next-phone');
+  assert.equal(committed.game.private['test-phone'], undefined);
+  assert.equal(committed.game.public.status, 'playing');
+  assert.equal(committed.game.public.dataSeq, 2);
+});
+
+test('game kick preserves the game-specific insufficient-player finish', async t => {
+  const database = setup(t);
+  const room = playingRouletteRoom(['test-phone', 'last-phone']);
+  database.values.set('rooms/ABCDE', room);
+
+  await removeRealtimeRoomPlayer.run(lifecycleRequest());
+
+  const committed = database.values.get('rooms/ABCDE');
+  assert.equal(committed.players['test-phone'], undefined);
+  assert.equal(committed.game.public.status, 'finished');
+  assert.equal(committed.game.public.finishReason, 'insufficientPlayers');
+  assert.equal(committed.game.private['test-phone'], undefined);
 });
 
 test('cold RTDB cache keeps same creation operation live and finalizes its reservation and slot', async t => {

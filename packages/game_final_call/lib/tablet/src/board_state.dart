@@ -544,11 +544,15 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
                 flowConfig: flowConfig,
                 onRoundRevealCompleted: _handleRoundRevealCompleted,
                 onDealingCompleted: _handleDealingCompleted,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             if (stage == FinalCallTabletStage.playing)
               FinalCallTabletCallAnimation(
                 controller: game,
                 playerCount: game.players.length,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             if (stage == FinalCallTabletStage.playing &&
                 game.roundResult == null &&
@@ -558,6 +562,8 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
                 controller: game,
                 event: game.discardEvent!,
                 playerCount: game.players.length,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             // ---------------------------------------------------------------------------
             // 공용 태블릿 사이드바

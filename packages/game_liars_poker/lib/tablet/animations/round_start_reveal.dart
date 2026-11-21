@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:game_kit/tablet/animations/board_element_entrance.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
@@ -21,6 +22,7 @@ class RoundStartReveal extends StatefulWidget {
     required this.remainingCardCounts,
     this.activePlayerIndex,
     this.playerSeatIndexes,
+    this.seatLayoutMode,
     this.duration = const Duration(milliseconds: 980),
     this.onCompleted,
   }) : assert(playerCount > 0),
@@ -42,6 +44,7 @@ class RoundStartReveal extends StatefulWidget {
   final List<int> remainingCardCounts;
   final int? activePlayerIndex;
   final List<int>? playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
 
   final Duration duration;
 
@@ -215,6 +218,7 @@ class _RoundStartRevealState extends State<RoundStartReveal>
       playerCount: widget.playerCount,
       boardSize: size,
       radiusFactor: defaultPlayerOrbitRadiusFactor,
+      mode: widget.seatLayoutMode,
     );
     final seatIndex = widget.playerSeatIndexes?[playerIndex] ?? playerIndex;
     return centers[seatIndex];

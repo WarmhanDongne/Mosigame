@@ -2,14 +2,21 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
 
-test("test operations console is isolated from the production Firebase project", () => {
+test("operations console can switch between the two explicit Firebase projects", () => {
   const config = JSON.parse(readFileSync("../firebase.test.json", "utf8"));
   const page = readFileSync("../public/operations/index.html", "utf8");
 
   assert.equal(config.hosting.site, "mosigame-operations-test");
   assert.equal(config.hosting.public, "public");
   assert.match(page, /projectId:'ban-pick-simulator'/);
-  assert.doesNotMatch(page, /project0000-ec01e/);
+  assert.match(page, /projectId:'project0000-ec01e'/);
+  assert.match(page, /data-environment="test"/);
+  assert.match(page, /data-environment="production"/);
+  assert.match(page, /mosigameOperationsEnvironment/);
+  assert.match(page, /signInWithPopup/);
+  assert.match(page, /login-state-unauthorized/);
+  assert.match(page, /로그인은 완료됐지만/);
+  assert.match(page, /login-account-email/);
   assert.match(page, /updatePlatformAnnouncement/);
   assert.match(page, /sendOperationsPushNotification/);
   assert.match(page, /operationsPushDispatches/);
@@ -23,7 +30,10 @@ test("automatic game push status is readable only by operations admins", () => {
   const rules = readFileSync("../firestore.rules", "utf8");
   const collector = readFileSync("src/notifications/push-delivery-status.ts", "utf8");
 
-  assert.match(page, /onSnapshot\(doc\(db,'pushDeliveryStatus','current'\)/);
+  assert.match(
+    page,
+    /onSnapshot\(doc\(activeRuntime\.db,'pushDeliveryStatus','current'\)/,
+  );
   assert.match(page, /FCM API의 수락·거절과 요청 자체의 실패/);
   assert.match(collector, /collection\("pushDeliveryStatus"\)\.doc\("current"\)/);
   assert.match(rules, /match \/pushDeliveryStatus\/\{documentId\} \{[\s\S]*?operationsAdmin == true;[\s\S]*?allow list, write: if false;/);

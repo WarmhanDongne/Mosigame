@@ -282,7 +282,7 @@ test("waiting 방의 선택 게임과 인원이 유효할 때만 seating을 시�
     expectedGame: "mafia",
     activePlayerCount: 4,
     minPlayers: 4,
-    maxPlayers: 12,
+    maxPlayers: 8,
   };
 
   assert.equal(decideRoomSeating(validState), "begin");
@@ -291,7 +291,7 @@ test("waiting 방의 선택 게임과 인원이 유효할 때만 seating을 시�
     "invalid-player-count",
   );
   assert.equal(
-    decideRoomSeating({...validState, activePlayerCount: 13}),
+    decideRoomSeating({...validState, activePlayerCount: 9}),
     "invalid-player-count",
   );
 });
@@ -303,7 +303,7 @@ test("자리 배치 시작과 경합한 상태·게임 변경을 거부한다", 
     expectedGame: "mafia",
     activePlayerCount: 4,
     minPlayers: 4,
-    maxPlayers: 12,
+    maxPlayers: 8,
   };
 
   assert.equal(
@@ -382,4 +382,11 @@ test("일반 윷놀이는 오래된 카탈로그 값이 4명이어도 2~4명으�
   for (const count of [1, 5]) {
     assert.equal(decideRoomSeating({...state, activePlayerCount: count}), "invalid-player-count");
   }
+});
+
+test("오래된 12명 카탈로그도 현재 방 상한 8명으로 자리 배치한다", () => {
+  assert.deepEqual(
+    resolveRoomPlayerRange("mafia", 4, 12),
+    {minPlayers: 4, maxPlayers: 8},
+  );
 });

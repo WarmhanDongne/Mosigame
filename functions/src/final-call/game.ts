@@ -130,6 +130,29 @@ export function isFinalCallFourOfAKind(cards: FinalCallCard[]): boolean {
   return new Set(cards.map((card) => card.value)).size === 1;
 }
 
+/**
+ * CALL을 선언한 사람의 손패가 포카드면 마지막 교체·최종 제출 단계를 건너뛰고
+ * 바로 정산합니다.
+ *
+ * 선언자의 네 장만 공개하고, 상대팀 전원이 하트를 하나씩 잃은 뒤 곧바로
+ * roundResult(또는 승부가 났으면 finished)로 넘어갑니다. 포카드가 아니면
+ * 아무것도 바꾸지 않고 false를 반환하므로 호출하는 쪽이 평소 CALL 흐름을
+ * 이어 가면 됩니다.
+ */
+export function resolveFinalCallFourCardCall(
+  game: FinalCallGameState,
+  callerUid: string,
+  now: number,
+): boolean {
+  const hand = Object.values(game.private[callerUid]?.hand ?? {});
+  if (!isFinalCallFourOfAKind(hand)) return false;
+  game.public.callerUid = callerUid;
+  game.public.finalTurnPendingUids = [];
+  game.server.finalSubmissions = {[callerUid]: hand};
+  resolveFinalCallRound(game, now, false, {fourCardCall: true});
+  return true;
+}
+
 /** 제한 시간 종료 시 자동 제출할 수 있는 가장 높은 점수 조합을 반환합니다. */
 export function selectBestFinalCallCombination(
   cards: FinalCallCard[],
@@ -190,10 +213,16 @@ export function resolveFinalCallRound(
   game: FinalCallGameState,
   now: number,
   automaticCall: boolean,
+  options: {fourCardCall?: boolean} = {},
 ): void {
   const revealedHands: Record<string, FinalCallCard[]> = {};
   const scores: Record<string, number> = {};
+  // 포카드 CALL은 다른 사람의 마지막 교체·제출 없이 바로 정산하므로,
+  // 선언한 사람의 네 장만 공개하고 나머지 손패는 끝까지 비공개로 둡니다.
+  const fourCardCallerUid = options.fourCardCall && !automaticCall ?
+    game.public.callerUid ?? null : null;
   for (const player of orderedAlivePlayers(game.public.players)) {
+    if (fourCardCallerUid && player.uid !== fourCardCallerUid) continue;
     const fullHand = game.private[player.uid]?.hand;
     const submitted = automaticCall ?
       selectBestFinalCallHand(fullHand) :

@@ -107,6 +107,7 @@ class RussianRouletteGame extends TemplateGame {
       child: RussianRouletteTabletScreen(
         roomCode: roomCode,
         provider: provider,
+        playerLayout: playerLayout,
       ),
     ),
   );

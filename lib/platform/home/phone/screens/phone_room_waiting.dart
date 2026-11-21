@@ -1,6 +1,7 @@
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:project00/platform/localization/lobby_connection_band.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -10,6 +11,7 @@ import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/mosi_ui/mosi_game_art.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
+import 'package:project00/platform/home/phone/widgets/phone_game_kick_notice.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_leave_transition.dart';
 import 'package:game_kit/core/diagnostics/crash_reporting.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
@@ -103,6 +105,12 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     required RoomTerminationReason? terminationReason,
   }) async {
     if (!mounted) return;
+    // 대기실 강퇴는 기존의 짧은 홈 복귀 안내를 유지하고, 실제 게임 route가
+    // 열려 있을 때만 게임 전용 5초 안내를 보여 줍니다.
+    if (wasKicked && _isOpeningGame) {
+      await _handleGameKickExit();
+      return;
+    }
     final message = wasKicked
         ? GameLocale.select(
             ko: '방에서 추방되었습니다.',
@@ -195,6 +203,41 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
             duration: const Duration(seconds: 2),
           ),
         );
+      if (routeExitMotion > Duration.zero) {
+        await Future<void>.delayed(routeExitMotion);
+      }
+    } finally {
+      if (overlay.mounted) overlay.remove();
+      if (identical(_forcedExitOverlay, overlay)) {
+        _forcedExitOverlay = null;
+      }
+    }
+  }
+
+  Future<void> _handleGameKickExit() async {
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    final routeExitMotion = MosiMotion.of(context, MosiMotion.exit);
+    final completed = Completer<void>();
+
+    late final OverlayEntry overlay;
+    overlay = OverlayEntry(
+      builder: (_) => PhoneGameKickNotice(
+        onReturnToLobby: () {
+          if (!completed.isCompleted) completed.complete();
+        },
+      ),
+    );
+    _forcedExitOverlay = overlay;
+    Overlay.of(context, rootOverlay: true).insert(overlay);
+
+    try {
+      await completed.future;
+      if (!mounted) return;
+      widget.provider.acknowledgeRoomExit();
+      unawaited(AppSystemUi.showPlatformSystemBars());
+      unawaited(_lockPlatformPortrait());
+      navigator.popUntil((route) => route.isFirst);
       if (routeExitMotion > Duration.zero) {
         await Future<void>.delayed(routeExitMotion);
       }
