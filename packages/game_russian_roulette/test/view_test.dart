@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_russian_roulette/game_russian_roulette.dart';
 import 'package:game_russian_roulette/game_sounds.dart';
 import 'package:game_russian_roulette/src/stage.dart';
@@ -17,22 +18,26 @@ void main() {
     expect(game.layoutChairImage, isA<AssetImage>());
   });
 
-  test('game seats and gun targets share the lobby layout positions', () {
-    for (var count = 2; count <= 6; count++) {
-      final lobby = normalizedPlayerCenters(count);
-      for (var index = 0; index < count; index++) {
-        final game = RouletteStageGeometry.onEllipse(
-          RouletteStageGeometry.seatAngle(index, count),
-        );
-        final expected = Offset(
-          lobby[index].dx * RouletteStageGeometry.width,
-          lobby[index].dy * RouletteStageGeometry.height,
-        );
-        expect(
-          (game - expected).distance,
-          lessThan(.001),
-          reason: '$count players, seat $index',
-        );
+  test('game seats and gun targets share both lobby layout positions', () {
+    for (final mode in SeatLayoutMode.values) {
+      for (var count = 2; count <= 6; count++) {
+        final lobby = normalizedSeatCenters(count, mode: mode);
+        for (var index = 0; index < count; index++) {
+          final game = RouletteStageGeometry.seatCenter(
+            index,
+            count,
+            mode: mode,
+          );
+          final expected = Offset(
+            lobby[index].dx * RouletteStageGeometry.width,
+            lobby[index].dy * RouletteStageGeometry.height,
+          );
+          expect(
+            (game - expected).distance,
+            lessThan(.001),
+            reason: '$mode, $count players, seat $index',
+          );
+        }
       }
     }
   });

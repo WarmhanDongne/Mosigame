@@ -698,7 +698,7 @@
       pushGameTurn:['게임의 현재 턴 제한 시간이 시작된 자동 이벤트','현재 턴과 대상 참가자·중복 표식을 확인','해당 참가자 기기에 FCM을 보내고 API 요청 결과를 집계'],
       createRealtimeRoom:['태블릿 controller가 새 방을 요청','로그인·기존 세션·중복 생성 요청을 확인','방 코드·controller 세션·초기 방 상태를 만들고 복구 위치를 기록'],
       joinRealtimeRoom:['휴대폰이 방 코드로 입장','방 상태·참가 자격·인원과 중복 입장을 확인','플레이어 membership과 연결 세션을 방에 등록'],
-      saveRealtimePlayerSeatIndexes:['태블릿이 좌석 배치를 확정','controller 세션과 현재 참가자 구성을 확인','각 플레이어의 좌석 번호를 방에 기록'],
+      saveRealtimePlayerSeatIndexes:['태블릿이 좌석 배치와 모서리/면 형태를 확정','controller 세션과 현재 참가자 구성을 확인','각 플레이어 좌석과 동일 참가자 자동 복원용 명단·형태를 함께 기록'],
       validateRealtimeRoom:['휴대폰이 방 코드를 확인','요청한 방의 존재와 참가 가능한 상태를 확인','입장 화면에 필요한 검증 결과를 반환'],
       beginRealtimeRoomSeating:['태블릿이 게임 시작 준비로 이동','controller 세션·선택 게임·참가 상태를 확인','방 상태를 자리 배치 단계로 전환'],
       syncRoomCleanupQueue:['방 cleanupSignal이 바뀐 자동 이벤트','방 인스턴스와 신호 세대가 일치하는지 다시 확인','서버 정리 대기열을 추가·제거·갱신'],

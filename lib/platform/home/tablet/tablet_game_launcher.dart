@@ -282,9 +282,27 @@ class _TabletGameLauncher {
     final lockedPlayers = provider.players
         .where((player) => player.isActive && player.isPlayer)
         .toList(growable: false);
-    final initialLayout = PlayerLayoutFactory.create(lockedPlayers);
-    // 같은 사람들이 이어서 하면 지난 게임 자리를 버튼 한 번으로 불러옵니다.
-    final previousLayout = PlayerLayoutFactory.fromSavedSeats(lockedPlayers);
+    final savedSeatLayout = await provider.getSavedSeatLayout();
+    if (!context.mounted || !isCurrent() || provider.roomCode != roomCode) {
+      return;
+    }
+    final savedSeats = PlayerLayoutFactory.fromSavedSeats(lockedPlayers);
+    final previousLayout =
+        savedSeatLayout?.matches(lockedPlayers.map((player) => player.uid)) ==
+                true &&
+            savedSeats != null
+        ? savedSeats.withSeatLayoutMode(savedSeatLayout?.mode)
+        : null;
+    final defaultMode = templateGame.layoutSeatPositionsBuilder == null
+        ? SeatLayoutMode.corners
+        : SeatLayoutMode.sides;
+    // 유효한 지난 좌석 번호가 있으면 새 게임도 그 자리에서 시작합니다.
+    // 새 참가자가 있거나 번호가 겹치면 참가자 순서 배치로 돌아갑니다.
+    final initialLayout =
+        previousLayout ??
+        PlayerLayoutFactory.create(
+          lockedPlayers,
+        ).withSeatLayoutMode(defaultMode);
 
     //================상태바 표시=================
     // 게임 선택 직후 자리 배치 화면부터 실제 게임과 같은 전체 화면을 유지합니다.
@@ -431,7 +449,7 @@ class _TabletGameLauncher {
           saveSeats: () => provider.savePlayerSeatIndexes({
             for (final player in completedLayout.players)
               player.uid: player.seatIndex,
-          }),
+          }, seatLayoutMode: completedLayout.seatLayoutMode),
           startGame: () => templateGame.startGame(roomCode, options: options),
           isCurrent: sameAttempt,
           // 처음 하는 사람이 있으면 시작 명령 전에 태블릿·휴대폰 튜토리얼을 띄웁니다.

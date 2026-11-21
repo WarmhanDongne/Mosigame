@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_turn_countdown_face.dart';
 import 'package:game_kit/sound/game_background_music.dart';
@@ -28,10 +29,12 @@ class RussianRouletteTabletScreen extends ConsumerStatefulWidget {
     super.key,
     required this.roomCode,
     required this.provider,
+    required this.playerLayout,
   });
 
   final String roomCode;
   final GameRoomContext provider;
+  final PlayerLayoutModel playerLayout;
 
   @override
   ConsumerState<RussianRouletteTabletScreen> createState() =>
@@ -504,7 +507,13 @@ class _RussianRouletteTabletScreenState
       if (showWinner) {
         return (
           'win',
-          RouletteStage(model: rouletteWinnerModel(game, elapsed)),
+          RouletteStage(
+            model: rouletteWinnerModel(
+              game,
+              elapsed,
+              seatLayoutMode: widget.playerLayout.seatLayoutMode,
+            ),
+          ),
         );
       }
       return (
@@ -523,7 +532,11 @@ class _RussianRouletteTabletScreenState
     final intro = _introMs(game);
     if (intro != null || holdIntro) {
       _animating = intro != null;
-      final frame = rouletteIntroFrame(game, intro ?? 0);
+      final frame = rouletteIntroFrame(
+        game,
+        intro ?? 0,
+        seatLayoutMode: widget.playerLayout.seatLayoutMode,
+      );
       _wedge = frame.wedgeOpacity;
       _wedgeAt = _nowMs;
       return (
@@ -532,7 +545,11 @@ class _RussianRouletteTabletScreenState
       );
     }
     _animating = game.phase != 'selecting' && !game.paused;
-    final frame = rouletteTabletFrame(game, elapsed);
+    final frame = rouletteTabletFrame(
+      game,
+      elapsed,
+      seatLayoutMode: widget.playerLayout.seatLayoutMode,
+    );
     final aim = _gunAim(frame.desiredAim);
     final wedge = game.phase == 'firing'
         ? frame.wedgeOpacity
@@ -679,12 +696,28 @@ Offset _thud(int ms, int at) {
   );
 }
 
-RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
+RouletteTabletFrame rouletteIntroFrame(
+  RussianRouletteView game,
+  int ms, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final theta = <String, double>{
     for (var i = 0; i < count; i++)
-      players[i].uid: RouletteStageGeometry.seatAngle(i, count),
+      players[i].uid: RouletteStageGeometry.seatAngle(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
+  };
+  final centers = <String, Offset>{
+    for (var i = 0; i < count; i++)
+      players[i].uid: RouletteStageGeometry.seatCenter(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
   };
   double aimOf(String? uid) =>
       RouletteStageGeometry.aimAngle(theta[uid] ?? -math.pi / 2);
@@ -724,6 +757,7 @@ RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
               key: p.uid,
               characterId: p.characterId,
               theta: theta[p.uid]!,
+              center: centers[p.uid],
               state: RouletteSeatState.out,
             );
           }
@@ -737,6 +771,7 @@ RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
             key: p.uid,
             characterId: p.characterId,
             theta: theta[p.uid]!,
+            center: centers[p.uid],
             state: state,
             dim: ms < litAt,
             glow: ((ms - litAt) / 750).clamp(0.0, 1.0),
@@ -765,13 +800,26 @@ List<RoulettePlayerView> rouletteRevealOrder(RussianRouletteView game) {
 
 RouletteTabletFrame rouletteTabletFrame(
   RussianRouletteView game,
-  Duration elapsed,
-) {
+  Duration elapsed, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final theta = <String, double>{
     for (var i = 0; i < count; i++)
-      players[i].uid: RouletteStageGeometry.seatAngle(i, count),
+      players[i].uid: RouletteStageGeometry.seatAngle(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
+  };
+  final centers = <String, Offset>{
+    for (var i = 0; i < count; i++)
+      players[i].uid: RouletteStageGeometry.seatCenter(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
   };
   double aimOf(String? uid) =>
       RouletteStageGeometry.aimAngle(theta[uid] ?? -math.pi / 2);
@@ -791,6 +839,7 @@ RouletteTabletFrame rouletteTabletFrame(
     key: p.uid,
     characterId: p.characterId,
     theta: theta[p.uid]!,
+    center: centers[p.uid],
     state: state,
     shield: shield,
     shieldHit: shieldHit,
@@ -921,6 +970,7 @@ RouletteTabletFrame rouletteTabletFrame(
         stamp: outcome && hitUid != null && theta[hitUid] != null
             ? RouletteStampModel(
                 theta: theta[hitUid]!,
+                center: centers[hitUid],
                 blocked: blocked,
                 progress: ms / 450,
               )
@@ -975,8 +1025,9 @@ List<(RoulettePlayerView, int?)> rouletteRanking(RussianRouletteView game) {
 
 RouletteStageModel rouletteWinnerModel(
   RussianRouletteView game,
-  Duration elapsed,
-) {
+  Duration elapsed, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final winner = game.players[game.winnerUid];
@@ -990,7 +1041,16 @@ RouletteStageModel rouletteWinnerModel(
         RouletteSeatModel(
           key: players[i].uid,
           characterId: players[i].characterId,
-          theta: RouletteStageGeometry.seatAngle(i, count),
+          theta: RouletteStageGeometry.seatAngle(
+            i,
+            count,
+            mode: seatLayoutMode,
+          ),
+          center: RouletteStageGeometry.seatCenter(
+            i,
+            count,
+            mode: seatLayoutMode,
+          ),
           state: RouletteSeatState.rank,
           rank: players[i].uid == game.winnerUid ? 1 : players[i].rank,
         ),

@@ -26,7 +26,11 @@ import {
   GAME_PREPARATION_STARTED_MESSAGE,
   RoomJoinDecision,
 } from "./room-join-policy.js";
-import {decideSeatSave} from "./room-seating-policy.js";
+import {
+  buildSeatingPreference,
+  decideSeatSave,
+  SeatLayoutMode,
+} from "./room-seating-policy.js";
 import {currentPresence} from "./current-presence.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {
@@ -111,6 +115,7 @@ type SaveSeatIndexesData = {
   roomInstanceId?: unknown;
   roomCode?: unknown;
   seatIndexesByUid?: unknown;
+  seatLayoutMode?: unknown;
   controllerSessionId?: unknown;
 };
 
@@ -499,6 +504,15 @@ export const saveRealtimePlayerSeatIndexes =
           "플레이어 자리 정보를 확인할 수 없습니다.",
         );
       }
+      const rawSeatLayoutMode = request.data?.seatLayoutMode;
+      if (rawSeatLayoutMode !== undefined &&
+          rawSeatLayoutMode !== "corners" &&
+          rawSeatLayoutMode !== "sides") {
+        throw new HttpsError(
+          "invalid-argument",
+          "올바른 자리 배치 형태가 아닙니다.",
+        );
+      }
 
       const database = getDatabase();
 
@@ -594,6 +608,10 @@ export const saveRealtimePlayerSeatIndexes =
           players![playerId].seatIndex = seatIndex;
         }
         room.players = players;
+        room.seatingPreference = buildSeatingPreference(
+          playerIds,
+          rawSeatLayoutMode as SeatLayoutMode | undefined,
+        );
         return room;
       };
       const transaction = await runPrimedTransaction(

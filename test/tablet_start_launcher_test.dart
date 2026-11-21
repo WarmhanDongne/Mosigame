@@ -82,6 +82,69 @@ void main() {
     );
   });
 
+  testWidgets('동일 참가자의 지난 자리와 배치 형태를 새 게임 기본값으로 쓴다', (tester) async {
+    final game = _Game('holdem');
+    final room = _Room(game)
+      ..players = [
+        RoomPlayer(
+          uid: 'phone-0',
+          nickname: 'phone',
+          characterId: 'burger',
+          seatIndex: 1,
+          isConnected: true,
+          role: 'player',
+          status: 'active',
+          penaltyAttemptCount: 0,
+        ),
+        RoomPlayer(
+          uid: 'phone-1',
+          nickname: 'phone',
+          characterId: 'burger',
+          seatIndex: 0,
+          isConnected: true,
+          role: 'player',
+          status: 'active',
+          penaltyAttemptCount: 0,
+        ),
+      ]
+      ..savedLayout = const SavedSeatLayout(
+        playerUids: {'phone-0', 'phone-1'},
+        mode: SeatLayoutMode.sides,
+      );
+    addTearDown(room.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => unawaited(
+                launchTabletGame(
+                  context: context,
+                  game: GameInfo.fromJson({
+                    'id': game.id,
+                    'name': game.id,
+                    'minPlayers': 2,
+                  }),
+                  provider: room,
+                  ensureSelection: () async => true,
+                  isCurrent: () => context.mounted,
+                  onLaunched: () {},
+                ),
+              ),
+              child: const Text('launch'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('launch'));
+    await tester.pumpAndSettle();
+    expect(game.layout?.seatIndexes, [1, 0]);
+    expect(game.layout?.seatLayoutMode, SeatLayoutMode.sides);
+  });
+
   for (final id in [
     'liars_poker',
     'final_call',
@@ -326,12 +389,17 @@ class _Room extends RoomProvider {
   }
   int reads = 0;
   bool seatsSaved = true;
+  SavedSeatLayout? savedLayout;
   final readGate = Completer<Map<String, dynamic>?>.sync();
   @override
   Future<bool> beginPlayerSeating() async => true;
   @override
-  Future<bool> savePlayerSeatIndexes(Map<String, int> seats) async =>
-      seatsSaved;
+  Future<bool> savePlayerSeatIndexes(
+    Map<String, int> seats, {
+    SeatLayoutMode? seatLayoutMode,
+  }) async => seatsSaved;
+  @override
+  Future<SavedSeatLayout?> getSavedSeatLayout() async => savedLayout;
   @override
   Future<Map<String, dynamic>?> captureGameTarget() {
     reads++;

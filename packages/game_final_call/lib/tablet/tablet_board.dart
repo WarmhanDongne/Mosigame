@@ -40,6 +40,7 @@ import 'package:game_kit/game_flow/game_flow_copy.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/recovery/services/game_progress_command.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/shared/animations/one_shot_timeline.dart';
 import 'package:game_kit/shared/animations/progress_sound_cue.dart';
 import 'package:game_kit/sound/game_background_music.dart';
@@ -223,6 +224,7 @@ class FinalCallTabletGameLayer extends StatelessWidget {
     required this.flowConfig,
     required this.onRoundRevealCompleted,
     required this.onDealingCompleted,
+    this.seatLayoutMode = SeatLayoutMode.sides,
   });
 
   final FinalCallController controller;
@@ -230,6 +232,7 @@ class FinalCallTabletGameLayer extends StatelessWidget {
   final GameFlowConfig<FinalCallTabletStage> flowConfig;
   final VoidCallback onRoundRevealCompleted;
   final VoidCallback onDealingCompleted;
+  final SeatLayoutMode seatLayoutMode;
 
   @override
   Widget build(BuildContext context) {
@@ -279,8 +282,11 @@ class FinalCallTabletGameLayer extends StatelessWidget {
       boardSeatCount: controller.players.length,
       playerSeatIndexes: activeSeatIndexes,
       // 카드가 화면 가장자리의 프로필 자리로 날아가게 합니다.
-      seatCentersBuilder: (seatCount, boardSize) =>
-          finalCallSeatCenters(playerCount: seatCount, boardSize: boardSize),
+      seatCentersBuilder: (seatCount, boardSize) => finalCallSeatCenters(
+        playerCount: seatCount,
+        boardSize: boardSize,
+        mode: seatLayoutMode,
+      ),
       cardsPerPlayer: 4,
       // 테이블 가운데 덱과 같은 Party Pop 뒷면을 날립니다. 공용 연출의
       // 바탕 상자 모서리(7)에 맞춰 둥글기를 줄입니다.
@@ -388,6 +394,7 @@ class FinalCallTabletGameLayer extends StatelessWidget {
                 turnUid: controller.turnUid,
                 callerUid: callInProgress ? controller.callerUid : null,
                 pendingDrawUid: controller.pendingDrawUid,
+                seatLayoutMode: seatLayoutMode,
               ),
             ),
           ],
@@ -422,6 +429,7 @@ class FinalCallTabletGameLayer extends StatelessWidget {
       controller: controller,
       result: result,
       onCompleted: onRoundRevealCompleted,
+      seatLayoutMode: seatLayoutMode,
     );
   }
 }
@@ -436,11 +444,13 @@ class FinalCallTabletGame extends ConsumerStatefulWidget {
     required this.roomCode,
     required this.gameService,
     required this.provider,
+    this.playerLayout,
   });
 
   final String roomCode;
   final FinalCallService gameService;
   final GameRoomContext provider;
+  final PlayerLayoutModel? playerLayout;
 
   @override
   ConsumerState<FinalCallTabletGame> createState() =>

@@ -99,6 +99,29 @@ export type SeatSaveDecision =
   "roster-changed" |
   "invalid-seats";
 
+export type SeatLayoutMode = "corners" | "sides";
+
+export type SeatingPreference = {
+  playerUids: string[];
+  mode?: SeatLayoutMode;
+};
+
+/**
+ * 마지막 자리 자동 복원에 쓸 명단과 배치 형태를 안정적인 순서로 저장합니다.
+ * @param {string[]} playerIds 현재 방 참가자 UID 목록입니다.
+ * @param {SeatLayoutMode|undefined} mode 모서리/면 배치 형태입니다.
+ * @return {SeatingPreference} RTDB에 저장할 자리 기본값입니다.
+ */
+export function buildSeatingPreference(
+  playerIds: string[],
+  mode?: SeatLayoutMode,
+): SeatingPreference {
+  return {
+    playerUids: [...playerIds].sort(),
+    ...(mode === undefined ? {} : {mode}),
+  };
+}
+
 type SeatSaveState = {
   roomStatus: unknown;
   playerIds: string[];

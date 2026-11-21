@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {decideSeatSave} from "../lib/room/room-seating-policy.js";
+import {
+  buildSeatingPreference,
+  decideSeatSave,
+} from "../lib/room/room-seating-policy.js";
 
 //=======================자리 배치 중 참가자 변경 (C-13)==============================
 // 이 판정의 요점은 **명단 불일치와 좌석 번호 오류를 나누는 것**입니다.
@@ -150,5 +153,16 @@ test("최소·최대 인원을 벗어나면 저장하지 않는다", () => {
   assert.equal(
     decideSeatSave({...base, maxPlayers: 2}),
     "too-many-players",
+  );
+});
+
+test("마지막 자리 기본값은 참가자 순서를 정규화하고 배치 형태를 보존한다", () => {
+  assert.deepEqual(
+    buildSeatingPreference(["c", "a", "b"], "sides"),
+    {playerUids: ["a", "b", "c"], mode: "sides"},
+  );
+  assert.deepEqual(
+    buildSeatingPreference(["b", "a"]),
+    {playerUids: ["a", "b"]},
   );
 });

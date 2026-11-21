@@ -9,6 +9,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 
 // ============================================================
 
@@ -93,33 +94,19 @@ Offset finalCallPublicCardCenter(Size boardSize) =>
 ///
 /// 6인은 위·아래 면에 두 자리씩, 좌·우 면에 한 자리씩 놓습니다. 서로 마주
 /// 보는 좌석은 0↔3, 1↔4, 2↔5라 서버의 팀 배치와도 일치합니다.
-List<Offset> finalCallNormalizedSeatCenters(int playerCount) {
-  return switch (playerCount) {
-    4 => const [
-      Offset(0.5, 0.84),
-      Offset(0.84, 0.5),
-      Offset(0.5, 0.16),
-      Offset(0.16, 0.5),
-    ],
-    6 => const [
-      Offset(0.35, 0.84),
-      Offset(0.65, 0.84),
-      Offset(0.84, 0.5),
-      Offset(0.65, 0.16),
-      Offset(0.35, 0.16),
-      Offset(0.16, 0.5),
-    ],
-    _ => normalizedPlayerCenters(playerCount),
-  };
-}
+List<Offset> finalCallNormalizedSeatCenters(
+  int playerCount, {
+  SeatLayoutMode mode = SeatLayoutMode.sides,
+}) => normalizedSeatCenters(playerCount, mode: mode);
 
 /// 자리 배치 화면과 실제 게임 화면이 공유하는 파이널콜 좌석 좌표입니다.
 List<Offset> finalCallSeatCenters({
   required int playerCount,
   required Size boardSize,
+  SeatLayoutMode mode = SeatLayoutMode.sides,
 }) {
   if (playerCount <= 0) return const [];
-  return finalCallNormalizedSeatCenters(playerCount)
+  return finalCallNormalizedSeatCenters(playerCount, mode: mode)
       .map(
         (center) => playerCenterFromNormalized(
           normalizedCenter: center,

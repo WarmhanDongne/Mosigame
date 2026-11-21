@@ -15,6 +15,7 @@ import 'package:game_kit/core/diagnostics/dev_error_log.dart';
 import 'package:game_kit/core/error/user_error_message.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:project00/platform/home/room/services/room_leave_intent.dart';
@@ -1006,7 +1007,10 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> savePlayerSeatIndexes(Map<String, int> seatIndexesByUid) async {
+  Future<bool> savePlayerSeatIndexes(
+    Map<String, int> seatIndexesByUid, {
+    SeatLayoutMode? seatLayoutMode,
+  }) async {
     final code = roomCode;
     if (code == null) {
       errorMessage = '방 정보를 확인할 수 없습니다.';
@@ -1018,11 +1022,27 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       await _service.savePlayerSeatIndexes(
         roomCode: code,
         seatIndexesByUid: seatIndexesByUid,
+        seatLayoutMode: seatLayoutMode,
       );
       return true;
     });
 
     return result ?? false;
+  }
+
+  Future<SavedSeatLayout?> getSavedSeatLayout() async {
+    final code = roomCode;
+    if (code == null) return null;
+    try {
+      return await _service.getSavedSeatLayout(code);
+    } catch (error) {
+      DevErrorLog.instance.add(
+        error: error,
+        context: 'room/load_saved_seat_layout',
+        time: DateTime.now(),
+      );
+      return null;
+    }
   }
 
   Future<bool> beginPlayerSeating() async {

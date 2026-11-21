@@ -502,6 +502,8 @@ const _commonUiCopy = <String, (String, String, String)>{
   '대기실로': ('Back to lobby', '返回大厅', '返回大廳'),
   '섞기': ('Shuffle', '随机排列', '隨機排列'),
   '이전 자리': ('Last seats', '上次座位', '上次座位'),
+  '면 자리': ('Side seats', '边侧座位', '邊側座位'),
+  '모서리 자리': ('Corner seats', '角落座位', '角落座位'),
   '설정 완료': ('Finish setup', '完成设置', '完成設定'),
   '곧 나올 게임': ('Coming soon', '即将推出', '即將推出'),
   '새 게임 소식은 상점에서 확인해 주세요. 알림 신청은 준비 중이에요.': (

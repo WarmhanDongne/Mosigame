@@ -91,6 +91,10 @@
           ".read": "auth != null && (root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid || root.child('rooms').child($roomCode).child('players').child(auth.uid).exists())",
           ".write": false
         },
+        "seatingPreference": {
+          ".read": "auth != null && root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid",
+          ".write": false
+        },
         "tutorial": {
           ".read": "auth != null && (root.child('rooms').child($roomCode).child('controllerUid').val() == auth.uid || root.child('rooms').child($roomCode).child('players').child(auth.uid).exists())",
           "session": {

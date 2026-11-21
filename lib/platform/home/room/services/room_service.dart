@@ -8,6 +8,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:game_kit/core/constants/room_character.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/core/error/user_error_message.dart';
 import 'package:game_kit/firebase/services/realtime_database_service.dart';
 import 'package:game_kit/core/network/realtime_connection_monitor.dart';
@@ -1029,11 +1030,21 @@ class RoomService {
   Future<void> savePlayerSeatIndexes({
     required String roomCode,
     required Map<String, int> seatIndexesByUid,
+    SeatLayoutMode? seatLayoutMode,
   }) async {
     await _call('saveRealtimePlayerSeatIndexes', {
       ...await _controllerEnvelope(roomCode),
       'seatIndexesByUid': seatIndexesByUid,
+      if (seatLayoutMode != null) 'seatLayoutMode': seatLayoutMode.name,
     });
+  }
+
+  /// 마지막 게임의 좌석 참가자 구성과 배치 형태를 컨트롤러가 한 번 읽습니다.
+  Future<SavedSeatLayout?> getSavedSeatLayout(String roomCode) async {
+    final snapshot = await realtime
+        .ref('rooms/$roomCode/seatingPreference')
+        .get();
+    return SavedSeatLayout.fromWire(snapshot.value);
   }
 
   Future<void> removePlayer(String roomCode, String userUid) async {
