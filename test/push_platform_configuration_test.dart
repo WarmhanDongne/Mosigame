@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,60 @@ void main() {
         'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
       ),
     );
+  });
+
+  test('iOS 산출물은 Dart backend와 같은 Firebase plist를 선택한다', () {
+    final selector = File(
+      'tool/select_ios_firebase_config.sh',
+    ).readAsStringSync();
+    final project = File(
+      'ios/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+    final testPlist = File(
+      'ios/Firebase/GoogleService-Info-test.plist',
+    ).readAsStringSync();
+    final serverPlist = File(
+      'ios/Firebase/GoogleService-Info-server.plist',
+    ).readAsStringSync();
+
+    expect(selector, contains('MOSIGAME_BACKEND='));
+    expect(selector, contains(r'GoogleService-Info-${config_name}.plist'));
+    expect(project, contains('Select Firebase Configuration'));
+    expect(project, contains('select_ios_firebase_config.sh'));
+    expect(testPlist, contains('<string>ban-pick-simulator</string>'));
+    expect(serverPlist, contains('<string>project0000-ec01e</string>'));
+    expect(testPlist, contains('1:127477049099:ios:'));
+    expect(serverPlist, contains('1:93097008048:ios:'));
+  });
+
+  test('Android background FCM resources follow the Dart backend', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final testConfig =
+        jsonDecode(
+              File(
+                'android/app/firebase/test/google-services.json',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    final serverConfig =
+        jsonDecode(
+              File(
+                'android/app/firebase/server/google-services.json',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    final testProject = testConfig['project_info'] as Map<String, dynamic>;
+    final serverProject = serverConfig['project_info'] as Map<String, dynamic>;
+
+    expect(gradle, contains('project.findProperty("dart-defines")'));
+    expect(gradle, contains('MOSIGAME_BACKEND='));
+    expect(gradle, contains('firebase/test/google-services.json'));
+    expect(gradle, contains('firebase/server/google-services.json'));
+    expect(gradle, contains('GoogleServicesTask'));
+    expect(gradle, contains('googleServicesJsonFiles.set'));
+    expect(gradle, contains('id("com.google.gms.google-services")'));
+    expect(testProject['project_id'], 'ban-pick-simulator');
+    expect(serverProject['project_id'], 'project0000-ec01e');
   });
 
   test('푸시 클라이언트는 선택된 Firebase와 기본 Messaging 앱 일치를 확인한다', () {

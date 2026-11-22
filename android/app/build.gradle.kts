@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -9,6 +10,45 @@ plugins {
     // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+fun selectedMosigameBackend(): String {
+    val defines = project.findProperty("dart-defines")?.toString().orEmpty()
+    val backend = defines
+        .split(',')
+        .asSequence()
+        .filter { it.isNotBlank() }
+        .mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+            }.getOrNull()
+        }
+        .firstOrNull { it.startsWith("MOSIGAME_BACKEND=") }
+        ?.substringAfter('=')
+        ?: "test"
+    require(backend in setOf("server", "test", "local")) {
+        "MOSIGAME_BACKEND must be server, test or local."
+    }
+    return backend
+}
+
+val mosigameBackend = selectedMosigameBackend()
+val nativeFirebaseConfig = if (mosigameBackend == "server") {
+    file("firebase/server/google-services.json")
+} else {
+    // local mode does not use FCM, but a valid TEST default app keeps native
+    // Firebase providers from falling back to production before Dart starts.
+    file("firebase/test/google-services.json")
+}
+logger.lifecycle("Mosigame Android Firebase native backend: $mosigameBackend")
+
+// The Google Services task creates resources used by FirebaseInitProvider and
+// background FCM before Dart starts. Override its input with the same backend
+// selected by the Flutter build instead of relying on one fixed root JSON.
+afterEvaluate {
+    tasks.withType<com.google.gms.googleservices.GoogleServicesTask>().configureEach {
+        googleServicesJsonFiles.set(listOf(nativeFirebaseConfig))
+    }
 }
 
 //=======================릴리즈 서명 키==============================
@@ -42,6 +82,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
     }
 
     signingConfigs {
