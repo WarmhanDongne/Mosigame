@@ -29,7 +29,7 @@ test('retention keeps the approved waiting/playing/finished boundaries and termi
   const room={...initial,controllerPresence:{lastSeen:1000}};
   assert.equal(roomCleanupDeadline(room),181000);
   assert.equal(roomCleanupDeadline({...room,status:'playing'}),901000);
-  assert.equal(roomCleanupDeadline({...room,status:'finished',retainUntil:50000}),50000);
+  assert.equal(roomCleanupDeadline({...room,status:'finished',retainUntil:50000}),901000);
   assert.equal(roomCleanupDeadline({...terminalRoom(room,10000),cleanupPending:false}),null);
   const compact=terminalRoom({roomInstanceId:'only-identity',allocationGeneration:2,status:'closed'},10000);
   assert.equal(Object.values(compact).includes(undefined),false);

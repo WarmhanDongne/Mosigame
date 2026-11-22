@@ -43,13 +43,13 @@ test('P1: fresh current leaf protects ghost and room despite frozen false summar
   r.status = 'playing';
   assert.equal(roomCleanupDeadline(r), now + 900000);
 });
-test('P1: connected=true cannot permanently exempt controller expiry; explicit deadlines win', () => {
+test('P1: controller expiry still applies; explicit close wins and finished respects absence grace', () => {
   const r = room(); r.connections.tablet.c1.lastSeen = 1;
   assert.equal(roomCleanupDeadline(r), 180001);
   r.status='closed'; r.cleanupAt=42;
   assert.equal(roomCleanupDeadline(r), 42);
   r.status='finished'; r.retainUntil=43;
-  assert.equal(roomCleanupDeadline(r), 43);
+  assert.equal(roomCleanupDeadline(r), 900001);
 });
 test('canonical selection rejects old generation, membership and other role', () => {
   const r = room();
@@ -150,4 +150,54 @@ test('cursor repair projects a missed false event using latest root identity/tim
   assert.equal(db.value('rooms/ABCDE/players/phone/isConnected'),false);
   assert.equal(db.value('rooms/ABCDE/players/phone/lastSeen'),now);
   assert.equal(db.value('rooms/ABCDE/status'),'waiting');
+});
+
+test('finished rooms remain usable beyond the first 15 minutes while the canonical controller is fresh', async t => {
+  const db = setup(t), r = room();
+  r.presenceProtocol = 2; r.status = 'finished';
+  r.finishedAt = now - 30 * 60000; r.retainUntil = now - 15 * 60000;
+  r.cleanupAt = r.retainUntil;
+  r.game = {public: {status: 'finished', gameType: 'liars_poker'}, private: {phone: {hand: ['saved']}}};
+  db.put('rooms/ABCDE', r);
+  db.put('roomCleanupQueue/ABCDE', {roomInstanceId: r.roomInstanceId, allocationGeneration: 1,
+    nextCheckAt: r.retainUntil, failures: 0});
+  await cleanupStaleRealtimeRooms.run({});
+  assert.equal(db.value('rooms/ABCDE/status'), 'finished');
+  assert.deepEqual(db.value('rooms/ABCDE/game'), r.game);
+  assert.equal(db.value('roomCleanupQueue/ABCDE/nextCheckAt'), now + 15 * 60000);
+});
+
+test('finished cleanup rechecks a controller heartbeat that races with the due job', async t => {
+  const db = setup(t), r = room();
+  r.presenceProtocol = 2; r.status = 'finished'; r.retainUntil = 1;
+  r.connections.tablet.c1.lastSeen = 1;
+  db.put('rooms/ABCDE', r);
+  db.beforeTransaction = path => {
+    if (path === 'rooms/ABCDE') db.put('rooms/ABCDE/connections/tablet/c1/lastSeen', now);
+  };
+  await cleanupStaleRealtimeRooms.run({});
+  assert.equal(db.value('rooms/ABCDE/status'), 'finished');
+  assert.equal(db.value('roomCleanupQueue/ABCDE/nextCheckAt'), now + 15 * 60000);
+});
+
+test('finished B1 rooms with missing canonical presence are preserved; explicit close still expires', () => {
+  const r = room(); r.presenceProtocol = 2; r.status = 'finished'; r.retainUntil = 1;
+  delete r.connections;
+  assert.equal(roomCleanupDeadline(r), null);
+  r.status = 'closed'; r.cleanupAt = 42;
+  assert.equal(roomCleanupDeadline(r), 42);
+});
+
+test('abandoned finished rooms lose game data after the absence grace but keep the generation fence', async t => {
+  const db = setup(t), r = room();
+  r.presenceProtocol = 2; r.status = 'finished'; r.retainUntil = 1;
+  r.connections.tablet.c1.lastSeen = now - 15 * 60000;
+  r.game = {public: {status: 'finished'}, private: {phone: {hand: ['saved']}}};
+  db.put('rooms/ABCDE', r);
+  await cleanupStaleRealtimeRooms.run({});
+  assert.equal(db.value('rooms/ABCDE/status'), 'terminal');
+  assert.equal(db.value('rooms/ABCDE/cleanupPending'), false);
+  assert.equal(db.value('rooms/ABCDE/game'), null);
+  assert.equal(db.value('rooms/ABCDE/roomInstanceId'), r.roomInstanceId);
+  assert.equal(db.value('rooms/ABCDE/allocationGeneration'), 1);
 });

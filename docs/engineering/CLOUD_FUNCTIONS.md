@@ -1,5 +1,15 @@
 # Cloud Functions 정리
 
+## 2026-11-05 — 방 보존·정리 부하 후속 후보
+
+`cleanupDeadline`은 종료 결과의 최소 보관 기한과 현재 controller 마지막 신호 + 15분
+중 늦은 시각을 사용한다. 명시 close의 60초는 유지한다. `cleanupStaleRealtimeRooms`는
+동일 큐 재쓰기를 생략하고 방별 순회 실패를 격리해 `scanFailed`를 집계한다.
+`cleanupExpiredGameInterruptions`는 동시 transaction 10개·방별 실패 격리·현재 상태
+재확인과 집계 로그를 사용한다. 새 export·rules·스케줄 주기 변경은 없다.
+[보관·비용 정책과 검증 한계](../operations/ROOM_RELIABILITY_RETENTION_COST.md)를 따른다.
+이번 후보는 운영 배포하지 않았다.
+
 ## 2026-10-22 — 생성·추방·초기화 효율 개선 배포
 
 사용자 승인으로 `createRealtimeRoom`, `removeRealtimeRoomPlayer`, `closeRoom`만

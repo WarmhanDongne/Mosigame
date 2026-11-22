@@ -1,5 +1,14 @@
 # COST-01
 
+## 2026-11-05 — 중복 정리 작업·동시 부하 개선 후보
+
+사용자의 서버 비용 감소 요청으로 동일 정리 큐의 no-op 쓰기, 순회 실패 전파,
+중단 만료 transaction의 무제한 동시 실행을 줄였다. heartbeat 감지 시간, 기존
+재시도 신원과 maxInstances는 유지한다. 청구 정보·운영 사용량은 조회하지 않았으므로
+실제 절감률은 미확정이다. 매분 playing 방 전체 읽기와 장기 이력의 다운로드 비용은
+후속 측정 대상으로 남긴다. [정책·측정 기준](../../operations/ROOM_RELIABILITY_RETENTION_COST.md)과
+[11월 검증 기록](../logs/2026-11.md)을 따른다.
+
 Functions 과금 점검·최적화
 
 [작업 목록으로 돌아가기](../TASKS.md) · [관리 방법](../TASK_MANAGEMENT.md)

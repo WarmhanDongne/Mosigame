@@ -11,6 +11,7 @@ import 'package:project00/platform/home/phone/widgets/phone_game_card.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_leave_transition.dart';
 import 'package:game_kit/core/diagnostics/crash_reporting.dart';
+import 'package:game_kit/recovery/services/room_session_identity_store.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/core/layout/app_system_ui.dart';
 import 'package:game_kit/widgets/game_exit_route.dart';
@@ -48,6 +49,9 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
   StreamSubscription<String?>? _gameStatusSubscription;
   String? _subscribedRoomCode;
   String? _latestGameStatus;
+  int _statusSubscriptionGeneration = 0;
+  int _gameStartRevision = 0;
+  int _openedGameStartRevision = -1;
   bool _isOpeningGame = false;
   bool _isHandlingForcedExit = false;
   OverlayEntry? _forcedExitOverlay;
@@ -209,6 +213,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     final roomCode = widget.provider.roomCode;
 
     if (roomCode == null) {
+      _statusSubscriptionGeneration++;
       unawaited(_gameStatusSubscription?.cancel());
       _gameStatusSubscription = null;
       _subscribedRoomCode = null;
@@ -222,17 +227,32 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     }
 
     unawaited(_gameStatusSubscription?.cancel());
+    final generation = ++_statusSubscriptionGeneration;
     _subscribedRoomCode = roomCode;
     _latestGameStatus = null;
-    _gameStatusSubscription = widget.provider.watchGameStatus(roomCode).listen((
-      status,
-    ) {
-      final changed = _latestGameStatus != status;
-      _latestGameStatus = status;
-      // 게임 시작 안내 화면으로 바꾸려면 상태가 바뀔 때 다시 그립니다.
-      if (changed && mounted) setState(() {});
-      _openGameIfReady(roomCode);
-    }, onError: _showStatusError);
+    _gameStatusSubscription = widget.provider
+        .watchGameStatus(roomCode)
+        .listen(
+          (status) {
+            if (!mounted ||
+                generation != _statusSubscriptionGeneration ||
+                widget.provider.roomCode != roomCode) {
+              return;
+            }
+            final changed = _latestGameStatus != status;
+            if (changed && status == 'playing') _gameStartRevision++;
+            _latestGameStatus = status;
+            // 게임 시작 안내 화면으로 바꾸려면 상태가 바뀔 때 다시 그립니다.
+            if (changed && mounted) setState(() {});
+            _openGameIfReady(roomCode);
+          },
+          onError: (Object error) {
+            if (generation == _statusSubscriptionGeneration &&
+                widget.provider.roomCode == roomCode) {
+              _showStatusError(error);
+            }
+          },
+        );
   }
 
   /// `selectedGame`과 `game/public/status`는 서로 다른 RTDB 경로이므로 도착
@@ -240,6 +260,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
   /// 모두 준비되는 순간 한 번만 게임 화면을 엽니다.
   void _openGameIfReady(String roomCode) {
     if (_latestGameStatus != 'playing' ||
+        _openedGameStartRevision == _gameStartRevision ||
         _isOpeningGame ||
         widget.provider.isLeaving ||
         !mounted) {
@@ -272,17 +293,51 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
   Future<void> _openGame(String roomCode, TemplateGame game) async {
     if (_isOpeningGame || !mounted) return;
     _isOpeningGame = true;
+    final generation = _statusSubscriptionGeneration;
+    final uid = FirebaseBackend.auth.currentUser?.uid;
+    final identity = uid == null
+        ? null
+        : RoomSessionIdentityStore.instance.current(uid, 'player', roomCode);
+    bool isCurrentRoom() {
+      if (!mounted ||
+          generation != _statusSubscriptionGeneration ||
+          widget.provider.roomCode != roomCode ||
+          widget.provider.isLeaving ||
+          _isHandlingForcedExit ||
+          FirebaseBackend.auth.currentUser?.uid != uid) {
+        return false;
+      }
+      final currentIdentity = uid == null
+          ? null
+          : RoomSessionIdentityStore.instance.current(uid, 'player', roomCode);
+      return currentIdentity?.roomInstanceId == identity?.roomInstanceId &&
+          currentIdentity?.membershipId == identity?.membershipId;
+    }
+
+    void resumeReplacementRoom() {
+      if (!mounted || generation == _statusSubscriptionGeneration) return;
+      final currentCode = widget.provider.roomCode;
+      if (currentCode != null) _openGameIfReady(currentCode);
+    }
 
     try {
       if (!await prepareGameAssetsForRecovery(game, context)) {
         _isOpeningGame = false;
-        await widget.provider.leaveGame(game.id);
+        if (isCurrentRoom() && widget.provider.selectedGameId == game.id) {
+          await widget.provider.leaveGame(game.id);
+        }
+        resumeReplacementRoom();
         return;
       }
     } catch (error, stack) {
       CrashReporting.recordError(error, stack, reason: '휴대폰 게임 에셋 확인');
       _isOpeningGame = false;
-      if (!mounted) return;
+      if (!mounted ||
+          !isCurrentRoom() ||
+          widget.provider.selectedGameId != game.id) {
+        resumeReplacementRoom();
+        return;
+      }
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -290,8 +345,16 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
         );
       return;
     }
-    if (!mounted) {
+    if (!mounted || !isCurrentRoom()) {
       _isOpeningGame = false;
+      resumeReplacementRoom();
+      return;
+    }
+    // 에셋 준비를 기다리는 동안 다음 게임으로 바뀌었으면 옛 화면을 열지 않습니다.
+    if (widget.provider.selectedGameId != game.id ||
+        _latestGameStatus != 'playing') {
+      _isOpeningGame = false;
+      _openGameIfReady(roomCode);
       return;
     }
 
@@ -300,6 +363,8 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     unawaited(AppSystemUi.enterGameFullscreen());
     unawaited(AppOrientation.applyPhoneGame(game.phoneOrientation));
 
+    final startRevision = _gameStartRevision;
+    _openedGameStartRevision = startRevision;
     final gameRoute = GameExitMaterialPageRoute<bool>(
       builder: (gameContext) => CriticalNetworkGuard(
         provider: widget.provider,
@@ -324,12 +389,22 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
     await gameRoute.completed;
 
     _isOpeningGame = false;
-    if (!mounted) return;
+    if (!mounted || !isCurrentRoom()) {
+      resumeReplacementRoom();
+      return;
+    }
     if (leftRoom == true) {
       // 참여 코드·닉네임·방 대기 경로를 모두 닫아 휴대폰 홈으로 이동합니다.
       //================상태바 표시=================
       unawaited(AppSystemUi.showPlatformSystemBars());
       Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+    // 다음 시작 신호가 이전 게임의 퇴장 연출(960ms) 중 도착해도 놓치지 않습니다.
+    // 새 playing 전이가 없는 단순 복귀는 옛 게임을 다시 열지 않습니다.
+    if (_gameStartRevision > startRevision) {
+      _openGameIfReady(roomCode);
+      if (_isOpeningGame) return;
     }
     // 화면 전환을 회전 응답보다 먼저 끝내 퇴장 성공 후 이전 화면에 갇히지
     // 않게 합니다. 방향 복원은 플랫폼 채널 응답을 기다리지 않습니다.
@@ -408,6 +483,7 @@ class _PhoneRoomWaitingState extends State<PhoneRoomWaiting>
 
   @override
   void dispose() {
+    _statusSubscriptionGeneration++;
     widget.provider.removeListener(_onRoomProviderChanged);
     _gameStatusSubscription?.cancel();
     final forcedExitOverlay = _forcedExitOverlay;

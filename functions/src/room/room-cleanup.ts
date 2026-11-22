@@ -42,9 +42,14 @@ async function enqueue(code: string, room: CleanupRoom): Promise<void> {
     const same = sameCleanupTarget(raw, room);
     const revision = room.cleanupSignal?.revision ?? 0;
     if (same && (raw!.signalRevision ?? 0) > revision) return;
-    return {roomInstanceId: room.roomInstanceId, allocationGeneration: room.allocationGeneration,
+    const next: CleanupJob = {roomInstanceId: room.roomInstanceId, allocationGeneration: room.allocationGeneration,
       nextCheckAt: same && (raw!.failures ?? 0) > 0 ? Math.max(raw!.nextCheckAt, due) : due,
       failures: same ? raw!.failures ?? 0 : 0, signalRevision: revision};
+    // Periodic scans and trigger retries often compute the identical index.
+    // Abort instead of committing another write to the same queue record.
+    if (same && raw!.nextCheckAt === next.nextCheckAt && raw!.failures === next.failures &&
+        raw!.signalRevision === next.signalRevision) return;
+    return next;
   });
 }
 
@@ -106,20 +111,27 @@ export const cleanupStaleRealtimeRooms = onSchedule({region: "asia-northeast3",
     if (child.key && child.key !== cursor) scans.push({code: child.key, room: child.val()});
   });
   const page = cleanupScanPage(scans, cursor);
+  let scanFailed = 0;
   for (const entry of page.page) {
-    if (unprojectedLosses(entry.room as SessionRoom).length > 0) {
-      await runPrimedTransaction(database.ref(`rooms/${entry.code}`), (raw) => {
-        if (!sameCleanupTarget(raw as CleanupRoom | null, entry.room)) return;
-        const room = raw as SessionRoom;
-        let changed = false;
-        for (const {uid, id} of unprojectedLosses(room)) {
-          changed = applyRoomPresence(room, uid, id, (role, seen) =>
-            registerRecoveryFailure(room as RecoveryRoom, uid, role, now, "disconnected", seen)) || changed;
-        }
-        return changed ? room : undefined;
-      });
+    try {
+      if (unprojectedLosses(entry.room as SessionRoom).length > 0) {
+        await runPrimedTransaction(database.ref(`rooms/${entry.code}`), (raw) => {
+          if (!sameCleanupTarget(raw as CleanupRoom | null, entry.room)) return;
+          const room = raw as SessionRoom;
+          let changed = false;
+          for (const {uid, id} of unprojectedLosses(room)) {
+            changed = applyRoomPresence(room, uid, id, (role, seen) =>
+              registerRecoveryFailure(room as RecoveryRoom, uid, role, now, "disconnected", seen)) || changed;
+          }
+          return changed ? room : undefined;
+        });
+      }
+      await enqueue(entry.code, entry.room);
+    } catch {
+      // A malformed or temporarily unavailable room must not starve the due
+      // queue or the rest of the page. Retry this room on the next cursor wrap.
+      scanFailed++;
     }
-    await enqueue(entry.code, entry.room);
   }
   const cursorAdvanced = await advanceCleanupCursor(cursorRef, cursor, page.nextCursor);
   const due = await database.ref("roomCleanupQueue").orderByChild("nextCheckAt").endAt(now).limitToFirst(300).get();
@@ -167,7 +179,7 @@ export const cleanupStaleRealtimeRooms = onSchedule({region: "asia-northeast3",
       });
     }
   }
-  logger.info("Room cleanup", {completed, deferred, failed, scanned: page.page.length,
+  logger.info("Room cleanup", {completed, deferred, failed, scanFailed, scanned: page.page.length,
     terminalReconciliations, staleJobs, cursorAdvanced, queueLimitReached: jobs.length === 300,
     oldestDueAgeMs: jobs.reduce((age, {job}) => Math.max(age, now - job.nextCheckAt), 0),
     durationMs: Date.now() - now});

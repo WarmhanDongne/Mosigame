@@ -281,6 +281,7 @@ test("게임 선택 변경은 이전 종료 게임 데이터를 제거하고 wai
     game: {public: {status: "finished"}},
     finishedAt: 100,
     retainUntil: 200,
+    cleanupAt: 200,
   };
 
   applyWaitingGameSelection(room, "mafia");

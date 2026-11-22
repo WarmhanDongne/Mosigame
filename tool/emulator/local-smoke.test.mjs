@@ -23,7 +23,8 @@ test('local fixture login, catalog, callable room, RTDB rules and Storage', {tim
   assert.equal(onboarding.fields.status.stringValue, 'complete');
   assert.equal(onboarding.fields.provider.stringValue, 'legacyPassword');
   const catalog = await json(`${firestore}/games`, {headers});
-  assert.equal(catalog.documents.length, 4);
+  assert.deepEqual(catalog.documents.map(document => document.name.split('/').at(-1)).sort(),
+    ['final_call', 'holdem', 'liars', 'mafia', 'strategy_yut', 'strategy_yut_edition', 'yut'].sort());
   const callable = async (name, data) => {
     const body = await json(`http://127.0.0.1:5001/${project}/asia-northeast3/${name}`, {
       method: 'POST', headers, body: JSON.stringify({data}),

@@ -54,6 +54,7 @@ const sessionTestSuite = TestSuiteDefinition(
     'test/room_leave_intent_test.dart',
     'test/room_leave_state_test.dart',
     'test/room_restore_to_waiting_test.dart',
+    'test/phone_waiting_players_test.dart',
     'test/session_return_prompt_test.dart',
     'packages/game_kit/test/mosi_ui/mosi_connection_band_test.dart',
   ],
@@ -73,6 +74,7 @@ const sessionTestSuite = TestSuiteDefinition(
     'functions/test/roulette-restart-integration.test.mjs',
     'functions/test/b1-current-presence.test.mjs',
     'functions/test/rtdb-retention.test.mjs',
+    'functions/test/interruption-scheduler.test.mjs',
   ],
 );
 

@@ -12,8 +12,14 @@ type SignalRoom = SessionRoom & {allocationGeneration: number; cleanupSignal?: C
 export function cleanupDeadline(room: SignalRoom): number | null {
   if (room.status === "terminal") return room.cleanupPending ? room.terminalAt ?? 0 : null;
   if (room.status === "closed") return room.cleanupAt ?? 0;
-  if (room.status === "finished" && typeof room.retainUntil === "number") return room.retainUntil;
   const seen = currentControllerSeen(room);
+  if (room.status === "finished" && typeof room.retainUntil === "number") {
+    // A result screen is still an active room. Expiry starts from the latest
+    // canonical controller heartbeat, not just the first game's finish time.
+    // B1 summaries are frozen; missing canonical identity cannot prove absence.
+    if (typeof seen !== "number") return room.presenceProtocol === 2 ? null : room.retainUntil;
+    return Math.max(room.retainUntil, seen + 15 * 60000);
+  }
   return typeof seen === "number" ? seen + (room.status === "playing" || room.status === "finished" ? 15 : 3) * 60000 : null;
 }
 

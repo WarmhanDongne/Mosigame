@@ -1,5 +1,5 @@
 /* eslint-disable max-len, valid-jsdoc, require-jsdoc */
-import {getDatabase} from "firebase-admin/database";
+import {getDatabase, Reference} from "firebase-admin/database";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {logger} from "firebase-functions";
 import {findGhostPlayers} from "../room/ghost-player-policy.js";
@@ -15,18 +15,44 @@ export const cleanupExpiredGameInterruptions = onSchedule({region: REGION,
   const now = Date.now();
   const snapshot = await database.ref("rooms").orderByChild("status")
     .equalTo("playing").get();
-  const jobs: Promise<unknown>[] = [];
+  let scanned = 0; let checked = 0; let expiredRooms = 0; let expiredCauses = 0; let failed = 0;
+  const candidates: Reference[] = [];
   snapshot.forEach((child) => {
+    scanned++;
     const preview = child.val() as RecoveryRoom;
     if (!Object.values(preview.game?.public.recovery?.causes ?? {}).some((c) =>
       c.deadlineAt !== undefined && c.deadlineAt <= now && !c.awaitingDecision)) return;
-    jobs.push(runPrimedTransaction(child.ref, (raw) => {
-      if (!raw) return;
-      const room = raw as RecoveryRoom;
-      return expireRecoveryCauses(room, now) ? room : undefined;
-    }));
+    candidates.push(child.ref);
   });
-  await Promise.all(jobs);
+  // A busy room cannot start unbounded root transactions or prevent other rooms
+  // from reaching their deadline. A failed room remains due for the next scan.
+  for (let offset = 0; offset < candidates.length; offset += 10) {
+    await Promise.all(candidates.slice(offset, offset + 10).map(async (ref) => {
+      try {
+        let expired = 0;
+        const result = await runPrimedTransaction(ref, (raw) => {
+          expired = 0;
+          if (!raw) return;
+          const room = raw as RecoveryRoom;
+          if (room.status !== "playing" || room.game?.public.status !== "playing") return;
+          expired = expireRecoveryCauses(room, now);
+          return expired ? room : undefined;
+        });
+        checked++;
+        if (result.committed) {
+          expiredRooms++;
+          expiredCauses += expired;
+        }
+      } catch {
+        failed++;
+      }
+    }));
+  }
+  // Idle minute ticks need no additional log entry; preserve actionable counts.
+  if (candidates.length > 0) {
+    logger.info("Game recovery deadline scan", {scanned, candidates: candidates.length,
+      checked, expiredRooms, expiredCauses, failed, durationMs: Date.now() - now});
+  }
 });
 export const cleanupGhostRoomPlayers = onSchedule(
   {

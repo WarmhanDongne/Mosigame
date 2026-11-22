@@ -1,5 +1,10 @@
 # 네트워크·세션 구현 계약
 
+2026-11-05 방 정리·화면 전환 후속 후보의 보관 기준과 적용 한계는
+[방 연결 안정성·보관·비용 정책](../operations/ROOM_RELIABILITY_RETENTION_COST.md)을 따른다.
+종료 결과 방의 정리 기한은 `retainUntil`과 현재 controller 마지막 접속 + 15분 중
+늦은 시각이며, 명시적 close의 60초 기한은 그대로 유지한다. 배포 완료를 뜻하지 않는다.
+
 2026-10-09 E02~E12 및 2026-10-10 룰렛·시작 재시도 로컬 구현 후보의 계약이다. 배포 여부를 뜻하지 않는다.
 [채택한 A~C와 실행 계획](../planning/NETWORK_SESSION_IMPLEMENTATION_PLAN.md),
 [현재 검증과 한계](../planning/NETWORK_SESSION_E02_E12_IMPLEMENTATION.md),

@@ -98,6 +98,6 @@ if (mode === 'start') {
   args.push(`--export-on-exit=${data}`);
 }
 args.push(mode === 'start' ? 'node ../../tool/emulator/local-session.mjs' :
-  'node --test --test-concurrency=1 ../../tool/emulator/local-smoke.test.mjs');
+  'node --test --test-concurrency=1 ../../tool/emulator/local-smoke.test.mjs ../../tool/emulator/room-retention.test.mjs');
 try { await run(args, resolve(root, 'build/local-firebase'), mode === 'check' ? 600000 : undefined, mode === 'start'); }
 finally { await checkPorts(); console.log('Local emulator ports released.'); }

@@ -11,6 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:project00/platform/home/phone/widgets/phone_room_participant_list.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/mosi_ui/mosi_game_art.dart';
+import 'package:game_kit/core/assets/game_asset_store.dart';
+import 'package:game_kit/core/layout/app_orientation.dart';
+import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_waiting.dart';
@@ -44,6 +48,63 @@ class _Rooms extends Fake implements RoomService {
 }
 
 class _Games extends Fake implements GameService {}
+
+class _HandoffRooms extends _Rooms {
+  final status = StreamController<String?>.broadcast(sync: true);
+
+  @override
+  Stream<String?> watchGameStatus(String roomCode) => status.stream;
+}
+
+class _HandoffCatalog implements GameCatalog {
+  final opens = <String>[];
+
+  @override
+  Iterable<TemplateGame> get games => [
+    _HandoffGame('liars_poker', opens),
+    _HandoffGame('final_call', opens),
+  ];
+
+  @override
+  TemplateGame? find(String id) =>
+      games.where((game) => game.id == id).firstOrNull;
+}
+
+class _HandoffGame extends TemplateGame {
+  _HandoffGame(this.id, this.opens);
+
+  @override
+  final String id;
+  final List<String> opens;
+
+  @override
+  PhoneGameOrientation get phoneOrientation =>
+      PhoneGameOrientation.portraitOnly;
+
+  @override
+  Widget buildPhoneScreen({
+    required String roomCode,
+    required GameRoomContext provider,
+    required Future<bool> Function() onExitRoom,
+  }) {
+    opens.add(id);
+    return Scaffold(body: Text('game $id $roomCode'));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _PreparingAssets extends GameAssetStore {
+  final prepared = Completer<void>();
+  int calls = 0;
+
+  @override
+  Future<void> prepareGame(String gameId) {
+    calls++;
+    return prepared.future;
+  }
+}
 
 RoomPlayer _player(
   int index, {
@@ -102,6 +163,153 @@ void main() {
       },
     );
   });
+
+  for (final nextGameId in ['final_call', 'liars_poker']) {
+    testWidgets('퇴장 연출 중 도착한 $nextGameId 시작을 한 번 이어 연다', (tester) async {
+      final service = _HandoffRooms();
+      final catalog = _HandoffCatalog();
+      final provider =
+          RoomProvider(
+              service: service,
+              gameService: _Games(),
+              gameCatalog: catalog,
+            )
+            ..roomCode = 'ABCDE'
+            ..roomStatus = 'playing'
+            ..selectedGameId = 'liars_poker';
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: PhoneRoomWaiting(
+            provider: provider,
+            headerForTesting: const SizedBox(height: 72),
+          ),
+        ),
+      );
+      await tester.pump();
+      service.status.add('playing');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(catalog.opens, ['liars_poker']);
+
+      service.status.add('finished');
+      await tester.pump();
+      navigator.currentState!.pop(false);
+      await tester.pump(const Duration(milliseconds: 100));
+      provider.selectedGameId = nextGameId;
+      provider.notifyListeners();
+      service.status.add('playing');
+      await tester.pump();
+      expect(catalog.opens, ['liars_poker']);
+
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(catalog.opens, ['liars_poker', nextGameId]);
+      service.status.add('playing');
+      await tester.pump();
+      expect(catalog.opens, hasLength(2));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+      await service.status.close();
+    });
+  }
+
+  testWidgets('새 시작 신호 없는 게임 복귀는 이전 게임을 다시 열지 않는다', (tester) async {
+    final service = _HandoffRooms();
+    final catalog = _HandoffCatalog();
+    final provider =
+        RoomProvider(
+            service: service,
+            gameService: _Games(),
+            gameCatalog: catalog,
+          )
+          ..roomCode = 'ABCDE'
+          ..roomStatus = 'playing'
+          ..selectedGameId = 'liars_poker';
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: PhoneRoomWaiting(
+          provider: provider,
+          headerForTesting: const SizedBox(height: 72),
+        ),
+      ),
+    );
+    await tester.pump();
+    service.status.add('playing');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    navigator.currentState!.pop(false);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    provider.notifyListeners();
+    await tester.pump();
+    expect(catalog.opens, ['liars_poker']);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+    await service.status.close();
+  });
+
+  for (final replacementCode in <String?>[null, 'FGHJK']) {
+    testWidgets('에셋 준비 중 방 변경 후 옛 화면은 열지 않고 현재 방을 따른다: $replacementCode', (
+      tester,
+    ) async {
+      final previousStore = GameAssetStore.instance;
+      final store = _PreparingAssets();
+      GameAssetStore.instance = store;
+      addTearDown(() => GameAssetStore.instance = previousStore);
+      final service = _HandoffRooms();
+      final catalog = _HandoffCatalog();
+      final provider =
+          RoomProvider(
+              service: service,
+              gameService: _Games(),
+              gameCatalog: catalog,
+            )
+            ..roomCode = 'ABCDE'
+            ..roomStatus = 'playing'
+            ..selectedGameId = 'liars_poker';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PhoneRoomWaiting(
+            provider: provider,
+            headerForTesting: const SizedBox(height: 72),
+          ),
+        ),
+      );
+      await tester.pump();
+      service.status.add('playing');
+      await tester.pump();
+      expect(store.calls, 1);
+      provider.roomCode = replacementCode;
+      provider.notifyListeners();
+      if (replacementCode != null) {
+        await tester.pump();
+        service.status.add('playing');
+        await tester.pump();
+      }
+      store.prepared.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        catalog.opens,
+        replacementCode == null ? isEmpty : ['liars_poker'],
+      );
+      if (replacementCode != null) {
+        expect(find.text('game liars_poker $replacementCode'), findsOneWidget);
+        expect(store.calls, 2);
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+      await service.status.close();
+    });
+  }
 
   testWidgets('그룹 나가기는 즉시 테마 전환을 열고 실패 복귀 뒤 같은 요청을 재시도한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);

@@ -1,5 +1,14 @@
 # ROOM-CREATE-REQUEST-01
 
+## 2026-11-05 — 활성 방 보호·잔여 데이터 정책 후보
+
+최신 develop의 canonical 접속 보호를 기준으로 결과 방 기한을 보완하고, 같은 정리
+큐의 반복 쓰기와 순회 부분 실패를 줄였다. 큰 게임 payload와 최소 terminal/요청
+표식을 분리해 [보관 정책](../../operations/ROOM_RELIABILITY_RETENTION_COST.md)을 작성했다.
+최소 재생 차단 표식은 현 프로토콜에서 만료 없이 유지한다. reserved 고아 예약의
+해제·작업 결과 TTL·과거 데이터 일괄 삭제를 구현하거나 실행했다고 보지 않는다.
+운영 배포·이전은 미실행이며 [검증 기록](../logs/2026-11.md)을 따른다.
+
 방 생성 요청 기록 잔류
 
 [작업 목록으로 돌아가기](../TASKS.md) · [관리 방법](../TASK_MANAGEMENT.md)

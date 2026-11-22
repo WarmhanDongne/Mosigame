@@ -37,18 +37,19 @@ export class CleanupDatabase {
   ref(path) {
     const database = this;
     let listeners = 0;
-    let start, end, limit, order;
+    let start, end, equal, limit, order;
     return {
       async get() {
         database.reads.push(path);
         let value = database.value(path);
-        if (order || start !== undefined || end !== undefined || limit !== undefined) {
+        if (order || start !== undefined || end !== undefined || equal !== undefined || limit !== undefined) {
           let entries = Object.entries(value ?? {}).sort(([a, av], [b, bv]) => {
             if (order && order !== '$key') return av[order] - bv[order] || a.localeCompare(b);
             return a.localeCompare(b);
           });
           if (start !== undefined) entries = entries.filter(([key]) => key >= start);
           if (end !== undefined) entries = entries.filter(([, child]) => child[order] <= end);
+          if (equal !== undefined) entries = entries.filter(([, child]) => child[order] === equal);
           if (limit !== undefined) entries = entries.slice(0, limit);
           value = Object.fromEntries(entries);
         }
@@ -83,6 +84,7 @@ export class CleanupDatabase {
       orderByChild(child) { order = child; return this; },
       startAt(value) { assert.notEqual(value, ''); start = value; return this; },
       endAt(value) { end = value; return this; },
+      equalTo(value) { equal = value; return this; },
       limitToFirst(value) { database.limits.push({path, value}); limit = value; return this; },
     };
   }

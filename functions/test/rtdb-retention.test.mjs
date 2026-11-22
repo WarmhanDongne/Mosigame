@@ -270,3 +270,32 @@ test('due cleanup queue processes at most 300 jobs and signals its cap without a
   assert.equal(logs.at(-1).counters.completed, 1);
   assert.equal(logs.at(-1).counters.queueLimitReached, false);
 });
+
+test('unchanged cleanup signals do not commit duplicate queue writes', async t => {
+  const {database} = setup(t);
+  const target = terminalRecords(database);
+  database.put('rooms/ABCDE', refreshCleanupSignal(target));
+  let writes = 0;
+  database.afterTransaction = path => { if (path === 'roomCleanupQueue/ABCDE') writes++; };
+  await syncRoomCleanupQueue.run({params: {roomCode: 'ABCDE'}});
+  const first = database.value('roomCleanupQueue/ABCDE');
+  await syncRoomCleanupQueue.run({params: {roomCode: 'ABCDE'}});
+  assert.equal(writes, 1);
+  assert.deepEqual(database.value('roomCleanupQueue/ABCDE'), first);
+});
+
+test('one failed scan does not starve due cleanup and is retried after cursor wrap', async t => {
+  const {database, logs} = setup(t);
+  database.put('rooms/A0000', room({controllerPresence: {connected: false, lastSeen: 1}}));
+  const target = terminalRecords(database);
+  database.put('roomCleanupQueue/ABCDE', {...target, nextCheckAt: NOW - 1000, failures: 0});
+  database.failures.add('roomCleanupQueue/A0000');
+  await cleanupStaleRealtimeRooms.run({});
+  assert.equal(logs.at(-1).counters.scanFailed, 1);
+  assert.equal(logs.at(-1).counters.terminalReconciliations, 1);
+  assert.equal(database.value('rooms/ABCDE/cleanupPending'), false);
+  assert.equal(database.value('rooms/A0000/status'), 'waiting');
+  await cleanupStaleRealtimeRooms.run({});
+  assert.equal(logs.at(-1).counters.scanFailed, 0);
+  assert.equal(database.value('rooms/A0000/status'), 'terminal');
+});

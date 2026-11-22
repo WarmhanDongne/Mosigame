@@ -70,6 +70,7 @@ type MutableRoomSelection = {
   game?: unknown;
   finishedAt?: number;
   retainUntil?: number;
+  cleanupAt?: number;
 };
 
 /**
@@ -86,6 +87,7 @@ export function applyWaitingGameSelection(
   delete room.game;
   delete room.finishedAt;
   delete room.retainUntil;
+  delete room.cleanupAt;
   room.status = "waiting";
 }
 
