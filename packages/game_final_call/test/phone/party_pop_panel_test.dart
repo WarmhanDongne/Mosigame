@@ -50,6 +50,8 @@ class _Game extends Fake implements FinalCallController {
     _card('green', 9),
   ];
   @override
+  bool get holdsFourCard => false;
+  @override
   final Map<String, FinalCallPlayer> players = {
     'me': _player('me', 0, FinalCallTeam.red),
     'b': _player('b', 1, FinalCallTeam.blue),

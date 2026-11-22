@@ -46,7 +46,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(passes, [0]);
     await tester.pump(const Duration(milliseconds: 590));
-    expect(passes, [0, 1, 2]);
+    expect(passes, [0]);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
   });
 

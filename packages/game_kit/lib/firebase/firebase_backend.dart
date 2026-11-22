@@ -55,6 +55,17 @@ abstract final class FirebaseBackend {
       : isTest
       ? Firebase.app(_testAppName)
       : Firebase.app();
+
+  /// Firebase Messaging currently uses the default app only. Allow callers to
+  /// use it only when that default app belongs to the selected backend.
+  static bool get defaultAppMatchesSelectedBackend {
+    try {
+      return Firebase.app().options.projectId == app.options.projectId;
+    } on FirebaseException {
+      return false;
+    }
+  }
+
   static FirebaseAuth get auth => isLocal || isTest
       ? FirebaseAuth.instanceFor(app: app)
       : FirebaseAuth.instance;

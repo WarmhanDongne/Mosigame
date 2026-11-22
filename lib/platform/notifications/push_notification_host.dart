@@ -59,8 +59,7 @@ class _PushNotificationHostState extends State<PushNotificationHost> {
     if (kIsWeb ||
         FirebaseBackend.isLocal ||
         Firebase.apps.isEmpty ||
-        Firebase.app().options.projectId !=
-            FirebaseBackend.app.options.projectId ||
+        !FirebaseBackend.defaultAppMatchesSelectedBackend ||
         (defaultTargetPlatform != TargetPlatform.android &&
             defaultTargetPlatform != TargetPlatform.iOS)) {
       return;
@@ -71,6 +70,13 @@ class _PushNotificationHostState extends State<PushNotificationHost> {
       if (permission.authorizationStatus != AuthorizationStatus.authorized &&
           permission.authorizationStatus != AuthorizationStatus.provisional) {
         return;
+      }
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: false,
+          sound: true,
+        );
       }
       _tokenSubscription = messaging.onTokenRefresh.listen((token) {
         unawaited(_register(token));
@@ -141,8 +147,7 @@ abstract final class PushDeviceRegistration {
         (defaultTargetPlatform != TargetPlatform.android &&
             defaultTargetPlatform != TargetPlatform.iOS) ||
         FirebaseBackend.auth.currentUser != null ||
-        Firebase.app().options.projectId !=
-            FirebaseBackend.app.options.projectId) {
+        !FirebaseBackend.defaultAppMatchesSelectedBackend) {
       return;
     }
     signedOutTokenCleared = true;

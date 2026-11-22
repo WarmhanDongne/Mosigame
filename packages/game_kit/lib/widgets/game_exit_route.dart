@@ -7,9 +7,11 @@ const gameExitTransitionDuration = Duration(milliseconds: 960);
 class GameExitMaterialPageRoute<T> extends MaterialPageRoute<T> {
   GameExitMaterialPageRoute({required super.builder, super.settings});
 
-  /// 게임 중 iOS 가장자리 스와이프로 대기실로 빠져나가 서버 퇴장 처리가
-  /// 생략되지 않도록 제스처 기반 pop만 차단합니다. 게임 안의 퇴장 버튼은
-  /// 기존처럼 명시적으로 Navigator.pop을 호출할 수 있습니다.
+  /// 게임은 서버 퇴장 처리를 거치는 명시적 종료 동작으로만 닫습니다.
+  ///
+  /// iOS의 왼쪽 가장자리 뒤로가기 제스처가 라우트를 직접 pop하면 게임 세션
+  /// 정리와 퇴장 확인을 건너뛸 수 있으므로 interactive pop만 차단합니다.
+  /// `Navigator.pop`을 사용하는 기존 종료 흐름은 그대로 동작합니다.
   @override
   bool get popGestureEnabled => false;
 

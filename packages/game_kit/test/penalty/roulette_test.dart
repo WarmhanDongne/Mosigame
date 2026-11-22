@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/penalty/roulette.dart';
 
@@ -18,7 +19,7 @@ void main() {
       await _flick(tester);
 
       final waitingSpeed = await _sampleSpeed(tester);
-      // Ticker의 첫 프레임은 테스트 펌프 경계에서 일부 잘릴 수 있습니다.
+      // Ticker의 첫 프레임은 테스트 pump 경계에서 일부 잘릴 수 있습니다.
       expect(waitingSpeed, closeTo(PenaltyRoulette.maxSpinSpeed, 0.8));
       expect(results, isEmpty);
 
@@ -113,6 +114,22 @@ void main() {
   });
 
   testWidgets('살살 놓으면 돌지 않고 더 세게 돌리라고 안내한다', (tester) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
     final prepared = Completer<RouletteResult?>();
     var asked = false;
     await _mountRoulette(
@@ -132,6 +149,41 @@ void main() {
 
     expect(asked, isFalse);
     expect(find.text('조금 더 세게 휙 돌려요'), findsOneWidget);
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    expect(haptics.last, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('유효한 플릭과 탈락 결과에 단계별 촉각 피드백을 보낸다', (tester) async {
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final prepared = Completer<RouletteResult?>();
+    await _mountRoulette(tester, prepared: prepared, onResult: (_) {});
+
+    await _flick(tester);
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    expect(haptics, contains('HapticFeedbackType.mediumImpact'));
+
+    prepared.complete(RouletteResult.eliminated);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
+    expect(haptics, contains('HapticFeedbackType.heavyImpact'));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
