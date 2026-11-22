@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_turn_countdown_face.dart';
 import 'package:game_kit/sound/game_background_music.dart';
@@ -27,10 +29,12 @@ class RussianRouletteTabletScreen extends ConsumerStatefulWidget {
     super.key,
     required this.roomCode,
     required this.provider,
+    required this.playerLayout,
   });
 
   final String roomCode;
   final GameRoomContext provider;
+  final PlayerLayoutModel playerLayout;
 
   @override
   ConsumerState<RussianRouletteTabletScreen> createState() =>
@@ -195,9 +199,11 @@ class _RussianRouletteTabletScreenState
     final since = _phaseKey == '${game.status}:${game.phase}:${game.round}'
         ? _nowMs - _phaseStartedAt
         : 0;
+    // 응답이 오는 동안 화면이 멈춰 보이지 않게 끝나기 조금 전에 요청합니다.
+    final lead = RussianRouletteTiming.phaseRequestLead.inMilliseconds;
     _armPhase(
       key,
-      Duration(milliseconds: math.max(0, delay.inMilliseconds - since)),
+      Duration(milliseconds: math.max(0, delay.inMilliseconds - lead - since)),
     );
   }
 
@@ -227,8 +233,25 @@ class _RussianRouletteTabletScreenState
     _armPhase(key, _phaseRetryDelay);
   }
 
-  Future<void> _timeout() async {
-    await _run(() => _service.command.timeout(widget.roomCode));
+  /// 마감이 지나면 시간 초과를 보냅니다. 실패하면(네트워크, 서버 시각 오차)
+  /// 같은 마감의 선택 단계가 그대로일 때만 몇 번 더 보내 턴이 멈추지 않게 합니다.
+  Future<void> _timeout(int deadline) async {
+    for (var attempt = 0; attempt <= _maxPhaseAttempts; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(_phaseRetryDelay);
+        if (!mounted) return;
+        final latest = RussianRouletteView.fromPublic(
+          ref.read(russianRouletteSessionProvider(_args)).publicState,
+        );
+        if (latest.phase != 'selecting' ||
+            latest.paused ||
+            latest.deadlineAt != deadline) {
+          return;
+        }
+      }
+      final ok = await _run(() => _service.command.timeout(widget.roomCode));
+      if (ok || !mounted) return;
+    }
   }
 
   Future<void> _restart() async {
@@ -258,21 +281,24 @@ class _RussianRouletteTabletScreenState
   int _gunStartedAt = 0;
 
   int get _nowMs => DateTime.now().millisecondsSinceEpoch;
+  int get _serverNow => ServerClock.nowMillis();
 
   // 게임 시작 연출: 1턴 선택이 막 시작됐을 때(남은 시간이 넉넉할 때) 한 번만.
   int? _introStartedAt;
-  int _introDeadline = 0;
+
+  /// 시작 연출을 보여 준 게임의 시작 시각입니다.
+  int _introGame = 0;
 
   int? _introMs(RussianRouletteView game) {
-    final fresh =
-        game.round == 1 &&
-        game.phase == 'selecting' &&
-        !game.paused &&
-        game.deadlineAt != 0 &&
-        game.deadlineAt != _introDeadline &&
-        game.deadlineAt - _nowMs > 22000;
+    final fresh = rouletteShouldStartIntro(
+      game,
+      presentedStartedAt: _introGame,
+      serverNow: _serverNow,
+    );
     if (fresh) {
-      _introDeadline = game.deadlineAt;
+      _introGame = game.startedAt;
+      // 화면 준비가 늦어도 어두운 준비 → 좌석 점등 → 랜덤 총구 지정 순서를
+      // 건너뛰지 않고 새 게임마다 한 번 온전히 보여 줍니다.
       _introStartedAt = _nowMs;
     }
     final started = _introStartedAt;
@@ -305,7 +331,13 @@ class _RussianRouletteTabletScreenState
     final key = '${game.status}:${game.phase}:${game.round}';
     if (key != _phaseKey) {
       _phaseKey = key;
-      _phaseStartedAt = _nowMs;
+      // 서버의 단계 시작 시각에 맞춰 휴대폰과 같은 장면을 보여 주고, 단계 진행
+      // 예약도 같은 기준으로 잡습니다.
+      _phaseStartedAt = rouletteLocalPhaseStart(
+        localNow: _nowMs,
+        serverNow: ServerClock.hasSynced ? ServerClock.nowMillis() : null,
+        phaseStartedAt: game.phaseStartedAt,
+      );
     }
     return Duration(milliseconds: _nowMs - _phaseStartedAt);
   }
@@ -336,7 +368,7 @@ class _RussianRouletteTabletScreenState
         ((_nowMs - _gunStartedAt) /
                 RussianRouletteTiming.gunTurn.inMilliseconds)
             .clamp(0.0, 1.0);
-    return from + (to - from) * Curves.easeOutBack.transform(t);
+    return from + (to - from) * RussianRouletteTiming.gunTurnCurve.transform(t);
   }
 
   @override
@@ -465,7 +497,13 @@ class _RussianRouletteTabletScreenState
       if (showWinner) {
         return (
           'win',
-          RouletteStage(model: rouletteWinnerModel(game, elapsed)),
+          RouletteStage(
+            model: rouletteWinnerModel(
+              game,
+              elapsed,
+              seatLayoutMode: widget.playerLayout.seatLayoutMode,
+            ),
+          ),
         );
       }
       return (
@@ -479,12 +517,16 @@ class _RussianRouletteTabletScreenState
     }
     final holdIntro = rouletteShouldHoldIntroFrame(
       game,
-      presentedDeadline: _introDeadline,
+      presentedStartedAt: _introGame,
     );
     final intro = _introMs(game);
     if (intro != null || holdIntro) {
       _animating = intro != null;
-      final frame = rouletteIntroFrame(game, intro ?? 0);
+      final frame = rouletteIntroFrame(
+        game,
+        intro ?? 0,
+        seatLayoutMode: widget.playerLayout.seatLayoutMode,
+      );
       _wedge = frame.wedgeOpacity;
       _wedgeAt = _nowMs;
       return (
@@ -493,7 +535,11 @@ class _RussianRouletteTabletScreenState
       );
     }
     _animating = game.phase != 'selecting' && !game.paused;
-    final frame = rouletteTabletFrame(game, elapsed);
+    final frame = rouletteTabletFrame(
+      game,
+      elapsed,
+      seatLayoutMode: widget.playerLayout.seatLayoutMode,
+    );
     final aim = _gunAim(frame.desiredAim);
     final wedge = game.phase == 'firing'
         ? frame.wedgeOpacity
@@ -504,15 +550,17 @@ class _RussianRouletteTabletScreenState
         'play',
         GameTurnCountdownFace(
           expiresAt: game.deadlineAt == 0 ? null : game.deadlineAt,
-          onTimeout: () => unawaited(_timeout()),
+          onTimeout: () => unawaited(_timeout(game.deadlineAt)),
           builder: (_, remaining) => RouletteStage(
             model: frame.build(
               aim,
               wedge: wedge,
+              // 첫 턴은 시작 연출 동안 마감이 30초보다 멀어 꽉 찬 채로 기다립니다.
               timerFraction:
-                  (remaining?.inMilliseconds ??
-                      RussianRouletteTiming.turn.inMilliseconds) /
-                  RussianRouletteTiming.turn.inMilliseconds,
+                  ((remaining?.inMilliseconds ??
+                              RussianRouletteTiming.turn.inMilliseconds) /
+                          RussianRouletteTiming.turn.inMilliseconds)
+                      .clamp(0.0, 1.0),
             ),
           ),
         ),
@@ -638,12 +686,28 @@ Offset _thud(int ms, int at) {
   );
 }
 
-RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
+RouletteTabletFrame rouletteIntroFrame(
+  RussianRouletteView game,
+  int ms, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final theta = <String, double>{
     for (var i = 0; i < count; i++)
-      players[i].uid: RouletteStageGeometry.seatAngle(i, count),
+      players[i].uid: RouletteStageGeometry.seatAngle(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
+  };
+  final centers = <String, Offset>{
+    for (var i = 0; i < count; i++)
+      players[i].uid: RouletteStageGeometry.seatCenter(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
   };
   double aimOf(String? uid) =>
       RouletteStageGeometry.aimAngle(theta[uid] ?? -math.pi / 2);
@@ -683,6 +747,7 @@ RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
               key: p.uid,
               characterId: p.characterId,
               theta: theta[p.uid]!,
+              center: centers[p.uid],
               state: RouletteSeatState.out,
             );
           }
@@ -696,6 +761,7 @@ RouletteTabletFrame rouletteIntroFrame(RussianRouletteView game, int ms) {
             key: p.uid,
             characterId: p.characterId,
             theta: theta[p.uid]!,
+            center: centers[p.uid],
             state: state,
             dim: ms < litAt,
             glow: ((ms - litAt) / 750).clamp(0.0, 1.0),
@@ -724,13 +790,26 @@ List<RoulettePlayerView> rouletteRevealOrder(RussianRouletteView game) {
 
 RouletteTabletFrame rouletteTabletFrame(
   RussianRouletteView game,
-  Duration elapsed,
-) {
+  Duration elapsed, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final theta = <String, double>{
     for (var i = 0; i < count; i++)
-      players[i].uid: RouletteStageGeometry.seatAngle(i, count),
+      players[i].uid: RouletteStageGeometry.seatAngle(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
+  };
+  final centers = <String, Offset>{
+    for (var i = 0; i < count; i++)
+      players[i].uid: RouletteStageGeometry.seatCenter(
+        i,
+        count,
+        mode: seatLayoutMode,
+      ),
   };
   double aimOf(String? uid) =>
       RouletteStageGeometry.aimAngle(theta[uid] ?? -math.pi / 2);
@@ -750,6 +829,7 @@ RouletteTabletFrame rouletteTabletFrame(
     key: p.uid,
     characterId: p.characterId,
     theta: theta[p.uid]!,
+    center: centers[p.uid],
     state: state,
     shield: shield,
     shieldHit: shieldHit,
@@ -880,6 +960,7 @@ RouletteTabletFrame rouletteTabletFrame(
         stamp: outcome && hitUid != null && theta[hitUid] != null
             ? RouletteStampModel(
                 theta: theta[hitUid]!,
+                center: centers[hitUid],
                 blocked: blocked,
                 progress: ms / 450,
               )
@@ -934,8 +1015,9 @@ List<(RoulettePlayerView, int?)> rouletteRanking(RussianRouletteView game) {
 
 RouletteStageModel rouletteWinnerModel(
   RussianRouletteView game,
-  Duration elapsed,
-) {
+  Duration elapsed, {
+  SeatLayoutMode? seatLayoutMode,
+}) {
   final players = game.orderedPlayers;
   final count = players.length;
   final winner = game.players[game.winnerUid];
@@ -949,7 +1031,16 @@ RouletteStageModel rouletteWinnerModel(
         RouletteSeatModel(
           key: players[i].uid,
           characterId: players[i].characterId,
-          theta: RouletteStageGeometry.seatAngle(i, count),
+          theta: RouletteStageGeometry.seatAngle(
+            i,
+            count,
+            mode: seatLayoutMode,
+          ),
+          center: RouletteStageGeometry.seatCenter(
+            i,
+            count,
+            mode: seatLayoutMode,
+          ),
           state: RouletteSeatState.rank,
           rank: players[i].uid == game.winnerUid ? 1 : players[i].rank,
         ),

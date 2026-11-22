@@ -31,6 +31,11 @@ extension _LandscapeGameView on _LiarsPokerPhoneGameScreenState {
                 key: ValueKey('landscape-background-slot'),
                 child: _PhoneGameBackground(),
               ),
+              // 카드 분배 전 '태블릿을 봐 주세요!' 안내 (손패 레이어 아래).
+              _buildTruthCountHintLayer(
+                controller,
+                key: const ValueKey('landscape-truth-count-hint-slot'),
+              ),
               if (showHeader)
                 Positioned(
                   key: const ValueKey('landscape-header-slot'),

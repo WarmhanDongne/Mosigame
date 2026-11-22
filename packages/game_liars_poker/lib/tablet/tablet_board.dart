@@ -23,6 +23,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/recovery/services/game_progress_command.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
+import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/shared/animations/mat_unroll_animation.dart';
 import 'package:game_kit/sound/game_background_music.dart';
 import 'package:game_kit/tablet/animations/card_deal_animation.dart';
@@ -277,6 +278,7 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
     required this.flowConfig,
     required this.playerCount,
     required this.playerSeatIndexes,
+    this.seatLayoutMode,
     required this.dealPlayerSeatIndexes,
     required this.cardsPerPlayer,
     required this.truthCardCount,
@@ -298,6 +300,7 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
   final GameFlowConfig<LiarsPokerTabletStage> flowConfig;
   final int playerCount;
   final List<int> playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
   final List<int> dealPlayerSeatIndexes;
   final int cardsPerPlayer;
   final int truthCardCount;
@@ -328,6 +331,7 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
         roundNumber: roundNumber,
         boardSeatCount: playerCount,
         playerSeatIndexes: dealPlayerSeatIndexes,
+        seatLayoutMode: seatLayoutMode,
         cardsPerPlayer: cardsPerPlayer,
         truthCardCount: truthCardCount,
         lieCardCount: lieCardCount,
@@ -342,6 +346,7 @@ class LiarsPokerTabletGameLayer extends StatelessWidget {
         key: ValueKey('round-$roundNumber'),
         playerCount: playerCount,
         playerSeatIndexes: playerSeatIndexes,
+        seatLayoutMode: seatLayoutMode,
         remainingCardCounts: remainingCardCounts,
         activePlayerIndex: currentTurnPlayerIndex,
         // 이 보드는 네 단계가 같은 인스턴스를 공유합니다. 어느 단계에서 그리든

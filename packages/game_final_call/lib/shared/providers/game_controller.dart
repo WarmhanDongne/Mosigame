@@ -175,6 +175,17 @@ class FinalCallController extends GameSessionController<FinalCallGameState> {
           .whereType<FinalCallPlayer>()
           .toList(growable: false);
   FinalCallTeam? get myTeam => players[uid]?.team;
+
+  /// 내 손패가 포카드이고 아직 아무도 CALL하지 않았는지 여부입니다.
+  ///
+  /// 포카드는 내가 CALL해야만 효력이 있으므로, 다른 사람이 먼저 CALL한
+  /// 뒤(마지막 교체·제출 단계)에는 false입니다. 휴대폰은 이 값으로
+  /// "빨리 CALL하라"는 안내를 띄웁니다. 내 화면에만 보이는 정보입니다.
+  bool get holdsFourCard =>
+      phase == 'playing' &&
+      callerUid == null &&
+      pendingDraw == null &&
+      isFinalCallFourOfAKind(hand);
   bool get canAct =>
       status == 'playing' &&
       interruption == null &&

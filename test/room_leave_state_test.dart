@@ -281,6 +281,29 @@ void main() {
     expect(provider.roomCode, isNull);
   });
 
+  test('강퇴와 동시에 참가자 구독 권한이 사라져도 서버 확인 후 강퇴로 확정한다', () async {
+    final service = _LeaveRoomService()..activePlayerNodeResult = false;
+    final provider = _provider(service)..listenRoom();
+    addTearDown(() async {
+      provider.dispose();
+      await service.dispose();
+    });
+
+    service.serverConnection.add(true);
+    service.players.add(const [_player]);
+    await _flushEvents();
+
+    // 실제 RTDB에서는 내 노드 삭제와 동시에 목록 읽기 권한이 사라져 빈 목록보다
+    // permission-denied가 먼저이거나 유일한 종료 신호가 될 수 있습니다.
+    service.players.addError(_permissionDenied());
+    await _flushEvents();
+
+    expect(service.activePlayerNodeReads, 1);
+    expect(provider.wasKicked, isTrue);
+    expect(provider.roomCode, isNull);
+    expect(provider.errorMessage, isNull);
+  });
+
   test('첫 복구 진행 중 재단절하면 새 연결에서 복구를 한 번 더 수행한다', () async {
     final service = _LeaveRoomService()..restoreGate = Completer<void>();
     final provider = _provider(service)..listenRoom();

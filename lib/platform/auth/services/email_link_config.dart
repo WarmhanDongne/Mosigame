@@ -14,7 +14,7 @@ class EmailLinkConfig {
       continueUrl: String.fromEnvironment(
         'EMAIL_LINK_CONTINUE_URL',
         defaultValue:
-            'https://project0000-ec01e.firebaseapp.com/auth/email-link',
+            'https://ban-pick-simulator.firebaseapp.com/auth/email-link',
       ),
       androidPackageName: String.fromEnvironment(
         'ANDROID_APPLICATION_ID',

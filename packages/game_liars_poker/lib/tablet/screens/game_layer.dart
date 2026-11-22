@@ -9,6 +9,7 @@ class _RoundDealLayer extends StatefulWidget {
     required this.roundNumber,
     required this.boardSeatCount,
     required this.playerSeatIndexes,
+    this.seatLayoutMode,
     required this.cardsPerPlayer,
     required this.truthCardCount,
     required this.lieCardCount,
@@ -20,6 +21,7 @@ class _RoundDealLayer extends StatefulWidget {
   final int roundNumber;
   final int boardSeatCount;
   final List<int> playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
   final int cardsPerPlayer;
   final int truthCardCount;
   final int lieCardCount;
@@ -101,6 +103,12 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
                   playerCount: widget.playerSeatIndexes.length,
                   boardSeatCount: widget.boardSeatCount,
                   playerSeatIndexes: widget.playerSeatIndexes,
+                  seatCentersBuilder: (seatCount, boardSize) =>
+                      playerCentersForBoard(
+                        playerCount: seatCount,
+                        boardSize: boardSize,
+                        mode: widget.seatLayoutMode,
+                      ),
                   cardsPerPlayer: widget.cardsPerPlayer,
                   reserveCardCount: widget.unrevealedCardCount,
                   cardBuilder: (context, playerIndex, cardIndex) =>

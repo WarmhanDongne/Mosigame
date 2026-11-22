@@ -14,6 +14,15 @@ import {YutGameState} from "../yut/types.js";
 import {excludeRussianRoulettePlayer} from "../russian-roulette/game.js";
 import {RussianRouletteGameState} from "../russian-roulette/types.js";
 
+const RECOVERY_EXCLUSION_GAMES = new Set([
+  "liars_poker", "final_call", "mafia", "holdem", "yut",
+  "strategy_yut", "strategy_yut_edition", "russian_roulette",
+]);
+
+export function supportsRecoveryExclusion(gameId: unknown): boolean {
+  return typeof gameId === "string" && RECOVERY_EXCLUSION_GAMES.has(gameId);
+}
+
 export function excludeRecoveryPlayer(room: RecoveryRoom, uid: string, now: number): void {
   const game = room.game;
   if (!game) return;

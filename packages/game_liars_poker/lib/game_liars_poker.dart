@@ -14,6 +14,8 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
+import 'package:game_liars_poker/tutorial/liars_tutorial.dart';
 
 // ============================================================
 
@@ -55,6 +57,10 @@ class LiarsPokerGame extends TemplateGame {
   @override
   ImageProvider get layoutChairImage =>
       Assets.games.liarsPoker.images.layout.layoutChair.game.provider();
+
+  // 자리 배치 뒤 처음 하는 사람이 있으면 태블릿·휴대폰 튜토리얼을 먼저 봅니다.
+  @override
+  GameTutorial get tutorial => const LiarsPokerTutorial();
 
   // ---------------------------------------------------------------------------
   // 서버 게임 시작과 상태 구독

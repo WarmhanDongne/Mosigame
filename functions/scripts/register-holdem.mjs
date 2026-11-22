@@ -32,7 +32,7 @@ export async function registerHoldemCatalog({dryRun = false} = {}) {
   }
 
   if (getApps().length === 0) {
-    initializeApp({projectId: process.env.GCLOUD_PROJECT ?? "project0000-ec01e"});
+    initializeApp({projectId: process.env.GCLOUD_PROJECT ?? "ban-pick-simulator"});
   }
   const database = getFirestore();
   const reference = database.collection("games").doc("holdem");

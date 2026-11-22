@@ -154,6 +154,13 @@ bool isValidFinalCallSelection(Iterable<FinalCallCard> cards) {
 
 /// [calculateFinalCallScoreResult]와 같은 규칙으로 최고 점수를 만든 카드를
 /// 함께 돌려줍니다.
+/// 손패 4장이 모두 같은 숫자(포카드)인지 확인합니다.
+bool isFinalCallFourOfAKind(Iterable<FinalCallCard> cards) {
+  final hand = cards.toList(growable: false);
+  if (hand.length != 4) return false;
+  return hand.every((card) => card.value == hand.first.value);
+}
+
 FinalCallCombination finalCallBestCombination(Iterable<FinalCallCard> cards) {
   final hand = cards.toList(growable: false);
   final result = calculateFinalCallScoreResult(hand);
@@ -310,12 +317,24 @@ class FinalCallRoundResult {
     required this.lifeLosses,
     required this.revealedHands,
     required this.automaticCall,
+    this.callerUid,
+    this.callerFourOfAKind = false,
   });
 
   final Map<String, int> scores;
   final Map<String, int> lifeLosses;
   final Map<String, List<FinalCallCard>> revealedHands;
   final bool automaticCall;
+
+  /// CALL을 선언한 플레이어입니다. 덱 소진 자동 CALL이면 null입니다.
+  final String? callerUid;
+
+  /// 선언자가 같은 숫자 4장(포카드)으로 CALL했는지 여부입니다.
+  ///
+  /// true면 서버가 다른 사람의 마지막 교체·제출 없이 바로 정산했으므로
+  /// [revealedHands]에는 선언자의 네 장만 들어 있고, 상대팀 전원이 하트를
+  /// 하나씩 잃습니다. 태블릿·휴대폰은 평소 카드 비교 대신 포카드 연출을 씁니다.
+  final bool callerFourOfAKind;
 
   factory FinalCallRoundResult.fromMap(Map<Object?, Object?> map) {
     Map<String, int> ints(Object? value) {
@@ -355,6 +374,8 @@ class FinalCallRoundResult {
       lifeLosses: ints(map['lifeLosses']),
       revealedHands: hands,
       automaticCall: map['automaticCall'] == true,
+      callerUid: map['callerUid']?.toString(),
+      callerFourOfAKind: map['callerFourOfAKind'] == true,
     );
   }
 
@@ -371,7 +392,9 @@ class FinalCallRoundResult {
         mapEquals(scores, other.scores) &&
         mapEquals(lifeLosses, other.lifeLosses) &&
         mapEquals(revealedHands, other.revealedHands) &&
-        automaticCall == other.automaticCall;
+        automaticCall == other.automaticCall &&
+        callerUid == other.callerUid &&
+        callerFourOfAKind == other.callerFourOfAKind;
   }
 
   @override
@@ -386,5 +409,7 @@ class FinalCallRoundResult {
       revealedHands.entries.map((e) => Object.hash(e.key, e.value)),
     ),
     automaticCall,
+    callerUid,
+    callerFourOfAKind,
   );
 }

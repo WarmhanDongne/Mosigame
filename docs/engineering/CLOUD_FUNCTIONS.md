@@ -1,5 +1,34 @@
 # Cloud Functions 정리
 
+## 현재 source 기준 — 2026-11-18
+
+정확한 export 목록의 source of truth는 `functions/src/index.ts`다. 과거 배포 기록의
+67·69·79·81개 수치를 현재 운영 배포 수로 사용하지 않는다.
+
+| 기준 | export 수 | 의미 |
+| --- | ---: | --- |
+| `cb13e579` HEAD | 93 | 현재 `develop`에 커밋된 source |
+| `jinsung` 통합 후보 | 99 | 공지 1, 운영 알림 발송 1, push device 2, 게임 push trigger 2 추가 |
+
+로컬 후보의 그룹별 export 수는 다음과 같다.
+
+| 영역 | 수 |
+| --- | ---: |
+| 방·세션·room trigger | 18 |
+| 인증·계정 정리 | 9 |
+| 운영 공지·push | 6 |
+| Liar's Poker | 11 |
+| Final Call | 12 |
+| Mafia | 13 |
+| Holdem | 7 |
+| Yut 계열 | 7 |
+| Russian Roulette | 6 |
+| interruption·recovery·cleanup | 10 |
+
+이 수치는 source inventory이며 실제 운영 Firebase의 배포 이름·revision을 조회한 결과가
+아니다. TEST 프로젝트 검증과 운영 배포는
+[`TEST_AND_RELEASE_GUIDE.md`](../operations/TEST_AND_RELEASE_GUIDE.md)를 따른다.
+
 ## 2026-11-05 — 끊긴 pending join 응답 재사용 방지 배포
 
 `joinRealtimeRoom`의 기존 connect operation 재전송에서 presenceProtocol=2,
@@ -60,10 +89,10 @@ callable/schedule/HTTP는 asia-northeast3, RTDB 트리거는 asia-southeast1이�
 
 ## 2. 방과 인증
 
-room/ callable 12개: createRealtimeRoom, validateRealtimeRoom, joinRealtimeRoom,
+room/session callable 13개: createRealtimeRoom, validateRealtimeRoom, joinRealtimeRoom,
 beginRealtimeRoomSeating, saveRealtimePlayerSeatIndexes, selectRealtimeRoomGame,
 fetchRealtimeRoomGroupEntitlements, resumeRealtimeControllerRoom, removeRealtimeRoomPlayer,
-leaveRealtimeRoom, closeRoom, fetchRealtimeRoomSession.
+leaveRealtimeRoom, closeRoom, fetchRealtimeRoomSession, game_common_operation_status.
 같은 operation 재생, room/member/current connection와 sequence CAS, 요청 방의 구매 자격을 검증한다.
 
 auth/ callable 8개: beginOnboarding, advanceOnboarding, completeOnboardingProfile,
@@ -93,7 +122,7 @@ Firebase `emailVerified`가 true가 될 때까지 앱은 인증 대기 화면을
 미인증 가입 준비 실패 또는 이메일 인증 검증 누락이 생긴다. production 조회·배포는
 별도 승인이 필요하며, 이 후보에서 수행하지 않았다.
 
-## 3. 네 게임
+## 3. 여섯 게임 패키지
 
 | 게임 | callable 목록 |
 | --- | --- |
@@ -101,8 +130,12 @@ Firebase `emailVerified`가 true가 될 때까지 앱은 인증 대기 화면을
 | Final Call (12) | start_game, complete_dealing, draw_card, complete_turn, timeout_turn, declare, submit_hand, complete_result_reveal, start_next_round, end_game, clear_game, leave_game |
 | Mafia (13) | start_game, confirm_role, complete_role_reveal, submit_night_action, timeout_night, complete_morning, end_discussion, timeout_day, submit_vote, timeout_vote, complete_vote_result, end_game, leave_game |
 | Holdem (7) | start_game, complete_dealing, act, timeout_turn, complete_result, end_game, leave_game |
+| Yut 계열 (7) | start_game, roll, submit_choice, move_piece, timeout_turn, end_game, leave_game |
+| Russian Roulette (6) | start_game, submit_action, timeout_turn, complete_phase, end_game, leave_game |
 
-각 이름 앞에 game_liars_poker_, game_final_call_, game_mafia_, game_holdem_을 붙인다.
+각 이름 앞에 `game_liars_poker_`, `game_final_call_`, `game_mafia_`, `game_holdem_`,
+`game_yut_`, `game_russian_roulette_`를 붙인다. `yut`, `strategy_yut`,
+`strategy_yut_edition`은 같은 `game_yut` Functions를 사용한다.
 complete_*는 연출 완료, timeout_*는 서버 deadline 확인을 요청한다.
 모든 현재 명령은 공용 transaction/context/ledger 검증을 사용한다.
 Mafia 고유 투표는 유지하지만 네트워크 제외 투표는 없다. 자기 퇴장은 원래 membership만 제거한다.
@@ -151,9 +184,29 @@ vote_to_continue/finish_now는 현재 index export와 소비자에서 제거했�
 
 ## 5. RTDB 트리거와 주기 작업
 
+### 게임 기기 푸시 후보 (미배포)
+
+`registerPushDevice`와 `unregisterPushDevice`는 인증된 사용자만 호출한다. 서버는
+FCM 토큰을 해시한 ID로 `pushDevices`에 UID·토큰·언어·갱신 시각을 저장하며,
+클라이언트의 Firestore 직접 접근은 막는다. 계정 삭제 시 등록 기기도 제거한다.
+
+`pushGameStatus`는 게임의 `public/status`가 `playing` 또는 `finished`로
+바뀌었을 때, `pushGameTurn`은 유효한 `turnDeadlineAt`이 시작됐을 때 방의 활성
+휴대폰 참가자에게만 일반 문구를 발송한다. 방 코드·게임 비공개 정보는 FCM 본문에
+포함하지 않는다. 방 내부 `pushDispatch` 표식은 중복 발송을 억제한다. 마피아와
+러시안 룰렛처럼 개인 `turnUid`가 없는 게임에는 내 차례 알림을 보내지 않는다.
+서버 함수와 앱, 모바일 Firebase 설정을 같은 TEST 프로젝트에 맞춰 배포·설치한
+실기기에서 검증해야 한다. 이 절은 배포 완료를 의미하지 않는다.
+
+게임 푸시의 FCM API 수락·거절 건수와 마지막 요청 시각만
+`pushDeliveryStatus/current`에 누적한다. TEST 운영 콘솔은 `operationsAdmin`에게만
+이 집계를 보여준다. 실제 기기 수신 확인이 아니며 토큰·UID·방 코드를 저장하지 않는다.
+운영자가 일반 알림을 발송하는 `sendOperationsPushNotification`과 그 이력은 별도 기능이다.
+
 | RTDB 함수 (싱가포르) | 경로·역할 |
 | --- | --- |
 | syncRealtimeRoomConnection | rooms/{room}/connections/{uid}/{connectionId}/connected, false 상태 전환만 현재 root CAS로 요약·중단 반영(retry). 시각-only heartbeat는 호출하지 않음 |
+| syncRealtimeRoomJoinPreview | rooms/{room}/players 변경 때 참가 전 최소 `joinPreview` 동기화 |
 | game_common_interruption_on_connection_changed | players/{uid}/isConnected, 현재 phone 단절 cause의 멱등 안전망 |
 | game_common_controller_presence_changed | controllerPresence/connected, controller 단절 cause의 멱등 안전망 |
 | syncRealtimeRoomGameStatus | game/public/status, 현재 game 상태를 방에 반영 |

@@ -3,26 +3,26 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "project0000-ec01e",
-          "appId": "1:93097008048:android:0ccdec23053fc259d49475",
+          "projectId": "ban-pick-simulator",
+          "appId": "1:127477049099:android:6f08ec7b66fc88f1dd640e",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "project0000-ec01e",
-          "appId": "1:93097008048:ios:7cc378f1a02877ffd49475",
+          "projectId": "ban-pick-simulator",
+          "appId": "1:127477049099:ios:7325f1c2b41106d7dd640e",
           "uploadDebugSymbols": true,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
       "dart": {
-        "lib/firebase/firebase_options.dart": {
-          "projectId": "project0000-ec01e",
+        "packages/game_kit/lib/firebase/firebase_options_test.dart": {
+          "projectId": "ban-pick-simulator",
           "configurations": {
-            "android": "1:93097008048:android:0ccdec23053fc259d49475",
-            "ios": "1:93097008048:ios:7cc378f1a02877ffd49475",
-            "web": "1:93097008048:web:0f1a8474555be068d49475"
+            "android": "1:127477049099:android:6f08ec7b66fc88f1dd640e",
+            "ios": "1:127477049099:ios:7325f1c2b41106d7dd640e",
+            "web": "1:127477049099:web:c11a93f52655e4a0dd640e"
           }
         }
       }
@@ -56,7 +56,7 @@
     "rules": "database.rules.json"
   },
   "hosting": {
-    "site": "project0000-ec01e",
+    "site": "ban-pick-simulator",
     "public": "public",
     "ignore": [
       "firebase.json",

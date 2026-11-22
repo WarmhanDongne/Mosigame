@@ -92,7 +92,6 @@ class FinalCallGame extends TemplateGame {
     required GameRoomContext provider,
     required String roomCode,
   }) {
-    // Final Call 태블릿 화면은 좌석 배치를 쓰지 않아 playerLayout을 사용하지 않습니다.
     return Builder(
       builder: (context) => CriticalNetworkGuard(
         provider: provider,
@@ -102,6 +101,7 @@ class FinalCallGame extends TemplateGame {
           roomCode: roomCode,
           gameService: FinalCallService(),
           provider: provider,
+          playerLayout: playerLayout,
         ),
       ),
     );

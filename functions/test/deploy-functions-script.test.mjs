@@ -40,3 +40,11 @@ test('test Firebase config isolates Mosigame from the existing default codebase'
   assert.equal(config.firestore.rules, 'firestore.rules');
   assert.equal(config.storage.rules, 'storage.rules');
 });
+
+test('Firebase CLI defaults to TEST and requires an explicit production alias', () => {
+  const config = JSON.parse(readFileSync('../.firebaserc', 'utf8'));
+  assert.equal(config.projects.default, 'ban-pick-simulator');
+  assert.equal(config.projects['mosigame-test'], 'ban-pick-simulator');
+  assert.equal(config.projects['mosigame-production'], PRODUCTION_PROJECT_ID);
+  assert.notEqual(config.projects.default, PRODUCTION_PROJECT_ID);
+});

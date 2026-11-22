@@ -13,6 +13,7 @@ import {
   nextFinalCallPlayer,
   prepareFinalCallRound,
   removeFinalTurnPendingPlayer,
+  resolveFinalCallFourCardCall,
   resolveFinalCallRound,
   resolveFinalCallSubmission,
   selectBestFinalCallHand,
@@ -328,6 +329,70 @@ test("덱 소진 자동 CALL에서는 포카드 규칙이 적용되지 않는다
   resolveFinalCallRound(game, 300, true);
 
   assert.equal(game.public.roundResult.callerFourOfAKind, false);
+});
+
+// CALL 직전 상태(아직 아무도 제출하지 않은 playing 단계)를 만듭니다.
+function beforeCallGame({quad = true} = {}) {
+  const game = finalCallGame();
+  game.public.phase = "playing";
+  game.public.turnUid = "uid1";
+  game.public.callerUid = null;
+  game.public.finalTurnPendingUids = [];
+  game.server.finalSubmissions = {};
+  if (quad) {
+    const cards = [
+      card("q-red7", "red", 7),
+      card("q-blue7", "blue", 7),
+      card("q-green7", "green", 7),
+      card("q-yellow7", "yellow", 7),
+    ];
+    game.private.uid1 = {hand: Object.fromEntries(cards.map((value) => [value.id, value]))};
+  }
+  return game;
+}
+
+test("포카드로 CALL하면 다른 사람 제출 없이 바로 정산하고 선언자 카드만 공개한다", () => {
+  const game = beforeCallGame();
+
+  assert.equal(resolveFinalCallFourCardCall(game, "uid1", 400), true);
+
+  const result = game.public.roundResult;
+  assert.equal(game.public.phase, "roundResult");
+  assert.equal(result.callerUid, "uid1");
+  assert.equal(result.callerFourOfAKind, true);
+  // 선언자의 네 장만 공개되고, 다른 사람 손패는 공개 데이터에 들어가지 않습니다.
+  assert.deepEqual(Object.keys(result.revealedHands), ["uid1"]);
+  assert.equal(result.revealedHands.uid1.length, 4);
+  assert.deepEqual(Object.keys(result.scores), ["uid1"]);
+  // 상대(blue)팀만 하트 -1
+  assert.deepEqual(result.lifeLosses, {uid2: 1, uid4: 1});
+  assert.equal(game.public.players.uid1.lives, 3);
+  assert.equal(game.public.players.uid3.lives, 3);
+  // 마지막 교체·제출 단계가 남지 않습니다.
+  assert.deepEqual(game.public.finalTurnPendingUids, []);
+  assert.equal(game.public.turnUid, null);
+  assert.equal(game.public.turnDeadlineAt, null);
+});
+
+test("포카드가 아니면 바로 정산하지 않고 평소 CALL 흐름에 맡긴다", () => {
+  const game = beforeCallGame({quad: false});
+
+  assert.equal(resolveFinalCallFourCardCall(game, "uid1", 400), false);
+
+  assert.equal(game.public.phase, "playing");
+  assert.equal(game.public.roundResult, undefined);
+  assert.equal(game.public.callerUid, null);
+});
+
+test("포카드 CALL로 상대팀 하트가 0이 되면 바로 게임이 끝난다", () => {
+  const game = beforeCallGame();
+  game.public.players.uid2.lives = 1;
+
+  resolveFinalCallFourCardCall(game, "uid1", 400);
+
+  assert.equal(game.public.status, "finished");
+  assert.equal(game.public.winningTeam, "red");
+  assert.equal(game.public.players.uid4.status, "eliminated");
 });
 
 // ============================================================================

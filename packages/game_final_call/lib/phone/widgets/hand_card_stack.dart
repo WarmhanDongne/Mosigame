@@ -77,6 +77,8 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
     this.combinationLabel,
     this.showTapHint = false,
     this.autoReveal = false,
+    this.fourCard = false,
+    this.celebrationKey,
   });
 
   final List<FinalCallCard> cards;
@@ -104,6 +106,14 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
 
   /// 받은 덱을 자동으로 펼칠지 여부입니다.
   final bool autoReveal;
+
+  /// 손패가 포카드면 카드 테두리와 묶음 꼬리표를 금빛으로 바꿉니다.
+  final bool fourCard;
+
+  /// 포카드가 막 완성됐을 때 한 번 재생할 축하 연출의 키입니다.
+  ///
+  /// 같은 값이면 다시 재생하지 않습니다. null이면 연출하지 않습니다.
+  final Object? celebrationKey;
   final VoidCallback onRevealStarted;
   final VoidCallback onRevealCompleted;
   final ValueChanged<String> onCardSelected;
@@ -157,6 +167,13 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
+              // 포카드가 막 완성되면 카드 뒤에서 금빛 빛살이 퍼집니다.
+              if (celebrationKey != null)
+                Positioned.fill(
+                  child: _FourCardBurstRays(
+                    key: ValueKey('four-card-rays-$celebrationKey'),
+                  ),
+                ),
               // 점수를 만든 카드를 아래에서 노란 괄호로 묶고 계산식을 답니다.
               if (comboIndexes.isNotEmpty && label != null)
                 Positioned(
@@ -174,7 +191,7 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
                       cardInset +
                       width * finalCallCardHeightRatio +
                       12,
-                  child: _CombinationBracket(label: label),
+                  child: _CombinationBracket(label: label, gold: fourCard),
                 ),
               for (var index = 0; index < cards.length; index++)
                 AnimatedPositioned(
@@ -206,6 +223,19 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
                         ? null
                         : (draggedCardId) =>
                               onCardsReordered(draggedCardId, cards[index].id),
+                    fourCard: fourCard,
+                    celebrationKey: celebrationKey,
+                    celebrationIndex: index,
+                  ),
+                ),
+              // FOUR CARD! 도장(카드 위)
+              if (celebrationKey != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: cardTop - 30,
+                  child: _FourCardStamp(
+                    key: ValueKey('four-card-stamp-$celebrationKey'),
                   ),
                 ),
             ],
@@ -245,7 +275,10 @@ enum FinalCallHandSelectionMode {
 }
 
 class _CombinationBracket extends StatelessWidget {
-  const _CombinationBracket({required this.label});
+  const _CombinationBracket({required this.label, this.gold = false});
+
+  /// 포카드일 때 금빛 꼬리표로 바꿉니다.
+  final bool gold;
 
   final String label;
 
@@ -271,7 +304,26 @@ class _CombinationBracket extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(top: 8, child: FinalCallPopTag(label: label)),
+        Positioned(
+          top: 8,
+          child: gold
+              ? DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FinalCallColors.yellow.withValues(alpha: .7),
+                        blurRadius: 14,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: FinalCallPopTag(
+                    label: '$label · ${FinalCallCopy.fourCardBadge}',
+                  ),
+                )
+              : FinalCallPopTag(label: label),
+        ),
       ],
     ),
   );
@@ -289,8 +341,14 @@ class _SelectableHandCard extends StatelessWidget {
     required this.replacing,
     required this.onTap,
     required this.onReorder,
+    this.fourCard = false,
+    this.celebrationKey,
+    this.celebrationIndex = 0,
   });
 
+  final bool fourCard;
+  final Object? celebrationKey;
+  final int celebrationIndex;
   final FinalCallCard card;
   final double width;
   final bool selected;
@@ -341,7 +399,7 @@ class _SelectableHandCard extends StatelessWidget {
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: replaceSelected
+                      color: replaceSelected || fourCard
                           ? FinalCallColors.highlight
                           : Colors.transparent,
                       width: 3,
@@ -350,6 +408,9 @@ class _SelectableHandCard extends StatelessWidget {
                   ),
                   child: FinalCallCardView(card: card, width: width),
                 ),
+                // 포카드면 금빛이 천천히 숨 쉬듯 깜빡입니다.
+                if (fourCard && !replaceSelected)
+                  Positioned.fill(child: _FourCardGlow(radius: 20 * unit)),
                 if (replaceSelected)
                   Positioned(
                     bottom: -30,
@@ -396,8 +457,16 @@ class _SelectableHandCard extends StatelessWidget {
       ),
     );
 
+    final celebrated = celebrationKey == null
+        ? face
+        : _CelebrationBounce(
+            key: ValueKey('four-card-bounce-$celebrationKey-${card.id}'),
+            delay: Duration(milliseconds: 90 * celebrationIndex),
+            height: 26 * unit,
+            child: face,
+          );
     final reorder = onReorder;
-    if (reorder == null) return face;
+    if (reorder == null) return celebrated;
     return DragTarget<String>(
       onWillAcceptWithDetails: (details) => details.data != card.id,
       onAcceptWithDetails: (details) => reorder(details.data),
@@ -415,14 +484,169 @@ class _SelectableHandCard extends StatelessWidget {
               ),
             ),
           ),
-          childWhenDragging: Opacity(opacity: 0.24, child: face),
+          childWhenDragging: Opacity(opacity: 0.24, child: celebrated),
           child: AnimatedScale(
             scale: candidateData.isEmpty ? 1 : 1.04,
             duration: const Duration(milliseconds: 140),
-            child: face,
+            child: celebrated,
           ),
         );
       },
     );
   }
+}
+
+// ============================================================================
+// 포카드 연출 (내 휴대폰에만 보임)
+// ============================================================================
+
+/// 포카드 카드 테두리 바깥에서 천천히 숨 쉬듯 깜빡이는 금빛입니다.
+class _FourCardGlow extends StatefulWidget {
+  const _FourCardGlow({required this.radius});
+
+  final double radius;
+
+  @override
+  State<_FourCardGlow> createState() => _FourCardGlowState();
+}
+
+class _FourCardGlowState extends State<_FourCardGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _breath.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedBuilder(
+      animation: _breath,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_breath.value);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            boxShadow: [
+              BoxShadow(
+                color: FinalCallColors.yellow.withValues(alpha: .35 + .4 * t),
+                blurRadius: 12 + 10 * t,
+                spreadRadius: 1 + 3 * t,
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// 포카드가 완성된 순간 카드가 차례로 통통 튀어 오릅니다.
+class _CelebrationBounce extends StatelessWidget {
+  const _CelebrationBounce({
+    super.key,
+    required this.delay,
+    required this.height,
+    required this.child,
+  });
+
+  final Duration delay;
+  final double height;
+  final Widget child;
+
+  static const int _bounceMs = 420;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMs = delay.inMilliseconds + _bounceMs;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      builder: (context, t, child) {
+        final elapsed = t * totalMs - delay.inMilliseconds;
+        final p = (elapsed / _bounceMs).clamp(0.0, 1.0);
+        return Transform.translate(
+          offset: Offset(0, -math.sin(p * math.pi) * height),
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// 포카드가 완성된 순간 카드 뒤에서 퍼졌다 사라지는 금빛 빛살입니다.
+class _FourCardBurstRays extends StatelessWidget {
+  const _FourCardBurstRays({super.key});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 2400),
+      builder: (context, t, _) {
+        final fadeIn = Curves.easeOut.transform((t / .15).clamp(0.0, 1.0));
+        final fadeOut = 1 - ((t - .7) / .3).clamp(0.0, 1.0);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.biggest.longestSide * 1.1;
+            return OverflowBox(
+              maxWidth: size,
+              maxHeight: size,
+              child: Opacity(
+                opacity: fadeIn * fadeOut * .85,
+                child: Transform.rotate(
+                  angle: t * math.pi / 5,
+                  child: FinalCallBurstRays(size: size),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ),
+  );
+}
+
+/// 포카드가 완성된 순간 카드 위에 찍히는 FOUR CARD! 글자입니다.
+class _FourCardStamp extends StatelessWidget {
+  const _FourCardStamp({super.key});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 2400),
+      builder: (context, t, _) {
+        final enter = ((t - .12) / .18).clamp(0.0, 1.0);
+        final fadeOut = 1 - ((t - .78) / .22).clamp(0.0, 1.0);
+        if (enter <= 0) return const SizedBox.shrink();
+        return Opacity(
+          opacity: fadeOut,
+          child: Center(
+            child: Transform.rotate(
+              angle: -.1,
+              child: Transform.scale(
+                scale: 1.8 - .8 * Curves.easeOutBack.transform(enter),
+                child: Text(
+                  FinalCallCopy.fourCardStamp,
+                  style: finalCallPopText(
+                    46,
+                    color: FinalCallColors.yellow,
+                    height: 1,
+                    shadows: finalCallPopRing(2.5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
