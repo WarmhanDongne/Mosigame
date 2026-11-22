@@ -22,7 +22,25 @@ E02~E12의 [구현 후보와 관련 검사](NETWORK_SESSION_E02_E12_IMPLEMENTATI
 | 출시 전 필수 | 11 |
 | 출시 전 권장 | 11 |
 | 출시 후 작업 | 8 |
-| 합계 | 38 |
+| 흑과 백 리버스 | 10 |
+| 합계 | 48 |
+
+## 흑과 백 리버스 (신규 게임, Issue #201)
+
+제품 결정은 [노션 개발 계획](https://app.notion.com/p/42009716f87e8146b627c41eb0d45e21), 단계별 구현·검증의 현재 상태는 이 표에서 관리한다. 단계가 끝나면 [인계 기록](BLACK_WHITE_REVERSE_HANDOFF.md)을 갱신한다. 운영 서비스의 기존 출시 차단 항목과 별도로 추적한다.
+
+| ID | 작업 | 상태 | 다음 행동 |
+| --- | --- | --- | --- |
+| [BWR-S0](tasks/BWR-S0.md#bwr-s0) | 기준선·작업 등록 | 진행 중 — 최신 develop 및 FULL 기준선 미확인, gameId 확인 대기 | SDK 권한이 있는 환경에서 최신 develop을 안전하게 반영하고 FULL 재실행, gameId 확정 |
+| [BWR-S1](tasks/BWR-S1.md#bwr-s1) | 서버·앱 계약 문서 | 보류 — S0 미완료 | S0 후 데이터·명령·화면 phase 계약 작성 및 사용자 승인 |
+| [BWR-S2](tasks/BWR-S2.md#bwr-s2) | 서버 순수 규칙 | 보류 — S1 승인 전 | 숫자 쌍 전수·예외·종료 조건 구현 및 검증 |
+| [BWR-S3](tasks/BWR-S3.md#bwr-s3) | 서버 상태 전이·명령 | 보류 — S1 승인 전 | 권한·멱등·타임아웃·복구 구현 및 에뮬레이터 검증 |
+| [BWR-S4](tasks/BWR-S4.md#bwr-s4) | 앱 패키지 골격 | 보류 — S1 승인 전 | 패키지·registry·임시 화면의 전체 흐름 연결 |
+| [BWR-S5](tasks/BWR-S5.md#bwr-s5) | 휴대폰 P01–P11 | 보류 — S4 전 | 상태별 화면·언어·작은 기기 확인 |
+| [BWR-S6](tasks/BWR-S6.md#bwr-s6) | 태블릿 T01–T13 | 보류 — S4 전 | 양쪽 가독성·뽑기·연출 확인 |
+| [BWR-S7](tasks/BWR-S7.md#bwr-s7) | 로컬 통합·전체 검증 | 보류 — S3/S5/S6 전 | 다중 기기·회귀·FULL 검증 |
+| [BWR-S8](tasks/BWR-S8.md#bwr-s8) | TEST 배포·실기기 | 보류 — S7 전 | TEST 격리 확인·D01–D17 실기기 검증 |
+| [BWR-S9](tasks/BWR-S9.md#bwr-s9) | 운영 출시 | 보류 — S8 판정 전 | release manifest·승인별 선택 배포 및 공개 전환 |
 
 ## 구현 검증 대기
 
