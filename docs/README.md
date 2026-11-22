@@ -15,6 +15,7 @@ AI는 루트 [`AGENTS.md`](../AGENTS.md) 하나에서 시작합니다. 모든 �
 | [`NEW_GAME_GUIDE.md`](engineering/NEW_GAME_GUIDE.md) | 새 게임의 패키지·서버·카탈로그·검증 순서 |
 | [`DEVELOPMENT_GUIDE.md`](development/DEVELOPMENT_GUIDE.md) | 개발환경, TEST·local 실행, dependency 준비 |
 | [`TEST_AND_RELEASE_GUIDE.md`](operations/TEST_AND_RELEASE_GUIDE.md) | TEST 실기기 검증과 스토어·운영 배포 절차 |
+| [`PUSH_NOTIFICATION_RELEASE_GUIDE.md`](operations/PUSH_NOTIFICATION_RELEASE_GUIDE.md) | TEST·운영 푸시 설정, 콘솔 등록과 제한 배포 절차 |
 | [`TASKS.md`](planning/TASKS.md) | 현재 작업 상태와 다음 행동 |
 
 ## 작업 상세과 과거 증거

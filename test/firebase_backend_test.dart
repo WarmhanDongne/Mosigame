@@ -15,10 +15,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestFirebaseCoreHostApi.setUp(_Core());
   setUpAll(() async {
-    // Native Android/iOS builds can already contain the production [DEFAULT]
-    // app. Reproduce that state before the isolated backend is initialized.
+    // Reproduce the native default app selected from the same build backend.
     await Firebase.initializeApp();
     if (FirebaseBackend.isTest) {
+      await initializeFirebaseBackend();
+    } else if (!FirebaseBackend.isLocal) {
       await initializeFirebaseBackend();
     }
     await Firebase.initializeApp(
@@ -61,13 +62,14 @@ void main() {
   });
 
   test(
-    'test backend stays isolated from an existing production default app',
+    'test backend keeps its named SDK app and matching Messaging default',
     () {
       if (!FirebaseBackend.isTest) return;
 
       expect(Firebase.app().name, '[DEFAULT]');
+      expect(Firebase.app().options.projectId, TestFirebaseOptions.projectId);
       expect(FirebaseBackend.app.name, 'mosigame-test');
-      expect(FirebaseBackend.defaultAppMatchesSelectedBackend, isFalse);
+      expect(FirebaseBackend.defaultAppMatchesSelectedBackend, isTrue);
       expect(
         FirebaseBackend.app.options.projectId,
         TestFirebaseOptions.projectId,
@@ -83,6 +85,14 @@ void main() {
       }
     },
   );
+
+  test('server backend uses the production default Firebase app', () {
+    if (FirebaseBackend.isTest || FirebaseBackend.isLocal) return;
+
+    expect(FirebaseBackend.app.name, '[DEFAULT]');
+    expect(FirebaseBackend.defaultAppMatchesSelectedBackend, isTrue);
+    expect(FirebaseBackend.app.options.projectId, 'project0000-ec01e');
+  });
 
   test('invalid modes and non-debug local builds fail closed', () {
     expect(
@@ -128,7 +138,11 @@ void main() {
     expect(android.databaseURL, contains('ban-pick-simulator-default-rtdb'));
     expect(
       selectedGoogleServerClientId,
-      FirebaseBackend.isTest ? TestFirebaseOptions.googleWebClientId : isNull,
+      FirebaseBackend.isTest
+          ? TestFirebaseOptions.googleWebClientId
+          : FirebaseBackend.isLocal
+          ? isNull
+          : startsWith('93097008048-'),
     );
 
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -136,6 +150,24 @@ void main() {
     expect(ios.projectId, TestFirebaseOptions.projectId);
     expect(ios.iosBundleId, 'com.warmhandongne.msg');
     expect(TestFirebaseOptions.googleWebClientId, startsWith('127477049099-'));
+  });
+
+  test('Google Sign-In uses the selected Firebase OAuth project', () {
+    if (FirebaseBackend.isLocal) {
+      expect(selectedGoogleServerClientId, isNull);
+      return;
+    }
+    expect(selectedGoogleServerClientId, isNotNull);
+    expect(
+      selectedGoogleServerClientId,
+      startsWith(FirebaseBackend.isTest ? '127477049099-' : '93097008048-'),
+    );
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    expect(
+      selectedFirebaseOptions.iosClientId,
+      startsWith(FirebaseBackend.isTest ? '127477049099-' : '93097008048-'),
+    );
   });
 
   test(
@@ -178,6 +210,29 @@ void main() {
 }
 
 class _Core extends MockFirebaseApp {
+  @override
+  Future<List<CoreInitializeResponse>> initializeCore() async {
+    final options = firebaseOptionsForBackend(
+      FirebaseBackend.isTest || FirebaseBackend.isLocal ? 'test' : 'server',
+    );
+    return [
+      CoreInitializeResponse(
+        name: '[DEFAULT]',
+        options: CoreFirebaseOptions(
+          apiKey: options.apiKey,
+          appId: options.appId,
+          messagingSenderId: options.messagingSenderId,
+          projectId: options.projectId,
+          databaseURL: options.databaseURL,
+          storageBucket: options.storageBucket,
+          iosClientId: options.iosClientId,
+          iosBundleId: options.iosBundleId,
+        ),
+        pluginConstants: {},
+      ),
+    ];
+  }
+
   @override
   Future<CoreInitializeResponse> initializeApp(
     String appName,

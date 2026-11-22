@@ -21,6 +21,8 @@ test("operations console can switch between the two explicit Firebase projects",
   assert.match(page, /sendOperationsPushNotification/);
   assert.match(page, /operationsPushDispatches/);
   assert.match(page, /TEST 알림 발송/);
+  assert.match(page, /등록된 휴대폰이 없습니다/);
+  assert.match(page, /앱 기기 등록 함수와 최신 앱 설치 상태/);
   assert.doesNotMatch(page, /알림 전송 · 성공 여부 미연동/);
   assert.match(page, /operationsAdmin/);
 });
