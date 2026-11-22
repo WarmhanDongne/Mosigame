@@ -31,7 +31,7 @@ E02~E12의 [구현 후보와 관련 검사](NETWORK_SESSION_E02_E12_IMPLEMENTATI
 
 | ID | 작업 | 상태 | 다음 행동 |
 | --- | --- | --- | --- |
-| [BWR-S0](tasks/BWR-S0.md#bwr-s0) | 기준선·작업 등록 | 진행 중 — 최신 develop 및 FULL 기준선 미확인, gameId 확인 대기 | SDK 권한이 있는 환경에서 최신 develop을 안전하게 반영하고 FULL 재실행, gameId 확정 |
+| [BWR-S0](tasks/BWR-S0.md#bwr-s0) | 기준선·작업 등록 | 진행 중 — 게임명·gameId `eleven` 확정, 최신 develop 및 FULL 기준선 미확인 | SDK 권한이 있는 환경에서 최신 develop을 안전하게 반영하고 FULL 재실행 |
 | [BWR-S1](tasks/BWR-S1.md#bwr-s1) | 서버·앱 계약 문서 | 보류 — S0 미완료 | S0 후 데이터·명령·화면 phase 계약 작성 및 사용자 승인 |
 | [BWR-S2](tasks/BWR-S2.md#bwr-s2) | 서버 순수 규칙 | 보류 — S1 승인 전 | 숫자 쌍 전수·예외·종료 조건 구현 및 검증 |
 | [BWR-S3](tasks/BWR-S3.md#bwr-s3) | 서버 상태 전이·명령 | 보류 — S1 승인 전 | 권한·멱등·타임아웃·복구 구현 및 에뮬레이터 검증 |
