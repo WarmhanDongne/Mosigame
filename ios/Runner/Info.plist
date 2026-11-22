@@ -45,6 +45,13 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- FCM 알림이 앱이 백그라운드에 있을 때 APNs를 통해 전달될 수 있도록
+	     Firebase가 요구하는 네이티브 background mode를 선언합니다. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
