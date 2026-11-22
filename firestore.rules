@@ -1,7 +1,8 @@
 rules_version = '2';
 
 // 방과 게임 상태는 Realtime Database(`database.rules.json`)에만 있습니다.
-// Firestore에는 게임 스토어 목록, 사용자 프로필, 온보딩 상태만 남습니다.
+// Firestore에는 게임 스토어 목록, 사용자 프로필, 온보딩, 플랫폼 공지와
+// 사용자 식별 정보가 없는 푸시 API 집계가 남습니다.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -30,6 +31,33 @@ service cloud.firestore {
     // 콘솔에서만 합니다. 개인정보나 비밀 값을 넣지 않습니다.
     match /appConfig/{configId} {
       allow read: if true;
+      allow write: if false;
+    }
+
+    // 앱 로비의 공지와 점검 상태입니다. 인증된 앱은 읽기만 가능하고,
+    // 수정은 운영자 callable이 Admin SDK로 처리합니다.
+    match /platformAnnouncements/{announcementId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // 기기 토큰은 서버 callable만 읽고 씁니다.
+    match /pushDevices/{deviceId} {
+      allow read, write: if false;
+    }
+
+    // 자동 게임 알림의 FCM 요청 결과만 운영자에게 보여줍니다.
+    // 기기 토큰, 사용자 ID, 방 코드는 이 문서에 저장하지 않습니다.
+    match /pushDeliveryStatus/{documentId} {
+      allow get: if documentId == 'current' && signedIn() &&
+        request.auth.token.operationsAdmin == true;
+      allow list, write: if false;
+    }
+
+    // 운영 알림 발송 이력입니다. 토큰은 저장하지 않으며 운영자 claim을 가진
+    // 계정만 콘솔에서 읽을 수 있습니다. 쓰기는 callable의 Admin SDK만 합니다.
+    match /operationsPushDispatches/{dispatchId} {
+      allow read: if signedIn() && request.auth.token.operationsAdmin == true;
       allow write: if false;
     }
 

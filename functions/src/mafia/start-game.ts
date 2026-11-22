@@ -1,5 +1,5 @@
 import {
-  replayGameCommand,
+  replayGameCommandFromRoom,
   runGameCommandTransaction,
 } from "../game-interruption/game-command-transaction.js";
 /* eslint-disable max-len */
@@ -49,9 +49,9 @@ export const game_mafia_start_game = onCall<StartData>(
     const roomCode = mafiaRoomCode(request.data?.roomCode);
     const restart = request.data?.restart === true;
     const roomRef = getDatabase().ref(`rooms/${roomCode}`);
-    const replay = await replayGameCommand(roomRef, request, "game_mafia_start_game");
-    if (replay) return replay;
     const room = (await roomRef.get()).val() as MafiaRoom | null;
+    const replay = replayGameCommandFromRoom(room, request, "game_mafia_start_game");
+    if (replay) return replay;
     if (!room) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");
     const startFingerprint = startGameFingerprint(room);
     assertMafiaController(room, uid, request.data?.controllerSessionId);

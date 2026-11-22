@@ -73,6 +73,23 @@ test("roomCode 존재 마커는 방 삭제·강퇴 뒤에도 로그인 사용자
   assert.equal(memberRead({field: "roomCode", auth: null}), false);
 });
 
+test("마지막 자리 기본값은 controller만 읽고 클라이언트는 쓰지 못한다", () => {
+  assert.equal(
+    memberRead({field: "seatingPreference", auth: {uid: "controller"}}),
+    true,
+  );
+  assert.equal(memberRead({field: "seatingPreference"}), false);
+  assert.equal(
+    memberRead({field: "seatingPreference", auth: {uid: "outsider"}}),
+    false,
+  );
+  assert.equal(memberRead({field: "seatingPreference", auth: null}), false);
+  assert.equal(
+    rules.rules.rooms.$roomCode.seatingPreference[".write"],
+    false,
+  );
+});
+
 test("입장 전에는 방 세션과 자기 참가 기록만 확인할 수 있다", () => {
   const roomInstanceRead = rules.rules.rooms.$roomCode.roomInstanceId[".read"];
   assert.equal(

@@ -28,6 +28,10 @@ class _SubmitGame extends Fake implements FinalCallController {
   @override
   int get revision => 5;
   @override
+  FinalCallRoundResult? get roundResult => null;
+  @override
+  bool get holdsFourCard => false;
+  @override
   bool get isFinalSubmitPhase => true;
   @override
   bool get canSubmitFinalHand => true;

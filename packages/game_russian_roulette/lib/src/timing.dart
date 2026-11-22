@@ -1,7 +1,8 @@
+import 'package:flutter/animation.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
-/// 러시안 룰렛 연출 타이밍입니다. 긴장감을 위해 HTML 프로토타입보다 느리게
-/// 맞췄습니다(공개 1초 간격, 회전 1.1초 간격, 발포 전 2.2초 긴장 연출).
+/// 러시안 룰렛 연출 타이밍입니다. 긴장감은 살리되 한 턴 구경 시간이 늘어지지
+/// 않게 맞췄습니다(공개 0.8초 간격, 회전 1.05초 간격, 발포 전 1.4초).
 ///
 /// 실기기 확정 전에는 이 파일의 값만 조정하면 휴대폰·태블릿
 /// 표시와 서버 연출 단계 진행 시점을 같이 바꿀 수 있습니다.
@@ -13,25 +14,32 @@ abstract final class RussianRouletteTiming {
   static const revealLead = Duration(milliseconds: 700);
 
   /// 행동 공개 카드 하나의 간격입니다.
-  static const revealStep = Duration(milliseconds: 1000);
+  static const revealStep = Duration(milliseconds: 800);
 
   /// 마지막 행동 공개 후 회전으로 넘어가기 전 여운입니다.
-  static const revealTail = Duration(milliseconds: 1200);
+  static const revealTail = Duration(milliseconds: 600);
 
   /// 회전 횟수를 집계한 뒤 첫 칸을 움직이기 전 준비 구간입니다.
-  static const rotationLead = Duration(milliseconds: 800);
+  static const rotationLead = Duration(milliseconds: 500);
 
   /// 총이 한 사람씩 시계 방향으로 이동하는 간격입니다.
-  static const rotationStep = Duration(milliseconds: 1100);
+  static const rotationStep = Duration(milliseconds: 1050);
 
   /// 마지막 회전 후 격발 표시로 넘어가기 전 여운입니다.
-  static const rotationTail = Duration(milliseconds: 1300);
+  static const rotationTail = Duration(milliseconds: 600);
 
   /// 총이 좌석 사이를 이동하는 실제 모션 길이입니다.
-  static const gunTurn = Duration(milliseconds: 800);
+  static const gunTurn = Duration(milliseconds: 750);
+
+  /// 목표 각도를 지나쳤다가 되돌아오지 않는 한 방향 회전 곡선입니다.
+  static const gunTurnCurve = Curves.easeInOutCubic;
+
+  /// 새 게임 화면이 다소 늦게 준비되어도 시작 연출을 한 번 보여 줄 수 있는
+  /// 첫 턴의 최소 남은 시간입니다.
+  static const introMinimumRemaining = Duration(seconds: 22);
 
   /// 격발 표시 후 피격 결과가 나오기 전 정지 시간입니다.
-  static const firingHold = Duration(milliseconds: 2200);
+  static const firingHold = Duration(milliseconds: 1400);
 
   /// 방패 충돌·흔들림 모션의 길이입니다.
   static const shieldImpact = Duration(milliseconds: 650);
@@ -44,6 +52,14 @@ abstract final class RussianRouletteTiming {
 
   /// 휴대폰·태블릿에서 단계(화면)가 바뀔 때 겹쳐 넘어가는 시간입니다.
   static const stageFade = Duration(milliseconds: 600);
+
+  /// 휴대폰 머리줄은 고정하고 아래 본문만 겹쳐 바꿀 때의 시간입니다.
+  static const bodyFade = Duration(milliseconds: 380);
+
+  /// 태블릿이 연출이 끝나기 이만큼 전에 다음 단계를 미리 요청합니다.
+  /// 서버 응답을 기다리는 동안 모든 화면이 멈춰 보이던 틈을 없앱니다.
+  /// 각 단계의 여운(tail)보다 짧아야 연출이 잘리지 않습니다.
+  static const phaseRequestLead = Duration(milliseconds: 300);
 
   /// 자리표 상태 칸이 바뀔 때의 전환 시간입니다.
   static const plateFade = Duration(milliseconds: 450);
@@ -77,6 +93,45 @@ abstract final class RussianRouletteTiming {
   }
 }
 
+/// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.
+///
+/// 서버의 첫 턴 마감에는 시작 연출 시간이 포함되지만 화면 전환·에셋 준비가
+/// 늦으면 그 시간이 일부 지나서 첫 상태를 받을 수 있습니다. 같은 게임에서는
+/// 한 번만 재생하고, 첫 턴 후반에 재접속한 화면에서는 다시 재생하지 않습니다.
+bool rouletteShouldStartIntro(
+  RussianRouletteView game, {
+  required int presentedStartedAt,
+  required int serverNow,
+}) {
+  if (game.round != 1 ||
+      game.phase != 'selecting' ||
+      game.paused ||
+      game.startedAt <= 0 ||
+      game.startedAt == presentedStartedAt ||
+      game.deadlineAt <= serverNow) {
+    return false;
+  }
+  return game.deadlineAt - serverNow >
+      RussianRouletteTiming.introMinimumRemaining.inMilliseconds;
+}
+
+/// 이 기기 시계로 본 지금 단계의 시작 시각을 돌려줍니다.
+///
+/// 서버가 단계 시작 시각([RussianRouletteView.phaseStartedAt])을 보내고 서버
+/// 시각 보정([serverNow])이 있으면, 늦게 받은 기기도 같은 시점부터 연출을 셉니다.
+/// 값이 없거나 보정 전이거나 믿기 어려운 차이(음수·1분 초과)면 받은 순간부터 셉니다.
+int rouletteLocalPhaseStart({
+  required int localNow,
+  required int? serverNow,
+  required int phaseStartedAt,
+}) {
+  if (serverNow == null || phaseStartedAt <= 0) return localNow;
+  final elapsed = serverNow - phaseStartedAt;
+  if (elapsed < 0) return localNow;
+  if (elapsed > 60000) return localNow;
+  return localNow - elapsed;
+}
+
 /// 태블릿이 잡아 두는 연출 단계 예약의 식별자입니다.
 ///
 /// 중단 여부를 포함합니다. 중단 중에는 예약을 버리므로, 재개가 같은 단계라도
@@ -107,11 +162,12 @@ Duration? roulettePhaseDelay(RussianRouletteView game) {
 ///
 /// 준비 중 공개 상태를 그대로 그리면 프로필과 총구가 잠깐 보인 뒤, 준비가
 /// 끝나 시작 연출이 0초부터 재생되면서 다시 어두워지는 깜빡임이 생깁니다.
-/// 이미 같은 마감 시각의 시작 연출을 처리했다면 중간 중단일 수 있으므로
-/// 기존 화면을 유지합니다.
+/// 이 게임([RussianRouletteView.startedAt])의 시작 연출을 이미 보여 줬다면
+/// 첫 턴 중간에 멈춘 것이므로 기존 화면을 유지합니다. 멈춘 동안은 마감 시각이
+/// 비어 있어(0) 마감 시각으로는 구분할 수 없습니다.
 bool rouletteShouldHoldIntroFrame(
   RussianRouletteView game, {
-  required int presentedDeadline,
+  required int presentedStartedAt,
 }) {
   if (game.finished ||
       game.round != 1 ||
@@ -119,5 +175,5 @@ bool rouletteShouldHoldIntroFrame(
       !game.paused) {
     return false;
   }
-  return presentedDeadline == 0 || game.deadlineAt != presentedDeadline;
+  return presentedStartedAt == 0 || game.startedAt != presentedStartedAt;
 }

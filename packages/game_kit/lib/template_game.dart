@@ -21,6 +21,7 @@ import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
 
 // ============================================================
 
@@ -109,6 +110,13 @@ abstract class TemplateGame implements GameGateway {
 
   //[의자이미지]
   ImageProvider? get layoutChairImage => null;
+
+  //==========[ 튜토리얼 ]==========
+
+  //[첫플레이] 자리 배치가 끝난 뒤 게임 시작 전에 보여 줄 튜토리얼
+  // 없으면 null => 바로 게임 시작
+  // 참가자 중 한 명이라도 이 게임 튜토리얼을 안 봤으면 태블릿·휴대폰에 함께 띄웁니다.
+  GameTutorial? get tutorial => null;
 
   //==========[ 게임 시작 ]==========
 

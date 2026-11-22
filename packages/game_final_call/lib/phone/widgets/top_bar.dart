@@ -204,6 +204,8 @@ class _StatusPill extends StatelessWidget {
           ? FinalCallCopy.pickOrDiscard
           : game.phase == 'finalTurns'
           ? FinalCallCopy.lastSwap
+          : game.holdsFourCard
+          ? FinalCallCopy.fourCardMyTurn
           : FinalCallCopy.myTurn;
       return _pill(
         color: FinalCallColors.violet,

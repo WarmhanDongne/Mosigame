@@ -381,6 +381,21 @@ controller는 같은 UID의 player가 방에 참가해 있어도 자신의 phone
 게임 템플릿의 connecting도 준비 announcement를 명시적으로 끈다. 실제 단절/실패와
 ready 입력 보호는 유지한다. 홀덤 단일 기기 보호 문제는 이번 후속 범위에서 제외했다.
 
+### 2026-11-21 자리 배치 형태와 동일 참가자 자동 복원
+
+`saveRealtimePlayerSeatIndexes`는 좌석 번호를 저장하는 같은 room transaction에서
+controller 전용 `seatingPreference`도 갱신한다. 이 값은 정렬한 참가자 UID 목록과
+선택한 `corners`/`sides` 형태만 가지며, 닉네임이나 게임 private payload는 저장하지
+않는다. 새 게임의 현재 참가자 UID 집합이 저장 명단과 완전히 같고 좌석 번호도 유효할
+때만 이전 좌석과 형태를 기본값으로 사용한다. 참가자가 추가·제거·교체되거나 구버전
+방처럼 preference가 없으면 현재 참가자 순서와 게임 기본 형태로 시작한다.
+
+좌석 형태는 공용 `PlayerLayoutModel`을 통해 실제 태블릿 게임 화면으로 전달한다.
+홀덤·라이어스 포커·파이널콜·러시안 룰렛은 좌석 프로필과 카드 이동 출발점을 같은
+좌표로 계산한다. 윷놀이는 개별 주변 좌석을 그리지 않지만 저장된 `seatIndex`가 서버의
+팀·턴 순서에 계속 적용된다. 마피아는 공용 자리 배치 화면을 사용하지 않아 대상에서
+제외한다.
+
 ### 2026-10-11 최초 준비와 실제 복구 구분 후보
 
 사용자 승인에 따라 `game/public/recovery.purpose`를 선택 필드로 추가한다.

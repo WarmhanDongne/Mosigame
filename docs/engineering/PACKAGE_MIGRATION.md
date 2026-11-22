@@ -1,4 +1,10 @@
-# 고정 플랫폼 앱과 게임별 패키지·다운로드 계획
+# 게임별 패키지 분리 기록과 현재 번들 정책
+
+> **현재 정책(2026-11-18):** `game_liars_poker`, `game_final_call`, `game_mafia`,
+> `game_holdem`, `game_yut`, `game_russian_roulette`의 코드와 에셋은 앱에 함께 번들한다.
+> 모든 현재 게임의 `requiredAssetVersion`은 0이며 런타임 다운로드는 활성 정책이 아니다.
+> 아래 다운로드·migration 설계는 과거 결정 근거다. 새 작업은
+> [`ARCHITECTURE.md`](ARCHITECTURE.md)와 [`NEW_GAME_GUIDE.md`](NEW_GAME_GUIDE.md)를 우선한다.
 
 라이어스포커·파이널콜·마피아는 앱에 번들하고, **그 다음 게임부터는 앱 안에서
 받아서 플레이**하는 구조의 기준 문서다. 2026-09-09에 확인한 `origin/develop`
@@ -119,7 +125,7 @@ python3 tool/check_package_boundaries.py
 `Assets....game`(`GameImage`)나 원격 핸들만 쓰므로 **화면 코드를 고치지
 않고** 저장 위치를 바꿀 수 있다.
 
-### 번들 게임 4종
+### 과거 번들 게임 4종 기록
 
 각 패키지가 자기 `assets/`를 갖고 자기 `assets.gen.dart`를 생성한다
 (`flutter_gen`의 패키지별 설정). 참조 경로는 `packages/<패키지명>/...`이 된다.

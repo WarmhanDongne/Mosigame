@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_russian_roulette/src/stage.dart';
 import 'package:game_russian_roulette/src/theme.dart';
+import 'package:game_russian_roulette/src/timing.dart';
 import 'package:game_russian_roulette/src/widgets.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
@@ -72,7 +73,10 @@ RouletteStageModel roulettePreviewModel(int ms) {
   for (var i = 0; i < stepAt.length; i++) {
     if (ms >= stepAt[i]) {
       final t = ((ms - stepAt[i]) / 550).clamp(0.0, 1.0);
-      gun = aims[i] + (aims[i + 1] - aims[i]) * Curves.easeOutBack.transform(t);
+      gun =
+          aims[i] +
+          (aims[i + 1] - aims[i]) *
+              RussianRouletteTiming.gunTurnCurve.transform(t);
       done = i + 1;
     }
   }

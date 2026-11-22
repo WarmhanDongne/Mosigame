@@ -41,6 +41,7 @@ import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/phone/widgets/exit_modal.dart';
 import 'package:game_kit/phone/widgets/result_dialog.dart';
+import 'package:game_kit/phone/widgets/rotate_hint.dart';
 
 part 'src/board_state.dart';
 

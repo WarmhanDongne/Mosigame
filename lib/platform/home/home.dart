@@ -6,15 +6,21 @@ import 'package:game_kit/template_game.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/platform/home/phone/screens/phone_home.dart';
 import 'package:project00/platform/home/tablet/screens/tablet_home.dart';
+import 'package:project00/platform/notifications/push_notification_host.dart';
 
 class Home extends StatelessWidget {
-  const Home({super.key, this.gameCatalog = const EmptyGameCatalog()});
+  const Home({
+    super.key,
+    this.gameCatalog = const EmptyGameCatalog(),
+    this.pushUid,
+  });
 
   final GameCatalog gameCatalog;
+  final String? pushUid;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+    final homeView = LayoutBuilder(
       builder: (context, constraints) {
         final isTablet = DeviceLayout.isTablet(constraints);
         final home = isTablet
@@ -45,6 +51,10 @@ class Home extends StatelessWidget {
         );
       },
     );
+    final uid = pushUid;
+    return uid == null
+        ? homeView
+        : PushNotificationHost(uid: uid, child: homeView);
   }
 
   /// 개발용 화면 목록입니다(디버그 빌드 전용).

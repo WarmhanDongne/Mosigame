@@ -442,7 +442,7 @@ void main() {
         ];
       await _pumpPanel(tester, provider);
 
-      expect(find.text('1 / 12'), findsOneWidget);
+      expect(find.text('1 / 8'), findsOneWidget);
 
       await tester.tap(find.text('초기화'));
       await tester.pump();

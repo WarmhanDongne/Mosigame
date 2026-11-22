@@ -4,7 +4,7 @@
 연결을 따라가야 하는지** 정리한 안내서다. 개별 파일의 역할과 직접 import/export
 관계는 [`GAME_PACKAGE_FILE_REFERENCE.md`](GAME_PACKAGE_FILE_REFERENCE.md)에 있다.
 
-기준은 2026-09-11 현재 working tree다. 구조 설명보다 현재 코드·테스트가 우선이며,
+기준은 2026-11-18 `cb13e579`과 현재 working tree다. 구조 설명보다 현재 코드·테스트가 우선이며,
 게임 규칙과 persistent data shape를 바꾸기 전에는 client, Functions, RTDB rules와
 테스트를 함께 확인한다.
 
@@ -23,7 +23,10 @@ Mosigame Flutter 앱
    ├─ game_template/             새 게임을 만들 때 복사할 기준
    ├─ game_liars_poker/          라이어스포커 Flutter 구현
    ├─ game_final_call/           파이널콜 Flutter 구현
-   └─ game_mafia/                마피아 Flutter 구현
+   ├─ game_mafia/                마피아 Flutter 구현
+   ├─ game_holdem/               텍사스 홀덤 Flutter 구현
+   ├─ game_yut/                  윷놀이·전략 윷놀이 계열 Flutter 구현
+   └─ game_russian_roulette/     러시안 룰렛 Flutter 구현
 
 Firebase
 ├─ RTDB                          방과 게임 상태 전달
@@ -60,8 +63,8 @@ TemplateGame 구현체
   └─ buildTabletScreen()  태블릿 화면 생성
 ```
 
-이 흐름을 검토할 때 가장 중요한 기준은 플랫폼이 `liars_poker`, `final_call`, `mafia`를
-직접 분기하지 않고 `TemplateGame` 계약만 사용해야 한다는 점이다. 새 게임 연결 지점은
+이 흐름을 검토할 때 가장 중요한 기준은 플랫폼이 특정 game ID를 직접 분기하지 않고
+`TemplateGame` 계약만 사용해야 한다는 점이다. 새 게임 연결 지점은
 원칙적으로 `GameRegistry` 한곳이다.
 
 ### 서버 상태 읽기

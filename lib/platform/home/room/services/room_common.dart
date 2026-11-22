@@ -4,7 +4,7 @@ export 'package:project00/platform/home/room/models/room_player.dart';
 export 'package:game_kit/core/error/room_command_exception.dart';
 
 abstract final class RoomLimits {
-  static const int defaultMaxPlayers = 12;
+  static const int defaultMaxPlayers = 8;
 }
 
 /// 로컬에 저장된 플레이어 세션으로 무엇을 복원할 수 있는지입니다.

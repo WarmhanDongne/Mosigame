@@ -69,6 +69,9 @@ function adminPorts(): AccountDeletionPorts {
 
     async deleteUserDocuments(uid) {
       const db = getFirestore();
+      const pushDevices = await db.collection("pushDevices")
+        .where("uid", "==", uid).get();
+      await Promise.all(pushDevices.docs.map((device) => device.ref.delete()));
       const batch = db.batch();
       batch.delete(db.collection("users").doc(uid));
       batch.delete(db.collection("userOnboarding").doc(uid));

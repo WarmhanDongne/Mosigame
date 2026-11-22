@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   catalogCommand,
   minimalGameCatalog,
-  PRODUCTION_PROJECT,
+  TEST_PROJECT,
   rebuildGameCatalog,
 } from "../scripts/rebuild-game-catalog.mjs";
 
@@ -105,6 +105,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
   }
   assert.deepEqual(db.records.get("games/liars"), minimalGameCatalog.liars);
   assert.equal(db.records.get("games/mafia").enabled, false);
+  assert.equal(db.records.get("games/mafia").maxPlayers, 8);
   assert.equal(db.records.get("games/final_call").unnecessary, undefined);
   assert.deepEqual(db.records.get("games/russian_roulette").genres, [
     "파티", "심리전", "생존",
@@ -132,7 +133,7 @@ test("apply backs up, removes old documents, and writes only the minimal schema"
 test("catalog command requires a matching confirmation for every write target", () => {
   assert.deepEqual(catalogCommand([]), {
     apply: false,
-    projectId: PRODUCTION_PROJECT,
+    projectId: TEST_PROJECT,
   });
   assert.deepEqual(catalogCommand(["--project=mosigame-test-project"]), {
     apply: false,

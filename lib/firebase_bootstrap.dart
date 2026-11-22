@@ -16,16 +16,22 @@ FirebaseOptions firebaseOptionsForBackend(String backend) {
 FirebaseOptions get selectedFirebaseOptions =>
     firebaseOptionsForBackend(FirebaseBackend.mode);
 
-String? get selectedGoogleServerClientId =>
-    FirebaseBackend.isTest ? TestFirebaseOptions.googleWebClientId : null;
+const _productionGoogleWebClientId =
+    '93097008048-lo2cumkr5ombd0863qadcs62uipgss4r.apps.googleusercontent.com';
+
+String? get selectedGoogleServerClientId => switch (FirebaseBackend.mode) {
+  'test' => TestFirebaseOptions.googleWebClientId,
+  'server' => _productionGoogleWebClientId,
+  _ => null,
+};
 
 /// Connect every service before any auth listener, clock or game service starts.
 Future<void> initializeFirebaseBackend() async {
   FirebaseBackend.validate();
   if (FirebaseBackend.isTest) {
-    // Android/iOS native configuration may already have created the production
-    // [DEFAULT] app before Dart starts. Keep the test project in a named app so
-    // its different options never collide with or fall back to production.
+    // Native configuration creates the TEST [DEFAULT] app for Messaging before
+    // Dart starts. Keep the product SDKs on a named TEST app as well, and let
+    // PushNotificationHost verify that both project IDs remain identical.
     await Firebase.initializeApp(
       name: 'mosigame-test',
       options: selectedFirebaseOptions,

@@ -4,7 +4,8 @@
 reference다. 모든 작업의 공통 규칙은 [`ENGINEERING_CONTRACT.md`](ENGINEERING_CONTRACT.md)에
 있다. 이 설명과 코드가 다르면 코드를 먼저 조사하고 차이를 보고한다.
 
-구조 확인 기준: 2026-09-09, `origin/develop`의 `d1c40aa`.
+구조 확인 기준: 2026-11-18, `origin/develop`의 `cb13e579`. 제품 공개 계획은
+[`CURRENT_PROJECT.md`](../CURRENT_PROJECT.md)를 따른다.
 
 2026-10-09 로컬 후보의 identity·준비 barrier·명령/퇴장·정리·계측은
 [네트워크·세션 구현 계약](NETWORK_SESSION_CONTRACT.md)을 따른다. 기존 설명과 세부 차이는 현재 코드/계약에 대조한다.
@@ -43,6 +44,8 @@ packages/game_<game>/      게임별 Flutter 구현과 자체 번들 assets
 functions/src/auth/        인증·온보딩 서버 작업
 functions/src/room/        방 lifecycle과 접속 상태 서버 작업
 functions/src/<game>/      게임별 타입, 검증과 상태 전이
+functions/src/notifications/ TEST 후보의 push 기기·게임 알림
+functions/src/operations/  TEST 후보의 운영 공지 관리
 test/                      Flutter/Project CLI 테스트
 functions/test/            Functions 테스트
 tool/mosigame_cli/         Mosigame Project CLI 구현
@@ -62,23 +65,25 @@ Mosigame 정식 앱 바이너리
 ├─ 기본 번들 게임
 │  ├─ game_liars_poker
 │  ├─ game_final_call
-│  └─ game_mafia
-└─ 이후 게임
-   ├─ Dart 코드: Shorebird 패치나 다음 정식 릴리스
-   └─ 이미지·사운드: 소유 확인 후 Firebase Storage 다운로드
+│  ├─ game_mafia
+│  ├─ game_holdem
+│  ├─ game_yut
+│  └─ game_russian_roulette
+└─ 복사용 스켈레톤
+   └─ game_template (앱 dependency 아님)
 ```
 
 - 플랫폼과 `game_kit`은 앱이 실행되기 전에 이미 바이너리에 포함된다.
-- workspace는 `game_kit`, `game_template`, 번들 게임 4종(라이어스 포커·파이널콜·
-  마피아·홀덤)의 6개 패키지다.
+- workspace는 `game_kit`, `game_template`과 번들 게임 6종의 8개 패키지다.
   `game_template`은 앱 의존성에 없으며 복사용으로만 관리한다.
 - 게임 패키지는 내부 패키지 중 `game_kit`에만 의존하고 앱이나 다른 게임을
   참조하지 않는다. `game_kit`도 앱·게임 패키지를 참조하지 않는다.
 - 게임 코드는 `game_<game>` package로 독립 관리하지만 Firebase Storage에서 Dart
   package를 받아 동적 실행하지 않는다.
-- 소유 게임의 선택적 다운로드 대상은 게임 에셋이다. 코드는 Shorebird 패치 또는
-  정식 앱 업데이트로 전달한다.
-- 신작 패치 게임은 네이티브 플러그인과 번들 assets를 추가하지 않는다.
+- 현재 모든 게임의 코드와 에셋은 앱 바이너리에 포함되고 `requiredAssetVersion`은 0이다.
+  Firebase Storage 게임 다운로드는 활성 배포 정책이 아니다.
+- 게임 코드·에셋 변경은 다음 정식 앱 릴리스로 전달한다. 기존 Shorebird base와 호환되는
+  Dart-only 수정만 별도 승인된 patch 후보가 될 수 있다.
 
 실제 파일과 등록 상태를 확인하지 않은 폴더나 기능을 존재한다고 가정하지 않는다.
 
@@ -203,8 +208,10 @@ Firestore `games/{catalogId}` 문서는 이전 앱용 한국어 `name`, `descrip
 홈의 책 표지·책등, 게임 목록·상세·대기 화면과 상점은 `GameInfo`의 locale-aware
 이름·소개·규칙·장르 선택기를 사용한다. 관리 스크립트
 `functions/scripts/update-game-localized-names.mjs`는 기본 dry-run이고 `--apply`에서
-네 게임의 표시 정보를 한 batch로 갱신한다. 라이어스는 canonical `games/liars`를
-우선하고, ID 이전 전에는 `games/liars_poker`를 갱신한다.
+초기 네 게임(라이어스·파이널콜·마피아·홀덤)의 표시 정보를 한 batch로 갱신한다.
+라이어스는 canonical `games/liars`를 우선하고, ID 이전 전에는
+`games/liars_poker`를 갱신한다. 윷놀이 계열과 러시안 룰렛의 다국어 정보는 아래의
+전체 카탈로그 재구축 입력에 포함되어 있다.
 
 Firestore 카탈로그 밖의 앱·게임 화면 문구는 `game_kit`의 `GameLocale` bridge를
 사용한다. 앱 셸은 locale 설정이 바뀔 때 `GameLocale.current`를 갱신하고, 각 게임
@@ -215,10 +222,11 @@ Firestore 카탈로그 밖의 앱·게임 화면 문구는 `game_kit`의 `GameLo
 
 운영 카탈로그를 정리할 때는 `functions/scripts/rebuild-game-catalog.mjs`를 사용한다.
 이 스크립트는 기존 `games` 문서를 로컬 `build/` JSON으로 백업하고, 하위 컬렉션이
-없을 때만 한 batch에서 canonical 네 문서를 완전 교체한다. 문서에는 이름·다국어 이름,
-짧은 소개, 휴대폰 규칙, 장르, 인원, 시간, 순서, 활성·접근·상점 상태와 Hold'em의 최소
-앱 버전만 저장한다. 알려진 네 게임의 이미지·구성품·표지와 상세 연출은 앱 패키지가
-소유하므로 URL·별도 태블릿 소개·timestamp 필드는 만들지 않는다.
+없을 때만 한 batch에서 레지스트리와 대응하는 canonical 여덟 문서를 완전 교체한다.
+문서에는 이름·다국어 이름, 소개, 규칙, 장르, 인원, 시간, 순서와
+활성·접근·상점 상태를 저장한다. Hold'em은 최소 앱 버전을, 윷놀이 계열은 현재
+`tabletDescription`과 빈 URL 호환 필드도 함께 가진다. 게임 이미지·구성품·표지와 상세
+연출의 실제 자산은 앱 패키지가 소유하며 카탈로그의 빈 URL은 다운로드 계약이 아니다.
 
 로비 library는 활성 무료·보유 게임만 읽고, 상점 store는 소유 여부와 관계없이
 `storeVisible` 게임을 읽는다. 결제는 현재 비활성 gateway 뒤에 있으며 상품 ID만으로

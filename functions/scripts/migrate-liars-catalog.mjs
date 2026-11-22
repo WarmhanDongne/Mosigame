@@ -2,7 +2,7 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {pathToFileURL} from "node:url";
 
-const PROJECT = "project0000-ec01e";
+const PROJECT = "ban-pick-simulator";
 
 /** Atomic rename; keeps every field and refuses to overwrite either catalog. */
 export async function migrateLiarsCatalog(firestore, {

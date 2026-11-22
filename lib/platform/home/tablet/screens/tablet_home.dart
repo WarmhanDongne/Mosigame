@@ -34,6 +34,7 @@ import 'package:project00/platform/home/tablet/widgets/tablet_room_panel.dart';
 import 'package:project00/platform/home/phone/widgets/session_return_prompt.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile.dart';
+import 'package:project00/platform/announcements/widgets/platform_announcement_host.dart';
 
 //=======================태블릿 플랫폼 홈==============================
 class TabletHome extends StatefulWidget {
@@ -312,8 +313,18 @@ class _TabletHomeState extends State<TabletHome>
     final hasValidSavedSeats =
         savedSeats.length == players.length &&
         savedSeats.every((seat) => seat >= 0 && seat < players.length);
+    final savedSeatLayout = await roomProvider.getSavedSeatLayout();
+    if (!mounted || roomProvider.roomCode != roomCode) {
+      _isOpeningRestoredGame = false;
+      return;
+    }
+    final restoredMode =
+        savedSeatLayout?.matches(players.map((player) => player.uid)) == true
+        ? savedSeatLayout?.mode
+        : null;
     final layout = hasValidSavedSeats
         ? PlayerLayoutModel(
+            seatLayoutMode: restoredMode,
             players: List.unmodifiable(
               players.map(
                 (player) => PlayerLayoutPlayer(
@@ -325,7 +336,7 @@ class _TabletHomeState extends State<TabletHome>
               ),
             ),
           )
-        : PlayerLayoutFactory.create(players);
+        : PlayerLayoutFactory.create(players).withSeatLayoutMode(restoredMode);
 
     //================상태바 표시=================
     unawaited(AppSystemUi.enterGameFullscreen());
@@ -558,113 +569,117 @@ class _TabletHomeState extends State<TabletHome>
     // 설명보기를 열면 게임 상세 전용색으로, 선반에서는 선반 색으로 칠합니다.
     final theme = _isDetailOpen ? art.detailTheme : art.shelfTheme;
     final detail = _isDetailOpen ? _selection.game : null;
-    return LobbyMusic(
-      track: LobbyTracks.lobby,
-      child: PopScope(
-        canPop: !_isDetailOpen && !_isStarting,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && _isDetailOpen) unawaited(_closeDetail());
-        },
-        child: TweenAnimationBuilder<Color?>(
-          tween: ColorTween(end: theme.ground),
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeOut,
-          builder: (context, ground, child) => ListenableBuilder(
-            listenable: roomProvider,
-            builder: (context, body) => LobbyConnectionBand(
-              // An idle lobby can let RTDB sleep; only an adopted room requires it.
-              connectionChanges: roomProvider.isInRoom
-                  ? _serverConnection
-                  : null,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  body!,
-                  // 진행 기기의 방 연결 복구가 실패하면 여기서 다시 시도합니다.
-                  RoomRecoveryRetryBand(provider: roomProvider),
-                ],
+    return PlatformAnnouncementHost(
+      onOpenStore: _openStore,
+      child: LobbyMusic(
+        track: LobbyTracks.lobby,
+        child: PopScope(
+          canPop: !_isDetailOpen && !_isStarting,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && _isDetailOpen) unawaited(_closeDetail());
+          },
+          child: TweenAnimationBuilder<Color?>(
+            tween: ColorTween(end: theme.ground),
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOut,
+            builder: (context, ground, child) => ListenableBuilder(
+              listenable: roomProvider,
+              builder: (context, body) => LobbyConnectionBand(
+                // An idle lobby can let RTDB sleep; only an adopted room requires it.
+                connectionChanges: roomProvider.isInRoom
+                    ? _serverConnection
+                    : null,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    body!,
+                    // 진행 기기의 방 연결 복구가 실패하면 여기서 다시 시도합니다.
+                    RoomRecoveryRetryBand(provider: roomProvider),
+                  ],
+                ),
               ),
+              child: Scaffold(backgroundColor: ground, body: child),
             ),
-            child: Scaffold(backgroundColor: ground, body: child),
-          ),
-          child: SafeArea(
-            child: TabletLobbyLayout(
-              header: StoreExit(
-                progress: _storeExit,
-                offset: const Offset(0, -2),
-                child: _LobbyGameExit(
-                  progress: _gameExit,
-                  offset: const Offset(0, -0.55),
-                  child: IgnorePointer(
-                    ignoring: _isStarting,
-                    child: _HomeHeader(
-                      theme: theme,
-                      onOpenStore: _openStore,
-                      onBack: detail == null
-                          ? null
-                          : () => unawaited(_closeDetail()),
+            child: SafeArea(
+              child: TabletLobbyLayout(
+                header: StoreExit(
+                  progress: _storeExit,
+                  offset: const Offset(0, -2),
+                  child: _LobbyGameExit(
+                    progress: _gameExit,
+                    offset: const Offset(0, -0.55),
+                    child: IgnorePointer(
+                      ignoring: _isStarting,
+                      child: _HomeHeader(
+                        theme: theme,
+                        onOpenStore: _openStore,
+                        onBack: detail == null
+                            ? null
+                            : () => unawaited(_closeDetail()),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              content: StoreExit(
-                progress: _storeExit,
-                offset: const Offset(-1.15, 0.2),
-                child: _LobbyGameExit(
-                  progress: _gameExit,
-                  offset: const Offset(-0.22, 0.06),
-                  child: IgnorePointer(
-                    ignoring: _isStarting,
-                    child: TabletLobbyContentTransition(
-                      child: detail == null
-                          ? TabletGameShelf(
-                              key: const ValueKey('lobby-shelf'),
-                              gameProvider: gameProvider,
-                              roomProvider: roomProvider,
-                              selectedGameId: _selectedGameId,
-                              theme: theme,
-                              onlyPlayable: _onlyPlayable,
-                              onOnlyPlayableChanged: (value) =>
-                                  setState(() => _onlyPlayable = value),
-                              onSelect: (game) =>
-                                  setState(() => _selectedGameId = game.id),
-                              onOpenDetail: _openDetail,
-                              selectedCoverKey: _selectedCoverKey,
-                            )
-                          : TabletGameDetailContent(
-                              key: ValueKey('lobby-detail-${detail.id}'),
-                              game: detail,
-                              roomProvider: roomProvider,
-                            ),
+                content: StoreExit(
+                  progress: _storeExit,
+                  offset: const Offset(-1.15, 0.2),
+                  child: _LobbyGameExit(
+                    progress: _gameExit,
+                    offset: const Offset(-0.22, 0.06),
+                    child: IgnorePointer(
+                      ignoring: _isStarting,
+                      child: TabletLobbyContentTransition(
+                        child: detail == null
+                            ? TabletGameShelf(
+                                key: const ValueKey('lobby-shelf'),
+                                gameProvider: gameProvider,
+                                roomProvider: roomProvider,
+                                selectedGameId: _selectedGameId,
+                                theme: theme,
+                                onlyPlayable: _onlyPlayable,
+                                onOnlyPlayableChanged: (value) =>
+                                    setState(() => _onlyPlayable = value),
+                                onSelect: (game) =>
+                                    setState(() => _selectedGameId = game.id),
+                                onOpenDetail: _openDetail,
+                                selectedCoverKey: _selectedCoverKey,
+                              )
+                            : TabletGameDetailContent(
+                                key: ValueKey('lobby-detail-${detail.id}'),
+                                game: detail,
+                                roomProvider: roomProvider,
+                              ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              roomPanel: StoreExit(
-                progress: _storeExit,
-                offset: const Offset(1.2, 0.15),
-                child: _LobbyGameExit(
-                  progress: _gameExit,
-                  offset: const Offset(0.24, 0.06),
-                  child: IgnorePointer(
-                    ignoring: _isStarting,
-                    child: TabletRoomPanel(
-                      key: const ValueKey('lobby-room-panel'),
-                      provider: roomProvider,
-                      deep: theme.deep,
-                      // 흰 덮개 위 마름모는 게임 색입니다(바탕이 어두운 게임은 버튼 색).
-                      coverGemColor: theme.ground == MosiColors.navy
-                          ? theme.btnBg
-                          : theme.ground,
-                      startBackground: theme.btnBg,
-                      startForeground: theme.btnFg,
-                      maxSlots: detail == null ? null : _maxSlots(detail),
-                      // 시작 요청 중에는 버튼만 눌린 채 "게임 준비 중"을 보입니다.
-                      // 버튼 크기·위치는 그대로라 책 전환의 출발점이 흔들리지
-                      // 않습니다.
-                      startLoading: _isStarting,
-                      insufficientPlayersFeedback: _insufficientPlayersFeedback,
-                      onStart: () => unawaited(_startSelectedGame()),
+                roomPanel: StoreExit(
+                  progress: _storeExit,
+                  offset: const Offset(1.2, 0.15),
+                  child: _LobbyGameExit(
+                    progress: _gameExit,
+                    offset: const Offset(0.24, 0.06),
+                    child: IgnorePointer(
+                      ignoring: _isStarting,
+                      child: TabletRoomPanel(
+                        key: const ValueKey('lobby-room-panel'),
+                        provider: roomProvider,
+                        deep: theme.deep,
+                        // 흰 덮개 위 마름모는 게임 색입니다(바탕이 어두운 게임은 버튼 색).
+                        coverGemColor: theme.ground == MosiColors.navy
+                            ? theme.btnBg
+                            : theme.ground,
+                        startBackground: theme.btnBg,
+                        startForeground: theme.btnFg,
+                        maxSlots: detail == null ? null : _maxSlots(detail),
+                        // 시작 요청 중에는 버튼만 눌린 채 "게임 준비 중"을 보입니다.
+                        // 버튼 크기·위치는 그대로라 책 전환의 출발점이 흔들리지
+                        // 않습니다.
+                        startLoading: _isStarting,
+                        insufficientPlayersFeedback:
+                            _insufficientPlayersFeedback,
+                        onStart: () => unawaited(_startSelectedGame()),
+                      ),
                     ),
                   ),
                 ),

@@ -2,7 +2,7 @@
 import {randomUUID} from "node:crypto";
 import {Reference} from "firebase-admin/database";
 import {CallableRequest, HttpsError} from "firebase-functions/v2/https";
-import {assertRoomTarget, parseSessionId, recordRoomOperation, roomOperationResult} from "../room/session-contract.js";
+import {assertRoomTarget, parseSessionId, recordRoomOperation, roomOperationResult, SessionRoom} from "../room/session-contract.js";
 import {runPrimedTransaction} from "../room/room-transaction.js";
 import {assertControllerSession} from "../room/controller-session.js";
 import {transactionRandomSeed, withTransactionRandom} from "../common/transaction-random.js";
@@ -12,11 +12,19 @@ import {finalizeGameMutation} from "./game-mutation.js";
 const TRANSPORT_FIELDS = new Set(["controllerSessionId", "connectionId", "connectionSeq", "presenceProtocol"]);
 
 export async function replayGameCommand(ref: Reference, request: CallableRequest<unknown>, kind: string): Promise<Record<string, unknown> | null> {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+  const data = request.data as Record<string, unknown>;
+  parseSessionId(data.commandId ?? data.operationId, "명령 ID");
+  const room = (await ref.get()).val() as SessionRoom | null;
+  return replayGameCommandFromRoom(room, request, kind);
+}
+
+/** Reuses a room snapshot already needed for start-game validation. */
+export function replayGameCommandFromRoom(room: SessionRoom | null, request: CallableRequest<unknown>, kind: string): Record<string, unknown> | null {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
   const data = request.data as Record<string, unknown>;
   const commandId = parseSessionId(data.commandId ?? data.operationId, "명령 ID");
-  const room = (await ref.get()).val() as RecoveryRoom | null;
   if (!room) return null;
   assertRoomTarget(room, data.roomInstanceId, data.presenceProtocol);
   const payload = Object.fromEntries(Object.entries(data).filter(([key]) => !TRANSPORT_FIELDS.has(key)));

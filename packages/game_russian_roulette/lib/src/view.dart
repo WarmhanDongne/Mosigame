@@ -53,6 +53,8 @@ class RussianRouletteView {
     required this.shotBlocked,
     required this.eliminatedUid,
     required this.paused,
+    this.phaseStartedAt = 0,
+    this.startedAt = 0,
   });
 
   factory RussianRouletteView.fromPublic(Map<String, dynamic> pub) {
@@ -87,6 +89,8 @@ class RussianRouletteView {
       shotBlocked: pub['shotBlocked'] as bool?,
       eliminatedUid: pub['eliminatedUid'] as String?,
       paused: _map(pub['recovery'])['paused'] == true,
+      phaseStartedAt: _int(pub['phaseStartedAt']),
+      startedAt: _int(pub['startedAt']),
     );
   }
 
@@ -104,6 +108,12 @@ class RussianRouletteView {
   final bool? shotBlocked;
   final String? eliminatedUid;
   final bool paused;
+
+  /// 지금 단계가 시작된 서버 시각(ms)입니다. 이전 서버는 보내지 않아 0입니다.
+  final int phaseStartedAt;
+
+  /// 게임이 시작된 서버 시각(ms)입니다. 다시 시작한 게임을 이전 게임과 구분합니다.
+  final int startedAt;
 
   bool get finished => status == 'finished';
   List<RoulettePlayerView> get orderedPlayers =>
