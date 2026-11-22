@@ -368,7 +368,9 @@ class _FourCardSeat extends StatelessWidget {
   });
 
   /// 태블릿 배율 적용 전 논리 크기입니다.
-  static const Size size = Size(160, 182);
+  // 태그 30 + 간격 4 + 프로필(84 + 테두리 6 + 패딩 10) + 간격 6 + 하트 줄 48
+  // = 188입니다. 여유 4를 더해 회전 좌석에서도 넘치지 않게 합니다.
+  static const Size size = Size(160, 192);
   static const double _avatar = 84;
 
   final FinalCallPlayer player;

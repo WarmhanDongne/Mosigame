@@ -1036,9 +1036,11 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
       );
       return false;
     } finally {
-      if (ref.mounted && generation == _subscriptionGeneration) {
-        state = state.markCommandFinished();
-      }
+      // 명령 도중 재구독(연결 복구, 다시 시작으로 바뀐 방 세션 등)으로 세대가
+      // 바뀌어도 진행 중 표시는 반드시 끕니다. 세대가 다를 때 끄지 않으면
+      // commandInFlight가 true로 남아, 이후 모든 run()이 서버에 보내지 않고
+      // false를 돌려줍니다(예: 러시안 룰렛 단계 진행이 멈추고 총을 쏘지 않음).
+      if (ref.mounted) state = state.markCommandFinished();
     }
   }
 

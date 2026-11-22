@@ -48,6 +48,9 @@ class GameExitInstantPageRoute<T> extends PageRouteBuilder<T> {
           child: child,
         ),
       );
+
+  @override
+  bool get popGestureEnabled => false;
 }
 
 /// 자리 배치 뒤 한지 창호문이 양옆에서 닫혔다가 열리며 게임을 공개합니다.
@@ -66,6 +69,9 @@ class GameDoorEntryPageRoute<T> extends PageRouteBuilder<T> {
           child: child,
         ),
       );
+
+  @override
+  bool get popGestureEnabled => false;
 }
 
 /// 닫힘 0.84초 + 닫힌 채 1.08초 + 열림 1.08초입니다.

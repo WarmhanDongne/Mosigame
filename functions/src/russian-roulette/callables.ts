@@ -7,6 +7,7 @@ import {leaveSessionRequest} from "../game-interruption/leave-request.js";
 import {replayGameCommandFromRoom, runGameCommandTransaction} from "../game-interruption/game-command-transaction.js";
 import {
   canRestartRussianRouletteGame,
+  completeRussianRouletteIntro,
   completeRussianRoulettePhase,
   createRussianRouletteGame,
   finishRussianRouletteGame,
@@ -69,6 +70,12 @@ export const game_russian_roulette_timeout_turn = onCall<Data>({region: REGION},
   controllerMutation(request, "game_russian_roulette_timeout_turn", (game, now) => {
     timeoutRussianRouletteTurn(game, now);
     return {success: true};
+  }));
+
+export const game_russian_roulette_complete_intro = onCall<Data>({region: REGION}, (request) =>
+  controllerMutation(request, "game_russian_roulette_complete_intro", (game, now) => {
+    const changed = completeRussianRouletteIntro(game, now);
+    return {success: true, changed, turnDeadlineAt: game.public.turnDeadlineAt};
   }));
 
 export const game_russian_roulette_complete_phase = onCall<Data>({region: REGION}, (request) =>

@@ -83,7 +83,7 @@ class _YutTabletScreenState extends ConsumerState<YutTabletScreen> {
 
   @override
   void dispose() {
-    _backgroundMusic.stop();
+    _backgroundMusic.dispose();
     _timeoutTimer?.cancel();
     _revealTimer?.cancel();
     _captureTimer?.cancel();

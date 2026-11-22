@@ -91,7 +91,7 @@ class _RussianRouletteTabletScreenState
   @override
   void dispose() {
     _ticker.dispose();
-    _backgroundMusic.stop();
+    _backgroundMusic.dispose();
     _victoryTimer?.cancel();
     _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
     _phaseTimer?.cancel();
@@ -289,6 +289,9 @@ class _RussianRouletteTabletScreenState
   /// 시작 연출을 보여 준 게임의 시작 시각입니다.
   int _introGame = 0;
 
+  /// 시작 연출 종료를 서버에 알린 게임의 시작 시각입니다(게임마다 한 번).
+  int _introReportedGame = 0;
+
   int? _introMs(RussianRouletteView game) {
     final fresh = rouletteShouldStartIntro(
       game,
@@ -308,9 +311,27 @@ class _RussianRouletteTabletScreenState
         game.phase != 'selecting' ||
         ms >= rouletteIntroLength(game.aliveCount)) {
       _introStartedAt = null;
+      if (game.round == 1 && game.phase == 'selecting') {
+        _reportIntroCompleted(game.startedAt);
+      }
       return null;
     }
     return ms;
+  }
+
+  /// 시작 연출이 끝난 순간 서버에 알려, 첫 턴 타이머가 연출 중에 줄지 않고
+  /// 지금부터 30초를 세게 합니다. 알리지 못해도 서버의 여유 마감으로 진행됩니다.
+  void _reportIntroCompleted(int startedAt) {
+    if (startedAt <= 0 || _introReportedGame == startedAt) return;
+    _introReportedGame = startedAt;
+    unawaited(
+      _service.command.completeIntro(widget.roomCode).then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stack) => debugPrint(
+          '[RussianRoulette] 시작 연출 종료를 알리지 못했습니다: $error',
+        ),
+      ),
+    );
   }
 
   @override

@@ -280,60 +280,276 @@ String? _gameIdFromName(String? name) {
   return null;
 }
 
-class _RoomInfo extends StatelessWidget {
+class _RoomInfo extends StatefulWidget {
   const _RoomInfo({required this.provider});
 
   final GameRoomContext provider;
 
   @override
+  State<_RoomInfo> createState() => _RoomInfoState();
+}
+
+/// 강퇴는 두 번 눌러 확정하고, 처리 중 표시 → 줄이 접히며 사라짐 → 아래
+/// 안내 순서로 보여 줍니다. 서버 목록이 먼저 갱신돼도 사라지는 줄은 마지막
+/// 모습을 잠깐 유지해 갑자기 튀지 않게 합니다.
+class _RoomInfoState extends State<_RoomInfo> {
+  static const _confirmWindow = Duration(seconds: 3);
+  static const _collapseDuration = Duration(milliseconds: 320);
+  static const _noticeDuration = Duration(milliseconds: 2600);
+
+  /// 한 번 눌러 확인을 기다리는 사람입니다.
+  String? _confirmUid;
+  Timer? _confirmTimer;
+
+  /// 서버 처리를 기다리는 사람들입니다.
+  final Set<String> _pendingUids = {};
+
+  /// 내보내기가 끝나 접히는 중인 줄입니다. 목록에서 빠져도 이 모습으로 접힙니다.
+  final Map<String, GameRoomPlayer> _leaving = {};
+
+  /// 접히기가 끝나 더 이상 그리지 않는 사람들입니다.
+  final Set<String> _gone = {};
+
+  /// 마지막으로 본 순서입니다. 목록에서 빠진 줄을 원래 자리에 접기 위해 씁니다.
+  List<GameRoomPlayer> _lastPlayers = const [];
+
+  String? _notice;
+  bool _noticeIsError = false;
+  Timer? _noticeTimer;
+
+  @override
+  void dispose() {
+    _confirmTimer?.cancel();
+    _noticeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _tapRemove(GameRoomPlayer player) {
+    if (_pendingUids.contains(player.uid) ||
+        _leaving.containsKey(player.uid)) {
+      return;
+    }
+    if (_confirmUid != player.uid) {
+      _confirmTimer?.cancel();
+      setState(() => _confirmUid = player.uid);
+      _confirmTimer = Timer(_confirmWindow, () {
+        if (mounted) setState(() => _confirmUid = null);
+      });
+      return;
+    }
+    _confirmTimer?.cancel();
+    setState(() {
+      _confirmUid = null;
+      _pendingUids.add(player.uid);
+    });
+    unawaited(_remove(player));
+  }
+
+  Future<void> _remove(GameRoomPlayer player) async {
+    final ok = await widget.provider.removePlayer(player.uid);
+    if (!mounted) return;
+    setState(() {
+      _pendingUids.remove(player.uid);
+      if (ok) _leaving[player.uid] = player;
+    });
+    if (!ok) {
+      _showNotice(
+        GameLocale.select(
+          ko: '${player.nickname}님을 내보내지 못했어요. 다시 눌러 주세요.',
+          en: "Couldn't remove ${player.nickname}. Try again.",
+          zhHans: '未能移除 ${player.nickname}，请重试。',
+          zhHant: '未能移除 ${player.nickname}，請重試。',
+        ),
+        error: true,
+      );
+      return;
+    }
+    _showNotice(
+      GameLocale.select(
+        ko: '${player.nickname}님을 내보냈어요',
+        en: '${player.nickname} was removed',
+        zhHans: '已移除 ${player.nickname}',
+        zhHant: '已移除 ${player.nickname}',
+      ),
+    );
+    await Future<void>.delayed(_collapseDuration);
+    if (!mounted) return;
+    setState(() {
+      _leaving.remove(player.uid);
+      _gone.add(player.uid);
+    });
+  }
+
+  void _showNotice(String text, {bool error = false}) {
+    _noticeTimer?.cancel();
+    setState(() {
+      _notice = text;
+      _noticeIsError = error;
+    });
+    _noticeTimer = Timer(_noticeDuration, () {
+      if (mounted) setState(() => _notice = null);
+    });
+  }
+
+  /// 서버 목록에 접히는 중인 줄을 원래 자리로 끼워 넣은 표시용 목록입니다.
+  List<GameRoomPlayer> _displayPlayers(List<GameRoomPlayer> live) {
+    final liveUids = {for (final player in live) player.uid};
+    // 다시 들어온 사람은 숨김 목록에서 뺍니다.
+    _gone.removeWhere(liveUids.contains);
+    final result = <GameRoomPlayer>[];
+    var liveIndex = 0;
+    for (final previous in _lastPlayers) {
+      if (liveUids.contains(previous.uid)) {
+        while (liveIndex < live.length) {
+          final player = live[liveIndex++];
+          result.add(player);
+          if (player.uid == previous.uid) break;
+        }
+      } else if (_leaving.containsKey(previous.uid)) {
+        result.add(_leaving[previous.uid]!);
+      }
+    }
+    while (liveIndex < live.length) {
+      result.add(live[liveIndex++]);
+    }
+    return [
+      for (final player in result)
+        if (!_gone.contains(player.uid)) player,
+    ];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final players = provider.players;
-    final online = players.where((player) => player.isConnected).length;
-    return MosiCreamPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    return ListenableBuilder(
+      listenable: widget.provider,
+      builder: (context, _) {
+        final live = widget.provider.players;
+        final players = _displayPlayers(live);
+        _lastPlayers = players;
+        final counted = [
+          for (final player in live)
+            if (!_leaving.containsKey(player.uid) &&
+                !_gone.contains(player.uid))
+              player,
+        ];
+        final online = counted.where((player) => player.isConnected).length;
+        return MosiCreamPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      GameLocale.select(
+                        ko: '현재 방 정보 · 플레이어',
+                        en: 'Current room · Players',
+                        zhHans: '当前房间 · 玩家',
+                        zhHant: '目前房間 · 玩家',
+                      ),
+                      style: MosiFonts.sans(
+                        size: 14,
+                        weight: FontWeight.w700,
+                        color: MosiColors.muted,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    GameLocale.select(
+                      ko: '$online / ${counted.length} 연결',
+                      en: '$online / ${counted.length} connected',
+                      zhHans: '$online / ${counted.length} 已连接',
+                      zhHant: '$online / ${counted.length} 已連線',
+                    ),
+                    style: MosiFonts.grotesk(size: 14, color: MosiColors.navy),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Expanded(
-                child: Text(
-                  GameLocale.select(
-                    ko: '현재 방 정보 · 플레이어',
-                    en: 'Current room · Players',
-                    zhHans: '当前房间 · 玩家',
-                    zhHant: '目前房間 · 玩家',
-                  ),
-                  style: MosiFonts.sans(
-                    size: 14,
-                    weight: FontWeight.w700,
-                    color: MosiColors.muted,
-                  ),
+                child: ListView(
+                  children: [
+                    for (final player in players)
+                      _GamePlayerRow(
+                        key: ValueKey('settings-player-${player.uid}'),
+                        player: player,
+                        confirming: _confirmUid == player.uid,
+                        pending: _pendingUids.contains(player.uid),
+                        leaving: _leaving.containsKey(player.uid),
+                        collapseDuration: _collapseDuration,
+                        onRemove: () => _tapRemove(player),
+                      ),
+                  ],
                 ),
               ),
-              Text(
-                GameLocale.select(
-                  ko: '$online / ${players.length} 연결',
-                  en: '$online / ${players.length} connected',
-                  zhHans: '$online / ${players.length} 已连接',
-                  zhHant: '$online / ${players.length} 已連線',
-                ),
-                style: MosiFonts.grotesk(size: 14, color: MosiColors.navy),
+              const SizedBox(height: 12),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: _notice == null
+                    ? Text(
+                        GameLocale.select(
+                          ko: '연결이 끊긴 사람은 30초 동안 자리를 지켜 둬요.',
+                          en:
+                              'A disconnected player keeps their seat for 30 seconds.',
+                          zhHans: '断线玩家的座位会保留 30 秒。',
+                          zhHant: '斷線玩家的座位會保留 30 秒。',
+                        ),
+                        key: const ValueKey('settings-room-hint'),
+                        style: MosiFonts.sans(
+                          size: 12,
+                          color: MosiColors.muted,
+                        ),
+                      )
+                    : _RemoveNotice(
+                        key: ValueKey('settings-notice-$_notice'),
+                        text: _notice!,
+                        error: _noticeIsError,
+                      ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _GamePlayerList(provider: provider, players: players),
+        );
+      },
+    );
+  }
+}
+
+/// 강퇴 결과를 패널 아래에 잠깐 보여 주는 한 줄 안내입니다.
+class _RemoveNotice extends StatelessWidget {
+  const _RemoveNotice({super.key, required this.text, required this.error});
+
+  final String text;
+  final bool error;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = error ? const Color(0xFFA82E40) : const Color(0xFF23722F);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: error ? const Color(0xFFFDE3E6) : const Color(0xFFE4F5E2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: MosiColors.ink, width: 2),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            error ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+            size: 18,
+            color: color,
           ),
-          const SizedBox(height: 12),
-          Text(
-            GameLocale.select(
-              ko: '연결이 끊긴 사람은 30초 동안 자리를 지켜 둬요.',
-              en: 'A disconnected player keeps their seat for 30 seconds.',
-              zhHans: '断线玩家的座位会保留 30 秒。',
-              zhHant: '斷線玩家的座位會保留 30 秒。',
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MosiFonts.sans(
+                size: 13,
+                weight: FontWeight.w700,
+                color: color,
+              ),
             ),
-            style: MosiFonts.sans(size: 12, color: MosiColors.muted),
           ),
         ],
       ),
@@ -341,128 +557,220 @@ class _RoomInfo extends StatelessWidget {
   }
 }
 
-class _GamePlayerList extends StatelessWidget {
-  const _GamePlayerList({required this.provider, required this.players});
+/// 설정 패널의 플레이어 한 줄입니다. 내보내면 옆으로 밀리며 접힙니다.
+class _GamePlayerRow extends StatelessWidget {
+  const _GamePlayerRow({
+    super.key,
+    required this.player,
+    required this.confirming,
+    required this.pending,
+    required this.leaving,
+    required this.collapseDuration,
+    required this.onRemove,
+  });
 
-  final GameRoomContext provider;
-  final List<GameRoomPlayer> players;
+  final GameRoomPlayer player;
+  final bool confirming;
+  final bool pending;
+  final bool leaving;
+  final Duration collapseDuration;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemCount: players.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final player = players[index];
-        final connected = player.isConnected;
-        return Opacity(
-          opacity: connected ? 1 : 0.8,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 56),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: MosiColors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: MosiColors.ink, width: 2),
-            ),
-            child: Row(
-              children: [
-                MosiFace(characterId: player.characterId, size: 36),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    player.nickname,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: MosiFonts.sans(
-                      size: 16,
-                      weight: FontWeight.w700,
-                      color: MosiColors.navy,
-                    ),
-                  ),
-                ),
-                Semantics(
-                  label: connected ? '연결됨'.localized : '연결 끊김'.localized,
-                  excludeSemantics: true,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: connected
-                          ? const Color(0xFFE4F5E2)
-                          : const Color(0xFFFDE3E6),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: connected
-                                ? const Color(0xFF3BAA4E)
-                                : MosiColors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          connected ? '연결됨'.localized : '연결 끊김'.localized,
-                          style: MosiFonts.sans(
-                            size: 12,
-                            weight: FontWeight.w700,
-                            color: connected
-                                ? const Color(0xFF23722F)
-                                : const Color(0xFFA82E40),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: '강퇴'.localized,
-                  child: Semantics(
-                    button: true,
-                    label: GameLocale.select(
-                      ko: '${player.nickname} 강퇴',
-                      en: 'Remove ${player.nickname}',
-                      zhHans: '移除 ${player.nickname}',
-                      zhHant: '移除 ${player.nickname}',
-                    ),
-                    excludeSemantics: true,
-                    child: GestureDetector(
-                      onTap: () => unawaited(provider.removePlayer(player.uid)),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: MosiColors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: MosiColors.ink, width: 2),
-                        ),
-                        child: Text(
-                          '강퇴'.localized,
-                          style: MosiFonts.sans(
-                            size: 12,
-                            weight: FontWeight.w700,
-                            color: const Color(0xFFA82E40),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+    final connected = player.isConnected;
+    final row = Container(
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: confirming ? const Color(0xFFFFF1F3) : MosiColors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: confirming ? MosiColors.red : MosiColors.ink,
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          MosiFace(characterId: player.characterId, size: 36),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              player.nickname,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MosiFonts.sans(
+                size: 16,
+                weight: FontWeight.w700,
+                color: MosiColors.navy,
+              ),
             ),
           ),
-        );
-      },
+          if (!confirming) ...[
+            _ConnectionPill(connected: connected),
+            const SizedBox(width: 8),
+          ],
+          _RemoveButton(
+            nickname: player.nickname,
+            confirming: confirming,
+            pending: pending,
+            onTap: onRemove,
+          ),
+        ],
+      ),
+    );
+    return AnimatedSize(
+      duration: collapseDuration,
+      curve: Curves.easeInCubic,
+      alignment: Alignment.topCenter,
+      child: leaving
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: pending ? .55 : (connected ? 1 : .8),
+                child: row,
+              ),
+            ),
+    );
+  }
+}
+
+class _ConnectionPill extends StatelessWidget {
+  const _ConnectionPill({required this.connected});
+
+  final bool connected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: connected ? '연결됨'.localized : '연결 끊김'.localized,
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: connected ? const Color(0xFFE4F5E2) : const Color(0xFFFDE3E6),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: connected ? const Color(0xFF3BAA4E) : MosiColors.red,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              connected ? '연결됨'.localized : '연결 끊김'.localized,
+              style: MosiFonts.sans(
+                size: 12,
+                weight: FontWeight.w700,
+                color: connected
+                    ? const Color(0xFF23722F)
+                    : const Color(0xFFA82E40),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 첫 탭은 "내보내기?" 확인으로 바뀌고, 두 번째 탭에 실제로 내보냅니다.
+class _RemoveButton extends StatelessWidget {
+  const _RemoveButton({
+    required this.nickname,
+    required this.confirming,
+    required this.pending,
+    required this.onTap,
+  });
+
+  final String nickname;
+  final bool confirming;
+  final bool pending;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget label;
+    if (pending) {
+      label = const SizedBox(
+        key: ValueKey('pending'),
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: Color(0xFFA82E40),
+        ),
+      );
+    } else {
+      label = Text(
+        confirming
+            ? GameLocale.select(
+                ko: '내보내기',
+                en: 'Remove?',
+                zhHans: '确认移除',
+                zhHant: '確認移除',
+              )
+            : '강퇴'.localized,
+        key: ValueKey(confirming),
+        maxLines: 1,
+        style: MosiFonts.sans(
+          size: confirming ? 13 : 12,
+          weight: FontWeight.w700,
+          color: confirming ? MosiColors.white : const Color(0xFFA82E40),
+        ),
+      );
+    }
+    return Tooltip(
+      message: '강퇴'.localized,
+      child: Semantics(
+        button: true,
+        label: confirming
+            ? GameLocale.select(
+                ko: '$nickname 내보내기 확인',
+                en: 'Confirm removing $nickname',
+                zhHans: '确认移除 $nickname',
+                zhHant: '確認移除 $nickname',
+              )
+            : GameLocale.select(
+                ko: '$nickname 강퇴',
+                en: 'Remove $nickname',
+                zhHans: '移除 $nickname',
+                zhHant: '移除 $nickname',
+              ),
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: pending ? null : onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutBack,
+            width: confirming ? 92 : 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: confirming ? MosiColors.red : MosiColors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: MosiColors.ink, width: 2),
+              boxShadow: confirming
+                  ? const [
+                      BoxShadow(color: MosiColors.ink, offset: Offset(0, 3)),
+                    ]
+                  : null,
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              child: label,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

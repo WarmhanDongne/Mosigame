@@ -37,10 +37,14 @@ import 'package:game_kit/sound/sound_effects.dart';
 ///   super.dispose();
 /// }
 /// ```
-class GameBackgroundMusic {
+class GameBackgroundMusic with WidgetsBindingObserver {
   SoundProvider? _sound;
   bool _isPlaying = false;
   bool _isPlaybackRequested = false;
+  bool _isForeground = true;
+  bool _pausedForLifecycle = false;
+  bool _observing = false;
+  String? _asset;
   int _operationGeneration = 0;
 
   /// 배경음악이 재생 중인지 여부입니다.
@@ -52,6 +56,14 @@ class GameBackgroundMusic {
   /// 때 확실히 멈출 수 있습니다.
   void attach(BuildContext context) {
     _sound ??= SoundEffects.of(context);
+    if (!_observing) {
+      _observing = true;
+      WidgetsBinding.instance.addObserver(this);
+      _isForeground = switch (WidgetsBinding.instance.lifecycleState) {
+        null || AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+        _ => false,
+      };
+    }
   }
 
   /// 배경음악을 시작합니다. 이미 재생 중이면 아무것도 하지 않습니다.
@@ -62,12 +74,18 @@ class GameBackgroundMusic {
   /// [asset]은 게임마다 다릅니다. 각 게임의 `sound/<game>_sounds.dart`에 있는
   /// 값을 넘기세요. 곡을 바꾸려면 [stop]으로 멈춘 뒤 다시 부릅니다.
   void start(String asset) {
-    if (_isPlaybackRequested) return;
+    if (_isPlaybackRequested && _asset == asset) return;
 
     final sound = _sound;
     if (sound == null) return;
 
+    _asset = asset;
     _isPlaybackRequested = true;
+    if (!_isForeground) {
+      _pausedForLifecycle = true;
+      return;
+    }
+    _pausedForLifecycle = false;
     final generation = ++_operationGeneration;
     unawaited(
       sound
@@ -100,6 +118,8 @@ class GameBackgroundMusic {
 
     _isPlaybackRequested = false;
     _isPlaying = false;
+    _pausedForLifecycle = false;
+    _asset = null;
     _operationGeneration += 1;
     _run(_sound?.stopBgm(), '배경음악을 멈추지 못했습니다');
   }
@@ -117,8 +137,62 @@ class GameBackgroundMusic {
 
     _isPlaybackRequested = false;
     _isPlaying = false;
+    _pausedForLifecycle = false;
+    _asset = null;
     _operationGeneration += 1;
     _run(_sound?.fadeOutBgm(duration: duration), '배경음악을 서서히 줄이지 못했습니다');
+  }
+
+  /// 앱이 백그라운드로 가면 BGM을 일시정지하고, 같은 게임 화면으로 돌아오면
+  /// 처음부터 다시 재생하지 않고 이어서 재생합니다.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive) return;
+    final foreground = state == AppLifecycleState.resumed;
+    if (foreground == _isForeground) return;
+    _isForeground = foreground;
+
+    final sound = _sound;
+    if (sound == null || !_isPlaybackRequested) return;
+    final generation = ++_operationGeneration;
+    if (!foreground) {
+      _pausedForLifecycle = true;
+      _isPlaying = false;
+      _run(sound.pauseBgm(), '백그라운드에서 배경음악을 멈추지 못했습니다');
+      return;
+    }
+
+    if (!_pausedForLifecycle) return;
+    _pausedForLifecycle = false;
+    unawaited(_resumeAfterLifecycle(sound, generation));
+  }
+
+  Future<void> _resumeAfterLifecycle(
+    SoundProvider sound,
+    int generation,
+  ) async {
+    try {
+      await sound.resumeBgm();
+    } on Object {
+      // iOS가 백그라운드에서 플레이어를 해제한 경우에는 같은 곡을 다시
+      // 열어 복구합니다. 정상 resume 경로에서는 재생 위치를 유지합니다.
+      final asset = _asset;
+      if (asset == null || generation != _operationGeneration) return;
+      await sound.playBgm(asset);
+    }
+    if (generation == _operationGeneration && _isPlaybackRequested) {
+      _isPlaying = true;
+    }
+  }
+
+  /// 화면 State의 dispose에서 호출해 lifecycle observer도 함께 해제합니다.
+  void dispose() {
+    stop();
+    if (_observing) {
+      WidgetsBinding.instance.removeObserver(this);
+      _observing = false;
+    }
+    _sound = null;
   }
 
   void _run(Future<void>? operation, String message) {

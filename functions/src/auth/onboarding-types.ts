@@ -26,7 +26,7 @@ export const INCOMPLETE_ACCOUNT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * (`test/auth/onboarding_parity_test.dart`가 대조합니다). 약관을 고치면 두
  * 값을 함께 올립니다.
  */
-export const SIGNUP_TERMS_VERSION = "2026-10-12";
+export const SIGNUP_TERMS_VERSION = "2026-11-21";
 
 /** 회원가입 약관 동의 내용입니다. 모두 필수 항목입니다. */
 export type SignupConsents = {

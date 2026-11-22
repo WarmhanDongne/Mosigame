@@ -46,6 +46,7 @@ export {deleteAccount} from "./auth/delete-account.js";
 export {syncGoogleUserProfile} from "./auth/sync-google-profile.js";
 export {syncAppleUserProfile} from "./auth/sync-apple-profile.js";
 export {completeGuestOnboarding} from "./auth/complete-guest-onboarding.js";
+export {markGuestAccountLinked} from "./auth/mark-guest-account-linked.js";
 
 export {
   advanceOnboarding,
@@ -159,6 +160,7 @@ export {
   game_russian_roulette_submit_action,
   game_russian_roulette_timeout_turn,
   game_russian_roulette_complete_phase,
+  game_russian_roulette_complete_intro,
   game_russian_roulette_end_game,
   game_russian_roulette_leave_game,
 } from "./russian-roulette/callables.js";

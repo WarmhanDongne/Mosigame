@@ -116,9 +116,11 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     _selectRandomAvailableCharacter();
   }
 
-  void _selectRandomAvailableCharacter({String? excluding}) {
+  void _selectRandomAvailableCharacter({
+    Set<String> excluding = const <String>{},
+  }) {
     final available = _availableCharacters
-        .where((character) => character.id != excluding)
+        .where((character) => !excluding.contains(character.id))
         .toList(growable: false);
     final next = available.isEmpty
         ? null
@@ -153,8 +155,8 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   /// `rooms/{roomCode}/players/{uid}`의 방 전용 표시 정보로만 사용됩니다.
   Future<void> _joinRoomWithNickname() async {
     FocusScope.of(context).unfocus();
-    final nickname = _nicknameController.text.trim();
-    final characterId = _selectedCharacterId;
+    var nickname = _nicknameController.text.trim();
+    var characterId = _selectedCharacterId;
     if (nickname.isEmpty) {
       _roomProvider.errorMessage = GameLocale.select(
         ko: '닉네임을 입력해주세요.',
@@ -210,49 +212,62 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
       setState(() => _nicknameShake++);
       return;
     }
+    final attemptedCharacterIds = <String>{};
     if (_occupiedCharacterIds.contains(characterId)) {
-      _roomProvider.errorMessage = GameLocale.select(
-        ko: '이미 선택된 캐릭터입니다.',
-        en: 'That character is already selected.',
-        zhHans: '该角色已被选择。',
-        zhHant: '該角色已被選擇。',
-      );
-      _selectRandomAvailableCharacter();
-      return;
+      attemptedCharacterIds.add(characterId);
+      _selectRandomAvailableCharacter(excluding: attemptedCharacterIds);
+      characterId = _selectedCharacterId;
+      nickname = _nicknameController.text.trim();
+      if (characterId == null) {
+        _roomProvider.errorMessage = GameLocale.select(
+          ko: '사용할 수 있는 캐릭터가 없습니다.',
+          en: 'No characters are available.',
+          zhHans: '没有可用角色。',
+          zhHant: '沒有可用角色。',
+        );
+        setState(() {});
+        return;
+      }
     }
     if (_isOpeningWaitingRoom) return;
     setState(() => _isOpeningWaitingRoom = true);
 
-    var joined = await _roomProvider.joinRoom(
-      widget.roomCode,
-      nickname,
-      characterId: characterId,
-    );
-    if (!mounted) return;
-    final characterWasTaken =
-        _roomProvider.lastCommandErrorReason == _characterTakenReason ||
-        _roomProvider.errorMessage == '이미 선택된 캐릭터입니다.';
-    if (!joined && characterWasTaken) {
+    var joined = false;
+    while (characterId != null && attemptedCharacterIds.add(characterId)) {
+      joined = await _roomProvider.joinRoom(
+        widget.roomCode,
+        nickname,
+        characterId: characterId,
+      );
+      if (!mounted) return;
+      if (joined) break;
+      final characterWasTaken =
+          _roomProvider.lastCommandErrorReason == _characterTakenReason ||
+          _roomProvider.errorMessage == '이미 선택된 캐릭터입니다.';
+      if (!characterWasTaken) break;
+
       // 화면을 본 직후 다른 휴대폰이 같은 캐릭터를 먼저 확정한 경쟁입니다.
-      // 서버 projection을 다시 받은 뒤 그 캐릭터를 제외하고 한 번만 재시도해,
-      // 실제로 비어 있는 캐릭터를 눌렀는데 입장 화면에 남는 일을 막습니다.
+      // 이미 거절된 후보를 제외한 채 서버 projection을 다시 받아, 남은 후보가
+      // 있는 동안만 제한적으로 재시도합니다.
+      _roomProvider.errorMessage = null;
       await _roomProvider.refreshRoomPreview(widget.roomCode);
       if (!mounted) return;
-      if (_selectedCharacterId == characterId ||
-          (_selectedCharacterId != null &&
-              _occupiedCharacterIds.contains(_selectedCharacterId))) {
-        _selectRandomAvailableCharacter(excluding: characterId);
+      final selected = _selectedCharacterId;
+      if (selected == null ||
+          attemptedCharacterIds.contains(selected) ||
+          _occupiedCharacterIds.contains(selected)) {
+        _selectRandomAvailableCharacter(excluding: attemptedCharacterIds);
       }
-      final retryCharacterId = _selectedCharacterId;
-      if (retryCharacterId != null && retryCharacterId != characterId) {
-        _roomProvider.errorMessage = null;
-        joined = await _roomProvider.joinRoom(
-          widget.roomCode,
-          _nicknameController.text.trim(),
-          characterId: retryCharacterId,
-        );
-        if (!mounted) return;
-      }
+      characterId = _selectedCharacterId;
+      nickname = _nicknameController.text.trim();
+    }
+    if (!joined && characterId == null) {
+      _roomProvider.errorMessage = GameLocale.select(
+        ko: '사용할 수 있는 캐릭터가 없습니다.',
+        en: 'No characters are available.',
+        zhHans: '没有可用角色。',
+        zhHant: '沒有可用角色。',
+      );
     }
     if (!joined) {
       setState(() => _isOpeningWaitingRoom = false);
@@ -394,6 +409,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                                       ),
                                       const SizedBox(height: 16),
                                       GridView.builder(
+                                        key: const Key('room-character-grid'),
                                         shrinkWrap: true,
                                         padding: EdgeInsets.zero,
                                         physics:
@@ -402,9 +418,11 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                                         gridDelegate:
                                             const SliverGridDelegateWithFixedCrossAxisCount(
                                               crossAxisCount: 4,
-                                              mainAxisSpacing: 14,
+                                              mainAxisSpacing: 8,
                                               crossAxisSpacing: 6,
-                                              childAspectRatio: 0.8,
+                                              // 16개 이름과 얼굴이 4×4 한 화면 안에
+                                              // 들어오도록 세로 여백을 압축합니다.
+                                              childAspectRatio: 1.0,
                                             ),
                                         itemBuilder: (context, index) {
                                           final character =

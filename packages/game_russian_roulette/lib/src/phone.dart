@@ -1577,14 +1577,8 @@ class _ChooseBodyState extends State<_ChooseBody> {
                       picked: picked,
                       confirmed: widget.submitted,
                       introLocked: intro,
-                      hint: intro
-                          ? rouletteText(
-                              '시작 연출이 끝나면 고를 수 있어요',
-                              'You can choose after the opening',
-                              '开场动画结束后即可选择',
-                              '開場動畫結束後即可選擇',
-                            )
-                          : hurry
+                      // 시작 연출 중에는 버튼만 잠그고 따로 안내 문구는 띄우지 않습니다.
+                      hint: hurry
                           ? rouletteText(
                               "시간이 끝나면 '아무것도 안 하기'로 정해져요",
                               "Time out picks 'Do nothing'",

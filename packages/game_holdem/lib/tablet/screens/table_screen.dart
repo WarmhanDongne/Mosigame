@@ -111,7 +111,7 @@ class _HoldemTableScreenState extends State<HoldemTableScreen>
 
   @override
   void dispose() {
-    _backgroundMusic.stop();
+    _backgroundMusic.dispose();
     _actionGapTimer?.cancel();
     _awardStartTimer?.cancel();
     _actionController

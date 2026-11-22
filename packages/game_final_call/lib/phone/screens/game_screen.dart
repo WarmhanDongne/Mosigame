@@ -326,6 +326,7 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
     final fourCard = handRevealed && controller.holdsFourCard;
     return FinalCallPhoneHandCardStack(
       fourCard: fourCard,
+      fourCardReplacementCardId: controller.fourCardReplacement?.id,
       celebrationKey: _fourCardCelebrationKey(fourCard),
       cards: controller.hand,
       isLandscape: true,
