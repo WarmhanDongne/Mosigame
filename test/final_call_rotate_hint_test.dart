@@ -14,7 +14,7 @@ import 'package:game_final_call/shared/providers/session_provider.dart';
 import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/models/game_room_context.dart';
-import 'package:game_kit/phone/widgets/phone_rotate_hint.dart';
+import 'package:game_kit/phone/widgets/rotate_hint.dart';
 
 import 'support/firebase_test_bootstrap.dart';
 

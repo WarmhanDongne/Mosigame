@@ -1,4 +1,4 @@
-// [phone_rotate_hint.dart] 는 가로로만 하는 게임(예: 파이널콜)에서 첫 카드를
+// [rotate_hint.dart] 는 가로로만 하는 게임(예: 파이널콜)에서 첫 카드를
 // 나눠 주기 전 빈 화면에 '휴대폰을 가로로 돌려 주세요' 안내를 보여 주는 파일이다.
 //
 // 게임 화면은 이미 가로로 고정돼 있어서, 휴대폰을 세로로 들고 있으면 화면이
@@ -139,7 +139,9 @@ class _RotatingPhonePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final unit = size.shortestSide / 132;
-    final turn = Curves.easeInOutCubic.transform(((t - .2) / .35).clamp(0.0, 1.0));
+    final turn = Curves.easeInOutCubic.transform(
+      ((t - .2) / .35).clamp(0.0, 1.0),
+    );
     final fade = t < .85 ? 1.0 : 1 - (t - .85) / .15;
     final landed = t >= .55 && t < .85;
 
