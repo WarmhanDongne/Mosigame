@@ -6,7 +6,7 @@
 
 ## 목적과 범위
 
-[노션 PRD 및 개발 계획](https://app.notion.com/p/42009716f87e8146b627c41eb0d45e21)을 제품 결정의 원본으로 두고, [Claude 화면 시안](https://claude.ai/artifact/EfLY27nxoLMiWVnXzFWomp#page-dcb81aee8d83)의 T01–T13/P01–P11을 개발 작업에 연결한다. 이 단계는 구현·Firebase 배포·카탈로그 변경을 포함하지 않는다. 게임의 영구 ID는 `black_white_reverse`를 **제안**하며 사용자 확인 전에는 고정하지 않는다.
+[노션 PRD 및 개발 계획](https://app.notion.com/p/42009716f87e8146b627c41eb0d45e21)을 제품 결정의 원본으로 두고, [Claude 화면 시안](https://claude.ai/artifact/EfLY27nxoLMiWVnXzFWomp#page-dcb81aee8d83)의 T01–T13/P01–P11을 개발 작업에 연결한다. 이 단계는 구현·Firebase 배포·카탈로그 변경을 포함하지 않는다. 게임명과 영구 `gameId`는 모두 `eleven`으로 확정했다(2026-11-23 사용자 결정). 기존 기획명은 문서·시안의 식별용으로 유지한다.
 
 ## 2026-11-23 출발점과 검증 근거
 
@@ -54,5 +54,5 @@
 
 - 최신 원격 develop을 기능 브랜치에 충돌 검토와 함께 안전하게 반영하고 HEAD·부모·원본 변경 보존 여부를 작업 시 확인한다.
 - SDK 쓰기가 가능한 실행 환경에서 **최신 develop을 포함한 후보**에 `validate --full`을 실행해 status/exit code와 기존 실패를 기록한다.
-- 사용자가 `gameId = black_white_reverse` 확정 여부를 확인한다. 그전에는 S1 계약 문서에 영구 경로·함수명을 확정하지 않는다.
+- 게임명과 `gameId = eleven`은 2026-11-23 사용자 결정으로 확정했다. S1 계약 문서의 패키지·서버 경로·카탈로그 ID에 동일하게 적용한다.
 - 변경된 기술 계약은 S1에서 작성한다. Firebase 운영 접근과 배포는 별도 승인 경계다.
