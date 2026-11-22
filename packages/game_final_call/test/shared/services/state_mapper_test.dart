@@ -137,4 +137,27 @@ void main() {
       isFalse,
     );
   });
+
+  test('새 카드와 바꾸면 포카드가 되는 한 장만 알려 준다', () {
+    final hand = [
+      const FinalCallCard(id: 'r7', color: 'red', value: 7),
+      const FinalCallCard(id: 'b7', color: 'blue', value: 7),
+      const FinalCallCard(id: 'g7', color: 'green', value: 7),
+      const FinalCallCard(id: 'y2', color: 'yellow', value: 2),
+    ];
+    expect(
+      finalCallFourCardReplacement(
+        hand,
+        const FinalCallCard(id: 'y7', color: 'yellow', value: 7),
+      )?.id,
+      'y2',
+    );
+    expect(
+      finalCallFourCardReplacement(
+        hand,
+        const FinalCallCard(id: 'y6', color: 'yellow', value: 6),
+      ),
+      isNull,
+    );
+  });
 }

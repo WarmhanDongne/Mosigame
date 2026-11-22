@@ -67,7 +67,7 @@ Future<void> _advance(WidgetTester tester, Duration duration) async {
 /// 덱 등장을 끝내고 전시·섞기를 시작합니다.
 Future<void> _startShowcase(WidgetTester tester) => _advance(
   tester,
-  DeckShowcaseShuffleAnimation.entryDuration +
+  DeckShowcaseShuffleAnimation.defaultEntryDuration +
       const Duration(milliseconds: 100),
 );
 

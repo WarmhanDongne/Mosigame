@@ -15,7 +15,7 @@ void main() {
     expect(LiarsPokerSounds.preloadTargets, isNot(contains(AppSounds.dealing)));
   });
 
-  testWidgets('공용 분배음 콜백은 마지막 세 번의 섞기 패스에 맞춰 호출된다', (tester) async {
+  testWidgets('공용 분배음 콜백은 마지막 섞기 패스에 맞춰 한 번 호출된다', (tester) async {
     tester.view.physicalSize = const Size(1180, 820);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -33,16 +33,18 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 620));
+    await tester.pump(TruthLieShuffleAnimation.entryDuration);
     // 새 컨트롤러의 첫 틱에서 기준 시각을 잡은 뒤 실제 경과 시간을 보냅니다.
     await tester.pump(const Duration(milliseconds: 1));
-    await tester.pump(const Duration(milliseconds: 4210));
+    // 섞기는 전시(2.4배 빠르게, 약 1.01초) + 머무름 2초 뒤에 시작합니다.
+    await tester.pump(const Duration(milliseconds: 2995));
     expect(passes, isEmpty);
 
-    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pump(const Duration(milliseconds: 30));
     expect(passes, [0]);
-    await tester.pump(const Duration(milliseconds: 590));
-    expect(passes, [0, 1]);
+    // 섞기는 한 번뿐이라 더 울리지 않습니다.
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(passes, [0]);
     await tester.pump(const Duration(milliseconds: 590));
     expect(passes, [0, 1, 2]);
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
@@ -171,8 +173,11 @@ void main() {
 
     await tester.pumpWidget(_dealingLayer(roundNumber: 1));
     await tester.pump();
-    // 덱 등장 620ms + 전시·섞기가 끝나기 직전까지는 분배가 시작되지 않습니다.
-    await tester.pump(const Duration(milliseconds: 630));
+    // 덱 등장 + 전시·섞기가 끝나기 직전까지는 분배가 시작되지 않습니다.
+    await tester.pump(
+      TruthLieShuffleAnimation.entryDuration +
+          const Duration(milliseconds: 10),
+    );
     await tester.pump();
     await tester.pump(
       TruthLieShuffleAnimation.shuffleDuration -

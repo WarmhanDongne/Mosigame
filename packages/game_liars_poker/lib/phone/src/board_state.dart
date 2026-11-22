@@ -320,7 +320,14 @@ class _LiarsPokerPhoneGameState extends ConsumerState<LiarsPokerPhoneGame> {
     // 첫 진입에만 적용하는 빗장입니다. isEntryDataReady는 라운드마다 분배
     // 단계에서 다시 false가 되므로, 그대로 쓰면 게임 도중에도 화면이 배경만
     // 남고 하위 화면이 사라집니다.
-    _hasEnteredGame |= controller.isEntryDataReady;
+    // 첫 라운드 분배(dealing) 중에도 게임 화면을 열어야 휴대폰에 '태블릿을 봐
+    // 주세요!' 안내가 보입니다. isEntryDataReady는 dealing 동안 false라, 이것만
+    // 보면 첫 라운드에는 분배가 끝날 때까지 배경만 남아 안내가 뜨지 않습니다.
+    _hasEnteredGame |=
+        controller.isEntryDataReady ||
+        (!controller.isInitialLoading &&
+            controller.phase == 'dealing' &&
+            !controller.isEliminated);
 
     return GameConnectionLedHost(
       connectionChanges: _serverConnection,

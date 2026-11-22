@@ -78,6 +78,7 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
     this.showTapHint = false,
     this.autoReveal = false,
     this.fourCard = false,
+    this.fourCardReplacementCardId,
     this.celebrationKey,
   });
 
@@ -109,6 +110,9 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
 
   /// 손패가 포카드면 카드 테두리와 묶음 꼬리표를 금빛으로 바꿉니다.
   final bool fourCard;
+
+  /// 이 카드를 새 카드와 교체하면 포카드가 완성됩니다.
+  final String? fourCardReplacementCardId;
 
   /// 포카드가 막 완성됐을 때 한 번 재생할 축하 연출의 키입니다.
   ///
@@ -224,6 +228,8 @@ class FinalCallPhoneHandCardStack extends StatelessWidget {
                         : (draggedCardId) =>
                               onCardsReordered(draggedCardId, cards[index].id),
                     fourCard: fourCard,
+                    fourCardCandidate:
+                        fourCardReplacementCardId == cards[index].id,
                     celebrationKey: celebrationKey,
                     celebrationIndex: index,
                   ),
@@ -342,11 +348,13 @@ class _SelectableHandCard extends StatelessWidget {
     required this.onTap,
     required this.onReorder,
     this.fourCard = false,
+    this.fourCardCandidate = false,
     this.celebrationKey,
     this.celebrationIndex = 0,
   });
 
   final bool fourCard;
+  final bool fourCardCandidate;
   final Object? celebrationKey;
   final int celebrationIndex;
   final FinalCallCard card;
@@ -399,7 +407,7 @@ class _SelectableHandCard extends StatelessWidget {
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: replaceSelected || fourCard
+                      color: replaceSelected || fourCard || fourCardCandidate
                           ? FinalCallColors.highlight
                           : Colors.transparent,
                       width: 3,
@@ -409,8 +417,19 @@ class _SelectableHandCard extends StatelessWidget {
                   child: FinalCallCardView(card: card, width: width),
                 ),
                 // 포카드면 금빛이 천천히 숨 쉬듯 깜빡입니다.
-                if (fourCard && !replaceSelected)
+                if ((fourCard || fourCardCandidate) && !replaceSelected)
                   Positioned.fill(child: _FourCardGlow(radius: 20 * unit)),
+                if (fourCardCandidate && !replaceSelected)
+                  Positioned(
+                    left: -10,
+                    right: -10,
+                    bottom: -34,
+                    child: FinalCallPopTag(
+                      label: FinalCallCopy.fourCardReplaceHint,
+                      color: FinalCallColors.yellow,
+                      fontSize: 10.5,
+                    ),
+                  ),
                 if (replaceSelected)
                   Positioned(
                     bottom: -30,

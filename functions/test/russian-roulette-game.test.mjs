@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   canRestartRussianRouletteGame,
+  completeRussianRouletteIntro,
   completeRussianRoulettePhase,
   createRussianRouletteGame,
   excludeRussianRoulettePlayer,
@@ -34,8 +35,9 @@ test("starts 2-6 players with a deterministic random target and 30 second timer"
   const first = game();
   const second = game();
   assert.equal(first.public.targetUid, second.public.targetUid);
-  // 첫 턴은 시작 연출(4명 5.34초)이 끝난 뒤 30초가 흐릅니다.
-  assert.equal(first.public.turnDeadlineAt, 1000 + 5340 + 30000);
+  // 첫 턴은 시작 연출(4명 5.34초) + 준비 여유 10초 뒤까지 30초를 둡니다.
+  // 태블릿이 연출을 끝내면 그때부터 30초로 당겨집니다.
+  assert.equal(first.public.turnDeadlineAt, 1000 + 5340 + 10000 + 30000);
   assert.equal(first.public.phaseStartedAt, 1000);
   assert.doesNotThrow(() => createRussianRouletteGame(players.slice(0, 2), 0));
   assert.throws(() => createRussianRouletteGame(players.slice(0, 1), 0), {code: "failed-precondition"});
@@ -193,4 +195,29 @@ test("a player who leaves during the reveal does not move the gun with their spi
   assert.equal(state.public.choiceCount, 3);
   completeRussianRoulettePhase(state, 3000);
   assert.equal(state.public.targetUid, "b");
+});
+
+test("tablet intro completion starts the first 30 second turn from that moment", () => {
+  const state = game();
+  const revision = state.public.revision;
+  // 태블릿이 연출을 7초 늦게 끝내도 그 순간부터 30초가 온전히 남습니다.
+  assert.equal(completeRussianRouletteIntro(state, 1000 + 5340 + 7000), true);
+  assert.equal(state.public.turnDeadlineAt, 1000 + 5340 + 7000 + 30000);
+  assert.equal(state.public.revision, revision + 1);
+  // 두 번 알려도 마감을 다시 늘리거나 당기지 않습니다.
+  assert.equal(completeRussianRouletteIntro(state, 1000 + 5340 + 9000), false);
+  assert.equal(state.public.turnDeadlineAt, 1000 + 5340 + 7000 + 30000);
+});
+
+test("intro completion is ignored after the first turn or while paused", () => {
+  const paused = game();
+  paused.public.turnDeadlineAt = null;
+  assert.equal(completeRussianRouletteIntro(paused, 3000), false);
+  assert.equal(paused.public.turnDeadlineAt, null);
+
+  const later = game();
+  later.public.targetUid = "a";
+  submit(later, {a: "none", b: "none", c: "none", d: "none"}, 2000);
+  assert.equal(completeRussianRouletteIntro(later, 3000), false);
+  assert.equal(later.public.phase, "revealing");
 });

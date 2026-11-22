@@ -7,6 +7,12 @@ const gameExitTransitionDuration = Duration(milliseconds: 960);
 class GameExitMaterialPageRoute<T> extends MaterialPageRoute<T> {
   GameExitMaterialPageRoute({required super.builder, super.settings});
 
+  /// 게임 중 iOS 가장자리 스와이프로 대기실로 빠져나가 서버 퇴장 처리가
+  /// 생략되지 않도록 제스처 기반 pop만 차단합니다. 게임 안의 퇴장 버튼은
+  /// 기존처럼 명시적으로 Navigator.pop을 호출할 수 있습니다.
+  @override
+  bool get popGestureEnabled => false;
+
   @override
   Duration get reverseTransitionDuration => gameExitTransitionDuration;
 
@@ -40,6 +46,9 @@ class GameExitInstantPageRoute<T> extends PageRouteBuilder<T> {
           child: child,
         ),
       );
+
+  @override
+  bool get popGestureEnabled => false;
 }
 
 /// 자리 배치 뒤 한지 창호문이 양옆에서 닫혔다가 열리며 게임을 공개합니다.
@@ -58,6 +67,9 @@ class GameDoorEntryPageRoute<T> extends PageRouteBuilder<T> {
           child: child,
         ),
       );
+
+  @override
+  bool get popGestureEnabled => false;
 }
 
 /// 닫힘 0.84초 + 닫힌 채 1.08초 + 열림 1.08초입니다.

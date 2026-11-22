@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/localization/game_locale.dart';
@@ -9,6 +9,7 @@ import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project00/platform/auth/models/nickname_policy.dart';
 import 'package:project00/platform/auth/services/auth_service.dart';
+import 'package:project00/platform/auth/widgets/auth_design.dart';
 import 'package:project00/platform/home/room/services/player_room_session_store.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
 import 'package:project00/platform/notifications/push_notification_host.dart';
@@ -40,13 +41,18 @@ class _TabletProfileModalState extends State<TabletProfileModal> {
   bool _isPickingImage = false;
   bool _isDeletingAccount = false;
   bool _isLoggingOut = false;
+  bool _isLinkingAccount = false;
 
   final ProfileUpdateController _profileUpdates =
       ProfileUpdateController.instance;
 
   User? get _user => FirebaseBackend.auth.currentUser;
 
-  bool get _isBusy => _isPickingImage || _isDeletingAccount || _isLoggingOut;
+  bool get _isBusy =>
+      _isPickingImage ||
+      _isDeletingAccount ||
+      _isLoggingOut ||
+      _isLinkingAccount;
 
   bool get _blocksProfileEdit => _isBusy || _profileUpdates.isSaving;
 
@@ -200,6 +206,28 @@ class _TabletProfileModalState extends State<TabletProfileModal> {
       }
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
+  Future<void> _linkGuestAccount() async {
+    if (_blocksProfileEdit || _user?.isAnonymous != true) return;
+    setState(() => _isLinkingAccount = true);
+    final linked = await showMosiDialog<bool>(
+      context: context,
+      builder: (_) => _GuestAccountLinkDialog(service: _authService),
+    );
+    if (!mounted) return;
+    setState(() => _isLinkingAccount = false);
+    if (linked == true) {
+      _showMessage(
+        GameLocale.select(
+          ko: '게스트 기록을 유지한 채 계정이 연결됐어요.',
+          en: 'Your account is linked and your guest progress is preserved.',
+          zhHans: '账号已关联，访客记录已保留。',
+          zhHant: '帳號已連結，訪客記錄已保留。',
+        ),
+      );
+      setState(() {});
     }
   }
 
@@ -575,6 +603,28 @@ class _TabletProfileModalState extends State<TabletProfileModal> {
                       ),
                       child: Column(
                         children: [
+                          if (_user?.isAnonymous == true) ...[
+                            _AccountRow(
+                              key: const Key('guest-account-link-row'),
+                              icon: Icons.link_rounded,
+                              label: GameLocale.select(
+                                ko: '계정 연결하기',
+                                en: 'Link an account',
+                                zhHans: '关联账号',
+                                zhHant: '連結帳號',
+                              ),
+                              color: MosiColors.violet,
+                              chevron: const Color(0xFF8C8AA8),
+                              onTap: _blocksProfileEdit
+                                  ? null
+                                  : _linkGuestAccount,
+                            ),
+                            const Divider(
+                              height: 1.5,
+                              thickness: 1.5,
+                              color: Color(0xFFE4E1EE),
+                            ),
+                          ],
                           _AccountRow(
                             icon: Icons.logout_rounded,
                             label: context.l10n.logout,
@@ -648,6 +698,222 @@ class _TabletProfileModalState extends State<TabletProfileModal> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+enum _GuestLinkMethod { email, google, apple }
+
+/// 익명 Firebase 사용자의 UID를 유지한 채 영구 로그인 수단을 연결합니다.
+class _GuestAccountLinkDialog extends StatefulWidget {
+  const _GuestAccountLinkDialog({required this.service});
+
+  final FirebaseAuthService service;
+
+  @override
+  State<_GuestAccountLinkDialog> createState() =>
+      _GuestAccountLinkDialogState();
+}
+
+class _GuestAccountLinkDialogState extends State<_GuestAccountLinkDialog> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  _GuestLinkMethod? _busy;
+  bool _showEmail = false;
+  bool _showPassword = false;
+  String? _error;
+
+  bool get _appleAvailable =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(
+    _GuestLinkMethod method,
+    Future<void> Function() operation,
+  ) async {
+    if (_busy != null) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = method;
+      _error = null;
+    });
+    try {
+      await operation();
+      if (mounted) Navigator.of(context).pop(true);
+    } on AuthServiceException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = null;
+        _error = error.code == 'canceled' ? null : error.message;
+      });
+    }
+  }
+
+  Future<void> _linkEmail() async {
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (!email.contains('@')) {
+      setState(() => _error = '이메일 주소를 확인해주세요.'.localized);
+      return;
+    }
+    if (password.length < 8) {
+      setState(() => _error = '비밀번호를 8자 이상 입력해주세요.'.localized);
+      return;
+    }
+    await _run(
+      _GuestLinkMethod.email,
+      () => widget.service.linkGuestWithEmail(email: email, password: password),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final blocked = _busy != null;
+    return MosiDialogFrame(
+      width: 360,
+      padding: const EdgeInsets.all(22),
+      radius: 18,
+      shadowOffset: 8,
+      semanticLabel: '게스트 계정 연결'.localized,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '게스트 계정 연결'.localized,
+                  style: MosiFonts.sans(
+                    size: 22,
+                    weight: FontWeight.w800,
+                    color: MosiColors.navy,
+                  ),
+                ),
+              ),
+              MosiIconButton(
+                icon: Icons.close_rounded,
+                tooltip: context.l10n.close,
+                size: 40,
+                onPressed: blocked ? null : () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            GameLocale.select(
+              ko: '현재 닉네임, 구매 내역과 그룹 기록을 그대로 유지해요. 이미 다른 모시겜 계정에 사용 중인 로그인 정보는 연결할 수 없어요.',
+              en: 'Keep your nickname, purchases, and group history. A sign-in already used by another MosiGame account cannot be linked.',
+              zhHans: '保留当前昵称、购买记录和群组记录。已用于其他账号的登录信息无法关联。',
+              zhHant: '保留目前暱稱、購買記錄和群組記錄。已用於其他帳號的登入資訊無法連結。',
+            ),
+            style: MosiFonts.sans(
+              size: 13,
+              color: MosiColors.muted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          MosiButton(
+            key: const Key('guest-link-google'),
+            label: 'Google로 연결'.localized,
+            expand: true,
+            height: 48,
+            background: MosiColors.white,
+            loading: _busy == _GuestLinkMethod.google,
+            onPressed: blocked
+                ? null
+                : () => _run(
+                    _GuestLinkMethod.google,
+                    widget.service.linkGuestWithGoogle,
+                  ),
+          ),
+          if (_appleAvailable) ...[
+            const SizedBox(height: 9),
+            MosiButton(
+              key: const Key('guest-link-apple'),
+              label: 'Apple로 연결'.localized,
+              expand: true,
+              height: 48,
+              background: MosiColors.ink,
+              foreground: MosiColors.white,
+              loading: _busy == _GuestLinkMethod.apple,
+              onPressed: blocked
+                  ? null
+                  : () => _run(
+                      _GuestLinkMethod.apple,
+                      widget.service.linkGuestWithApple,
+                    ),
+            ),
+          ],
+          const SizedBox(height: 9),
+          MosiButton(
+            key: const Key('guest-link-email-toggle'),
+            label: '이메일로 연결'.localized,
+            expand: true,
+            height: 48,
+            background: MosiColors.cream,
+            onPressed: blocked
+                ? null
+                : () => setState(() => _showEmail = !_showEmail),
+          ),
+          if (_showEmail) ...[
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('guest-link-email'),
+              controller: _email,
+              enabled: !blocked,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              decoration: mosiInputDecoration().copyWith(
+                hintText: '이메일'.localized,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('guest-link-password'),
+              controller: _password,
+              enabled: !blocked,
+              obscureText: !_showPassword,
+              autocorrect: false,
+              decoration: mosiInputDecoration().copyWith(
+                hintText: '비밀번호 · 8자 이상'.localized,
+                suffixIcon: IconButton(
+                  onPressed: blocked
+                      ? null
+                      : () => setState(() => _showPassword = !_showPassword),
+                  icon: Icon(
+                    _showPassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 9),
+            MosiButton(
+              key: const Key('guest-link-email-submit'),
+              label: '이메일 계정 연결'.localized,
+              expand: true,
+              height: 48,
+              loading: _busy == _GuestLinkMethod.email,
+              onPressed: blocked ? null : _linkEmail,
+            ),
+          ],
+          if (_error != null && _error!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            MosiNotice(message: _error!),
+          ],
+        ],
       ),
     );
   }
@@ -779,6 +1045,7 @@ class _GoogleBadge extends StatelessWidget {
 
 class _AccountRow extends StatelessWidget {
   const _AccountRow({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,

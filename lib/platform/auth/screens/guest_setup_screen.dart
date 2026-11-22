@@ -84,10 +84,12 @@ class _GuestSetupScreenState extends State<GuestSetupScreen> {
           const SizedBox(height: 16),
           MosiNotice(
             message: GameLocale.select(
-              ko: '이메일·비밀번호 없이 자동 닉네임으로 시작해요. 로그아웃하거나 앱 데이터를 지우면 게스트 계정을 복구할 수 없어요.',
-              en: 'Start with an automatic nickname and no email or password. A guest account cannot be recovered after logging out or clearing app data.',
-              zhHans: '无需邮箱和密码，使用自动昵称开始。退出登录或清除应用数据后无法恢复访客账号。',
-              zhHant: '無需電子郵件和密碼，使用自動暱稱開始。登出或清除 App 資料後無法恢復訪客帳號。',
+              ko: '자동 닉네임으로 시작하고, 나중에 프로필에서 이메일·Google·Apple 계정을 연결할 수 있어요. 연결 전에는 로그아웃하거나 앱 데이터를 지우면 복구할 수 없어요.',
+              en: 'Start with an automatic nickname, then link email, Google, or Apple from your profile. Before linking, the guest account cannot be recovered after logout or clearing app data.',
+              zhHans:
+                  '使用自动昵称开始，之后可在个人资料中关联邮箱、Google 或 Apple。关联前退出登录或清除数据将无法恢复。',
+              zhHant:
+                  '使用自動暱稱開始，之後可在個人資料中連結電子郵件、Google 或 Apple。連結前登出或清除資料將無法恢復。',
             ),
             tone: MosiNoticeTone.info,
           ),

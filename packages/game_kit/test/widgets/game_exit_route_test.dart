@@ -18,7 +18,7 @@ void main() {
         ),
       );
 
-      final Route<void> route = instantEntry
+      final PageRoute<void> route = instantEntry
           ? GameExitInstantPageRoute<void>(
               pageBuilder: (_, _, _) =>
                   const Scaffold(body: Center(child: Text('game'))),
@@ -26,6 +26,7 @@ void main() {
           : GameExitMaterialPageRoute<void>(
               builder: (_) => const Scaffold(body: Center(child: Text('game'))),
             );
+      expect(route.popGestureEnabled, isFalse);
       navigator.push(route);
       await tester.pumpAndSettle();
       expect(find.text('game'), findsOneWidget);

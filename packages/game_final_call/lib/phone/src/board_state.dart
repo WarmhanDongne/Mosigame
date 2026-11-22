@@ -136,6 +136,14 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
         !game.hand.any((card) => card.id == selectedCardId)) {
       selectedCardId = null;
     }
+    // 시간초과·턴 이동으로 pending draw가 사라진 뒤에도 선택 테두리와
+    // '바꿀 카드' 꼬리표가 남지 않게 서버 상태를 기준으로 즉시 비웁니다.
+    if (!game.isMyTurn ||
+        !game.canCompleteTurn ||
+        game.pendingDrawUid != game.uid ||
+        game.pendingDraw == null) {
+      selectedCardId = null;
+    }
     if (game.isFinalSubmitPhase) selectedCardId = null;
     if (!game.isFinalSubmitPhase) _finalSelectionEdited = false;
     _presetFinalSelectionRound = syncFinalCallSelection(

@@ -332,7 +332,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final service = _RoomService()..failFirstCharacterConflict = true;
+    final service = _RoomService()..characterConflictFailures = 1;
     final provider = _RoomProvider(service);
     await tester.pumpWidget(
       MaterialApp(
@@ -357,6 +357,129 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
+  testWidgets('서버에서 캐릭터 충돌이 연속되어도 거절된 후보를 제외하고 계속 입장한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService()..characterConflictFailures = 2;
+    final provider = _RoomProvider(service);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '방전용닉네임');
+
+    await tester.tap(find.widgetWithText(MosiButton, '입장하기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(provider.previewRefreshes, 2);
+    expect(service.calls, 3);
+    expect(service.sentCharacterIds.toSet(), hasLength(3));
+    expect(find.text('이미 선택된 캐릭터입니다.'), findsNothing);
+
+    service.response.completeError(
+      FirebaseFunctionsException(code: 'unavailable', message: '연결 실패'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
+  testWidgets('입장 직전 미리보기에서 캐릭터 선점을 확인해도 빈 캐릭터로 계속 입장한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService();
+    final provider = _RoomProvider(service);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '방전용닉네임');
+
+    final selectedFace = tester.widget<MosiFace>(
+      find.byWidgetPredicate(
+        (widget) => widget is MosiFace && widget.key is ValueKey<String>,
+      ),
+    );
+    final takenCharacterId = selectedFace.characterId!;
+    provider.players = [
+      RoomPlayer(
+        uid: 'other',
+        nickname: '다른참가자',
+        characterId: takenCharacterId,
+        isConnected: true,
+        seatIndex: -1,
+        role: 'player',
+        status: 'active',
+        penaltyAttemptCount: 0,
+      ),
+    ];
+
+    await tester.tap(find.widgetWithText(MosiButton, '입장하기'));
+    await tester.pump();
+
+    expect(service.calls, 1);
+    expect(service.sentCharacterId, isNot(takenCharacterId));
+    expect(find.text('이미 선택된 캐릭터입니다.'), findsNothing);
+
+    service.response.completeError(
+      FirebaseFunctionsException(code: 'unavailable', message: '연결 실패'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+  });
+
+  testWidgets('모든 캐릭터가 점유되면 서버 요청 없이 사용 불가를 안내한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = _RoomService();
+    final provider = _RoomProvider(service);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneRoomNickname(roomCode: 'ABCDE', provider: provider),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '방전용닉네임');
+    provider.players = [
+      for (final (index, character) in roomCharacters.indexed)
+        RoomPlayer(
+          uid: 'other-$index',
+          nickname: '참가자$index',
+          characterId: character.id,
+          isConnected: true,
+          seatIndex: -1,
+          role: 'player',
+          status: 'active',
+          penaltyAttemptCount: 0,
+        ),
+    ];
+
+    await tester.tap(find.widgetWithText(MosiButton, '입장하기'));
+    await tester.pump();
+
+    expect(service.calls, 0);
+    expect(find.text('사용할 수 있는 캐릭터가 없습니다.'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();
@@ -518,7 +641,7 @@ class _RoomService implements RoomService {
   String? sentNickname;
   String? sentCharacterId;
   final List<String> sentCharacterIds = [];
-  bool failFirstCharacterConflict = false;
+  int characterConflictFailures = 0;
   final response = Completer<void>();
   @override
   Future<void> joinRoom(
@@ -531,7 +654,7 @@ class _RoomService implements RoomService {
     sentNickname = nickname;
     sentCharacterId = characterId;
     sentCharacterIds.add(characterId);
-    if (failFirstCharacterConflict && calls == 1) {
+    if (calls <= characterConflictFailures) {
       return Future.error(
         FirebaseFunctionsException(
           code: 'already-exists',
