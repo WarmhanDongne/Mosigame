@@ -161,6 +161,22 @@ bool isFinalCallFourOfAKind(Iterable<FinalCallCard> cards) {
   return hand.every((card) => card.value == hand.first.value);
 }
 
+/// 새로 받은 [incoming] 카드와 바꾸면 포카드가 되는 손패 카드를 찾습니다.
+///
+/// 포카드는 같은 숫자 세 장을 이미 들고 있고 새 카드도 그 숫자일 때만
+/// 한 번의 교체로 완성됩니다. 반환값은 사용자가 바꿔야 할 나머지 한 장입니다.
+FinalCallCard? finalCallFourCardReplacement(
+  Iterable<FinalCallCard> cards,
+  FinalCallCard? incoming,
+) {
+  if (incoming == null) return null;
+  final hand = cards.toList(growable: false);
+  if (hand.length != 4) return null;
+  final matching = hand.where((card) => card.value == incoming.value).toList();
+  if (matching.length != 3) return null;
+  return hand.firstWhere((card) => card.value != incoming.value);
+}
+
 FinalCallCombination finalCallBestCombination(Iterable<FinalCallCard> cards) {
   final hand = cards.toList(growable: false);
   final result = calculateFinalCallScoreResult(hand);

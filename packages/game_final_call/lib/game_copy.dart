@@ -80,6 +80,12 @@ abstract final class FinalCallCopy {
   static String get fourCardBadge => _t('포카드', 'Four', '四条', '四條');
   static String get fourCardReady =>
       _t('포카드 완성!', 'Four of a kind!', '凑成四条！', '湊成四條！');
+  static String get fourCardReplaceHint => _t(
+    '이 카드를 바꾸면 포카드!',
+    'Replace this card for four of a kind!',
+    '换掉这张牌即可凑成四条！',
+    '換掉這張牌即可湊成四條！',
+  );
   static String get fourCardCallNext => _t(
     '다음 내 차례에\n바로 CALL 하세요',
     'CALL right away\non your next turn',

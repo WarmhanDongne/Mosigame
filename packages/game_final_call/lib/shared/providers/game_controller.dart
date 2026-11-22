@@ -186,6 +186,10 @@ class FinalCallController extends GameSessionController<FinalCallGameState> {
       callerUid == null &&
       pendingDraw == null &&
       isFinalCallFourOfAKind(hand);
+
+  /// 지금 받은 카드와 바꾸면 포카드가 되는 손패 카드입니다.
+  FinalCallCard? get fourCardReplacement =>
+      finalCallFourCardReplacement(hand, pendingDraw);
   bool get canAct =>
       status == 'playing' &&
       interruption == null &&

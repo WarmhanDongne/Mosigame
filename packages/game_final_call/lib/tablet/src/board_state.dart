@@ -459,7 +459,7 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
     _timeoutCommand.dispose();
     _nextRoundCommand.dispose();
     // 배경음악은 반복 재생이라 화면을 떠날 때 반드시 멈춥니다.
-    backgroundMusic.stop();
+    backgroundMusic.dispose();
     phaseTimer?.cancel();
     turnTimer?.cancel();
     closingExitTimer?.cancel();

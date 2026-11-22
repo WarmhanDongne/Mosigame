@@ -46,6 +46,10 @@ class DeckShowcaseShuffleAnimation extends StatefulWidget {
     this.title,
     this.titleStyle,
     this.showcaseHold = defaultShowcaseHold,
+    this.entryDuration = defaultEntryDuration,
+    this.motionSpeed = 1,
+    this.shufflePassCount = defaultShufflePassCount,
+    this.shufflePassDuration = defaultShufflePassDuration,
     this.play = true,
     this.onShufflePassStarted,
     this.onCompleted,
@@ -78,6 +82,19 @@ class DeckShowcaseShuffleAnimation extends StatefulWidget {
   /// 앞면을 모두 공개한 뒤 그대로 보여 주는 시간입니다.
   final Duration showcaseHold;
 
+  /// 덱이 화면 가운데에 나타나는 시간입니다.
+  final Duration entryDuration;
+
+  /// 전시·합류·뒤집기·모으기 구간의 빠르기 배율입니다. 2면 두 배 빠릅니다.
+  /// [showcaseHold]와 섞기 패스 길이에는 영향을 주지 않습니다.
+  final double motionSpeed;
+
+  /// 마지막에 덱을 반으로 갈라 섞는 횟수입니다. 1 이상이어야 합니다.
+  final int shufflePassCount;
+
+  /// 섞기 한 번에 걸리는 시간입니다.
+  final Duration shufflePassDuration;
+
   /// false인 동안에는 덱만 중앙에 놓아 두고 안내가 끝나기를 기다립니다.
   final bool play;
 
@@ -98,18 +115,43 @@ class DeckShowcaseShuffleAnimation extends StatefulWidget {
     return [for (var row = 0; row < rows; row++) base + (row < extra ? 1 : 0)];
   }
 
-  /// 덱이 화면 가운데에 은은하게 나타나는 시간입니다.
-  static const entryDuration = Duration(milliseconds: 620);
+  /// 덱이 화면 가운데에 은은하게 나타나는 기본 시간입니다.
+  static const defaultEntryDuration = Duration(milliseconds: 620);
+
+  /// 기본 섞기 횟수와 한 번의 길이입니다.
+  static const defaultShufflePassCount = 3;
+  static const defaultShufflePassDuration = Duration(milliseconds: 575);
 
   /// 기본 머무는 시간입니다.
   static const defaultShowcaseHold = Duration(milliseconds: 980);
 
   /// 덱 등장 뒤 전시·합류·섞기까지 걸리는 시간입니다.
-  static Duration shuffleDurationFor(Duration showcaseHold) =>
-      const Duration(milliseconds: _moveMs) + showcaseHold;
+  static Duration shuffleDurationFor(
+    Duration showcaseHold, {
+    double motionSpeed = 1,
+    int shufflePassCount = defaultShufflePassCount,
+    Duration shufflePassDuration = defaultShufflePassDuration,
+  }) =>
+      Duration(
+        microseconds:
+            (_moveMsFor(motionSpeed, shufflePassCount, shufflePassDuration) *
+                    1000)
+                .round(),
+      ) +
+      showcaseHold;
 
-  /// 머무름을 뺀 움직임 구간의 길이입니다.
-  static const int _moveMs = 4200;
+  /// 머무름을 뺀 움직임 구간의 길이(ms)입니다. 기본값은 4200ms입니다.
+  static double _moveMsFor(
+    double motionSpeed,
+    int shufflePassCount,
+    Duration shufflePassDuration,
+  ) =>
+      _DeckShowcaseShuffleAnimationState._shuffleStart / motionSpeed +
+      shufflePassDuration.inMicroseconds / 1000 * shufflePassCount +
+      _moveTailMs;
+
+  /// 마지막 섞기가 끝난 뒤 분배로 넘어가기 전 잠깐 멈추는 시간(ms)입니다.
+  static const double _moveTailMs = 55;
 
   @override
   State<DeckShowcaseShuffleAnimation> createState() =>
@@ -137,10 +179,14 @@ class _DeckShowcaseShuffleAnimationState
   static const double _gatherSpread = 280;
   static const double _gatherLength = 240;
   static const double _shuffleStart = 2420;
-  static const double _shuffleLength = 1725;
+  /// 기본 섞기 한 번의 길이(ms)입니다. 타임라인은 이 길이로 계산하고,
+  /// 실제 길이는 [DeckShowcaseShuffleAnimation.shufflePassDuration]을 따릅니다.
+  static const double _basePassMs = 575;
 
-  static const _passCount = 3;
   static const _passSpread = [.66, .58, .5];
+
+  int get _passCount => math.max(widget.shufflePassCount, 1);
+  double get _shuffleLength => _basePassMs * _passCount;
 
   // 줄 배치 치수입니다. 전시 카드는 덱 카드 크기까지 키워 세기 쉽게 합니다.
   static const _rowSidePadding = 56.0;
@@ -171,16 +217,14 @@ class _DeckShowcaseShuffleAnimationState
     _entry =
         AnimationController(
             vsync: this,
-            duration: DeckShowcaseShuffleAnimation.entryDuration,
+            duration: widget.entryDuration,
           )
           ..addStatusListener(_onEntryStatus)
           ..forward();
     _shuffle =
         AnimationController(
             vsync: this,
-            duration: DeckShowcaseShuffleAnimation.shuffleDurationFor(
-              widget.showcaseHold,
-            ),
+            duration: _shuffleDuration,
           )
           ..addStatusListener(_onShuffleStatus)
           ..addListener(_notifyShufflePassStarted);
@@ -190,10 +234,15 @@ class _DeckShowcaseShuffleAnimationState
   @override
   void didUpdateWidget(DeckShowcaseShuffleAnimation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.showcaseHold != widget.showcaseHold) {
-      _shuffle.duration = DeckShowcaseShuffleAnimation.shuffleDurationFor(
-        widget.showcaseHold,
-      );
+    if (oldWidget.showcaseHold != widget.showcaseHold ||
+        oldWidget.motionSpeed != widget.motionSpeed ||
+        oldWidget.shufflePassCount != widget.shufflePassCount ||
+        oldWidget.shufflePassDuration != widget.shufflePassDuration) {
+      _shuffle.duration = _shuffleDuration;
+      _cachedOrders = null;
+    }
+    if (oldWidget.entryDuration != widget.entryDuration) {
+      _entry.duration = widget.entryDuration;
     }
     _startWhenReady();
   }
@@ -221,7 +270,7 @@ class _DeckShowcaseShuffleAnimationState
   void _notifyShufflePassStarted() {
     if (_time < _shuffleStart) return;
     final elapsed = _time - _shuffleStart;
-    final passLength = _shuffleLength / _passCount;
+    const passLength = _basePassMs;
     final reachedCount = math.min(
       (elapsed / passLength).floor() + 1,
       _passCount,
@@ -238,14 +287,32 @@ class _DeckShowcaseShuffleAnimationState
     }
   }
 
-  /// 컨트롤러 진행도를 머무름을 뺀 타임라인(ms)으로 옮깁니다.
+  Duration get _shuffleDuration =>
+      DeckShowcaseShuffleAnimation.shuffleDurationFor(
+        widget.showcaseHold,
+        motionSpeed: _speed,
+        shufflePassCount: _passCount,
+        shufflePassDuration: widget.shufflePassDuration,
+      );
+
+  double get _speed => widget.motionSpeed > 0 ? widget.motionSpeed : 1;
+
+  /// 컨트롤러 진행도를 머무름을 뺀 기본 타임라인(ms)으로 옮깁니다.
+  ///
+  /// 실제 시간은 [motionSpeed]로 빨라지고, 섞기 구간은
+  /// [shufflePassDuration]에 맞춰 늘거나 줄어듭니다.
   double get _time {
     final holdMs = widget.showcaseHold.inMicroseconds / 1000;
-    final elapsed =
-        _shuffle.value * (DeckShowcaseShuffleAnimation._moveMs + holdMs);
-    if (elapsed <= _holdAt) return elapsed;
-    if (elapsed <= _holdAt + holdMs) return _holdAt;
-    return elapsed - holdMs;
+    final real = _shuffle.value * _shuffleDuration.inMicroseconds / 1000;
+    final holdAt = _holdAt / _speed;
+    if (real <= holdAt) return real * _speed;
+    if (real <= holdAt + holdMs) return _holdAt;
+    final moved = real - holdMs;
+    final shuffleAt = _shuffleStart / _speed;
+    if (moved <= shuffleAt) return moved * _speed;
+    final passMs = widget.shufflePassDuration.inMicroseconds / 1000;
+    final passScale = passMs > 0 ? _basePassMs / passMs : 1.0;
+    return _shuffleStart + (moved - shuffleAt) * passScale;
   }
 
   static double _span(
@@ -275,16 +342,20 @@ class _DeckShowcaseShuffleAnimationState
   /// [pass]번째 섞기를 시작할 때의 순서입니다. 0번이 덱 맨 위입니다.
   List<List<int>> get _orders {
     final cached = _cachedOrders;
-    if (cached != null && cached.first.length == _cardCount) return cached;
-    return _cachedOrders = _buildOrders(_cardCount);
+    if (cached != null &&
+        cached.first.length == _cardCount &&
+        cached.length == _passCount + 1) {
+      return cached;
+    }
+    return _cachedOrders = _buildOrders(_cardCount, _passCount);
   }
 
-  static List<List<int>> _buildOrders(int cardCount) {
+  static List<List<int>> _buildOrders(int cardCount, int passCount) {
     final orders = <List<int>>[
       [for (var card = 0; card < cardCount; card++) card],
     ];
     final half = cardCount ~/ 2;
-    for (var pass = 0; pass < _passCount; pass++) {
+    for (var pass = 0; pass < passCount; pass++) {
       final current = orders.last;
       final first = pass.isEven
           ? current.sublist(half)
@@ -555,7 +626,7 @@ class _DeckShowcaseShuffleAnimationState
       // 착지를 시작한 카드는 벌어진 묶음보다 위에, 먼저 착지한 카드 위로 쌓입니다.
       paintOrder: landing > 0 ? 100.0 - after : 0.0 - before,
       offset: Offset(
-        side * (cardWidth * _passSpread[pass] + packetDepth * 2.6) * apart,
+        side * (cardWidth * _passSpread[math.min(pass, _passSpread.length - 1)] + packetDepth * 2.6) * apart,
         _pileY(before) +
             (_pileY(after) - _pileY(before)) * landing +
             packetDepth * 1.8 * apart,

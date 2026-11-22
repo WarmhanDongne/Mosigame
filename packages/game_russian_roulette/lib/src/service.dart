@@ -24,6 +24,13 @@ class RussianRouletteCommandService extends GameCommandService {
     retryTransientFailure: true,
   );
 
+  /// 태블릿 시작 연출이 끝났음을 알려 첫 턴 30초를 지금부터 세게 합니다.
+  Future<Map<String, dynamic>> completeIntro(String roomCode) => invoke(
+    'game_russian_roulette_complete_intro',
+    {'roomCode': roomCode, 'commandId': commandId('intro')},
+    retryTransientFailure: true,
+  );
+
   Future<Map<String, dynamic>> completePhase(String roomCode) => invoke(
     'game_russian_roulette_complete_phase',
     {'roomCode': roomCode, 'commandId': commandId('phase')},

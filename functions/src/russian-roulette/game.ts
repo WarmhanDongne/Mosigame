@@ -29,9 +29,41 @@ export function russianRouletteIntroMs(alive: number): number {
   return 1200 + step * others + 2700;
 }
 
-/** 첫 턴 마감까지의 시간입니다(시작 연출 + 선택 시간). */
+/**
+ * 태블릿 화면 전환·에셋 준비가 늦어 시작 연출이 늦게 시작돼도 첫 턴 시간이
+ * 줄지 않도록 더해 두는 여유입니다. 태블릿이 연출을 끝내면
+ * [completeRussianRouletteIntro]가 마감을 "지금 + 30초"로 당깁니다. 태블릿이
+ * 알리지 못한 경우에만 이 여유까지 포함한 마감이 그대로 쓰입니다.
+ */
+export const RUSSIAN_ROULETTE_INTRO_SLACK_MS = 10000;
+
+/** 첫 턴 마감까지의 시간입니다(시작 연출 + 준비 여유 + 선택 시간). */
 export function russianRouletteFirstTurnMs(alive: number): number {
-  return russianRouletteIntroMs(alive) + RUSSIAN_ROULETTE_TURN_MS;
+  return russianRouletteIntroMs(alive) + RUSSIAN_ROULETTE_INTRO_SLACK_MS +
+    RUSSIAN_ROULETTE_TURN_MS;
+}
+
+/**
+ * 태블릿 시작 연출이 끝난 순간부터 첫 턴 30초를 셉니다.
+ *
+ * 첫 턴 선택 단계에서 마감이 아직 30초보다 멀 때만 "지금 + 30초"로 당깁니다.
+ * 이미 30초 안쪽이거나 중단으로 마감이 비어 있으면 바꾸지 않습니다.
+ */
+export function completeRussianRouletteIntro(
+  game: RussianRouletteGameState,
+  now: number,
+): boolean {
+  const pub = game.public;
+  if (pub.status !== "playing" || pub.phase !== "selecting" || pub.round !== 1) {
+    return false;
+  }
+  const deadline = pub.turnDeadlineAt;
+  if (deadline == null) return false;
+  const next = now + RUSSIAN_ROULETTE_TURN_MS;
+  if (deadline <= next) return false;
+  pub.turnDeadlineAt = next;
+  touch(game, now);
+  return true;
 }
 
 export interface RussianRouletteStartPlayer {
