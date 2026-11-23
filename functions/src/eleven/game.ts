@@ -16,8 +16,11 @@ export function normalizeElevenGame(game: ElevenGameState): ElevenGameState {
   game.controller ??= {history: []};
   game.controller.history ??= [];
   game.private ??= {};
+  for (const player of Object.values(game.private)) player.tiles ??= [];
   game.public.currentRound ??= {round: game.public.round, autoSubmitted: {}};
   game.public.currentRound.autoSubmitted ??= {};
+  // 뽑기 시작 직후 picks는 빈 객체라 RTDB에 저장되지 않습니다.
+  if (game.public.draw) game.public.draw.picks ??= {};
   return game;
 }
 

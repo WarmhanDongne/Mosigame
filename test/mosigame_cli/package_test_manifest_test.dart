@@ -15,10 +15,11 @@ void main() {
       'game_holdem',
       'game_yut',
       'game_russian_roulette',
+      'game_eleven',
     ]);
     expect(
       packageTestTargets.map((target) => target.stepId).toSet(),
-      hasLength(7),
+      hasLength(8),
     );
     final workspace = File('pubspec.yaml').readAsStringSync();
     final workspacePackages =

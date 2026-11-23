@@ -58,3 +58,74 @@ FULL: 2026-11-23 사용자 지시로 미실행. 최종 완료 판정 아님. 배
   pubspec.yaml, 목업 HTML 및 swiftpm 폴더 보존. S0 브랜치 정리 미실행.
 다음: 관련 검사 PASS인 S3 후보를 기반으로 S4 앱 골격. 최종 FULL 미충족을 유지.
 ```
+
+## 2026-11-23 · S4 앱 골격 (Claude)
+
+```text
+branch / HEAD: feature/black-and-white-ui / 1d44e538 (S3 커밋 위, S4는 미커밋)
+노션: 이 세션 연결은 다른 workspace라 S3 계획 페이지 404. S4 완료 기준 미대조.
+  요청된 claude/HANDOFF_20261123.md는 저장소에 없어 이 문서를 기준으로 진행.
+완료 후보: packages/game_eleven 전체(lib 24파일, test 4파일), test/eleven_integration_test.dart.
+  수정: pubspec.yaml(workspace·dependency 2줄), lib/games/game_registry.dart,
+  tool/check_package_boundaries.py, tool/mosigame_cli/package_test_manifest.dart,
+  test/mosigame_cli/package_test_manifest_test.dart, game_kit game_command_service.dart(진단 이름).
+화면: P01–P11 / T01–T13 단계 연결만. 디자인·에셋·소리·MosiGameArt·zh 문구 확정 없음.
+검증: game_eleven analyze 0건·test 24 PASS; 경계 검사 0건; 루트 analyze 0건;
+  registry·manifest·소비 테스트 PASS; test session 5단계 PASS exit0. FULL 미실행(승인 대기).
+배포·카탈로그·실기기: 없음.
+기존 사용자 변경: ios/*, pubspec.yaml version·공백, 목업 HTML, swiftpm 폴더 보존.
+다음: 사용자 승인 후 validate --full → Notion S4 기준 대조 → 디자인 반영 단계.
+```
+
+## 2026-11-23 · S4 Notion 대조 후 수정 (Claude)
+
+```text
+Notion: 내장 브라우저로 개발 계획·룰·정보 공개·기기별 UX 확인(연결·복구·이탈 페이지는 미확인).
+수정: 휴대폰 landscapeOnly·가로 배치, 태블릿 승부 없는 종료 1초 뒤 방 복귀,
+  미정 진동 제거, 화면 문구 한국어 임시 표시(키 유지). 서버 변경 없음.
+검증: game_eleven analyze 0건·test 25 PASS; 경계 0건; 루트 테스트 PASS; test session 5단계 PASS exit0.
+미완료: S4 에뮬레이터 한 판 검증, P08 라운드 승자 데이터(계약 판단), FULL(승인 대기). 미커밋.
+```
+
+## 2026-11-23 · S4 로컬 에뮬레이터 한 판 (Claude)
+
+```text
+결과: iOS 시뮬레이터 3대 + 로컬 에뮬레이터에서 시작→뽑기→7라운드→조기 종료→다시 하기 PASS.
+수정: functions/src/eleven/game.ts normalize에 draw.picks·tiles 복원(RTDB 빈 객체 누락 결함),
+  회귀 테스트 2개. functions build·lint exit0, 테스트 636 PASS.
+미확인: 다시 하기 뒤 수동 종료 미호출(commandInFlight 고착 추정), 방 복귀 경로 실기 미확인.
+기존 결함: tool/emulator/functions.cjs RTDB 트리거 수 5→6 불일치(ELEVEN 무관, 이번엔 build 사본만 수정).
+FULL 미실행. 미커밋.
+```
+
+
+## 2026-11-23 · S4 다시 하기 뒤 종료 후속 (Codex)
+
+```text
+위치/브랜치/HEAD: /Users/user/Developer/projects/project00 /
+  feature/black-and-white-ui / 1d44e538. 기존 미커밋 변경 보존.
+원인·수정: GameSessionController.run()이 재구독 후 완료된 명령의
+  commandInFlight를 해제하지 않는 경로를 회귀 테스트로 재현·수정.
+에뮬레이터: RTDB trigger 기준 5→6, 로컬 smoke 카탈로그 기대값을
+  현재 fixture ID 목록으로 변경. demo 로컬 smoke 재실행 PASS 1/1.
+관련 검사: session 5단계 PASS, game_kit 155/155, game_eleven 25/25,
+  Functions ELEVEN 26/26, 수정 파일 analyze·패키지 경계·diff check PASS.
+  iOS simulator build PASS, ios/와 SwiftPM 해시 불변.
+미확인: Simulator UI 조작 도구 오류로 다시 하기→수동 종료와 퇴장→방 복귀를
+  화면에서 재검증하지 못함. 에뮬레이터·시뮬레이터 종료.
+FULL: 사용자 지시로 미실행. 배포·커밋·push 없음.
+다음: 종료·퇴장 화면 흐름 수동 확인 → S5. 원격 브랜치 분기 정리는 push 전 별도.
+```
+
+
+## 2026-11-23 · S4 종료·퇴장 사용자 수동 확인
+
+```text
+사용자 보고: 로컬 백엔드와 iOS 시뮬레이터에서 다시 하기→게임 종료,
+  진행 중 휴대폰 퇴장 두 테스트 영역 모두 성공.
+기기 빌드: 기본 iPhone 17만 이전 빌드였고, 같은 local 빌드를 재설치해
+  Player 2·Player 3·iPad와 실행 파일 해시 일치 확인.
+한계: 이번 보고의 화면 영상·종료 상태를 Codex가 별도로 재조회하지 않음.
+FULL: 사용자 지시로 미실행. 커밋·push·배포 없음.
+다음: S5 디자인/UX 단계. push 전 브랜치 분기 정리.
+```

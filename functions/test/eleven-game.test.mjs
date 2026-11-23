@@ -8,7 +8,7 @@ import {excludeRecoveryPlayer} from '../lib/game-interruption/game-adapters.js';
 import {supportsInsufficientPlayerFinish} from '../lib/game-interruption/finish-now-resolution.js';
 import {resolveRoomPlayerRange} from '../lib/room/room-seating-policy.js';
 import {createElevenGame, pickElevenTile, completeElevenPhase, submitElevenTile,
-  timeoutElevenTurn, finishElevenGame} from '../lib/eleven/game.js';
+  timeoutElevenTurn, finishElevenGame, normalizeElevenGame} from '../lib/eleven/game.js';
 
 const players = [
   {uid: 'a', nickname: 'A', characterId: 'bear', seatIndex: 0},
@@ -159,4 +159,45 @@ test('same command ID replays a committed draw without consuming a second tile',
   assert.equal(first.committed, true);
   assert.deepEqual(replay.operationResult, first.operationResult);
   assert.equal(Object.keys(ref.value.game.public.draw.picks).length, 1);
+});
+
+/** RTDB는 빈 객체·빈 배열을 저장하지 않습니다. 저장 후 다시 읽은 모양을 흉내 냅니다. */
+function rtdbRoundTrip(value) {
+  if (Array.isArray(value)) {
+    const items = value.map(rtdbRoundTrip).filter((item) => item !== undefined);
+    return items.length ? items : undefined;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .map(([key, item]) => [key, rtdbRoundTrip(item)])
+      .filter(([, item]) => item !== undefined);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  }
+  return value;
+}
+
+test('draws stored in RTDB without empty picks still accept the first pick', () => {
+  // 2026-11-23 로컬 에뮬레이터 한 판 검증에서 발견: 시작 직후 picks가 사라져 첫 선택이 거절됨.
+  const stored = rtdbRoundTrip(game());
+  assert.equal(stored.public.draw.picks, undefined);
+  const state = normalizeElevenGame(stored);
+  const [first, second] = state.public.draw.order;
+  pickElevenTile(state, first, 3, 2000);
+  const afterFirst = normalizeElevenGame(rtdbRoundTrip(state));
+  pickElevenTile(afterFirst, second, 4, 2001);
+  assert.equal(afterFirst.public.phase, 'drawReveal');
+});
+
+test('final tie draw survives RTDB storage before its first pick', () => {
+  const state = game();
+  state.public.phase = 'drawPick';
+  state.public.draw = {purpose: 'finalTie', order: ['a', 'b'], picks: {}, nextPickerUid: 'a'};
+  state.server.draw = {purpose: 'finalTie', slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]};
+  // 11라운드 직후: 남은 타일은 없고 마지막 제출 기록만 남습니다.
+  state.private.a.tiles = [];
+  state.private.a.submission = {round: 11, value: 4, auto: false};
+  const stored = normalizeElevenGame(rtdbRoundTrip(state));
+  assert.deepEqual(stored.private.a.tiles, []);
+  pickElevenTile(stored, 'a', 0, 3000);
+  assert.equal(stored.public.draw.picks.a, 0);
 });

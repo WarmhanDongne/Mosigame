@@ -1036,9 +1036,9 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
       );
       return false;
     } finally {
-      if (ref.mounted && generation == _subscriptionGeneration) {
-        state = state.markCommandFinished();
-      }
+      // 재구독은 이전 응답을 무효화해도 진행 중인 명령의 잠금은 끝내야 합니다.
+      // 잠금이 유지되는 동안 다른 run()은 시작할 수 없어 이 명령이 소유자입니다.
+      if (ref.mounted) state = state.markCommandFinished();
     }
   }
 
