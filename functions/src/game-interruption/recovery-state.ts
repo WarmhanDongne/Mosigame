@@ -5,6 +5,7 @@ import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
 import {RUSSIAN_ROULETTE_TURN_MS} from "../russian-roulette/game.js";
+import {ELEVEN_TURN_MS} from "../eleven/rules.js";
 
 export interface GameContext {
   gameInstanceId: string;
@@ -139,7 +140,7 @@ export function beginRecoveryPause(
     game.public.gameType === "final_call" ? FINAL_CALL_TURN_MS :
       ["yut", "strategy_yut", "strategy_yut_edition"].includes(String(game.public.gameType)) ? YUT_TURN_MS : undefined;
   const resolvedTurnLimit = game.public.gameType === "russian_roulette" ?
-    RUSSIAN_ROULETTE_TURN_MS : turnLimit;
+    RUSSIAN_ROULETTE_TURN_MS : game.public.gameType === "eleven" ? ELEVEN_TURN_MS : turnLimit;
   if (resolvedTurnLimit !== undefined && typeof deadline === "number" && Number.isFinite(deadline)) {
     timerReferenceAt = Math.max(timerReferenceAt, deadline - resolvedTurnLimit);
   }
