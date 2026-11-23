@@ -18,11 +18,11 @@ E02~E12의 [구현 후보와 관련 검사](NETWORK_SESSION_E02_E12_IMPLEMENTATI
 
 | 분류 | 개수 |
 | --- | ---: |
-| 구현 검증 대기 | 8 |
+| 구현 검증 대기 | 9 |
 | 출시 전 필수 | 11 |
 | 출시 전 권장 | 11 |
 | 출시 후 작업 | 8 |
-| 합계 | 38 |
+| 합계 | 39 |
 
 ## 구현 검증 대기
 
@@ -43,6 +43,7 @@ Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 | [YUT-GAMEPLAY-01](tasks/YUT-GAMEPLAY-01.md#yut-gameplay-01) | 윷놀이 3종 서버 게임·휴대폰/태블릿 플레이 화면 | 구현 완료, 개별 검사 PASS/최종 FULL 확인 대기 | [통합 검증](DEVELOP1_WAIT_REDUCTION_INTEGRATION_20261020.md)의 Draft PR 검토·CI 확인, 4인 실제 플레이 검증. 카탈로그 공개·Functions 배포는 별도 출시 승인 |
 
 | [RUSSIAN-ROULETTE-01](tasks/RUSSIAN-ROULETTE-01.md#russian-roulette-01) | 러시안 룰렛 서버 규칙·휴대폰/태블릿·로비 아트 | 1차 구현 완료, targeted PASS/FULL 대기 | 사용자 승인 후 FULL, 3~8인 실기기 플레이, 음원 수령 후 연결. 카탈로그 공개·Functions 배포는 별도 승인 |
+| [ELEVEN-01](tasks/ELEVEN-01.md#eleven-01) | 2인 숫자 추리 게임 ELEVEN(구 흑과 백 리버스) | 검증 대기 — S3 서버 명령·RTDB 규칙, 관련 검사 PASS/FULL 미실행 | [S3 기록](tasks/ELEVEN-01.md#s3-server-20261123) 기준 S4 앱 골격 진행. 최종 FULL은 미충족으로 유지. 배포·카탈로그는 별도 승인 |
 
 ## 출시 전 필수
 
