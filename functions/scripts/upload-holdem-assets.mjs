@@ -64,9 +64,9 @@ export async function uploadHoldemAssets({dryRun = false} = {}) {
     return;
   }
 
-  const projectId = process.env.GCLOUD_PROJECT ?? "project0000-ec01e";
+  const projectId = process.env.GCLOUD_PROJECT ?? "ban-pick-simulator";
   const bucketName = process.env.FIREBASE_STORAGE_BUCKET ??
-    "project0000-ec01e.firebasestorage.app";
+    "ban-pick-simulator.firebasestorage.app";
   if (getApps().length === 0) {
     initializeApp({projectId, storageBucket: bucketName});
   }

@@ -5,7 +5,7 @@ import {getFirestore} from "firebase-admin/firestore";
 import {pathToFileURL} from "node:url";
 import {yutGameBundles, yutGameCatalog} from "./yut-game-catalog.mjs";
 
-const PROJECT = "project0000-ec01e";
+const PROJECT = "ban-pick-simulator";
 
 /** Plan or upsert Yut catalog documents; never deletes existing documents. */
 export async function seedYutCatalog(firestore, {apply = false} = {}) {

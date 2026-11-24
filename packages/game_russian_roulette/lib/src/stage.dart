@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_russian_roulette/src/theme.dart';
 import 'package:game_russian_roulette/src/timing.dart';
 import 'package:game_russian_roulette/src/widgets.dart';
@@ -24,12 +25,24 @@ abstract final class RouletteStageGeometry {
   ///
   /// 특히 2명은 좌우, 4명은 대각선에서 시작하는 공통 규칙까지 그대로
   /// 따라야 프로필과 총구의 조준 위치가 진입 화면에서 게임 안으로 이어집니다.
-  static double seatAngle(int seatIndex, int count) {
-    final normalized = normalizedPlayerCenters(math.max(1, count))[seatIndex];
+  static double seatAngle(int seatIndex, int count, {SeatLayoutMode? mode}) {
+    final normalized = normalizedSeatCenters(
+      math.max(1, count),
+      mode: mode,
+    )[seatIndex];
     return math.atan2(
       (normalized.dy - .5) / defaultPlayerRingRadiusY,
       (normalized.dx - .5) / defaultPlayerRingRadiusX,
     );
+  }
+
+  /// 자리 배치 화면에서 선택한 형태의 좌석 중심을 게임 판 좌표로 옮깁니다.
+  static Offset seatCenter(int seatIndex, int count, {SeatLayoutMode? mode}) {
+    final normalized = normalizedSeatCenters(
+      math.max(1, count),
+      mode: mode,
+    )[seatIndex];
+    return Offset(normalized.dx * width, normalized.dy * height);
   }
 
   static Offset onEllipse(double theta, [double rx = rx, double ry = ry]) =>
@@ -84,6 +97,7 @@ class RouletteSeatModel {
     required this.characterId,
     required this.theta,
     required this.state,
+    this.center,
     this.rank,
     this.shield = 0,
     this.shieldHit = false,
@@ -101,6 +115,7 @@ class RouletteSeatModel {
   final String key;
   final String characterId;
   final double theta;
+  final Offset? center;
   final RouletteSeatState state;
   final int? rank;
 
@@ -127,9 +142,11 @@ class RouletteStampModel {
   const RouletteStampModel({
     required this.theta,
     required this.blocked,
+    this.center,
     this.progress = 1,
   });
   final double theta;
+  final Offset? center;
   final bool blocked;
   final double progress;
 }
@@ -287,7 +304,8 @@ class RouletteStage extends StatelessWidget {
   }
 
   Widget _shield(RouletteSeatModel seat) {
-    final seatCenter = RouletteStageGeometry.onEllipse(seat.theta);
+    final seatCenter =
+        seat.center ?? RouletteStageGeometry.onEllipse(seat.theta);
     const c = RouletteStageGeometry.center;
     final d = (seatCenter - c).distance;
     final p = c + (seatCenter - c) * ((d - 80) / d);
@@ -333,7 +351,7 @@ class RouletteStage extends StatelessWidget {
   }
 
   Widget _plate(RouletteSeatModel seat) {
-    final p = RouletteStageGeometry.onEllipse(seat.theta);
+    final p = seat.center ?? RouletteStageGeometry.onEllipse(seat.theta);
     return Positioned(
       key: ValueKey('seat-${seat.key}'),
       left: p.dx - 90,
@@ -435,7 +453,8 @@ class RouletteStage extends StatelessWidget {
 
   Widget _stamp(RouletteStampModel stamp) {
     const c = RouletteStageGeometry.center;
-    final seatCenter = RouletteStageGeometry.onEllipse(stamp.theta);
+    final seatCenter =
+        stamp.center ?? RouletteStageGeometry.onEllipse(stamp.theta);
     final p = c + (seatCenter - c) * (stamp.blocked ? .52 : .70);
     final t = rouletteSlam(stamp.progress);
     final scale = t < .55

@@ -1036,8 +1036,10 @@ abstract class GameSessionController<TState extends GameSessionState<TState>>
       );
       return false;
     } finally {
-      // 재구독은 이전 응답을 무효화해도 진행 중인 명령의 잠금은 끝내야 합니다.
-      // 잠금이 유지되는 동안 다른 run()은 시작할 수 없어 이 명령이 소유자입니다.
+      // 명령 도중 재구독(연결 복구, 다시 시작으로 바뀐 방 세션 등)으로 세대가
+      // 바뀌어도 진행 중 표시는 반드시 끕니다. 세대가 다를 때 끄지 않으면
+      // commandInFlight가 true로 남아, 이후 모든 run()이 서버에 보내지 않고
+      // false를 돌려줍니다(예: 러시안 룰렛 단계 진행이 멈추고 총을 쏘지 않음).
       if (ref.mounted) state = state.markCommandFinished();
     }
   }

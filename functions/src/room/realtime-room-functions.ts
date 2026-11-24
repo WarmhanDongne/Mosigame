@@ -26,7 +26,13 @@ import {
   GAME_PREPARATION_STARTED_MESSAGE,
   RoomJoinDecision,
 } from "./room-join-policy.js";
-import {decideSeatSave} from "./room-seating-policy.js";
+import {
+  buildSeatingPreference,
+  decideSeatSave,
+  SeatLayoutMode,
+  resolveRoomMaxPlayers,
+  ROOM_MAX_PLAYERS,
+} from "./room-seating-policy.js";
 import {currentPresence} from "./current-presence.js";
 import {runPrimedTransaction} from "./room-transaction.js";
 import {
@@ -38,6 +44,9 @@ import {
   allocateRoomConnection, assertRoomTarget, parseSessionId,
   roomOperationResult, SessionRoom,
 } from "./session-contract.js";
+import {
+  assertPlatformMaintenanceInactive,
+} from "../operations/announcements.js";
 
 const REGION = "asia-northeast3";
 
@@ -88,10 +97,6 @@ export function roomProfileConflict(
   return null;
 }
 
-// 마피아가 최대 12명이라 방 상한을 12로 올렸습니다. 게임별 인원 제한은 각
-// 게임의 start_game이 따로 확인합니다(예: 파이널콜은 4인 또는 6인).
-const DEFAULT_MAX_PLAYERS = 12;
-
 // 포커페이스 캐릭터 20종입니다. 예전 동물 id는 이미 배포된 앱이 보낼 수 있어
 // 함께 허용하고, 클라이언트가 포커페이스 얼굴로 바꿔 그립니다.
 const ROOM_CHARACTER_IDS = new Set([
@@ -108,6 +113,7 @@ type SaveSeatIndexesData = {
   roomInstanceId?: unknown;
   roomCode?: unknown;
   seatIndexesByUid?: unknown;
+  seatLayoutMode?: unknown;
   controllerSessionId?: unknown;
 };
 
@@ -155,6 +161,7 @@ export const validateRealtimeRoom = onCall<ValidateRealtimeRoomData>(
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     await assertOnboardingComplete(uid);
+    await assertPlatformMaintenanceInactive();
 
     const rawRoomCode = request.data?.roomCode;
     const roomCode = typeof rawRoomCode === "string" ?
@@ -184,8 +191,7 @@ export const validateRealtimeRoom = onCall<ValidateRealtimeRoomData>(
     });
     const decisionError = joinDecisionError(decision);
     if (decisionError) throw decisionError;
-    const maxPlayers = typeof room.maxPlayers === "number" ?
-      room.maxPlayers : DEFAULT_MAX_PLAYERS;
+    const maxPlayers = resolveRoomMaxPlayers(room.maxPlayers);
     if (!(uid in players) && Object.values(players).filter(
       (player) => isRoomProfileReserved(player, Date.now()),
     ).length >= maxPlayers) {
@@ -227,6 +233,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
       );
     }
     await assertOnboardingComplete(uid);
+    await assertPlatformMaintenanceInactive();
 
     const rawRoomCode = request.data?.roomCode;
     const roomCode = typeof rawRoomCode === "string" ?
@@ -268,14 +275,6 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
 
     const database = getDatabase();
     const roomRef = database.ref(`rooms/${roomCode}`);
-    const roomSnapshot = await roomRef.get();
-    if (!roomSnapshot.exists()) {
-      throw new HttpsError(
-        "not-found",
-        "방을 찾을 수 없습니다.",
-      );
-    }
-
     let rejection: HttpsError | null = null;
     let reconnected = false;
     let savedNickname = nickname;
@@ -286,7 +285,10 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
       (currentValue) => {
         rejection = null;
         reconnected = false;
-        if (currentValue === null || typeof currentValue !== "object") return;
+        if (currentValue === null || typeof currentValue !== "object") {
+          rejection = new HttpsError("not-found", "방을 찾을 수 없습니다.");
+          return;
+        }
         const currentRoom = currentValue as Record<string, unknown> & {
           players?: Record<string, Record<string, unknown>>;
           game?: {public?: {status?: unknown}};
@@ -396,8 +398,7 @@ export const joinRealtimeRoom = onCall<JoinRealtimeRoomData>(
           return currentRoom;
         }
 
-        const maxPlayers = typeof currentRoom.maxPlayers === "number" ?
-          currentRoom.maxPlayers : DEFAULT_MAX_PLAYERS;
+        const maxPlayers = resolveRoomMaxPlayers(currentRoom.maxPlayers);
         if (Object.values(players).filter(
           (player) => isRoomProfileReserved(player, now),
         ).length >= maxPlayers) {
@@ -499,6 +500,15 @@ export const saveRealtimePlayerSeatIndexes =
           "플레이어 자리 정보를 확인할 수 없습니다.",
         );
       }
+      const rawSeatLayoutMode = request.data?.seatLayoutMode;
+      if (rawSeatLayoutMode !== undefined &&
+          rawSeatLayoutMode !== "corners" &&
+          rawSeatLayoutMode !== "sides") {
+        throw new HttpsError(
+          "invalid-argument",
+          "올바른 자리 배치 형태가 아닙니다.",
+        );
+      }
 
       const database = getDatabase();
 
@@ -548,7 +558,7 @@ export const saveRealtimePlayerSeatIndexes =
           playerIds,
           seatEntries,
           minPlayers: 2,
-          maxPlayers: DEFAULT_MAX_PLAYERS,
+          maxPlayers: ROOM_MAX_PLAYERS,
         });
         switch (decision) {
         case "not-seating":
@@ -572,7 +582,7 @@ export const saveRealtimePlayerSeatIndexes =
         case "too-many-players":
           rejection = new HttpsError(
             "failed-precondition",
-            `플레이어는 최대 ${DEFAULT_MAX_PLAYERS}명입니다.`,
+            `플레이어는 최대 ${ROOM_MAX_PLAYERS}명입니다.`,
           );
           return;
         case "roster-changed":
@@ -594,6 +604,10 @@ export const saveRealtimePlayerSeatIndexes =
           players![playerId].seatIndex = seatIndex;
         }
         room.players = players;
+        room.seatingPreference = buildSeatingPreference(
+          playerIds,
+          rawSeatLayoutMode as SeatLayoutMode | undefined,
+        );
         return room;
       };
       const transaction = await runPrimedTransaction(

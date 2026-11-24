@@ -2,7 +2,7 @@
 // 앞면으로 전시하고 덱을 섞는 라이어스 태블릿 연출이다.
 //
 // 동작은 game_kit의 [DeckShowcaseShuffleAnimation]이 맡고, 이 파일은 라이어스
-// 카드 그림·전시 구성·머무는 시간만 정한다. 진실 카드만 세기 쉽게 여러 줄
+// 카드 그림·전시 구성·머무는 시간과 빠르기만 정한다. 진실 카드만 세기 쉽게 여러 줄
 // (한 줄 최대 6장)로 크게 세워 보여 준 뒤, 거짓 카드가 양옆에서 빠르게 들어와
 // 함께 뒷면으로 뒤집혀 섞인다.
 
@@ -41,11 +41,27 @@ class TruthLieShuffleAnimation extends StatelessWidget {
   final VoidCallback? onCompleted;
 
   /// 진실 카드를 모두 뒤집은 뒤 그대로 보여 주는 시간입니다.
-  static const showcaseHold = Duration(milliseconds: 1800);
+  /// 장수를 셀 수 있게 충분히 두고, 나머지 움직임을 빠르게 합니다.
+  static const showcaseHold = Duration(milliseconds: 2000);
 
-  /// 덱 등장 뒤 전시·섞기가 끝날 때까지의 시간입니다.
+  /// 덱이 가운데에 나타나는 시간입니다.
+  static const entryDuration = Duration(milliseconds: 250);
+
+  /// 전시·합류·뒤집기·모으기를 기본보다 2.4배 빠르게 합니다.
+  static const motionSpeed = 2.4;
+
+  /// 섞기는 한 번만 짧게 합니다.
+  static const shufflePassCount = 1;
+  static const shufflePassDuration = Duration(milliseconds: 360);
+
+  /// 덱 등장 뒤 전시·섞기가 끝날 때까지의 시간입니다(약 3.4초).
   static Duration get shuffleDuration =>
-      DeckShowcaseShuffleAnimation.shuffleDurationFor(showcaseHold);
+      DeckShowcaseShuffleAnimation.shuffleDurationFor(
+        showcaseHold,
+        motionSpeed: motionSpeed,
+        shufflePassCount: shufflePassCount,
+        shufflePassDuration: shufflePassDuration,
+      );
 
   @override
   Widget build(BuildContext context) => DeckShowcaseShuffleAnimation(
@@ -68,6 +84,10 @@ class TruthLieShuffleAnimation extends StatelessWidget {
       zhHant: '本局真話牌',
     ),
     showcaseHold: showcaseHold,
+    entryDuration: entryDuration,
+    motionSpeed: motionSpeed,
+    shufflePassCount: shufflePassCount,
+    shufflePassDuration: shufflePassDuration,
     play: play,
     onShufflePassStarted: onShufflePassStarted,
     onCompleted: onCompleted,

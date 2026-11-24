@@ -1,5 +1,9 @@
 # Mosigame mobile store release checklist
 
+> **과거 1.0.0 출시 준비 기록.** 현재 source는 `1.0.1+9`이며 새 배포에 아래 버전·명령을
+> 그대로 재사용하지 않는다. 현재 절차는 [`TEST_AND_RELEASE_GUIDE.md`](TEST_AND_RELEASE_GUIDE.md)를
+> 우선하고, 이 파일은 당시 배포 근거와 세부 콘솔 체크를 확인할 때만 사용한다.
+
 이 문서는 `1.0.0` 모바일 첫 출시(현재 빌드 `1.0.0+7`)의 코드 밖 작업과 안전한 배포 순서를 기록한다.
 production 접근·배포·스토어 제출은 사람이 각 콘솔에서 승인해 수행한다.
 

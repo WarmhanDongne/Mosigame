@@ -1,5 +1,7 @@
 import 'package:project00/platform/localization/platform_localizations.dart';
+
 import 'dart:math' as math;
+
 import 'package:project00/platform/home/store/store_motion.dart';
 import 'package:project00/platform/home/gamelist/provider/game_list_provider.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
@@ -1872,7 +1874,7 @@ class _TabletStoreMafiaDetailState extends State<TabletStoreMafiaDetail>
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final tag in const ['4–12명', '역할 43종', '태블릿 사회자'])
+                      for (final tag in const ['4–8명', '역할 43종', '태블릿 사회자'])
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 11,

@@ -294,3 +294,15 @@ test('새 heartbeat와 새 controller 접속은 이전 stale 보고를 무시한
   assert.equal(reportStaleController(connection,0,30000).status,'staleContext');
   assert.equal(connection.game.public.recovery,undefined);
 });
+
+test("러시안 룰렛 첫 턴 준비 대기는 시작 연출 시간까지 보관하고 이후 대기는 30초로 제한한다", () => {
+  const first = fixture(1000 + 4380 + 30000);
+  Object.assign(first.game.public, {gameType: "russian_roulette", phase: "selecting", round: 1});
+  beginRecoveryPause(first, 1000, 1000, "initialReadiness");
+  assert.equal(first.game.server.recovery.timer.remainingMs, 4380 + 30000);
+
+  const later = fixture(1000 + 4380 + 30000);
+  Object.assign(later.game.public, {gameType: "russian_roulette", phase: "selecting", round: 1});
+  beginRecoveryPause(later, 1000, 1000, "recovery");
+  assert.equal(later.game.server.recovery.timer.remainingMs, 30000);
+});

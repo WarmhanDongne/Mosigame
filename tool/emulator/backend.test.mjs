@@ -166,7 +166,7 @@ async function report(f, person, state = 'ready', reportSeq = 1) {
 before(async () => {
   for (const game of ['liars_poker', 'final_call', 'mafia', 'holdem']) {
     await firestore.collection('games').doc(game).set({enabled: true, accessType: 'free',
-      minPlayers: game === 'mafia' || game === 'final_call' ? 4 : 2, maxPlayers: 12});
+      minPlayers: game === 'mafia' || game === 'final_call' ? 4 : 2, maxPlayers: 8});
   }
 });
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:game_holdem/game_sounds.dart';
 import 'package:game_holdem/shared/widgets/card_view.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/shared/animations/progress_sound_cue.dart';
 import 'package:game_kit/sound/sound_effects.dart';
@@ -15,12 +16,14 @@ class HoldemCardDealAnimation extends StatefulWidget {
     required this.seatCount,
     required this.seatIndexes,
     required this.scale,
+    this.seatLayoutMode,
     required this.onCompleted,
   }) : assert(seatCount > 0);
 
   final int seatCount;
   final List<int> seatIndexes;
   final double scale;
+  final SeatLayoutMode? seatLayoutMode;
   final VoidCallback onCompleted;
 
   @override
@@ -88,7 +91,10 @@ class _HoldemCardDealAnimationState extends State<HoldemCardDealAnimation>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
-          final centers = normalizedPlayerCenters(widget.seatCount);
+          final centers = normalizedSeatCenters(
+            widget.seatCount,
+            mode: widget.seatLayoutMode,
+          );
           final seats = widget.seatIndexes
               .where((index) => index >= 0 && index < centers.length)
               .toList(growable: false);

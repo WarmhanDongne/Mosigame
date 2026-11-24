@@ -69,7 +69,7 @@ Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 | [HEARTBEAT-B1-01](tasks/HEARTBEAT-B1-01.md#heartbeat-b1-01) | B1-C Heartbeat/Ping 경량화 | 검증 대기 — 운영 Functions81/Rules 배포 완료, FULL 분석 FAIL | [배포·FULL 기록](../operations/HEARTBEAT_B1_IMPLEMENTATION.md#2026-10-13--운영-배포full-검증). 4e9df2e 배포/81개 ACTIVE·새 trigger/Rules 일치. FULL은 기존 테스트 보조 중괄호INFO8개로 분석 FAIL/exit1, 후속 전체 테스트 미실행. 보완·분석·새 FULL·실기기·실과금 확인 필요. 로비 HB 유지 |
 | [COST-01](tasks/COST-01.md#cost-01) | Functions 과금 점검·최적화 | 조사 전 | 청구 원인, 정리 후보 제한·부분 실패, 4게임 명령 기록 수명과 transaction 비용 확인 |
 | [SECURITY-01](tasks/SECURITY-01.md#security-01) | 보안 위험 점검·중대한 문제 수정 | 조사 전 | newgui·홀덤 포함 RTDB 읽기/presence 세션 경계와 기존 캐릭터 ID 호환 대조 |
-| [DOCS-CORE-01](tasks/DOCS-CORE-01.md#docs-core-01) | 핵심 구조·개발·운영 문서 정비 | 조사 전 | 기존 설명과 코드·테스트 대조 |
+| [DOCS-CORE-01](tasks/DOCS-CORE-01.md#docs-core-01) | 핵심 구조·개발·운영 문서 정비 | 진행 중 — 현재 코드 대조·활성 문서 재구성 | 관련 문서·설정 검사 후 사용자 승인 FULL, GitHub Issue/PR 연결 |
 | [NOTIFICATION-UI-01](tasks/NOTIFICATION-UI-01.md#notification-ui-01) | 사용자 알림 디자인 통일 | 조사 전 | 알림 종류·표시 방식 목록화 |
 | [PHONE-SELF-01](tasks/PHONE-SELF-01.md#phone-self-01) | 모바일 그룹에서 본인 표시 | 조사 전 | 현재 식별 방식과 표시 위치 확인 |
 | [GENRE-TAGS-01](tasks/GENRE-TAGS-01.md#genre-tags-01) | 태블릿 장르 태그 표시 범위 정리 | 요구사항 확인 | 보유 게임 기준인지 전체 장르인지 확정 |

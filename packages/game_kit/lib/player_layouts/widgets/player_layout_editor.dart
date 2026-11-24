@@ -8,7 +8,6 @@
 // ========================[ import ]==========================
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:game_kit/core/layout/app_system_ui.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
@@ -81,8 +80,8 @@ class PlayerLayoutEditor extends StatefulWidget {
 
   final PlayerLayoutModel initialLayout;
 
-  /// 지난 게임에서 쓴 자리 배치입니다. 지금 참가자와 같은 사람들이면 상단에
-  /// '이전 자리' 버튼이 생겨 한 번에 불러올 수 있습니다.
+  /// 지난 게임에서 쓴 자리 배치입니다. 유효하면 화면 진입 시 기본 배치로
+  /// 사용합니다. 새 참가자가 있으면 [initialLayout]을 그대로 씁니다.
   final PlayerLayoutModel? previousLayout;
 
   /// 게임 규칙상 좌석이 특정 면에 놓여야 할 때 쓰는 좌표 계산기입니다.
@@ -176,10 +175,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   }
 
   late List<int> _playerSlotIndexes;
-
-  /// [PlayerLayoutEditor.previousLayout]을 지금 플레이어 순서에 맞춘 좌석표입니다.
-  /// 참가자가 다르면 null이고, 그때는 '이전 자리' 버튼을 보이지 않습니다.
-  List<int>? _previousSlotIndexes;
+  late SeatLayoutMode _seatLayoutMode;
 
   /// 자리를 바꿀 때마다 올라가는 카드별 도착 번호입니다. 번호가 바뀐 카드는
   /// 새 자리에 닿는 순간 테두리가 한 번 반짝입니다(로비 연출 7번).
@@ -205,8 +201,15 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   @override
   void initState() {
     super.initState();
-    _playerSlotIndexes = List<int>.from(widget.initialLayout.seatIndexes);
-    _previousSlotIndexes = _resolvePreviousSlots();
+    _playerSlotIndexes = List<int>.from(
+      _resolvePreviousSlots() ?? widget.initialLayout.seatIndexes,
+    );
+    _seatLayoutMode =
+        widget.previousLayout?.seatLayoutMode ??
+        widget.initialLayout.seatLayoutMode ??
+        (widget.slotPositionsBuilder == null
+            ? SeatLayoutMode.corners
+            : SeatLayoutMode.sides);
     _entranceController = AnimationController(
       vsync: this,
       // 테이블 뒤에 의자가 좌석 순서대로 충분한 시간차를 두고 들어옵니다.
@@ -229,8 +232,15 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     // 그대로 쓰면 자리 번호가 범위를 벗어나 화면이 깨집니다.
     if (oldWidget.initialLayout.playerCount !=
         widget.initialLayout.playerCount) {
-      _playerSlotIndexes = List<int>.from(widget.initialLayout.seatIndexes);
-      _previousSlotIndexes = _resolvePreviousSlots();
+      _playerSlotIndexes = List<int>.from(
+        _resolvePreviousSlots() ?? widget.initialLayout.seatIndexes,
+      );
+      _seatLayoutMode =
+          widget.previousLayout?.seatLayoutMode ??
+          widget.initialLayout.seatLayoutMode ??
+          (widget.slotPositionsBuilder == null
+              ? SeatLayoutMode.corners
+              : SeatLayoutMode.sides);
       _draggingPositions.clear();
       _draggingPlayerIndex = null;
       _hoveredSlotIndex = null;
@@ -299,25 +309,6 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     return List<int>.unmodifiable(slots);
   }
 
-  bool get _isPreviousApplied {
-    final previous = _previousSlotIndexes;
-    return previous != null && listEquals(previous, _playerSlotIndexes);
-  }
-
-  /// 지난 게임 자리로 되돌립니다. 자리가 바뀐 카드는 도착 반짝임을 줍니다.
-  void _applyPreviousSeats() {
-    final previous = _previousSlotIndexes;
-    if (_isCompleting || previous == null) return;
-    setState(() {
-      for (var player = 0; player < previous.length; player++) {
-        if (_playerSlotIndexes[player] == previous[player]) continue;
-        _arrivals.update(player, (n) => n + 1, ifAbsent: () => 1);
-      }
-      _playerSlotIndexes = List<int>.from(previous);
-      _selectedSlotIndex = null;
-    });
-  }
-
   void _shuffle() {
     if (_isCompleting) return;
     final slots = List<int>.generate(_playerCount, (index) => index)
@@ -325,6 +316,17 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     setState(() {
       _playerSlotIndexes = slots;
       _selectedSlotIndex = null;
+    });
+  }
+
+  void _toggleSeatLayoutMode() {
+    if (_isCompleting) return;
+    setState(() {
+      _seatLayoutMode = _seatLayoutMode == SeatLayoutMode.corners
+          ? SeatLayoutMode.sides
+          : SeatLayoutMode.corners;
+      _selectedSlotIndex = null;
+      _draggingPositions.clear();
     });
   }
 
@@ -444,9 +446,9 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     if (_isCompleting) return;
     var handedOffToGame = false;
 
-    final completedLayout = widget.initialLayout.updateSeats(
-      _playerSlotIndexes,
-    );
+    final completedLayout = widget.initialLayout
+        .updateSeats(_playerSlotIndexes)
+        .withSeatLayoutMode(_seatLayoutMode);
 
     debugPrint('플레이어 자리 번호: ${completedLayout.seatIndexes}');
     setState(() {
@@ -634,9 +636,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
             // 시안: 최대 696 알약 안에 19px 안내 문구. 좌우 버튼과 겹치지 않게
             // 비워 둡니다.
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: _previousSlotIndexes == null ? 120 : 240,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 120),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 696),
                 child: AnimatedContainer(
@@ -683,21 +683,6 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_previousSlotIndexes != null) ...[
-                    MosiButton(
-                      label: '이전 자리'.localized,
-                      variant: MosiButtonVariant.outline,
-                      foreground: MosiColors.white,
-                      height: 44,
-                      fontSize: 15,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      leading: const Icon(Icons.history_rounded),
-                      onPressed: _isPreviousApplied
-                          ? null
-                          : _applyPreviousSeats,
-                    ),
-                    const SizedBox(width: 10),
-                  ],
                   MosiButton(
                     label: '섞기'.localized,
                     variant: MosiButtonVariant.outline,
@@ -707,6 +692,26 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     leading: const Icon(Icons.shuffle_rounded),
                     onPressed: _shuffle,
+                  ),
+                  const SizedBox(width: 10),
+                  MosiButton(
+                    key: const Key('seat-layout-mode-toggle'),
+                    label:
+                        (_seatLayoutMode == SeatLayoutMode.corners
+                                ? '면 자리'
+                                : '모서리 자리')
+                            .localized,
+                    variant: MosiButtonVariant.outline,
+                    foreground: MosiColors.white,
+                    height: 44,
+                    fontSize: 15,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    leading: Icon(
+                      _seatLayoutMode == SeatLayoutMode.corners
+                          ? Icons.splitscreen_rounded
+                          : Icons.crop_free_rounded,
+                    ),
+                    onPressed: _toggleSeatLayoutMode,
                   ),
                 ],
               ),
@@ -756,12 +761,19 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   Widget _buildBoard(Size boardSize, double t, double uiOpacity) {
     final theme = widget.seatTheme;
     final metrics = _metricsFor(boardSize);
-    final positions =
-        (widget.slotPositionsBuilder ?? seatingCardTopLeftPositions)(
+    final positions = switch (_seatLayoutMode) {
+      SeatLayoutMode.corners => seatingCardTopLeftPositions(
+        playerCount: _playerCount,
+        boardSize: boardSize,
+        cardSize: metrics.size,
+      ),
+      SeatLayoutMode.sides =>
+        (widget.slotPositionsBuilder ?? sideSeatingCardTopLeftPositions)(
           playerCount: _playerCount,
           boardSize: boardSize,
           cardSize: metrics.size,
-        );
+        ),
+    };
     // 서버의 전략 윷 팀 규칙은 짝수 좌석=청군, 홀수 좌석=백군입니다.
     // 일반 4인 원형 자리의 아래 두 위치만 바꿔 각 팀을 좌우에 모읍니다.
     _slotPositions = theme.teams != null && _playerCount == 4

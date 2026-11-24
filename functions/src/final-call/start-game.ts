@@ -1,5 +1,5 @@
 import {
-  replayGameCommand,
+  replayGameCommandFromRoom,
   runGameCommandTransaction,
 } from "../game-interruption/game-command-transaction.js";
 /* eslint-disable max-len */
@@ -33,9 +33,9 @@ export const game_final_call_start_game = onCall<StartData>(
     const roomCode = finalCallRoomCode(request.data?.roomCode);
     const restart = request.data?.restart === true;
     const roomRef = getDatabase().ref(`rooms/${roomCode}`);
-    const replay = await replayGameCommand(roomRef, request, "game_final_call_start_game");
-    if (replay) return replay;
     const room = (await roomRef.get()).val() as FinalCallRoom | null;
+    const replay = replayGameCommandFromRoom(room, request, "game_final_call_start_game");
+    if (replay) return replay;
     if (!room) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");
     const startFingerprint = startGameFingerprint(room);
     assertFinalCallController(room, uid, request.data?.controllerSessionId);

@@ -37,6 +37,69 @@ List<Shadow> finalCallPopOutline([double offset = 2]) => [
   Shadow(color: FinalCallColors.ink, offset: Offset(offset, offset)),
 ];
 
+/// 포카드 CALL처럼 크게 터지는 글자의 사방 테두리 + 아래 그림자입니다.
+List<Shadow> finalCallPopRing([double width = 2.5]) => [
+  for (final offset in [
+    Offset(-width, -width),
+    Offset(width, -width),
+    Offset(-width, width),
+    Offset(width, width),
+    Offset(0, width * 2),
+  ])
+    Shadow(color: FinalCallColors.ink, offset: offset),
+];
+
+/// 포카드 CALL 뒤에서 도는 금빛 빛살입니다. 가운데가 진하고 바깥으로 옅어집니다.
+class FinalCallBurstRays extends StatelessWidget {
+  const FinalCallBurstRays({super.key, required this.size, this.rays = 18});
+
+  final double size;
+  final int rays;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: CustomPaint(size: Size.square(size), painter: _BurstRaysPainter(rays)),
+  );
+}
+
+class _BurstRaysPainter extends CustomPainter {
+  const _BurstRaysPainter(this.rays);
+
+  final int rays;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          FinalCallColors.yellow.withValues(alpha: .75),
+          FinalCallColors.yellow.withValues(alpha: .35),
+          FinalCallColors.yellow.withValues(alpha: 0),
+        ],
+        stops: const [0, .45, 1],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    final step = math.pi * 2 / rays;
+    for (var index = 0; index < rays; index++) {
+      final start = index * step;
+      final path = Path()
+        ..moveTo(center.dx, center.dy)
+        ..arcTo(
+          Rect.fromCircle(center: center, radius: radius),
+          start,
+          step * .45,
+          false,
+        )
+        ..close();
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BurstRaysPainter oldDelegate) => oldDelegate.rays != rays;
+}
+
 /// 팀 색입니다.
 Color finalCallTeamColor(FinalCallTeam team) => switch (team) {
   FinalCallTeam.red => FinalCallColors.red,

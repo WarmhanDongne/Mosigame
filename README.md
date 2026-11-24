@@ -1,105 +1,97 @@
 # 모시겜 (Mosigame)
 
-모시겜은 "모여서 시작하는 게임"의 줄임말입니다. 태블릿 한 대를 함께 보는 게임판으로,
-각자의 휴대폰을 개인 손패와 컨트롤러로 쓰는 오프라인 파티게임 앱입니다. 별도의
-보드게임 도구나 게임기 없이, 모인 자리에서 이미 가진 기기만으로 바로 게임을 시작할 수
-있습니다.
+모시겜은 태블릿 한 대를 함께 보는 게임판으로 쓰고, 각자의 휴대폰을 개인 손패와
+컨트롤러로 사용하는 오프라인 파티게임 앱입니다. Flutter 앱과 Firebase Functions가
+함께 동작하며 게임 규칙, 턴, 승패와 비공개 정보는 서버가 결정합니다.
 
-## 플레이 방식
+## 게임 공개 계획
 
-1. 태블릿에서 방을 만들면 QR 코드가 표시됩니다.
-2. 참가자는 휴대폰으로 QR 코드를 스캔해 입장하고, 태블릿에서 자리를 정합니다.
-3. 게임판과 공개 정보는 태블릿에, 내 카드와 비공개 선택지는 휴대폰에 표시됩니다.
-4. 게임이 끝나면 다시 하거나 다른 게임을 고릅니다.
+코드 등록과 사용자 공개는 서로 다른 상태입니다. 아래 표는 2026-11-18에 사용자가 확정한
+제품 계획이며, 실제 공개에는 TEST 실기기 검증과 스토어 배포가 추가로 필요합니다.
 
-## 게임
+| 게임 ID | 이름 | 계획 |
+| --- | --- | --- |
+| `liars_poker` | 라이어스 포커 | 공개 예정 |
+| `final_call` | 파이널 콜 | 공개 예정 |
+| `yut` | 윷놀이 | 공개 예정 |
+| `strategy_yut` | 전략 윷놀이 | 공개 예정 |
+| `russian_roulette` | 러시안 룰렛 | 공개 예정 |
+| `mafia` | 마피아 | 보류 |
+| `holdem` | 텍사스 홀덤 | 보류 |
+| `strategy_yut_edition` | 전략 윷놀이 에디션 | 보류 |
 
-| 게임 | 소개 | 상태 |
-|---|---|---|
-| 라이어스 | 상대의 선언이 거짓인지 가려내는 카드 심리전 게임 | 공개 |
-| 파이널 콜 | 4명 또는 6명이 팀을 나눠 겨루는 카드 게임 | 공개 |
+현재 앱 registry에는 위 게임이 모두 등록되어 있지만 Firestore `enabled`와 실제 배포 상태는
+별도입니다. 공개 예정이라는 표현은 운영 카탈로그가 이미 활성화됐다는 뜻이 아닙니다.
 
-게임은 패키지 단위로 분리되어 있어, 앱 구조를 바꾸지 않고 새 장르를 계속 추가할 수
-있습니다.
+## 현재 기술 기준
 
-## 현재 상태
+- 앱 버전: `pubspec.yaml`의 `1.0.1+9`
+- 앱: Flutter, Android·iOS
+- 백엔드: Firebase Authentication, Realtime Database, Firestore, Storage
+- 서버: Firebase Functions, Node.js 22
+- 게임 패키지: 라이어스 포커, 파이널 콜, 마피아, 홀덤, 윷놀이, 러시안 룰렛
+- 공용 패키지: `game_kit`
+- 새 게임 스켈레톤: `game_template`
 
-Google Play 비공개 테스트를 진행하고 있으며, 2026년 10월 말 정식 출시를 목표로
-하고 있습니다.
+정확한 현재 구현과 공개 계획은 [`Current project`](docs/CURRENT_PROJECT.md), 구조는
+[`Architecture`](docs/engineering/ARCHITECTURE.md)를 따릅니다.
 
-## 팀
+## 문서 시작점
 
-한동대학교 학생 창업팀 **따스한동네**가 만들고 있습니다. 사람들이 직접 만나 함께
-웃는 시간이 늘어나는 "따뜻한 동네"를 만들고 싶다는 마음에서 시작했습니다.
+- AI 작업: [`AGENTS.md`](AGENTS.md) 하나를 먼저 읽습니다.
+- 사람용 문서 목차: [`docs/README.md`](docs/README.md)
+- 개발환경: [`Development guide`](docs/development/DEVELOPMENT_GUIDE.md)
+- TEST·실기기·배포: [`Test and release guide`](docs/operations/TEST_AND_RELEASE_GUIDE.md)
 
-## 기술 구성
+과거 날짜가 붙은 planning/operations 문서는 당시 증거이며 현재 구현 설명이 아닙니다.
 
-- 앱: Flutter (Android, iOS), 게임별 패키지 `packages/game_*`와 공용 패키지 `packages/game_kit`
-- 백엔드: Firebase Authentication, Realtime Database, Cloud Firestore, Cloud Storage
-- 게임 서버: Cloud Functions (Node.js 22, 서울 리전). 게임 규칙, 턴 검증, 승패와
-  비공개 정보는 서버가 결정합니다.
+## 개발환경 준비
 
----
-
-## 시작하기
-
-전체 문서 목차는 [`docs/README.md`](docs/README.md)에 있습니다. 사람이 읽는 전체
-설치·검증 안내는
-[`Development setup`](docs/development/DEVELOPMENT_SETUP.md)을 따릅니다. Codex에 환경 준비를
-맡길 때는 [`Agent setup`](docs/development/AGENT_SETUP.md)을 실행 계약으로 사용합니다. 현재 상태와
-후속 계획은 [`Development environment plan`](docs/development/DEVELOPMENT_ENVIRONMENT_PLAN.md)에
-계속 갱신합니다.
-
-앱을 운영 Firebase와 분리된 로컬 Auth·RTDB·Firestore·Functions·Storage에서 실행하려면
-[`Local Firebase`](docs/development/LOCAL_FIREBASE.md)의 실행 옵션과 테스트 계정을 사용합니다.
-
-Firebase Functions를 개발할 때는 Node.js 22를 사용합니다.
+필수 기준은 Flutter `3.47.5` CI, Node.js 22, Java 17 이상입니다.
 
 ```bash
 nvm use
-cd functions
-npm install
-npm run lint
-npm run build
-npm run serve
+bash ./tool/setup_mosigame.sh
 ```
 
-Functions 배포는 사용자 승인을 받은 뒤 프로젝트 루트에서 다음 명령으로 실행합니다.
+dependency 준비가 필요한 경우에만 명시적으로 실행합니다.
 
 ```bash
-./functions/node_modules/.bin/firebase deploy --only functions
+bash ./tool/setup_mosigame.sh --prepare
 ```
 
-Firebase 플랫폼 설정 파일은 다음 위치에 있어야 합니다.
+## Firebase 실행 모드
 
-- Android: `android/app/google-services.json`
-- iOS: `ios/Runner/GoogleService-Info.plist`
-- Flutter 설정: `packages/game_kit/lib/firebase/firebase_options.dart`
+개발자 브랜치와 `TEST` 검증은 TEST Firebase를 명시합니다.
 
-`.env.example`은 local override 형식의 예시지만 현재 앱은 `.env.dev`를 필수로
-읽지 않습니다. local config와 secret의 현재 계약은
-`docs/development/DEVELOPMENT_SETUP.md`를 따르며, 실제 비밀값은 Flutter 앱 번들에
-넣지 않습니다.
-
-수동 테스트 중 production Realtime Database 상태를 제한적으로 확인해야 한다면
-[`Firebase MCP RTDB Read-only Pilot`](docs/operations/FIREBASE_MCP.md)의 별도 계정, 승인 및 최소 경로
-규칙을 따릅니다. 이 파일럿은 Project CLI와 자동화된 테스트를 대체하지 않습니다.
-
-과거 Android 1~3기기 조작 자동화 파일럿의 결과와 현재 로컬 환경에 남은 한계는
-[`Emulator pilot record`](docs/operations/EMULATOR_PILOT.md)에 보존합니다.
-
-## 자주 사용하는 명령어
-
-Windows에서 validation, 자동화 또는 제한된 실행 환경을 사용할 때:
-
-```powershell
-.\tool\invoke_mosigame.ps1 doctor
-.\tool\invoke_mosigame.ps1 test session
-.\tool\invoke_mosigame.ps1 test auth
-.\tool\invoke_mosigame.ps1 validate --full
+```bash
+flutter run --dart-define=MOSIGAME_BACKEND=test
 ```
 
-macOS/Linux에서:
+로컬 Emulator Suite를 사용할 때:
+
+```bash
+flutter run --dart-define=MOSIGAME_BACKEND=local
+```
+
+`MOSIGAME_BACKEND`를 생략하면 운영 `server` 모드이므로 일반 개발·실기기 검증에서
+생략하지 않습니다.
+
+## Cloud Functions 테스트 배포
+
+TEST 프로젝트는 명시적으로 지정합니다. 이 스크립트는 운영 프로젝트를 거부합니다.
+
+```bash
+npm --prefix functions run deploy:test -- --project=ban-pick-simulator
+```
+
+운영 배포는 이 명령의 연장선으로 실행하지 않습니다. TEST 검증 후 변경 함수 목록과 앱
+호환성을 정리하고 사용자의 별도 승인을 받은 뒤, 운영 프로젝트와 함수 이름을 모두
+명시합니다. 프로젝트를 생략한 `firebase deploy --only functions`는 사용하지 않습니다.
+
+## 검증
+
+macOS/Linux:
 
 ```bash
 dart run :mosigame doctor
@@ -108,40 +100,22 @@ dart run :mosigame test auth
 dart run :mosigame validate --full
 ```
 
-앱 실행은 모든 플랫폼에서 다음 명령을 사용합니다.
+Windows 자동화와 제한된 환경은 [`PROJECT_CLI.md`](docs/engineering/PROJECT_CLI.md)의
+guarded invocation을 사용합니다. 관련 suite는 빠른 피드백이며 완료 후보는 사용자 승인 후
+FULL validation을 실행합니다.
 
-```bash
-flutter run
+## 저장소 구조
+
+```text
+lib/                         앱 조립과 플랫폼 기능
+packages/game_kit/           공용 게임 계약·UI·Firebase 기반
+packages/game_template/      새 게임 복사용 스켈레톤
+packages/game_<game>/        게임별 Flutter 코드와 번들 에셋
+functions/src/               서버 권위형 Functions
+test/                        앱·통합·Project CLI 테스트
+functions/test/              서버 테스트
+docs/                        활성 문서와 과거 증거
 ```
 
-Targeted suite는 관련 작업 중 빠른 피드백용이며, 완료 전에는 Project CLI의 FULL
-validation을 실행합니다. Windows guard와 macOS/Linux raw CLI의 사용 조건은
-[`PROJECT_CLI.md`](docs/engineering/PROJECT_CLI.md)를 참고합니다.
-
-## 개발 규칙
-
-- 공통 값·도구, 게임 계약과 재사용 게임 UI·기반 기능은 `packages/game_kit`에 둡니다.
-- 로그인, 사용자, 방·홈 같은 플랫폼 기능은 앱의 `lib/platform`에 둡니다.
-- 새 게임은 `packages/game_template`을 복사해 시작합니다. 게임 패키지는 앱이나
-  다른 게임을 참조하지 않고 공용 `game_kit`을 사용합니다.
-- 특정 게임에서만 쓰는 코드와 에셋은 `packages/game_<game_id>`에 둡니다.
-- 특정 화면에서만 쓰는 위젯은 그 기능의 `widgets`에 둡니다. 여러 영역에서 쓰이기 시작하면 `shared`로 이동합니다.
-- 파일명은 `snake_case`, 클래스명은 `PascalCase`, 변수와 함수명은 `camelCase`를 사용합니다.
-- 기능 추가 후 Mosigame Project CLI의 관련 targeted suite와 FULL validation을
-  통과시킵니다.
-
-저장소 안내는 [`AGENTS.md`](AGENTS.md), 공통 규칙은
-[`Engineering Contract`](docs/engineering/ENGINEERING_CONTRACT.md), 구조 설명은
-[`Architecture Reference`](docs/engineering/ARCHITECTURE.md)에 있습니다.
-
-## 현재 구현 상태
-
-현재 앱에는 인증·온보딩, 방 생성/참가와 session lifecycle, 휴대폰·태블릿 플랫폼
-화면이 구현되어 있습니다. 게임은 `GameRegistry`를 통해 등록하며, 게임 command와 중요한 상태 전이는 Firebase Functions가
-server-authoritative하게 처리합니다. 정확한 현재 contract는 코드와 테스트를
-우선하고, 구조 변경 전에는 Architecture Reference를 확인합니다.
-
-## 자주 발생하는 문제 해결 (Troubleshooting)
-
-### 안드로이드 에뮬레이터에서 앱 실행 시 즉시 튕기는 현상 (Impeller 오류)
-Flutter 3.22+ 버전부터 안드로이드에 새로운 그래픽 렌더링 엔진인 **Impeller**가 기본 적용되었습니다. 하지만 윈도우 환경의 일부 안드로이드 에뮬레이터(가상 기기)에서는 그래픽 드라이버 호환성 문제로 인해 `Requested texture size (1, 1) exceeds maximum supported size of (0, 0)` 에러와 함께 앱이 즉시 강제 종료되는 문제가 있습니다.
+새 게임은 [`NEW_GAME_GUIDE.md`](docs/engineering/NEW_GAME_GUIDE.md)를 따릅니다. 모든 게임
+코드와 에셋은 현재 앱에 번들되며 Firebase Storage에서 Dart 코드를 내려받아 실행하지 않습니다.

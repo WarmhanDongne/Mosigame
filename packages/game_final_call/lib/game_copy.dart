@@ -71,6 +71,86 @@ abstract final class FinalCallCopy {
   static String turnOf(String nickname) =>
       _t('$nickname 차례예요', "$nickname's turn", '轮到 $nickname', '輪到 $nickname');
   static String callBy(String nickname) => '$nickname CALL!';
+
+  // ---------------------------------------------------------------------------
+  // 포카드 CALL 정산 연출
+  // ---------------------------------------------------------------------------
+  static const fourCardCall = 'FOUR CARD CALL!';
+  static const fourCardStamp = 'FOUR CARD!';
+  static String get fourCardBadge => _t('포카드', 'Four', '四条', '四條');
+  static String get fourCardReady =>
+      _t('포카드 완성!', 'Four of a kind!', '凑成四条！', '湊成四條！');
+  static String get fourCardReplaceHint => _t(
+    '이 카드를 바꾸면 포카드!',
+    'Replace this card for four of a kind!',
+    '换掉这张牌即可凑成四条！',
+    '換掉這張牌即可湊成四條！',
+  );
+  static String get fourCardCallNext => _t(
+    '다음 내 차례에\n바로 CALL 하세요',
+    'CALL right away\non your next turn',
+    '下一轮到你时\n立刻 CALL',
+    '下一輪到你時\n立刻 CALL',
+  );
+  static String get fourCardNextCall =>
+      _t('다음! CALL', 'Next: CALL', '下一个：CALL', '下一個：CALL');
+  static String get fourCardCallReady =>
+      _t('CALL 준비', 'CALL ready', '准备 CALL', '準備 CALL');
+  static String get fourCardOthersFirst => _t(
+    '다른 사람이 먼저 CALL하면\n포카드 효과 없이 점수로만 겨뤄요',
+    'If someone else calls first,\nyour four of a kind only counts as points',
+    '若别人先 CALL，\n四条只按分数比较',
+    '若別人先 CALL，\n四條只按分數比較',
+  );
+  static String get fourCardMyTurn => _t(
+    '내 차례! 포카드로 바로 CALL',
+    'Your turn! CALL with your four',
+    '轮到你！用四条立刻 CALL',
+    '輪到你！用四條立刻 CALL',
+  );
+  static String get fourCardDrawWarning => _t(
+    '카드를 가져오면\n포카드가 깨질 수 있어요',
+    'Drawing a card may\nbreak your four of a kind',
+    '抽牌可能会\n拆散四条',
+    '抽牌可能會\n拆散四條',
+  );
+  static String get fourCardReward => _t(
+    '포카드 · 상대 팀 전원 하트 -1',
+    'Four · every rival loses a heart',
+    '四条 · 对手全员 -1 心',
+    '四條 · 對手全員 -1 心',
+  );
+  static String fourCardCombo(int value) => _t(
+    '$value × 4 · 포카드',
+    '$value × 4 · Four of a kind',
+    '$value × 4 · 四条',
+    '$value × 4 · 四條',
+  );
+  static String fourCardSettle(String nickname) => _t(
+    '$nickname 포카드 CALL · 상대 팀 전원 하트 -1',
+    "$nickname's four of a kind · every rival loses a heart",
+    '$nickname 四条 CALL · 对手全员失去 1 颗心',
+    '$nickname 四條 CALL · 對手全員失去 1 顆心',
+  );
+  static String get fourCardSafe => _t('안전', 'Safe', '安全', '安全');
+  static String get fourCardMine => _t(
+    '상대 팀 전원 하트 -1',
+    'Every rival loses a heart',
+    '对手全员失去 1 颗心',
+    '對手全員失去 1 顆心',
+  );
+  static String get fourCardLost =>
+      _t('내 하트 -1', 'You lose a heart', '你失去 1 颗心', '你失去 1 顆心');
+  static String get fourCardTeamSafe =>
+      _t('우리 팀은 안전해요', 'Your team is safe', '我方安全', '我方安全');
+  static String fourCardBy(String nickname) => _t(
+    '$nickname 포카드 CALL',
+    '$nickname called four of a kind',
+    '$nickname 四条 CALL',
+    '$nickname 四條 CALL',
+  );
+  static String get lookAtTablet =>
+      _t('태블릿을 보세요', 'Look at the tablet', '请看平板', '請看平板');
   static String callerOf(String nickname) =>
       _t('$nickname의', "$nickname's", '$nickname 的', '$nickname 的');
   static String deckCount(int count) =>

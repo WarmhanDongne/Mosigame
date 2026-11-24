@@ -8,6 +8,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:game_kit/core/constants/room_character.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/core/error/user_error_message.dart';
 import 'package:game_kit/firebase/services/realtime_database_service.dart';
 import 'package:game_kit/core/network/realtime_connection_monitor.dart';
@@ -993,16 +994,24 @@ class RoomService {
 
   /// 서버에서 `waiting → seating`을 확정한 뒤 잠긴 최신 참가자 명단을 반환합니다.
   Future<List<RoomPlayer>> beginPlayerSeating(String roomCode) async {
-    await _call(
+    final result = await _call(
       'beginRealtimeRoomSeating',
       await _controllerEnvelope(roomCode),
     );
+    final data = result.data;
+    if (data is Map && data['players'] is Map) {
+      return _playersFromValue(data['players']);
+    }
+    // An older deployed function returns only playerUids.
     return getRoomPlayers(roomCode);
   }
 
   List<RoomPlayer> _playersFromSnapshot(DataSnapshot snapshot) {
-    final value = snapshot.value;
-    if (!snapshot.exists || value is! Map) {
+    return _playersFromValue(snapshot.value);
+  }
+
+  List<RoomPlayer> _playersFromValue(Object? value) {
+    if (value is! Map) {
       return const [];
     }
 
@@ -1021,11 +1030,21 @@ class RoomService {
   Future<void> savePlayerSeatIndexes({
     required String roomCode,
     required Map<String, int> seatIndexesByUid,
+    SeatLayoutMode? seatLayoutMode,
   }) async {
     await _call('saveRealtimePlayerSeatIndexes', {
       ...await _controllerEnvelope(roomCode),
       'seatIndexesByUid': seatIndexesByUid,
+      if (seatLayoutMode != null) 'seatLayoutMode': seatLayoutMode.name,
     });
+  }
+
+  /// 마지막 게임의 좌석 참가자 구성과 배치 형태를 컨트롤러가 한 번 읽습니다.
+  Future<SavedSeatLayout?> getSavedSeatLayout(String roomCode) async {
+    final snapshot = await realtime
+        .ref('rooms/$roomCode/seatingPreference')
+        .get();
+    return SavedSeatLayout.fromWire(snapshot.value);
   }
 
   Future<void> removePlayer(String roomCode, String userUid) async {

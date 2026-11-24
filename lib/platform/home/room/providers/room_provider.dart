@@ -15,6 +15,7 @@ import 'package:game_kit/core/diagnostics/dev_error_log.dart';
 import 'package:game_kit/core/error/user_error_message.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
 import 'package:project00/platform/home/room/services/room_leave_intent.dart';
@@ -98,6 +99,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
 
   @override
   List<RoomPlayer> players = [];
+  int _playerRosterEpoch = 0;
   bool roomPreviewReady = false;
   List<GameInfo> groupGames = [];
   RoomDataLoadStatus groupGamesLoadStatus = RoomDataLoadStatus.idle;
@@ -1005,7 +1007,10 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> savePlayerSeatIndexes(Map<String, int> seatIndexesByUid) async {
+  Future<bool> savePlayerSeatIndexes(
+    Map<String, int> seatIndexesByUid, {
+    SeatLayoutMode? seatLayoutMode,
+  }) async {
     final code = roomCode;
     if (code == null) {
       errorMessage = '방 정보를 확인할 수 없습니다.';
@@ -1017,11 +1022,27 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       await _service.savePlayerSeatIndexes(
         roomCode: code,
         seatIndexesByUid: seatIndexesByUid,
+        seatLayoutMode: seatLayoutMode,
       );
       return true;
     });
 
     return result ?? false;
+  }
+
+  Future<SavedSeatLayout?> getSavedSeatLayout() async {
+    final code = roomCode;
+    if (code == null) return null;
+    try {
+      return await _service.getSavedSeatLayout(code);
+    } catch (error) {
+      DevErrorLog.instance.add(
+        error: error,
+        context: 'room/load_saved_seat_layout',
+        time: DateTime.now(),
+      );
+      return null;
+    }
   }
 
   Future<bool> beginPlayerSeating() async {
@@ -1032,7 +1053,19 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
       return false;
     }
     final result = await _runCommand<bool>(() async {
-      players = await _service.beginPlayerSeating(code);
+      final observedEpoch = _playerRosterEpoch;
+      final committedPlayers = await _service.beginPlayerSeating(code);
+      if (roomCode != code) return false;
+      // A roster event received while the callable was in flight may be newer
+      // than its committed response. Read current players only in that race.
+      if (_playerRosterEpoch == observedEpoch) {
+        players = committedPlayers;
+      } else {
+        final refreshEpoch = _playerRosterEpoch;
+        final refreshed = await _service.getRoomPlayers(code);
+        if (roomCode != code) return false;
+        if (_playerRosterEpoch == refreshEpoch) players = refreshed;
+      }
       notifyListeners();
       return true;
     });
@@ -1193,6 +1226,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
         .listen(
           (roomPlayer) {
             if (roomCode != listenedRoomCode) return;
+            _playerRosterEpoch += 1;
             players = roomPlayer;
             if (!_ownsControllerSession &&
                 roomPlayer.any(
@@ -1236,11 +1270,37 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
               ),
             );
           },
-          onError: (Object error) => _handleSubscriptionError(
+          onError: (Object error) => _handlePlayerSubscriptionError(
             error,
             expectedRoomCode: listenedRoomCode,
           ),
         );
+  }
+
+  void _handlePlayerSubscriptionError(
+    Object error, {
+    required String expectedRoomCode,
+  }) {
+    _handleSubscriptionError(error, expectedRoomCode: expectedRoomCode);
+    if (roomCode != expectedRoomCode ||
+        _ownsControllerSession ||
+        _isLeaving ||
+        !_hasJoined) {
+      return;
+    }
+    final uid = _currentUid();
+    if (uid == null || uid.isEmpty) return;
+
+    // 강퇴 트랜잭션이 내 참가자 노드를 지우면 같은 순간 players 읽기 권한도
+    // 사라질 수 있습니다. 이 경우 빈 목록 이벤트 없이 permission-denied만
+    // 도착하므로, 평소 빈 목록 처리와 같은 서버 확인을 거쳐 강퇴를 확정합니다.
+    unawaited(
+      _verifyCurrentPlayerRemoval(
+        expectedRoomCode,
+        expectedUid: uid,
+        ignoreCachedRoster: true,
+      ),
+    );
   }
 
   /// 그룹 보유 게임은 활성 참가자 구성이 실제로 바뀔 때만 다시 조회합니다.
@@ -1646,6 +1706,7 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
   Future<void> _verifyCurrentPlayerRemoval(
     String expectedRoomCode, {
     required String expectedUid,
+    bool ignoreCachedRoster = false,
   }) async {
     if (!_isServerConnected || _ownsControllerSession) return;
     final checkId = ++_playerRemovalCheckId;
@@ -1669,9 +1730,10 @@ class RoomProvider extends GameRoomContext with WidgetsBindingObserver {
           _isLeaving) {
         return;
       }
-      if (players.any(
-        (player) => player.uid == expectedUid && player.isActive,
-      )) {
+      if (!ignoreCachedRoster &&
+          players.any(
+            (player) => player.uid == expectedUid && player.isActive,
+          )) {
         return;
       }
       // 서로 다른 경로의 조회 결과가 충돌하면 살아 있는 참가자 근거를 보존합니다.

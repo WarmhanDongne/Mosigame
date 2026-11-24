@@ -4,9 +4,10 @@ import {CallableRequest, HttpsError, onCall} from "firebase-functions/v2/https";
 import {assertControllerSession} from "../room/controller-session.js";
 import {assertStartGameSnapshot, startGameFingerprint} from "../common/start-game-transaction.js";
 import {leaveSessionRequest} from "../game-interruption/leave-request.js";
-import {replayGameCommand, runGameCommandTransaction} from "../game-interruption/game-command-transaction.js";
+import {replayGameCommandFromRoom, runGameCommandTransaction} from "../game-interruption/game-command-transaction.js";
 import {
   canRestartRussianRouletteGame,
+  completeRussianRouletteIntro,
   completeRussianRoulettePhase,
   createRussianRouletteGame,
   finishRussianRouletteGame,
@@ -23,9 +24,9 @@ export const game_russian_roulette_start_game = onCall<Data>({region: REGION}, a
   const uid = requireUid(request.auth?.uid);
   const roomCode = parseRoomCode(request.data?.roomCode);
   const ref = getDatabase().ref(`rooms/${roomCode}`);
-  const replay = await replayGameCommand(ref, request, "game_russian_roulette_start_game");
-  if (replay) return replay;
   const snapshot = (await ref.get()).val() as RussianRouletteRoom | null;
+  const replay = replayGameCommandFromRoom(snapshot, request, "game_russian_roulette_start_game");
+  if (replay) return replay;
   if (!snapshot) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");
   const fingerprint = startGameFingerprint(snapshot);
   assertControllerSession(snapshot, uid, request.data?.controllerSessionId);
@@ -71,6 +72,12 @@ export const game_russian_roulette_timeout_turn = onCall<Data>({region: REGION},
     return {success: true};
   }));
 
+export const game_russian_roulette_complete_intro = onCall<Data>({region: REGION}, (request) =>
+  controllerMutation(request, "game_russian_roulette_complete_intro", (game, now) => {
+    const changed = completeRussianRouletteIntro(game, now);
+    return {success: true, changed, turnDeadlineAt: game.public.turnDeadlineAt};
+  }));
+
 export const game_russian_roulette_complete_phase = onCall<Data>({region: REGION}, (request) =>
   controllerMutation(request, "game_russian_roulette_complete_phase", (game, now) => {
     completeRussianRoulettePhase(game, now);
@@ -102,8 +109,6 @@ async function mutate(request: CallableRequest<Data>, kind: string, action: (roo
   const uid = requireUid(request.auth?.uid);
   const roomCode = parseRoomCode(request.data?.roomCode);
   const ref = getDatabase().ref(`rooms/${roomCode}`);
-  const replay = await replayGameCommand(ref, request, kind);
-  if (replay) return replay;
   let response: Record<string, unknown> | null = null;
   const result = await runGameCommandTransaction(ref, request, kind, (raw, now) => {
     if (!raw) throw new HttpsError("not-found", "방을 찾을 수 없습니다.");

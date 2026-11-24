@@ -65,6 +65,31 @@ void main() {
     expect(h.calls, ['createRealtimeRoom', 'resumeRealtimeControllerRoom']);
   });
 
+  for (final legacyServer in [false, true]) {
+    test(
+      'seating uses ${legacyServer ? 'legacy roster read' : 'committed roster response'}',
+      () async {
+        await h.service.createRoom();
+        GameRecoverySession.forRoom(
+          'ABCDE',
+          h.uid,
+        ).context = const GameRecoveryContext(
+          gameInstanceId: 'game-1',
+          phaseSeq: 1,
+          turnSeq: 1,
+          dataSeq: 1,
+          resumeEpoch: 1,
+        );
+        h.legacySeating = legacyServer;
+        h.calls.clear();
+        final players = await h.service.beginPlayerSeating('ABCDE');
+        expect(h.calls, ['beginRealtimeRoomSeating']);
+        expect(players.map((player) => player.uid), ['player-a']);
+        expect(h.readPaths, legacyServer ? ['rooms/ABCDE/players'] : isEmpty);
+      },
+    );
+  }
+
   test('first close sends once without status lookup', () async {
     await h.service.createRoom();
     h.calls.clear();
@@ -349,6 +374,16 @@ class _Harness {
   final calls = <String>[];
   final payloads = <Map<String, dynamic>>[];
   final paths = <String>[];
+  final readPaths = <String>[];
+  bool legacySeating = false;
+  final seatingPlayers = <String, dynamic>{
+    'player-a': {
+      'role': 'player',
+      'status': 'active',
+      'nickname': 'A',
+      'characterId': 'bear',
+    },
+  };
   Completer<void>? cancelGate, registrationGate, closeGate;
   final closeEntered = Completer<void>();
   bool failCancel = false;
@@ -423,6 +458,11 @@ class _Harness {
             : createdSequence + 1,
       },
       'closeRoom' => {'success': true},
+      'beginRealtimeRoomSeating' => {
+        'success': true,
+        'playerUids': ['player-a'],
+        if (!legacySeating) 'players': seatingPlayers,
+      },
       'game_final_call_leave_game' => {'status': 'applied'},
       'game_common_operation_status' => {'status': status},
       _ => throw StateError('Unexpected $name'),
@@ -480,6 +520,13 @@ class _Reference extends Fake implements DatabaseReference {
   @override
   final String path;
   @override
+  Future<DataSnapshot> get() async {
+    h.readPaths.add(path);
+    if (path == 'rooms/ABCDE/players') return _Snapshot(h.seatingPlayers);
+    throw StateError('Unexpected read $path');
+  }
+
+  @override
   Future<void> update(Map<String, Object?> value) async {
     if (h.failPresence) {
       throw FirebaseException(
@@ -492,6 +539,12 @@ class _Reference extends Fake implements DatabaseReference {
 
   @override
   OnDisconnect onDisconnect() => _Disconnect(h, path);
+}
+
+class _Snapshot extends Fake implements DataSnapshot {
+  _Snapshot(this.value);
+  @override
+  final Object? value;
 }
 
 class _Disconnect extends Fake implements OnDisconnect {

@@ -255,25 +255,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('선택 가능한 캐릭터는 이전 서버의 ID를 유지하며 새 그림 파일이 존재한다', () {
-    // 리디자인 이전에 배포된 room character 계약. 새 그림 이름을 보내면 안 됩니다.
+  test('선택 가능한 8개 캐릭터는 서버 ID를 유지하고 빠진 캐릭터도 계속 그린다', () {
+    // 새 그림 이름이 아니라 이미 배포된 room character ID를 계속 보냅니다.
     const serverIds = {
       'bear',
       'bee',
       'cat',
-      'crab',
-      'deer',
       'elephant',
-      'frog',
-      'giraffe',
       'hedgehog',
       'kindbear',
-      'octopus',
       'owl',
-      'penguin',
       'shark',
-      'snake',
-      'whale',
     };
     expect(roomCharacters.map((c) => c.id).toSet(), serverIds);
     expect(
@@ -295,8 +287,30 @@ void main() {
     }
     expect(defaultRoomCharacterId, 'frog');
     expect(roomCharacterById('burger').id, roomCharacterById('frog').id);
-    // 티슈 상자는 선택지에서 뺐지만 이미 저장된 값은 같은 그림으로 읽습니다.
-    expect(roomCharacters, hasLength(16));
+    expect(roomCharacters, hasLength(8));
+    const removedCharacters = {
+      'frog': 'burger',
+      'whale': 'watermelon',
+      'crab': 'capmask',
+      'deer': 'scarf',
+      'snake': 'disguise',
+      'penguin': 'milk',
+      'octopus': 'cupnoodle',
+      'giraffe': 'lampshade',
+    };
+    for (final entry in removedCharacters.entries) {
+      expect(
+        roomCharacters.any((character) => character.id == entry.key),
+        isFalse,
+      );
+      expect(roomCharacterById(entry.key).id, entry.key);
+      expect(roomCharacterById(entry.value).id, entry.key);
+      expect(
+        roomCharacterAssetPath(entry.key),
+        endsWith('/${entry.value}.webp'),
+      );
+    }
+    // 티슈 상자도 선택지에서 빠졌지만 이미 저장된 값은 같은 그림으로 읽습니다.
     expect(
       roomCharacters.any((character) => character.id == 'rabbit'),
       isFalse,

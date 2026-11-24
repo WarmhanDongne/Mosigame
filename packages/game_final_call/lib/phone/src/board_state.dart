@@ -13,6 +13,9 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
   ProviderSubscription<FinalCallGameState>? sessionSubscription;
   String? initializationError;
   String? selectedCardId;
+  int? _selectedTurnRevision;
+  int? _selectedTurnDeadlineAt;
+  Timer? _selectionDeadlineTimer;
   final Set<String> selectedFinalCardIds = <String>{};
   String? visibleCallerUid;
   String? observedCallerUid;
@@ -133,10 +136,16 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
       GameFeedback.alert();
     }
     if (selectedCardId != null &&
-        !game.hand.any((card) => card.id == selectedCardId)) {
-      selectedCardId = null;
+        (!game.isMyTurn ||
+            game.pendingDrawUid != game.uid ||
+            game.revision != _selectedTurnRevision ||
+            game.turnDeadlineAt != _selectedTurnDeadlineAt ||
+            (ServerClock.hasSynced &&
+                ServerClock.hasPassed(game.turnDeadlineAt)) ||
+            !game.hand.any((card) => card.id == selectedCardId) ||
+            game.isFinalSubmitPhase)) {
+      _clearSelectedCard();
     }
-    if (game.isFinalSubmitPhase) selectedCardId = null;
     if (!game.isFinalSubmitPhase) _finalSelectionEdited = false;
     _presetFinalSelectionRound = syncFinalCallSelection(
       selected: selectedFinalCardIds,
@@ -163,6 +172,47 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
       });
     }
     setState(() {});
+  }
+
+  void _clearSelectedCard() {
+    selectedCardId = null;
+    _selectedTurnRevision = null;
+    _selectedTurnDeadlineAt = null;
+    _selectionDeadlineTimer?.cancel();
+    _selectionDeadlineTimer = null;
+  }
+
+  void _selectCard(String? id) {
+    final game = controller;
+    if (id != null &&
+        (game == null ||
+            !game.canCompleteTurn ||
+            (ServerClock.hasSynced &&
+                ServerClock.hasPassed(game.turnDeadlineAt)))) {
+      return;
+    }
+    setState(() {
+      _clearSelectedCard();
+      if (id == null || game == null) return;
+      selectedCardId = id;
+      _selectedTurnRevision = game.revision;
+      _selectedTurnDeadlineAt = game.turnDeadlineAt;
+      if (game.turnDeadlineAt != null) {
+        _selectionDeadlineTimer = Timer.periodic(
+          const Duration(milliseconds: 250),
+          (_) {
+            if (!mounted || selectedCardId == null) return;
+            if (!game.isMyTurn ||
+                game.revision != _selectedTurnRevision ||
+                game.turnDeadlineAt != _selectedTurnDeadlineAt ||
+                (ServerClock.hasSynced &&
+                    ServerClock.hasPassed(_selectedTurnDeadlineAt))) {
+              setState(_clearSelectedCard);
+            }
+          },
+        );
+      }
+    });
   }
 
   Future<void> _leaveRoom() async {
@@ -205,6 +255,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
     final expectedDeadline = game.turnDeadlineAt;
     final submittedRevision = game.revision;
     if (expectedDeadline != null && ServerClock.hasPassed(expectedDeadline)) {
+      _selectCard(null);
       return;
     }
 
@@ -224,7 +275,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
     if (!mounted) return;
     setState(() {
       if (completed) {
-        selectedCardId = null;
+        _clearSelectedCard();
         if (game.revision == submittedRevision &&
             game.pendingDrawUid == game.uid &&
             game.isMyTurn) {
@@ -237,6 +288,12 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
         replacementInProgress = false;
         replacingCardId = null;
         _turnSubmissionRevision = null;
+        if (game.turnUid != expectedTurnUid ||
+            (expectedDeadline != null &&
+                ServerClock.hasPassed(expectedDeadline)) ||
+            !game.canCompleteTurn) {
+          _clearSelectedCard();
+        }
       }
     });
     if (!completed) {
@@ -261,6 +318,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
   @override
   void dispose() {
     callNoticeTimer?.cancel();
+    _selectionDeadlineTimer?.cancel();
     sessionSubscription?.close();
     // ---------------------------------------------------------------------------
     // 게임 종료 후 플랫폼 화면 정책 복원
@@ -345,6 +403,11 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
           closingMessage: closingMessage,
           introTextColor: Colors.white,
           background: const FinalCallPopBackground(),
+          // 가로로만 하는 게임이라, 첫 카드를 나눠 주기 전 빈 화면에서
+          // 휴대폰을 가로로 돌리라고 안내합니다(다음 라운드부터는 보이지 않음).
+          waitingHint: game.round <= 1
+              ? const PhoneRotateLandscapeHint()
+              : null,
           // 손패가 준비되고 펼치기가 끝나야 상단바가 등장합니다.
           contentReady: game.showsEliminated || game.hand.isNotEmpty,
           contentRevealed: game.showsEliminated || revealedRound == game.round,
@@ -385,8 +448,7 @@ class _FinalCallPhoneGameState extends ConsumerState<FinalCallPhoneGame> {
                     onRevealStarted: () {},
                     onRevealCompleted: () =>
                         setState(() => revealedRound = game.round),
-                    onSelectedCardChanged: (id) =>
-                        setState(() => selectedCardId = id),
+                    onSelectedCardChanged: _selectCard,
                     onFinalCardSelected: (cardId) => setState(() {
                       toggleFinalCallSelection(
                         selected: selectedFinalCardIds,

@@ -459,7 +459,7 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
     _timeoutCommand.dispose();
     _nextRoundCommand.dispose();
     // 배경음악은 반복 재생이라 화면을 떠날 때 반드시 멈춥니다.
-    backgroundMusic.stop();
+    backgroundMusic.dispose();
     phaseTimer?.cancel();
     turnTimer?.cancel();
     closingExitTimer?.cancel();
@@ -544,11 +544,15 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
                 flowConfig: flowConfig,
                 onRoundRevealCompleted: _handleRoundRevealCompleted,
                 onDealingCompleted: _handleDealingCompleted,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             if (stage == FinalCallTabletStage.playing)
               FinalCallTabletCallAnimation(
                 controller: game,
                 playerCount: game.players.length,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             if (stage == FinalCallTabletStage.playing &&
                 game.roundResult == null &&
@@ -558,6 +562,8 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
                 controller: game,
                 event: game.discardEvent!,
                 playerCount: game.players.length,
+                seatLayoutMode:
+                    widget.playerLayout?.seatLayoutMode ?? SeatLayoutMode.sides,
               ),
             // ---------------------------------------------------------------------------
             // 공용 태블릿 사이드바

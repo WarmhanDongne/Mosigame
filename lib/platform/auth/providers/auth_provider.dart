@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:project00/platform/auth/models/google_sign_in_error_message.dart';
 import 'package:project00/platform/auth/services/auth_service.dart';
 import 'package:project00/platform/auth/services/apple_auth_utils.dart';
+import 'package:project00/platform/notifications/push_notification_host.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -371,6 +372,7 @@ class AuthProvider extends ChangeNotifier {
   /// 구글 로그아웃이 실패해도(로컬 환경처럼 구글 SDK를 초기화하지 않은 경우
   /// 포함) Firebase 로그아웃은 반드시 진행해야 사용자가 실제로 로그아웃됩니다.
   Future<void> signOut() async {
+    await PushDeviceRegistration.unregisterBeforeSignOut();
     try {
       await GoogleSignIn.instance.signOut();
     } catch (error, stack) {

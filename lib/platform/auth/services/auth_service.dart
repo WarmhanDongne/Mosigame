@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:project00/platform/auth/services/apple_auth_utils.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -36,6 +37,146 @@ class FirebaseAuthService {
         'too-many-requests' => '요청이 많습니다. 잠시 후 다시 시도해주세요.',
         _ => '게스트 로그인에 실패했습니다. 다시 시도해주세요.',
       });
+    }
+  }
+
+  /// 게스트 UID와 데이터를 유지한 채 이메일·비밀번호 인증을 연결합니다.
+  Future<void> linkGuestWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final credential = EmailAuthProvider.credential(
+      email: email.trim(),
+      password: password,
+    );
+    final user = await _linkGuestCredential(credential);
+    await _markGuestAccountLinked(user);
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (error) {
+      // 인증 수단 자체는 이미 같은 UID에 연결됐다. 메일 전송 실패를 전체
+      // 연동 실패로 오인시키지 않고, 로그인 후 재전송할 수 있도록 남겨둔다.
+      debugPrint('Guest link verification email failed: ${error.code}');
+    }
+  }
+
+  /// 게스트 UID와 데이터를 유지한 채 Google 인증을 연결합니다.
+  Future<void> linkGuestWithGoogle() async {
+    if (FirebaseBackend.isLocal) {
+      throw const AuthServiceException(
+        'local-provider-unavailable',
+        '로컬 환경에서는 소셜 계정 연동을 사용할 수 없습니다.',
+      );
+    }
+    try {
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final googleAuth = googleUser.authentication;
+      final user = await _linkGuestCredential(
+        GoogleAuthProvider.credential(idToken: googleAuth.idToken),
+      );
+      await syncGoogleUserProfile(user);
+      await _markGuestAccountLinked(user);
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) {
+        throw const AuthServiceException('canceled', '');
+      }
+      throw const AuthServiceException(
+        'google-link-failed',
+        'Google 계정을 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
+    }
+  }
+
+  /// 게스트 UID와 데이터를 유지한 채 Apple 인증을 연결합니다.
+  Future<void> linkGuestWithApple() async {
+    if (FirebaseBackend.isLocal) {
+      throw const AuthServiceException(
+        'local-provider-unavailable',
+        '로컬 환경에서는 소셜 계정 연동을 사용할 수 없습니다.',
+      );
+    }
+    try {
+      final rawNonce = generateAppleNonce();
+      final apple = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: sha256AppleNonce(rawNonce),
+      );
+      final token = apple.identityToken;
+      if (token == null) {
+        throw const AuthServiceException(
+          'missing-apple-token',
+          'Apple 인증 정보를 가져오지 못했습니다.',
+        );
+      }
+      final user = await _linkGuestCredential(
+        AppleAuthProvider.credentialWithIDToken(
+          token,
+          rawNonce,
+          AppleFullPersonName(
+            givenName: apple.givenName,
+            familyName: apple.familyName,
+          ),
+        ),
+      );
+      await syncAppleUserProfile(user);
+      await _markGuestAccountLinked(user);
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) {
+        throw const AuthServiceException('canceled', '');
+      }
+      throw const AuthServiceException(
+        'apple-link-failed',
+        'Apple 계정을 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
+    }
+  }
+
+  Future<User> _linkGuestCredential(AuthCredential credential) async {
+    final guest = _auth.currentUser;
+    if (guest == null || !guest.isAnonymous) {
+      throw const AuthServiceException(
+        'guest-required',
+        '게스트 계정에서만 계정 연동을 시작할 수 있습니다.',
+      );
+    }
+    try {
+      final linked = await guest.linkWithCredential(credential);
+      final user = linked.user;
+      if (user == null) {
+        throw const AuthServiceException(
+          'link-result-missing',
+          '연결된 계정 정보를 확인하지 못했습니다.',
+        );
+      }
+      await user.getIdToken(true);
+      return user;
+    } on FirebaseAuthException catch (error) {
+      throw AuthServiceException(error.code, switch (error.code) {
+        'credential-already-in-use' ||
+        'email-already-in-use' => '이미 다른 모시겜 계정에 연결된 정보입니다. 다른 계정을 사용해주세요.',
+        'weak-password' => '비밀번호를 8자 이상으로 설정해주세요.',
+        'invalid-email' => '이메일 주소를 확인해주세요.',
+        'provider-already-linked' => '이미 연결된 로그인 방식입니다.',
+        'network-request-failed' => '네트워크 연결을 확인하고 다시 시도해주세요.',
+        _ => error.message ?? '계정을 연결하지 못했습니다.',
+      });
+    }
+  }
+
+  Future<void> _markGuestAccountLinked(User user) async {
+    try {
+      await user.getIdToken(true);
+      await _functions.httpsCallable('markGuestAccountLinked').call();
+    } on FirebaseFunctionsException catch (error) {
+      // Firebase Auth 연결은 이미 완료되어 UID와 사용자 데이터가 보존된다.
+      // 메타데이터 동기화 실패를 사용자에게 전체 연동 실패로 보여주면 같은
+      // 인증 수단을 재연결할 수도 없으므로, 진단 로그를 남기고 성공 처리한다.
+      debugPrint(
+        'Guest link metadata sync failed: ${error.code} ${error.message ?? ''}',
+      );
     }
   }
 

@@ -14,6 +14,9 @@ const {game_liars_poker_prepare_penalty: prepare, game_liars_poker_resolve_penal
 const {game_liars_poker_call_liar: callLiar} = require('../lib/liars-poker/call-liar.js');
 const {game_liars_poker_pass_challenge: fold} = require('../lib/liars-poker/pass-challenge.js');
 const {game_liars_poker_force_timeout: forceTimeout} = require('../lib/liars-poker/force-timeout.js');
+const {game_russian_roulette_start_game: startRussianRoulette,
+  game_russian_roulette_submit_action: submitRussianRouletteAction} =
+  require('../lib/russian-roulette/callables.js');
 const transactionRandom = require('../lib/common/transaction-random.js');
 const {applyWaitingGameSelection} = require('../lib/room/room-seating-policy.js');
 const controllerSessionId = '11111111-1111-4111-8111-111111111111';
@@ -31,9 +34,10 @@ class RoomRef {
           characterId: 'frog', profileImageUrl: 'https://example.com/profile.png', lastSeen: 1},
       ]))};
     this.listeners = 0;
+    this.getCount = 0;
   }
   snapshot() { return {val: () => structuredClone(this.value)}; }
-  async get() { return this.snapshot(); }
+  async get() { this.getCount++; return this.snapshot(); }
   on(event, callback) { assert.equal(event, 'value'); this.listeners++; callback(this.snapshot()); }
   off() { this.listeners--; }
   async transaction(update) {
@@ -226,9 +230,15 @@ for (const game of games) {
     const original = ref.request('start-operation');
     const result = await game.start.run(original);
     assert.equal(result.success, true);
+    if (game.id === 'liars_poker' || game.id === 'final_call') {
+      assert.equal(ref.getCount, 1, 'start uses one room read for replay and roster validation');
+    }
     const firstId = ref.value.game.public.gameInstanceId;
     if (game.id === 'liars_poker') assert.ok(Object.values(ref.value.game.public.players).every(p => p.penaltyCount === 0));
     assert.deepEqual(await game.start.run(original), result);
+    if (game.id === 'liars_poker' || game.id === 'final_call') {
+      assert.equal(ref.getCount, 2, 'replayed start uses one room read and no transaction');
+    }
     assert.equal(ref.value.game.public.gameInstanceId, firstId);
     // Mirrors the asynchronous status trigger for the three games that use it.
     ref.value.status = 'playing';
@@ -256,6 +266,43 @@ for (const game of games) {
     assert.equal((await game.start.run(ref.request('corrected-start'))).success, true);
   });
 }
+
+test('russian roulette start and action avoid redundant room reads while replay stays safe', async t => {
+  const ref = setup(t, 'russian_roulette');
+  const player = ref.value.players.player0;
+  player.currentConnectionId = 'player-connection';
+  player.connectionSeq = 1;
+  ref.value.connections.player0 = {'player-connection': {
+    roomInstanceId: 'room-current', membershipId: player.membershipId,
+    connectionSeq: 1, connected: true, lastSeen: 1,
+  }};
+  const startRequest = ref.request('russian-start');
+  const started = await startRussianRoulette.run(startRequest);
+  assert.equal(started.success, true);
+  assert.equal(ref.getCount, 1);
+  assert.deepEqual(await startRussianRoulette.run(startRequest), started);
+  assert.equal(ref.getCount, 2);
+
+  delete ref.value.game.public.recovery;
+  delete ref.value.game.server.recovery;
+  ref.getCount = 0;
+  const actionRequest = ref.request('russian-action', {action: 'spin'});
+  actionRequest.auth.uid = 'player0';
+  Object.assign(actionRequest.data, {role: 'player', membershipId: player.membershipId,
+    connectionId: 'player-connection', connectionSeq: 1});
+  delete actionRequest.data.controllerSessionId;
+  const submitted = await submitRussianRouletteAction.run(actionRequest);
+  assert.equal(submitted.submitted, true);
+  assert.equal(ref.getCount, 0, 'normal action has no standalone room get');
+  ref.value.game.public.phaseSeq++;
+  const beforeReplay = structuredClone(ref.value.game);
+  assert.deepEqual(await submitRussianRouletteAction.run(actionRequest), submitted);
+  assert.equal(ref.getCount, 0, 'replay uses the transaction record without a room get');
+  assert.deepEqual(ref.value.game, beforeReplay, 'stale replay cannot apply the action again');
+  await assert.rejects(submitRussianRouletteAction.run({
+    ...actionRequest, data: {...actionRequest.data, action: 'shield'},
+  }), error => error.code === 'permission-denied');
+});
 
 const {game_common_recovery_report: readyReport} = require('../lib/game-interruption/functions.js');
 const {registerRecoveryFailure} = require('../lib/game-interruption/recovery-state.js');

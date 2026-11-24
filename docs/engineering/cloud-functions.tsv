@@ -3,7 +3,7 @@ createRealtimeRoom	onCall	방	asia-northeast3		room/realtime-room-functions.ts	�
 validateRealtimeRoom	onCall	방	asia-northeast3		room/realtime-room-functions.ts	입력한 방 코드가 유효한지 확인 (참가 전 사전 검사)
 joinRealtimeRoom	onCall	방	asia-northeast3		room/realtime-room-functions.ts	휴대폰 참가·재접속. 기존 uid는 좌석과 게임 데이터를 유지하고 연결 상태만 복구
 beginRealtimeRoomSeating	onCall	방	asia-northeast3		room/realtime-room-lifecycle.ts	좌석 배치 단계 시작 (방 상태 → seating)
-saveRealtimePlayerSeatIndexes	onCall	방	asia-northeast3		room/realtime-room-functions.ts	태블릿이 정한 좌석 번호 저장
+saveRealtimePlayerSeatIndexes	onCall	방	asia-northeast3		room/realtime-room-functions.ts	태블릿이 정한 좌석 번호와 동일 참가자용 자리 형태 저장
 selectRealtimeRoomGame	onCall	방	asia-northeast3		room/realtime-room-lifecycle.ts	이 방에서 플레이할 게임 선택
 fetchRealtimeRoomGroupEntitlements	onCall	방	asia-northeast3		room/realtime-room-lifecycle.ts	방 참가자들이 합쳐서 보유한 유료 게임 ID를 서버가 계산. 클라이언트가 남의 /users 문서를 읽지 않게 하는 경계
 resumeRealtimeControllerRoom	onCall	방	asia-northeast3		room/realtime-room-lifecycle.ts	태블릿이 앱을 다시 켰을 때 자기 방으로 복귀

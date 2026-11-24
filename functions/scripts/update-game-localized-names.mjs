@@ -8,7 +8,7 @@ import {
 } from "./game-catalog-translations.mjs";
 import {gameRules, localizedGameRules} from "./update-game-rules.mjs";
 
-const PROJECT = "project0000-ec01e";
+const PROJECT = "ban-pick-simulator";
 
 export const localizedGameNames = Object.freeze({
   liars_poker: Object.freeze({

@@ -7,11 +7,13 @@ class _RevealedTable extends StatefulWidget {
     required this.controller,
     required this.result,
     required this.onCompleted,
+    required this.seatLayoutMode,
   });
 
   final FinalCallController controller;
   final FinalCallRoundResult result;
   final VoidCallback onCompleted;
+  final SeatLayoutMode seatLayoutMode;
 
   @override
   State<_RevealedTable> createState() => _RevealedTableState();
@@ -83,6 +85,7 @@ class _RevealedTableState extends State<_RevealedTable> {
         final centers = finalCallSeatCenters(
           playerCount: seatCount,
           boardSize: boardSize,
+          mode: widget.seatLayoutMode,
         );
         return OneShotTimeline(
           duration: Duration(milliseconds: _totalDurationMs),
@@ -483,12 +486,14 @@ class _FinalCallSeatPlates extends StatelessWidget {
     required this.turnUid,
     required this.callerUid,
     required this.pendingDrawUid,
+    required this.seatLayoutMode,
   });
 
   final List<FinalCallPlayer> players;
   final String? turnUid;
   final String? callerUid;
   final String? pendingDrawUid;
+  final SeatLayoutMode seatLayoutMode;
 
   @override
   Widget build(BuildContext context) {
@@ -500,6 +505,7 @@ class _FinalCallSeatPlates extends StatelessWidget {
         final centers = finalCallSeatCenters(
           playerCount: players.length,
           boardSize: boardSize,
+          mode: seatLayoutMode,
         );
         const seatSize = _SeatProfile.size;
         return Stack(

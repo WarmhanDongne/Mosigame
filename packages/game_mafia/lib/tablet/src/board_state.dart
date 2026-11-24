@@ -138,7 +138,7 @@ class _MafiaTabletGameState extends ConsumerState<MafiaTabletGame> {
     _nightNoticeTimer?.cancel();
     _gameStartNoticeTimer?.cancel();
     _winVoiceTimer?.cancel();
-    _bgm.stop();
+    _bgm.dispose();
     _countdownTick.stop();
     _subscription?.close();
     unawaited(AppOrientation.restorePlatform());

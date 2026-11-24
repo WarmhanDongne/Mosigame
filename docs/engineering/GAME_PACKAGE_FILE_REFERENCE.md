@@ -1,5 +1,11 @@
 # 게임 패키지 전체 파일 참조
 
+> **과거 자동 추출본 — 현재 기준으로 사용하지 않음.** 이 파일은 2026-09의 라이어스 포커,
+> 파이널 콜, 마피아 중심 snapshot이며 현재 Holdem, Yut, Russian Roulette와 이동·삭제된
+> 파일을 반영하지 않는다. 2026-11-18 검사에서 로컬 파일 링크 282개가 현재 tree와 달랐다.
+> 현재 구조는 [`ARCHITECTURE.md`](ARCHITECTURE.md), 실제 연결은
+> `lib/games/game_registry.dart`, `pubspec.yaml`, `functions/src/index.ts`를 확인한다.
+
 > 기준: 현재 working tree의 정적 import/export 관계를 자동 추출했다. 코드 리뷰 순서는
 > [`GAME_CODE_REVIEW_GUIDE.md`](GAME_CODE_REVIEW_GUIDE.md)를 먼저 본다.
 

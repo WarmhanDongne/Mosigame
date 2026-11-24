@@ -15,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 서버 `SIGNUP_TERMS_VERSION`(functions/src/auth/onboarding-types.ts)과 같아야
 /// 합니다. 약관 본문을 고치면 두 값을 함께 올립니다.
 abstract final class SignupTermsVersion {
-  static const current = '2026-10-12';
+  static const current = '2026-11-21';
 }
 
 /// 회원가입 약관 동의 내용입니다.
@@ -123,7 +123,7 @@ class LegalDocument {
 /// [SignupTermsVersion.current]와 서버 버전을 함께 올립니다.
 const _termsOfServiceKo = LegalDocument(
   title: '모시겜 이용약관',
-  effectiveDate: '2026-10-25',
+  effectiveDate: '2026-11-21',
   sections: [
     (
       '제1조 (목적)',
@@ -175,7 +175,7 @@ const _termsOfServiceKo = LegalDocument(
       '1. 회원은 자신의 계정, 비밀번호 및 연동한 Google·Apple 계정을 스스로 관리하며, 제3자가 이용하게 해서는 안 됩니다.\n'
           '2. 계정이 도용되거나 제3자가 사용하고 있음을 알게 된 경우 즉시 운영자에게 알려야 합니다.\n'
           '3. 운영자는 자신의 고의 또는 과실이 없는 한, 회원이 계정 관리를 소홀히 하여 발생한 손해에 대하여 책임을 지지 않습니다.\n'
-          '4. 게스트 계정은 이메일이나 소셜 계정과 연결되지 않으므로, 게스트가 로그아웃하거나 앱 데이터를 지우거나 앱을 삭제하면 같은 계정으로 다시 접속할 수 없고 운영자도 이를 복구할 수 없습니다.',
+          '4. 게스트는 서비스 내 [내 프로필 > 계정 연결하기]에서 이메일·Google·Apple 계정을 연결할 수 있습니다. 연결하기 전에 로그아웃하거나 앱 데이터를 지우거나 앱을 삭제하면 같은 계정으로 다시 접속할 수 없고 운영자도 이를 복구할 수 없습니다.',
     ),
     (
       '제10조 (회원 탈퇴)',
@@ -193,7 +193,7 @@ const _termsOfServiceKo = LegalDocument(
     (
       '제12조 (방의 생성과 참여)',
       '1. 호스트는 방을 만들고 방 코드 또는 QR 코드를 참가자에게 알려 방에 초대합니다. 방 코드를 아는 사람은 누구나 입장할 수 있으므로, 호스트는 코드를 함께 할 사람에게만 알려야 합니다.\n'
-          '2. 한 방의 최대 인원은 12명이며, 게임별로 참가 인원이 따로 정해질 수 있습니다.\n'
+          '2. 한 방의 최대 인원은 8명이며, 게임별로 참가 인원이 따로 정해질 수 있습니다.\n'
           '3. 호스트는 게임 시작 전 대기방에서 참가자를 내보낼 수 있습니다. 이는 해당 방에만 적용되며, 운영자의 이용 제한(제19조)과는 별개입니다.\n'
           '4. 대기방에서 연결이 5분 이상 끊긴 참가자는 자동으로 방에서 나가게 됩니다. 게임 중 연결이 끊기면 서비스가 정한 유예 시간 안에 다시 접속할 수 있습니다.\n'
           '5. 게임이 끝난 방의 정보는 일정 시간이 지나면 자동으로 삭제되며, 게임 기록은 별도로 보관되지 않습니다.',
@@ -296,7 +296,7 @@ const _termsOfServiceKo = LegalDocument(
           '• 주소: 경상북도 포항시 북구 한동로 558 한동대학교\n'
           '• 이메일: warmhandongne@gmail.com',
     ),
-    ('부칙', '이 약관은 2026년 10월 25일부터 시행합니다.'),
+    ('부칙', '이 약관은 2026년 11월 21일부터 시행합니다.'),
   ],
 );
 
@@ -306,7 +306,7 @@ const _termsOfServiceKo = LegalDocument(
 /// (`public/privacy/index.html`)도 같은 내용이어야 하니 함께 고칩니다.
 const _privacyPolicyKo = LegalDocument(
   title: '모시겜 개인정보 처리방침',
-  effectiveDate: '2026-10-12',
+  effectiveDate: '2026-11-21',
   intro:
       '따스한동네(이하 "운영자")는 "모시겜: 모이면 시작하는 게임" 서비스(이하 "서비스")를 제공하면서 「개인정보 보호법」 등 관련 법령에 따라 이용자의 개인정보를 보호하고, 이와 관련한 고충을 신속하게 처리하기 위해 다음과 같이 개인정보처리방침을 정합니다.',
   sections: [
@@ -422,7 +422,7 @@ const _privacyPolicyKo = LegalDocument(
       '13. 개인정보처리방침의 변경',
       '이 방침을 바꾸는 경우 변경 내용과 시행일을 시행 7일 전부터 서비스 내에 공지합니다. 수집 항목이나 이용 목적이 달라지는 등 이용자에게 중요한 변경은 시행 30일 전부터 공지하고, 필요한 경우 다시 동의를 받습니다.',
     ),
-    ('부칙', '이 방침은 2026년 10월 12일부터 시행합니다.'),
+    ('부칙', '이 방침은 2026년 11월 21일부터 시행합니다.'),
   ],
 );
 
@@ -453,7 +453,7 @@ String get _legalLanguage {
 
 const _termsOfServiceEn = LegalDocument(
   title: 'Mosigame Terms of Service',
-  effectiveDate: '2026-10-25',
+  effectiveDate: '2026-11-21',
   intro:
       'This is a translation. If it differs from the Korean version, the Korean version prevails.',
   sections: [
@@ -510,7 +510,7 @@ const _termsOfServiceEn = LegalDocument(
       '1. Members manage their own account, password, and linked Google or Apple account and must not let third parties use them.\n'
           '2. Members must notify the Operator immediately if they learn their account is stolen or used by someone else.\n'
           '3. Unless the Operator is at fault, it is not liable for damage caused by a member\'s careless account management.\n'
-          '4. A guest account is not linked to email or a social account. If a guest signs out, clears app data, or deletes the app, the same account cannot be accessed again and the Operator cannot restore it.',
+          '4. A guest may link email, Google, or Apple from [My Profile > Link an account]. Before linking, signing out, clearing app data, or deleting the app makes the same guest account inaccessible and the Operator cannot restore it.',
     ),
     (
       'Article 10 (Closing an account)',
@@ -631,13 +631,13 @@ const _termsOfServiceEn = LegalDocument(
           '• Address: Handong Global University, 558 Handong-ro, Buk-gu, Pohang, Gyeongsangbuk-do, Korea\n'
           '• Email: warmhandongne@gmail.com',
     ),
-    ('Addendum', 'These terms take effect on October 25, 2026.'),
+    ('Addendum', 'These terms take effect on November 21, 2026.'),
   ],
 );
 
 const _termsOfServiceZhHans = LegalDocument(
   title: 'Mosigame 使用条款',
-  effectiveDate: '2026-10-25',
+  effectiveDate: '2026-11-21',
   intro: '本文为译文。如与韩文版本不一致，以韩文版本为准。',
   sections: [
     (
@@ -690,7 +690,7 @@ const _termsOfServiceZhHans = LegalDocument(
       '1. 会员应自行管理自己的账号、密码及关联的 Google、Apple 账号，不得让第三方使用。\n'
           '2. 发现账号被盗用或被第三方使用时，应立即通知运营方。\n'
           '3. 除运营方存在故意或过失外，运营方对会员疏于管理账号造成的损失不承担责任。\n'
-          '4. 游客账号未与邮箱或社交账号关联。游客退出登录、清除应用数据或删除应用后，将无法再次登录同一账号，运营方也无法恢复。',
+          '4. 游客可在［我的资料 > 关联账号］中关联邮箱、Google 或 Apple。关联前退出登录、清除应用数据或删除应用后，将无法再次登录同一账号，运营方也无法恢复。',
     ),
     (
       '第10条（删除账号）',
@@ -811,13 +811,13 @@ const _termsOfServiceZhHans = LegalDocument(
           '• 地址：韩国庆尚北道浦项市北区韩东路558 韩东大学\n'
           '• 邮箱：warmhandongne@gmail.com',
     ),
-    ('附则', '本条款自2026年10月25日起施行。'),
+    ('附则', '本条款自2026年11月21日起施行。'),
   ],
 );
 
 const _termsOfServiceZhHant = LegalDocument(
   title: 'Mosigame 使用條款',
-  effectiveDate: '2026-10-25',
+  effectiveDate: '2026-11-21',
   intro: '本文為譯文。如與韓文版本不一致，以韓文版本為準。',
   sections: [
     (
@@ -870,7 +870,7 @@ const _termsOfServiceZhHant = LegalDocument(
       '1. 會員應自行管理自己的帳號、密碼及關聯的 Google、Apple 帳號，不得讓第三方使用。\n'
           '2. 發現帳號被盜用或被第三方使用時，應立即通知營運方。\n'
           '3. 除營運方存在故意或過失外，營運方對會員疏於管理帳號造成的損失不承擔責任。\n'
-          '4. 遊客帳號未與電子郵件信箱或社交帳號關聯。遊客退出登入、清除應用資料或刪除應用後，將無法再次登入同一帳號，營運方也無法恢復。',
+          '4. 遊客可在［我的個人資料 > 連結帳號］中連結電子郵件、Google 或 Apple。連結前登出、清除應用資料或刪除應用後，將無法再次登入同一帳號，營運方也無法恢復。',
     ),
     (
       '第10條（刪除帳號）',
@@ -991,13 +991,13 @@ const _termsOfServiceZhHant = LegalDocument(
           '• 地址：韓國慶尚北道浦項市北區韓東路558 韓東大學\n'
           '• 電子郵件信箱：warmhandongne@gmail.com',
     ),
-    ('附則', '本條款自2026年10月25日起施行。'),
+    ('附則', '本條款自2026年11月21日起施行。'),
   ],
 );
 
 const _privacyPolicyEn = LegalDocument(
   title: 'Mosigame Privacy Policy',
-  effectiveDate: '2026-10-12',
+  effectiveDate: '2026-11-21',
   intro:
       'Warm Neighborhood (the "Operator") sets this Privacy Policy to protect users\' personal information under the Personal Information Protection Act and other applicable law while providing "Mosigame" (the "Service"), and to handle related complaints promptly.\n'
       'This is a translation. If it differs from the Korean version, the Korean version prevails.',
@@ -1114,13 +1114,13 @@ const _privacyPolicyEn = LegalDocument(
       '13. Changes to this policy',
       'Changes and their effective date are announced in the Service at least 7 days in advance. Important changes, such as new items collected or new purposes, are announced at least 30 days in advance, and consent is requested again when needed.',
     ),
-    ('Addendum', 'This policy takes effect on October 12, 2026.'),
+    ('Addendum', 'This policy takes effect on November 21, 2026.'),
   ],
 );
 
 const _privacyPolicyZhHans = LegalDocument(
   title: 'Mosigame 隐私政策',
-  effectiveDate: '2026-10-12',
+  effectiveDate: '2026-11-21',
   intro:
       '温暖社区（以下简称“运营方”）在提供“Mosigame”服务（以下简称“服务”）时，依照韩国《个人信息保护法》等相关法律保护用户的个人信息，并为迅速处理相关投诉，制定本隐私政策。\n'
       '本文为译文。如与韩文版本不一致，以韩文版本为准。',
@@ -1234,13 +1234,13 @@ const _privacyPolicyZhHans = LegalDocument(
       '13. 隐私政策的变更',
       '变更本政策时，将自施行日前7天起在服务内公告变更内容和施行日。收集项目或使用目的发生变化等对用户重要的变更，将自施行日前30天起公告，必要时重新征得同意。',
     ),
-    ('附则', '本政策自2026年10月12日起施行。'),
+    ('附则', '本政策自2026年11月21日起施行。'),
   ],
 );
 
 const _privacyPolicyZhHant = LegalDocument(
   title: 'Mosigame 隱私權政策',
-  effectiveDate: '2026-10-12',
+  effectiveDate: '2026-11-21',
   intro:
       '溫暖社區（以下簡稱「營運方」）在提供「Mosigame」服務（以下簡稱「服務」）時，依照韓國《個人資訊保護法》等相關法律保護使用者的個人資訊，併為迅速處理相關投訴，制定本隱私權政策。\n'
       '本文為譯文。如與韓文版本不一致，以韓文版本為準。',
@@ -1354,6 +1354,6 @@ const _privacyPolicyZhHant = LegalDocument(
       '13. 隱私權政策的變更',
       '變更本政策時，將自施行日前7天起在服務內公告變更內容和施行日。收集項目或使用目的發生變化等對使用者重要的變更，將自施行日前30天起公告，必要時重新徵得同意。',
     ),
-    ('附則', '本政策自2026年10月12日起施行。'),
+    ('附則', '本政策自2026年11月21日起施行。'),
   ],
 );

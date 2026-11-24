@@ -9,6 +9,7 @@ class _RoundDealLayer extends StatefulWidget {
     required this.roundNumber,
     required this.boardSeatCount,
     required this.playerSeatIndexes,
+    this.seatLayoutMode,
     required this.cardsPerPlayer,
     required this.truthCardCount,
     required this.lieCardCount,
@@ -20,6 +21,7 @@ class _RoundDealLayer extends StatefulWidget {
   final int roundNumber;
   final int boardSeatCount;
   final List<int> playerSeatIndexes;
+  final SeatLayoutMode? seatLayoutMode;
   final int cardsPerPlayer;
   final int truthCardCount;
   final int lieCardCount;
@@ -89,7 +91,7 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
                   cardWidth: _cardWidth,
                   cardRadius: _cardRadius,
                   play: !_showRoundIntro,
-                  // 1.725초짜리 전용 섞기 음원 대신, 세 번의 섞기 패스가
+                  // 전용 섞기 음원 대신, 섞기 패스가
                   // 실제로 시작되는 프레임마다 짧은 공용 분배음을 냅니다.
                   onShufflePassStarted: (_) =>
                       SoundEffects.play(context, LiarsPokerSounds.shufflePass),
@@ -101,6 +103,12 @@ class _RoundDealLayerState extends State<_RoundDealLayer> {
                   playerCount: widget.playerSeatIndexes.length,
                   boardSeatCount: widget.boardSeatCount,
                   playerSeatIndexes: widget.playerSeatIndexes,
+                  seatCentersBuilder: (seatCount, boardSize) =>
+                      playerCentersForBoard(
+                        playerCount: seatCount,
+                        boardSize: boardSize,
+                        mode: widget.seatLayoutMode,
+                      ),
                   cardsPerPlayer: widget.cardsPerPlayer,
                   reserveCardCount: widget.unrevealedCardCount,
                   cardBuilder: (context, playerIndex, cardIndex) =>

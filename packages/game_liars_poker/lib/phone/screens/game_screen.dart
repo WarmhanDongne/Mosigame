@@ -24,6 +24,7 @@ import 'package:game_liars_poker/phone/widgets/exit_modal.dart';
 import 'package:game_liars_poker/phone/widgets/settings_dialog.dart';
 import 'package:game_liars_poker/phone/widgets/turn_timer.dart';
 import 'package:game_liars_poker/phone/widgets/top_bar.dart';
+import 'package:game_liars_poker/phone/widgets/truth_count_hint.dart';
 import 'package:game_liars_poker/phone/widgets/turn_action_switcher.dart';
 import 'package:game_liars_poker/shared/widgets/pressable_button.dart';
 import 'package:game_kit/phone/widgets/rulebook_dialog.dart';
@@ -83,6 +84,15 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   bool _wasDealing = false;
   bool _isRevealInProgress = false;
   late bool _hasCompletedGameStart;
+
+  /// 직전 화면에서 '태블릿을 봐 주세요!' 안내가 보였는지입니다.
+  bool _truthHintWasVisible = false;
+
+  /// 안내가 사라지는 동안 새 손패 진입을 잠깐 미룹니다. 카드가 안내를 반쯤
+  /// 덮은 채로 겹쳐 보이지 않게, 안내가 다 사라진 뒤 카드가 내려옵니다.
+  bool _holdHandForTruthHint = false;
+  Timer? _truthHintExitTimer;
+  static const _truthHintExitHold = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -212,6 +222,7 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
 
   @override
   void dispose() {
+    _truthHintExitTimer?.cancel();
     _handCardStackController.dispose();
     _controlsEntryController.dispose();
     super.dispose();
@@ -257,6 +268,7 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
     } else if (!isDealing) {
       _wasDealing = false;
     }
+    _trackTruthHintExit(controller);
 
     final stage = resolveLiarsPokerPhoneStage(
       game: controller,
@@ -325,6 +337,79 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   }
 
   // ---------------------------------------------------------------------------
+  // 카드 분배 전 '태블릿을 봐 주세요!' 안내
+  // ---------------------------------------------------------------------------
+  //
+  // 서버 dealing 동안 빈 화면에 안내를 띄웁니다. 분배가 끝나 새 손패가 오면
+  // 안내가 먼저 살짝 작아지며 사라지고([_truthHintExitHold] 동안 손패 대기),
+  // 그 뒤에 카드가 위에서 내려옵니다. 둘이 겹쳐 보이지 않게 합니다.
+  bool _shouldShowTruthCountHint(LiarsPokerController? controller) {
+    if (controller == null || controller.isInitialLoading) return false;
+    if (widget.showSpectatorTopBar || controller.isEliminated) return false;
+    if (controller.showPenaltyHandOverlay) return false;
+    if (controller.isFinished || controller.isNaturalResult) return false;
+    if (_isRevealInProgress || controller.hasRevealedHand) return false;
+    return controller.phase == 'dealing';
+  }
+
+  /// 안내가 보이다가 손패 도착으로 꺼지는 순간 손패 진입을 잠깐 미룹니다.
+  void _trackTruthHintExit(LiarsPokerController? controller) {
+    final visible = _shouldShowTruthCountHint(controller);
+    final handArrived =
+        controller != null &&
+        controller.phase != 'dealing' &&
+        controller.handCards.isNotEmpty &&
+        !controller.hasRevealedHand;
+    if (_truthHintWasVisible && !visible && handArrived) {
+      _holdHandForTruthHint = true;
+      _truthHintExitTimer?.cancel();
+      _truthHintExitTimer = Timer(_truthHintExitHold, () {
+        if (mounted) setState(() => _holdHandForTruthHint = false);
+      });
+    }
+    _truthHintWasVisible = visible;
+  }
+
+  Widget _buildTruthCountHintLayer(
+    LiarsPokerController? controller, {
+    required Key key,
+    double top = 0,
+    double? height,
+  }) {
+    final visible = _shouldShowTruthCountHint(controller);
+    final child = IgnorePointer(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 360),
+        reverseDuration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1).animate(animation),
+            child: child,
+          ),
+        ),
+        child: visible
+            ? const Center(
+                key: ValueKey('liars-truth-count-hint'),
+                child: LiarsPokerTruthCountHint(),
+              )
+            : const SizedBox.shrink(key: ValueKey('liars-truth-count-off')),
+      ),
+    );
+    if (height == null) return Positioned.fill(key: key, child: child);
+    return Positioned(
+      key: key,
+      top: top,
+      left: 0,
+      right: 0,
+      height: height,
+      child: child,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // 가로·세로 공통 손패
   // ---------------------------------------------------------------------------
   Widget _buildHand(
@@ -361,6 +446,8 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
     if (controller.phase == 'dealing') {
       return const SizedBox.shrink();
     }
+    // '태블릿을 봐 주세요!' 안내가 다 사라진 뒤에 카드가 내려옵니다.
+    if (_holdHandForTruthHint) return const SizedBox.shrink();
     // 손패가 아직 없거나 모두 소진된 동안에는 빈 상태 문구를 표시합니다.
     if (controller.handCards.isEmpty && !controller.hasRevealedHand) {
       _showControlsAfterFrame();

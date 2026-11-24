@@ -648,6 +648,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
                     flowConfig: flowConfig,
                     playerCount: _playerCount,
                     playerSeatIndexes: _seatIndexes,
+                    seatLayoutMode: widget.playerLayout.seatLayoutMode,
                     dealPlayerSeatIndexes: _activeSeatIndexes,
                     cardsPerPlayer: cardsPerPlayer,
                     truthCardCount: game.truthCardCount,
@@ -695,6 +696,8 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
                               activePlayId: _activeAnimationPlayId,
                               playerCount: _playerCount,
                               playerSeatIndexes: _seatIndexes,
+                              seatLayoutMode:
+                                  widget.playerLayout.seatLayoutMode,
                               onCardsPlayed: _onCardsPlayed,
                               onCardsRevealed: _onCardsRevealed,
                             ),
@@ -848,7 +851,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
     _dealingCommand.dispose();
     _timeoutCommand.dispose();
     // 배경음악은 반복 재생이라 화면을 떠날 때 반드시 멈춥니다.
-    _backgroundMusic.stop();
+    _backgroundMusic.dispose();
     _penaltyTransitionTimer?.cancel();
     _nonResultExitTimer?.cancel();
     _turnTimeoutBackstop?.cancel();

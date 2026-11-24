@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "127477049099",
+    "firebase_url": "https://ban-pick-simulator-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "ban-pick-simulator",
+    "storage_bucket": "ban-pick-simulator.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:127477049099:android:6f08ec7b66fc88f1dd640e",
+        "android_client_info": {
+          "package_name": "com.warmhandongne.msg"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "127477049099-39oe6etakf0dhs1ugb0j98i3hn7c4org.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFl3zfVKhRmrBYeOLYHZ4zQM_11bUmf2o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "127477049099-39oe6etakf0dhs1ugb0j98i3hn7c4org.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "127477049099-mgdb3u9psnah10llpmd574cm7hdoodlk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.warmhandongne.msg",
+                "app_store_id": "6828464086"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

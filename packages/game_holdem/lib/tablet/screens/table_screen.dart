@@ -111,7 +111,7 @@ class _HoldemTableScreenState extends State<HoldemTableScreen>
 
   @override
   void dispose() {
-    _backgroundMusic.stop();
+    _backgroundMusic.dispose();
     _actionGapTimer?.cancel();
     _awardStartTimer?.cancel();
     _actionController
@@ -358,8 +358,9 @@ class _HoldemTableScreenState extends State<HoldemTableScreen>
           size.width / _designSize.width,
           size.height / _designSize.height,
         );
-        final centers = normalizedPlayerCenters(
+        final centers = normalizedSeatCenters(
           widget.playerLayout.playerCount,
+          mode: widget.playerLayout.seatLayoutMode,
         );
         final dealSeats = widget.playerLayout.players
             .where((player) => game.players[player.uid]?.status == 'alive')
@@ -560,6 +561,7 @@ class _HoldemTableScreenState extends State<HoldemTableScreen>
                 seatCount: widget.playerLayout.playerCount,
                 seatIndexes: dealSeats,
                 scale: scale,
+                seatLayoutMode: widget.playerLayout.seatLayoutMode,
                 onCompleted: () {
                   if (mounted && widget.game.handNumber == game.handNumber) {
                     setState(() => _dealCompletedHand = game.handNumber);

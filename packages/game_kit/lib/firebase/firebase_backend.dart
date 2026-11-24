@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 /// One Firebase app for platform and game code. Local credentials/caches live in
 /// a named demo app; server mode retains the existing default app.
 abstract final class FirebaseBackend {
+  // develop의 기본 실행과 스토어 후보는 운영 Firebase를 사용합니다.
+  // TEST 검증은 MOSIGAME_BACKEND=test를 명시합니다.
   static const mode = String.fromEnvironment(
     'MOSIGAME_BACKEND',
     defaultValue: 'server',
@@ -53,6 +55,17 @@ abstract final class FirebaseBackend {
       : isTest
       ? Firebase.app(_testAppName)
       : Firebase.app();
+
+  /// Firebase Messaging currently uses the default app only. Allow callers to
+  /// use it only when that default app belongs to the selected backend.
+  static bool get defaultAppMatchesSelectedBackend {
+    try {
+      return Firebase.app().options.projectId == app.options.projectId;
+    } on FirebaseException {
+      return false;
+    }
+  }
+
   static FirebaseAuth get auth => isLocal || isTest
       ? FirebaseAuth.instanceFor(app: app)
       : FirebaseAuth.instance;
