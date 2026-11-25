@@ -519,3 +519,11 @@
   계속), “각각 60초”를 “차례마다 60초”로 바꾸기.
 - 레인 A·B·C worktree 3개와 로컬 브랜치 3개 정리 완료(모두 병합·미커밋 변경 없음·원격 브랜치 없음).
 - ELEVEN-01 남은 일: 없음(develop 병합·이슈 Close는 사용자 컨펌 후).
+
+### 2026-11-25 develop 병합 전 저장소 정리 (하준 결정)
+
+- 삭제: 미사용 `lib/shared/widgets/tile_face.dart`, 시안 원자료 `docs/design/eleven/motion-frames/`·`screens/*--base|--toastN.png`·
+  `data/`(커밋 `11bec30a`), 레인 운영 문서 `docs/planning/eleven-lanes/`·`scripts/eleven_lanes.sh`·`docs/planning/ELEVEN_HANDOFF.md`.
+- 레인 병렬 작업 방식·검수 결과·회고는 하준이 노션 'ELEVEN S5–S7 작업 방식' 아래에 정리했다. 이 문서 위쪽의
+  `eleven-lanes/…`, `ELEVEN_HANDOFF.md` 언급은 당시 기록이며 파일은 git 기록에서 볼 수 있다.
+- 이 파일들은 이미 브랜치 커밋 기록에 있으므로 저장소 용량까지 줄이려면 develop 병합을 스쿼시로 한다.
