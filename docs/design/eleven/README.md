@@ -16,12 +16,16 @@ Codex 에이전트가 화면·애니메이션을 시안대로 구현하고, Clau
 | `screens.md` | 공통 토큰(색·글꼴·반경·테두리·그림자·간격) → 부품 → 공용 뽑기 카드 장수 확인 → 화면 ID별 요소 표(위치·스타일·문구 원문·회전 영역 로컬 좌표) |
 | `motion.md` | 연출 목록, 정적 화면 토스트 시간표, MotionKit 1–9, 프로토타입 ①–⑧ 전체 키프레임(원본 %·ms·값), 소스 간 모순, 프레임 추출 방법 |
 | `screens/<ID>.png` | 화면 기준 PNG, 원래 크기·deviceScaleFactor 1 (태블릿 1194×834, 휴대폰 844×390). 동작 줄이기 상태 = 소스가 정의한 정지 화면 |
-| `screens/<ID>--base.png`, `--toastN.png` | 토스트 있는 태블릿 화면의 토스트 없음 / N번째 토스트 유지 구간 중간 |
-| `motion-frames/<번호_이름>/<ms>.jpg` | 프로토타입 연출 시작 기준 시점별 프레임(연출당 10–15장). 저장소에는 긴 변 1080px·JPEG 품질 60으로 줄인 판(프로토 1080×520, `00_motionkit/` 1080×516)을 둔다. 눈으로 비교하는 용도이며 정확한 값은 `motion.md`·`data/animations.json` |
-| `motion-frames-full/` (git 제외) | 위 프레임의 원본 PNG(2160×1040, MotionKit 2280×1090). 만든 맥의 원본 폴더에만 있다(2026-11-25, 저장소 용량 때문) |
-| `data/screens-dom/<ID>.json` | 화면 요소별 측정 원자료(상자·계산 스타일·회전 전 로컬 좌표) |
-| `data/screens-meta.json` | 화면별 반복 애니메이션 목록과 추가 PNG 설명 |
-| `data/animations.json` | MotionKit·프로토타입의 모든 CSS 애니메이션 `getKeyframes()` 원자료 |
+
+## 정리한 자료 (2026-11-25)
+
+develop 병합 전 저장소 용량을 줄이려고 다음을 지웠다. 필요하면 위 디자인 캔버스 아티팩트(같은 버전)에서 다시 추출한다.
+
+- `screens/<ID>--base.png`, `--toastN.png`(토스트 변형 29장): 대표 `screens/<ID>.png`와 `screens.md` 시간표로 대체
+- `motion-frames/`(프레임 128장): 시점·값은 `motion.md`에 글로 남아 있다
+- `data/`(`screens-dom/`, `screens-meta.json`, `animations.json`): 측정값은 `screens.md`·`motion.md` 표에 옮겨 두었다
+
+`screens.md`·`motion.md` 안의 위 경로 언급은 추출 당시 기록이다.
 
 ## 화면 ID → 원본 파일
 
