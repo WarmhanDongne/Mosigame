@@ -450,9 +450,11 @@ class ElevenNoirTile extends StatelessWidget {
             ),
           ),
           if (state == ElevenTileState.selected && badgeLabel != null)
+            // 배지는 타일보다 넓을 수 있다(영어 “Selected”). 타일 폭에 묶이면 줄바꿈되므로
+            // 좌우로 넉넉히 펼친 영역 가운데에 한 줄로 둔다.
             Positioned(
-              left: 0,
-              right: 0,
+              left: -ElevenNoirBadgeLayout.selectedOverhang,
+              right: -ElevenNoirBadgeLayout.selectedOverhang,
               bottom: ElevenNoirBadgeLayout.selectedBottom,
               child: Center(
                 child: Transform.rotate(
@@ -536,7 +538,12 @@ class ElevenNoirBadge extends StatelessWidget {
         width: ElevenNoirBorder.thin,
       ),
     ),
-    child: Text(label, style: ElevenNoirText.badge()),
+    child: Text(
+      label,
+      maxLines: 1,
+      softWrap: false,
+      style: ElevenNoirText.badge(),
+    ),
   );
 }
 

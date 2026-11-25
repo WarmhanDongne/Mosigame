@@ -180,7 +180,13 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
     _gameEndTimer?.cancel();
     _drawFaceTimer?.cancel();
     _visualKey = key;
-    final animate = _seenSnapshot;
+    // 처음 받은 상태는 보통 이미 진행 중인 판이라 연출을 건너뛴다. 단, 아직 아무도 뽑지
+    // 않은 첫 선공 뽑기는 막 시작한 판이므로 딜·“타일 선택” 토스트를 그대로 보여 준다
+    // (첫 판에서 토스트가 첫 선택 뒤에야 나오던 원인).
+    final freshDraw =
+        stage == ElevenTabletStage.firstDrawPick &&
+        (pub.draw?.picks.isEmpty ?? true);
+    final animate = _seenSnapshot || freshDraw;
     _seenSnapshot = true;
     _animateVisuals = animate;
     _roundResultRevealed =

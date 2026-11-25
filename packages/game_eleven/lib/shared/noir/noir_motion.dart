@@ -302,6 +302,9 @@ abstract final class ElevenDrawMotion {
   static const pickScale = 1.15;
   static const pickLeaveScale = 0.8;
 
+  /// 선공 뽑기 첫 “타일 선택” 토스트: 9장 딜이 끝나고 판을 본 뒤(프로토타입 ① `kDt2` 2050ms).
+  static const pickToastAt = Duration(milliseconds: 2050);
+
   /// 공개: 두 번째 선택 반영 시점(drawReveal 진입) 기준.
   /// 1100ms “숫자/타일 공개” 토스트(0.5초) → 뜸 0.8초 → 1900ms 동시 뒤집기(0.4초)
   /// → 2900ms 결과 토스트(“A 선공” 1.0초 / “B 승리” 1.5초) → 4700ms 판 전환.

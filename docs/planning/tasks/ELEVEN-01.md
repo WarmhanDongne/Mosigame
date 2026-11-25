@@ -481,3 +481,17 @@
 - D12 조사: 재실행 복귀는 플랫폼 공통 흐름(`PlayerRoomSessionStore` → `restorableSession` → 자동 복귀)이며 ELEVEN 전용
   분기는 없다. 당시 방이 이미 닫혀 서버 상태를 볼 수 없어 재현 정보 대기.
 - 검증: `packages/game_eleven` `flutter test --no-pub` 168 PASS·37 skip, 루트 `flutter analyze --no-pub` exit 0, format·경계 exit 0.
+
+### 2026-11-25 S8 실기기 확인 2차 결과 반영 (하준 → Claude Code)
+
+- 하준 결과: 1차 수정 확인 중 추가 결함 4건 보고 → 수정 뒤 R7–R10 실기기 모두 통과.
+- 수정:
+  1. 영어 “Selected” 배지가 타일 폭에 묶여 “Selecte / d”로 줄바꿈 → 배지 영역을 타일 좌우로 40px 넓히고 한 줄 고정
+     (`shared/widgets/noir_tile.dart`, `ElevenNoirBadgeLayout.selectedOverhang`). 한 줄 유지 테스트 추가.
+  2. 태블릿 `+1`이 점수 숫자 밑에 나옴 → 시안 T07 DOM대로 숫자 오른쪽 6px 옆·세로 가운데, 둘을 묶어 가운데 정렬
+     (`ElevenNoirSpacing.scorePlusGap`). 넓으면 `FittedBox`로 축소.
+  3. 다시하기 때 “타일 선택” 토스트가 너무 빠름 → T01 토스트를 9장 딜 뒤 `ElevenDrawMotion.pickToastAt`(2050ms,
+     프로토타입 ① `kDt2`)에 재생. T02는 기존처럼 즉시.
+  4. 첫 판에서 타일을 골라야 토스트가 뜸 → 태블릿이 처음 받은 상태는 연출을 끄는데, 아무도 뽑지 않은 첫 선공 뽑기는
+     막 시작한 판으로 보고 딜·토스트를 재생(`tablet/src/board_state.dart`).
+- 검증: `packages/game_eleven` `flutter test` 169 PASS·37 skip, `flutter analyze lib` exit 0.

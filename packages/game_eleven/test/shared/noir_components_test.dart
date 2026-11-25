@@ -351,6 +351,25 @@ void main() {
       expect(find.text(ElevenScreenCopy.selectedBadge), findsOneWidget);
     });
 
+    testWidgets('long selected badge stays on one line', (tester) async {
+      // 실기기 영어 화면에서 “Selected”가 타일 폭에 묶여 “Selecte / d”로 줄바꿈됐다.
+      await tester.pumpWidget(
+        _stage(
+          ElevenNoirTile(
+            face: ElevenTileFace.black,
+            spec: ElevenTileSpec.phoneHand,
+            value: 2,
+            state: ElevenTileState.selected,
+            badgeLabel: 'Selected',
+          ),
+        ),
+      );
+      final text = tester.getSize(find.text('Selected'));
+      final style = ElevenNoirText.badge();
+      expect(text.height, lessThan(style.fontSize! * 2));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('empty slot shows a question mark', (tester) async {
       await tester.pumpWidget(
         _stage(

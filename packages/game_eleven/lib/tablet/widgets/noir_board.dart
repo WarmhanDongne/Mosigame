@@ -184,6 +184,9 @@ class ElevenTabletBoardView extends StatelessWidget {
                     ElevenTabletScreen.t07RoundWin ||
                     ElevenTabletScreen.t08RoundTie =>
                       ElevenRoundFlowMotion.toastAt,
+                    // 뽑기 카드 9장이 딜된 뒤 첫 “타일 선택”(프로토타입 ① kDt2).
+                    ElevenTabletScreen.t01DrawStart =>
+                      ElevenDrawMotion.pickToastAt,
                     _ => Duration.zero,
                   },
                   animate: animate,
@@ -519,70 +522,84 @@ class ElevenTabletBoardView extends StatelessWidget {
                   ElevenScreenCopy.scoreLabel,
                   style: ElevenNoirText.tabletScoreLabel(),
                 ),
-                TweenAnimationBuilder<double>(
-                  key: ValueKey(
-                    'score-$uid-${pub.scores[uid] ?? 0}-$resultEmphasized',
-                  ),
-                  tween: Tween(
-                    begin:
-                        motionEnabled &&
-                            resultEmphasized &&
-                            isResult &&
-                            resultWinner == uid &&
-                            (pub.scores[uid] ?? 0) > 0
-                        ? (pub.scores[uid] ?? 0) - 1.0
-                        : (pub.scores[uid] ?? 0).toDouble(),
-                    end: (pub.scores[uid] ?? 0).toDouble(),
-                  ),
-                  duration: motionEnabled && isResult
-                      ? ElevenScoreMotion.counter
-                      : Duration.zero,
-                  curve: ElevenScoreMotion.counterCurve,
-                  builder: (context, score, child) => Text(
-                    '${score.round()}',
-                    style: ElevenNoirText.tabletScore(),
+                // 시안 `.score`: 숫자 옆에 `+1`이 6px 간격으로 세로 가운데 붙고, 둘을 묶어
+                // 가운데 정렬한다. “11 +1”처럼 칸(116)보다 넓으면 살짝 줄인다.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        key: ValueKey(
+                          'score-$uid-${pub.scores[uid] ?? 0}-$resultEmphasized',
+                        ),
+                        tween: Tween(
+                          begin:
+                              motionEnabled &&
+                                  resultEmphasized &&
+                                  isResult &&
+                                  resultWinner == uid &&
+                                  (pub.scores[uid] ?? 0) > 0
+                              ? (pub.scores[uid] ?? 0) - 1.0
+                              : (pub.scores[uid] ?? 0).toDouble(),
+                          end: (pub.scores[uid] ?? 0).toDouble(),
+                        ),
+                        duration: motionEnabled && isResult
+                            ? ElevenScoreMotion.counter
+                            : Duration.zero,
+                        curve: ElevenScoreMotion.counterCurve,
+                        builder: (context, score, child) => Text(
+                          '${score.round()}',
+                          style: ElevenNoirText.tabletScore(),
+                        ),
+                      ),
+                      if (isResult &&
+                          resultEmphasized &&
+                          (resultTie || resultWinner == uid)) ...[
+                        const SizedBox(width: ElevenNoirSpacing.scorePlusGap),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: motionEnabled ? 0 : 1, end: 1),
+                          duration: motionEnabled
+                              ? ElevenScoreMotion.plusEnter
+                              : Duration.zero,
+                          curve: ElevenScoreMotion.plusCurve,
+                          builder: (context, progress, child) =>
+                              Transform.translate(
+                                offset: Offset(
+                                  0,
+                                  ElevenScoreMotion.plusEnterOffsetY *
+                                      (1 - progress),
+                                ),
+                                child: Opacity(opacity: progress, child: child),
+                              ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: ElevenNoirColors.accentRed,
+                              border: Border.all(
+                                color: ElevenNoirColors.ink,
+                                width: ElevenNoirBorder.thin,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                ElevenNoirRadius.plusBadge,
+                              ),
+                            ),
+                            child: Text(
+                              ElevenScreenCopy.scoreDelta(
+                                resultTie
+                                    ? 0
+                                    : resultWinner == uid
+                                    ? 1
+                                    : 0,
+                              ),
+                              style: ElevenNoirText.plusBadge(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (isResult &&
-                    resultEmphasized &&
-                    (resultTie || resultWinner == uid))
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: motionEnabled ? 0 : 1, end: 1),
-                    duration: motionEnabled
-                        ? ElevenScoreMotion.plusEnter
-                        : Duration.zero,
-                    curve: ElevenScoreMotion.plusCurve,
-                    builder: (context, progress, child) => Transform.translate(
-                      offset: Offset(
-                        0,
-                        ElevenScoreMotion.plusEnterOffsetY * (1 - progress),
-                      ),
-                      child: Opacity(opacity: progress, child: child),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color: ElevenNoirColors.accentRed,
-                        border: Border.all(
-                          color: ElevenNoirColors.ink,
-                          width: ElevenNoirBorder.thin,
-                        ),
-                        borderRadius: BorderRadius.circular(
-                          ElevenNoirRadius.plusBadge,
-                        ),
-                      ),
-                      child: Text(
-                        ElevenScreenCopy.scoreDelta(
-                          resultTie
-                              ? 0
-                              : resultWinner == uid
-                              ? 1
-                              : 0,
-                        ),
-                        style: ElevenNoirText.plusBadge(),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),

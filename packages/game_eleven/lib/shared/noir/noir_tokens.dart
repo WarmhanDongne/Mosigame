@@ -215,6 +215,9 @@ abstract final class ElevenNoirBadgeLayout {
 
   /// 손패 선택 배지 `.badge`: `bottom:-16px; rotate(-3deg)`(타일 자체도 −3°).
   static const selectedBottom = -16.0;
+
+  /// 선택 배지가 타일 좌우로 넘칠 수 있는 폭(긴 번역 문구가 한 줄로 보이게).
+  static const selectedOverhang = 40.0;
   static const selectedDegrees = -3.0;
 }
 
@@ -286,6 +289,9 @@ abstract final class ElevenNoirSpacing {
   static const pillHeight = 66.0;
   static const slotRowGap = 40.0;
   static const scoreWidth = 116.0;
+
+  /// 점수 숫자와 `+1` 배지 사이(시안 T07 `.plus` 왼쪽 6px).
+  static const scorePlusGap = 6.0;
   static const historyCardRect = Rect.fromLTWH(342, 16, 510, 802);
   static const historyCardPadding = EdgeInsets.symmetric(
     vertical: 12,
