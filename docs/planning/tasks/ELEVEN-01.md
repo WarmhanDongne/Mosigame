@@ -394,3 +394,18 @@
   ② 카드 **앞면** 테두리는 구현 결과가 더 낫다고 판단해 현재 구현을 유지한다.
 - 검증: `packages/game_eleven` `flutter test --no-pub` 159 PASS·37 skip exit 0(G6 색·외곽선·흐림 위젯 테스트 추가),
   analyze·format·경계 exit 0. 골든 `tablet_tiles.png`, 검수 캡처, 시스템 맵 캡처 16장 갱신.
+
+<a id="s7-20261125"></a>
+### 2026-11-25 S7 진행 (Claude Code)
+
+- 하준 결정: Java 21 설치 진행, zh-Hans·zh-Hant 게임 이름 `ELEVEN`(계약 1절·10절 갱신), 번역은 Claude가 직접.
+- Java: `brew install openjdk@21` exit 0(21.0.13.1, keg-only). `~/.zshrc`·시스템 Java 링크는 바꾸지 않고 명령마다
+  `PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH`로 쓴다.
+- S7(가) 에뮬레이터: `node tool/emulator/local.mjs start` → BLOCKED. `tool/emulator/functions.cjs`가 RTDB 트리거를
+  6개로 고정 검사하는데 현재 8개다(추가 2개 `pushGameStatus`·`pushGameTurn`은 develop 병합 `a582cd1d` 푸시 알림,
+  ELEVEN과 무관). 공용 도구 파일이라 수정하지 않고 하준 승인 대기. 에뮬레이터는 내렸고 포트 해제 확인.
+- S7(나) 번역: `game_copy.dart`의 `_ko` 임시 표시 160개를 `GameLocale.select(ko, en, zhHans, zhHant)`로 바꿨다
+  (룰북 본문 포함). 한국어는 그대로(시안 원문 테스트 통과). `test/shared/copy_locale_test.dart` 추가: en·zh 값에
+  한글 없음, locale 전환 시 문구 변경, 룰북 5개 항목 유지. 실기기에서 언어별 길이·잘림은 S8 확인 대상.
+- 검증: `packages/game_eleven` `flutter test --no-pub` 162 PASS·37 skip exit 0, 루트 `flutter analyze --no-pub`
+  exit 0, format·경계 exit 0. validate --full 미실행(승인 대상).

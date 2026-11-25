@@ -14,7 +14,7 @@
 | 항목 | 값 | 근거 |
 | --- | --- | --- |
 | gameId | `eleven` (영구 ID, RTDB `gameType`·함수 접두사·패키지 이름 공통) | 노션 2026-11-23 사용자 결정 |
-| 표시 이름 | ko `일레븐`, en `ELEVEN`. zh-Hans·zh-Hant는 **미정**(제안: `ELEVEN` 그대로) | 노션 루트·룰 페이지 |
+| 표시 이름 | ko `일레븐`, en·zh-Hans·zh-Hant `ELEVEN` | 노션 루트·룰 페이지, zh는 2026-11-25 하준 결정 |
 | 인원 | 정확히 2명. 다른 인원은 시작 거절 | 룰 1. 기본 정보 |
 | 함수 접두사 | `game_eleven_` | 가이드 3.2, 기존 명명 규칙 |
 | 패키지 | `packages/game_eleven` (S4) | 가이드 2.2 |
@@ -220,5 +220,5 @@ transaction 안에서 재검사 후 한 번에 갱신 → `commandId` 멱등 →
 
 ## 10. 후속 결정
 
-1. zh-Hans·zh-Hant 표시 이름(S7 번역 단계).
+1. ~~zh-Hans·zh-Hant 표시 이름~~ → `ELEVEN`으로 확정(2026-11-25 하준 결정, S7).
 2. 종료 후 숫자 다시 보기(Q23)는 현재 범위가 아니므로 `server.roundLog`는 저장하지 않는다.
