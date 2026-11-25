@@ -29,10 +29,13 @@ import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/game_theme.dart';
+import 'package:game_liars_poker/phone/widgets/truth_count_hint.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
 import 'package:game_liars_poker/shared/widgets/pressable_button.dart';
 import 'package:game_liars_poker/shared/widgets/wood_table_background.dart';
+
+part 'liars_quick_tutorial.dart';
 
 // ============================================================
 
@@ -1395,7 +1398,12 @@ class _RoulettePainter extends CustomPainter {
     final pointer = Path()
       ..moveTo(c.dx, c.dy - r * .84)
       ..lineTo(c.dx - r * .09, c.dy - r * 1.03)
-      ..quadraticBezierTo(c.dx, c.dy - r * 1.11, c.dx + r * .09, c.dy - r * 1.03)
+      ..quadraticBezierTo(
+        c.dx,
+        c.dy - r * 1.11,
+        c.dx + r * .09,
+        c.dy - r * 1.03,
+      )
       ..close();
     canvas.drawPath(pointer, Paint()..color = _ivory);
     canvas.drawPath(

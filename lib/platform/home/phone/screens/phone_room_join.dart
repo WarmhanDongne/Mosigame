@@ -11,9 +11,16 @@ import 'package:game_kit/template_game.dart';
 
 //=======================그룹 참여 코드 화면==============================
 class PhoneRoomJoin extends StatefulWidget {
-  const PhoneRoomJoin({super.key, required this.gameCatalog});
+  const PhoneRoomJoin({
+    super.key,
+    required this.gameCatalog,
+    this.startWithCode = false,
+  });
 
   final GameCatalog gameCatalog;
+
+  /// true면 카메라 대신 방 코드 입력 칸을 먼저 엽니다(로비의 도움 카드).
+  final bool startWithCode;
 
   @override
   State<PhoneRoomJoin> createState() => _PhoneRoomJoinState();
@@ -48,6 +55,11 @@ class _PhoneRoomJoinState extends State<PhoneRoomJoin>
     _codeFocusNode.addListener(_onCodeFocus);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.startWithCode) {
+        // 포커스를 주면 기존 코드 모드 전환(_onCodeFocus)이 그대로 동작합니다.
+        if (mounted) _codeFocusNode.requestFocus();
+        return;
+      }
       _startScannerIfVisible();
     });
   }

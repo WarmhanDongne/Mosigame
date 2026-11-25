@@ -18,6 +18,7 @@ import 'package:project00/platform/home/store/screens/tablet_store_screen.dart';
 import 'package:project00/platform/home/store/screens/tablet_store_game_detail.dart';
 import 'package:project00/platform/home/store/store_motion.dart';
 import 'package:project00/platform/profile/providers/profile_update_controller.dart';
+import 'package:project00/platform/profile/widgets/phone_profile_menu.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile.dart';
 import 'package:project00/platform/profile/widgets/tablet_profile_modal.dart';
 import 'package:provider/provider.dart';
@@ -256,6 +257,30 @@ void main() {
     );
     await tester.ensureVisible(find.text('회원탈퇴'));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('휴대폰 프로필 메뉴에서 닉네임·로그아웃·회원탈퇴로 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: PhoneProfileMenu(authService: _Auth())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('로그아웃'), findsOneWidget);
+    expect(find.text('회원탈퇴'), findsOneWidget);
+    expect(find.bySemanticsLabel('닉네임'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('닉네임'));
+    await tester.pumpAndSettle();
+    expect(find.text('새 닉네임'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

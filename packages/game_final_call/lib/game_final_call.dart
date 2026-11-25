@@ -13,6 +13,8 @@ import 'package:game_final_call/game_assets.dart';
 import 'package:game_final_call/game_theme.dart';
 import 'package:game_final_call/gen/assets.gen.dart';
 import 'package:game_kit/template_game.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
+import 'package:game_final_call/tutorial/final_call_tutorial.dart';
 import 'package:game_final_call/phone/phone_board.dart';
 import 'package:game_final_call/tablet/tablet_board.dart';
 import 'package:game_final_call/tablet/screens/seat_geometry.dart';
@@ -38,6 +40,9 @@ class FinalCallGame extends TemplateGame {
   );
   @override
   List<int> get supportedPlayerCounts => const [4, 6];
+
+  @override
+  GameTutorial get tutorial => const FinalCallTutorial();
   @override
   String get leaveFunctionName => 'game_final_call_leave_game';
   @override

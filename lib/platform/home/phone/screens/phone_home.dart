@@ -1,5 +1,3 @@
-import 'package:project00/platform/localization/lobby_connection_band.dart';
-import 'package:project00/platform/localization/platform_localizations.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,13 +6,13 @@ import 'package:game_kit/core/layout/app_system_ui.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_join.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_waiting.dart';
-import 'package:project00/platform/home/gamelist/service/game_list_service.dart';
 import 'package:project00/platform/home/phone/widgets/phone_header.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
-import 'package:project00/platform/home/phone/widgets/phone_own_game_list.dart';
+import 'package:project00/platform/home/phone/widgets/phone_join_scanner.dart';
 import 'package:project00/platform/home/phone/widgets/session_return_prompt.dart';
 import 'package:project00/platform/home/room/providers/room_provider.dart';
 import 'package:project00/platform/home/room/services/room_common.dart';
+import 'package:project00/platform/localization/lobby_connection_band.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
@@ -30,6 +28,9 @@ class PhoneHome extends StatefulWidget {
 
   final GameCatalog gameCatalog;
   final RoomProvider? roomProvider;
+
+  /// 예전 보유 게임 책장용 입력입니다. 휴대폰 로비가 스캐너 화면으로 바뀌어
+  /// 지금은 쓰지 않지만, 기존 호출부를 깨지 않도록 남겨 둡니다.
   final Future<List<GameInfo>>? games;
 
   @override
@@ -37,8 +38,6 @@ class PhoneHome extends StatefulWidget {
 }
 
 class _PhoneHomeState extends State<PhoneHome> {
-  late final Future<List<GameInfo>>
-  _games; // PhoneGamePortraitCard에 들어갈 데이터 보관할 객체
   late final RoomProvider _restoredRoomProvider =
       widget.roomProvider ?? RoomProvider(gameCatalog: widget.gameCatalog);
   StreamSubscription<bool>? _connectionSubscription;
@@ -68,7 +67,6 @@ class _PhoneHomeState extends State<PhoneHome> {
     unawaited(AppSystemUi.showPlatformSystemBars());
     // 앱 첫 화면의 방향은 iOS scene이 resumed 된 뒤 main.dart에서 적용합니다.
     // 게임 종료 후 세로 복원은 휴대폰 게임 화면과 대기 화면이 담당합니다.
-    _games = widget.games ?? GameService().fetchGames();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _connectionSubscription = _restoredRoomProvider
@@ -202,12 +200,15 @@ class _PhoneHomeState extends State<PhoneHome> {
     if (mounted) setState(() => _restorable = RestorableSession.none);
   }
 
-  Future<void> _openRoomJoin() async {
+  Future<void> _openRoomJoin({bool startWithCode = false}) async {
     if (_restoreInFlight || _waitingRoomOpen) return;
     await Navigator.push<void>(
       context,
       PhoneFlowRoute<void>(
-        builder: (_) => PhoneRoomJoin(gameCatalog: widget.gameCatalog),
+        builder: (_) => PhoneRoomJoin(
+          gameCatalog: widget.gameCatalog,
+          startWithCode: startWithCode,
+        ),
       ),
     );
     // 방금 직접 입장했다면 묻지 않고 그 방을 씁니다. 새로 들어간 방을 두고
@@ -262,54 +263,24 @@ class _PhoneHomeState extends State<PhoneHome> {
           child: child!,
         ),
         child: Scaffold(
-          backgroundColor: MosiColors.violet,
+          backgroundColor: phoneScannerLobbyBackground,
           body: SafeArea(
             top: false,
             bottom: false,
+            // 휴대폰은 방에 참여하는 기기라 보유 게임 책장 대신 스캐너 화면을
+            // 보여 줍니다. 보유 게임 책장은 태블릿 로비에만 둡니다.
             child: Column(
               children: [
                 const PhoneHeader(),
-                PhoneOwnGameList(games: _games),
-                _buildJoinBar(),
+                PhoneJoinScanner(
+                  busy: _restoreInFlight || _waitingRoomOpen,
+                  onJoin: () => unawaited(_openRoomJoin()),
+                  onEnterCode: () =>
+                      unawaited(_openRoomJoin(startWithCode: true)),
+                ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  //================하단 고정 그룹 참여 버튼=================
-  Widget _buildJoinBar() {
-    final busy = _restoreInFlight || _waitingRoomOpen;
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: MosiColors.white,
-        border: Border(top: BorderSide(color: MosiColors.ink, width: 3)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.phonePlayHint,
-              textAlign: TextAlign.center,
-              style: MosiFonts.sans(size: 12, color: MosiColors.muted),
-            ),
-            const SizedBox(height: 10),
-            MosiButton(
-              label: busy ? context.l10n.reconnecting : context.l10n.joinGroup,
-              height: 56,
-              fontSize: 18,
-              shadowOffset: 5,
-              expand: true,
-              leading: const Icon(Icons.qr_code_scanner_rounded),
-              onPressed: busy ? null : () => unawaited(_openRoomJoin()),
-            ),
-          ],
         ),
       ),
     );
