@@ -1,14 +1,11 @@
-// [tile_rack.dart] 는 휴대폰 본인 손패 11칸을 그리는 위젯이다.
-//
-// 사용한 타일은 전체 집합 − 남은 타일로 계산해 흐리게 표시한다(계약 4.2).
-
-// ========================[ import ]==========================
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'package:game_eleven/game_copy.dart';
+import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/models/tiles.dart';
-import 'package:game_eleven/shared/widgets/tile_face.dart';
+import 'package:game_eleven/shared/widgets/noir_tile.dart';
 
-// ============================================================
-
+/// The two fixed hand rows from the phone design. Only the owner's tiles are read.
 class ElevenTileRack extends StatelessWidget {
   const ElevenTileRack({
     super.key,
@@ -23,74 +20,72 @@ class ElevenTileRack extends StatelessWidget {
   final bool enabled;
   final ValueChanged<int> onSelect;
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 6장씩 두 줄. 가로 휴대폰은 높이가 먼저 모자라므로 폭·높이 중 작은 쪽에 맞춥니다.
-        final byWidth = (constraints.maxWidth - 5 * 8) / 6;
-        final byHeight = constraints.hasBoundedHeight
-            ? (constraints.maxHeight - 10) / (2 * 1.35)
-            : byWidth;
-        final size = (byWidth < byHeight ? byWidth : byHeight).clamp(
-          28.0,
-          64.0,
-        );
-        return Wrap(
-          spacing: 8,
-          runSpacing: 10,
-          alignment: WrapAlignment.center,
-          children: [
-            for (final value in elevenTiles)
-              _RackTile(
-                key: ValueKey('eleven-tile-$value'),
-                value: value,
-                size: size,
-                available: remaining.contains(value),
-                selected: selected == value,
-                enabled: enabled,
-                onSelect: onSelect,
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _RackTile extends StatelessWidget {
-  const _RackTile({
-    super.key,
-    required this.value,
-    required this.size,
-    required this.available,
-    required this.selected,
-    required this.enabled,
-    required this.onSelect,
-  });
-
-  final int value;
-  final double size;
-  final bool available;
-  final bool selected;
-  final bool enabled;
-  final ValueChanged<int> onSelect;
+  static const blackRow = [0, 2, 4, 6, 8, 11];
+  static const whiteRow = [1, 3, 5, 7, 9];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SizedBox(
+      width: constraints.hasBoundedWidth
+          ? math.min(508, constraints.maxWidth)
+          : 508,
+      height: constraints.hasBoundedHeight
+          ? math.min(190, constraints.maxHeight)
+          : 190,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: 508,
+          height: 190,
+          child: Column(
+            children: [
+              _row(blackRow),
+              const SizedBox(height: ElevenNoirSpacing.handRowGap),
+              _row(whiteRow),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _row(List<int> values) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      for (var i = 0; i < values.length; i++) ...[
+        if (i > 0) const SizedBox(width: ElevenNoirSpacing.handTileGap),
+        _tile(values[i]),
+      ],
+    ],
+  );
+
+  Widget _tile(int value) {
+    final available = remaining.contains(value);
     final tappable = enabled && available;
+    final state = !available
+        ? ElevenTileState.used
+        : selected == value && enabled
+        ? ElevenTileState.selected
+        : enabled
+        ? ElevenTileState.normal
+        : ElevenTileState.locked;
     return Semantics(
       button: tappable,
-      selected: selected,
-      label: '$value',
       child: GestureDetector(
+        key: ValueKey('eleven-tile-$value'),
         onTap: tappable ? () => onSelect(value) : null,
-        child: ElevenTileFace(
-          color: ElevenTileColor.of(value),
+        child: ElevenNoirTile(
+          face: ElevenTileFace.ofValue(value),
           value: value,
-          size: size,
-          selected: selected,
-          dimmed: !available,
+          spec: ElevenTileSpec.phoneHand,
+          state: state,
+          badgeLabel: ElevenScreenCopy.selectedBadge,
+          semanticsLabel: ElevenScreenCopy.tileName(
+            ElevenTileColor.of(value) == ElevenTileColor.black
+                ? ElevenScreenCopy.black
+                : ElevenScreenCopy.white,
+            value,
+          ),
         ),
       ),
     );

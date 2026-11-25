@@ -2,7 +2,8 @@
 // board와 같은 Dart library의 part로 유지해 private 상태를 외부에 노출하지 않습니다.
 part of '../phone_board.dart';
 
-class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
+class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame>
+    with TickerProviderStateMixin {
   late final ElevenService _service = widget.service ?? ElevenService();
   ElevenSessionArgs? _args;
   ProviderSubscription<ElevenGameState>? _subscription;
@@ -19,12 +20,35 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
   bool _leaving = false;
   bool _exitModalOpen = false;
   int? _previousRound;
+  late final AnimationController _turnController;
+  late final AnimationController _selectionController;
+  late final AnimationController _endController;
+  Timer? _revealTimer;
+  String? _previousPhase;
+  String? _previousDrawPickerUid;
+  bool _roundResultRevealed = true;
+  bool _gameEndRevealed = true;
   Timer? _timeoutTimer;
   (int, String)? _timeoutKey;
 
   @override
   void initState() {
     super.initState();
+    _turnController = AnimationController(
+      vsync: this,
+      duration: ElevenTurnMotion.total,
+      value: 1,
+    )..addListener(_rebuildForMotion);
+    _selectionController = AnimationController(
+      vsync: this,
+      duration: ElevenTurnMotion.popTotal,
+      value: 1,
+    )..addListener(_rebuildForMotion);
+    _endController = AnimationController(
+      vsync: this,
+      duration: ElevenPhoneEndMotion.total,
+      value: 1,
+    )..addListener(_rebuildForMotion);
     final uid = FirebaseBackend.auth.currentUser?.uid;
     if (uid == null) {
       _initializationError = GameFlowCopy.authenticationRequired;
@@ -46,8 +70,21 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
   @override
   void dispose() {
     _timeoutTimer?.cancel();
+    _revealTimer?.cancel();
+    _turnController.dispose();
+    _selectionController.dispose();
+    _endController.dispose();
     _subscription?.close();
     super.dispose();
+  }
+
+  void _rebuildForMotion() {
+    if (mounted) setState(() {});
+  }
+
+  void _playTurnMotion() {
+    _turnController.forward(from: 0);
+    HapticFeedback.lightImpact();
   }
 
   ElevenController get _controller =>
@@ -72,6 +109,50 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
       return;
     }
     _closingScheduled = false;
+    final phase = game.public.phase;
+    final pickerUid = phase == 'drawPick'
+        ? game.public.draw?.nextPickerUid
+        : null;
+    final drawTurnArrived =
+        !game.loading &&
+        _previousPhase != null &&
+        pickerUid == uid &&
+        _previousDrawPickerUid != uid;
+    if (!game.loading) _previousDrawPickerUid = pickerUid;
+    if (!game.loading && phase != _previousPhase) {
+      final previous = _previousPhase;
+      _previousPhase = phase;
+      _revealTimer?.cancel();
+      _roundResultRevealed = true;
+      _gameEndRevealed = true;
+      if (previous != null && phase == 'roundResult') {
+        _roundResultRevealed = false;
+        _revealTimer = Timer(ElevenRoundFlowMotion.toastAt, () {
+          if (mounted) setState(() => _roundResultRevealed = true);
+        });
+      } else if (previous != null &&
+          game.public.isFinished &&
+          game.public.finishDetail == 'earlyEnd') {
+        _gameEndRevealed = false;
+        _endController.value = 0;
+        _revealTimer = Timer(ElevenGameEndFlowMotion.crownAt, () {
+          if (!mounted) return;
+          setState(() => _gameEndRevealed = true);
+          _endController.forward();
+        });
+      } else if (previous != null && game.public.isFinished) {
+        _endController.forward(from: 0);
+      } else if (previous != null &&
+          (drawTurnArrived ||
+              (game.public.turnUid == uid &&
+                  (phase == 'firstSubmit' || phase == 'secondSubmit')))) {
+        _playTurnMotion();
+      } else {
+        _turnController.value = 1;
+      }
+    } else if (drawTurnArrived) {
+      _playTurnMotion();
+    }
     final round = game.public.round;
     if (_previousRound != round) {
       _previousRound = round;
@@ -108,7 +189,9 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
   }
 
   Future<void> _submit(ElevenGameState game, ElevenPhoneStage stage) async {
-    final value = _selected;
+    final value =
+        _selected ??
+        (game.private.tiles.length == 1 ? game.private.tiles.single : null);
     if (!stage.canSubmit || value == null || _submitting) return;
     final round = game.public.round;
     setState(() => _submitting = true);
@@ -150,16 +233,26 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
     showLeaveFailureNotice(context, widget.provider);
   }
 
+  void _showRules() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => PhoneGameRulebookDialog(
+        title: ElevenScreenCopy.rulebookTitle,
+        markdown: ElevenScreenCopy.rulebookMarkdown,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final error = _initializationError;
     if (error != null || _args == null) {
       return Scaffold(
-        backgroundColor: ElevenColors.background,
+        backgroundColor: ElevenNoirColors.table,
         body: Center(
           child: Text(
             error ?? GameFlowCopy.gameOpenFailed,
-            style: const TextStyle(color: ElevenColors.ink),
+            style: ElevenNoirText.topBar(color: ElevenNoirColors.cream),
           ),
         ),
       );
@@ -178,19 +271,15 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
       uid: uid,
       locallySubmittedRound: _submittedRound,
     );
-    final pub = game.public;
-    final opponentUid = pub.players.keys.firstWhere(
-      (id) => id != uid,
-      orElse: () => '',
+    final screen = resolveElevenPhoneScreen(
+      game,
+      uid: uid,
+      locallySubmittedRound: _submittedRound,
+      roundResultRevealed: _roundResultRevealed,
+      gameEndRevealed: _gameEndRevealed,
     );
-    final submission = game.private.submissionFor(pub.round);
-    final showDeadline =
-        stage == ElevenPhoneStage.firstChoosing ||
-        stage == ElevenPhoneStage.secondChoosing ||
-        stage == ElevenPhoneStage.secondPreselect;
-
     return Scaffold(
-      backgroundColor: ElevenColors.background,
+      backgroundColor: ElevenNoirColors.table,
       body: GameRecoveryLayer(
         session: controller.recoverySession,
         onExit: () => unawaited(_leaveRoom()),
@@ -201,179 +290,34 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame> {
           failureMessage: game.errorMessage,
           onExpired: controller.expireInterruption,
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _TopBar(
-                  title: ElevenCopy.round(pub.round),
-                  myScore: pub.scores[uid] ?? 0,
-                  opponentName: pub.nicknameOf(opponentUid),
-                  opponentScore: pub.scores[opponentUid] ?? 0,
-                  onExit: () => unawaited(_leaveRoom()),
-                ),
-                const SizedBox(height: 8),
-                if (stage == ElevenPhoneStage.finished)
-                  Expanded(
-                    child: Center(
-                      key: const ValueKey('eleven-phone-finished'),
-                      child: Text(
-                        pub.winnerUid == uid
-                            ? ElevenCopy.youWin
-                            : ElevenCopy.youLose,
-                        style: const TextStyle(
-                          color: ElevenColors.ink,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  // 가로 화면: 왼쪽은 차례 안내·남은 시간, 오른쪽은 손패와 제출.
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                elevenPhoneMessage(stage, game),
-                                key: const ValueKey('eleven-phone-message'),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: ElevenColors.ink,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                height: 28,
-                                child: showDeadline
-                                    ? GameTurnCountdown(
-                                        expiresAt: pub.turnDeadlineAt,
-                                        builder: (context, remaining) => Text(
-                                          remaining == null
-                                              ? ''
-                                              : '${remaining.inSeconds}s',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            color: ElevenColors.accent,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                              // P06 시간 초과 자동 제출 / P09 마지막 타일
-                              if (submission?.auto == true)
-                                _Notice(ElevenCopy.autoSubmitted)
-                              else if (stage.canSelect &&
-                                  game.private.tiles.length == 1)
-                                _Notice(ElevenCopy.lastTile),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: Center(
-                                  child: ElevenTileRack(
-                                    remaining: game.private.tiles,
-                                    selected: submission?.value ?? _selected,
-                                    enabled: stage.canSelect && !_submitting,
-                                    onSelect: (value) =>
-                                        setState(() => _selected = value),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              FilledButton(
-                                key: const ValueKey('eleven-phone-submit'),
-                                onPressed:
-                                    stage.canSubmit &&
-                                        _selected != null &&
-                                        !_submitting
-                                    ? () => unawaited(_submit(game, stage))
-                                    : null,
-                                child: Text(ElevenCopy.submit),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+        child: AnimatedSwitcher(
+          duration: stage == ElevenPhoneStage.finished
+              ? screen == ElevenPhoneScreen.p11Loser
+                    ? ElevenPhoneEndMotion.crossFadeLoser
+                    : ElevenPhoneEndMotion.crossFade
+              : ElevenPhoneLayerMotion.crossFade,
+          child: ElevenPhoneNoirView(
+            key: ValueKey(screen),
+            game: game,
+            uid: uid,
+            screen: screen,
+            stage: stage,
+            selected: _selected,
+            submitting: _submitting,
+            onSelect: (value) {
+              if (_selected == value) return;
+              setState(() => _selected = value);
+              if (stage.canSubmit) _selectionController.forward(from: 0);
+            },
+            onSubmit: () => unawaited(_submit(game, stage)),
+            onExit: () => unawaited(_leaveRoom()),
+            onRules: _showRules,
+            turnProgress: _turnController.value,
+            selectionProgress: _selectionController.value,
+            endProgress: _endController.value,
           ),
         ),
       ),
     );
   }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.title,
-    required this.myScore,
-    required this.opponentName,
-    required this.opponentScore,
-    required this.onExit,
-  });
-
-  final String title;
-  final int myScore;
-  final String opponentName;
-  final int opponentScore;
-  final VoidCallback onExit;
-
-  @override
-  Widget build(BuildContext context) {
-    const style = TextStyle(color: ElevenColors.ink, fontSize: 16);
-    return Row(
-      children: [
-        IconButton(
-          onPressed: onExit,
-          icon: const Icon(Icons.close_rounded, color: ElevenColors.ink),
-        ),
-        Expanded(
-          child: Text(title, style: style, textAlign: TextAlign.center),
-        ),
-        Flexible(
-          child: Text(
-            '$myScore : $opponentScore  $opponentName',
-            style: style,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Text(
-      text,
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: ElevenColors.accent, fontSize: 15),
-    ),
-  );
 }

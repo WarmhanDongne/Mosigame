@@ -12,6 +12,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/errors/widgets/leave_failure_notice.dart';
@@ -19,16 +20,18 @@ import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/game_flow/game_flow_copy.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/phone/widgets/exit_modal.dart';
+import 'package:game_kit/phone/widgets/rulebook_dialog.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_route_exit.dart';
-import 'package:game_kit/shared/widgets/game_turn_countdown.dart';
 import 'package:game_eleven/game_copy.dart';
 import 'package:game_eleven/game_theme.dart';
+import 'package:game_eleven/phone/noir_view.dart';
 import 'package:game_eleven/phone/providers/game_stage.dart';
-import 'package:game_eleven/phone/widgets/tile_rack.dart';
 import 'package:game_eleven/shared/models/game_state.dart';
-import 'package:game_eleven/shared/models/tiles.dart';
 import 'package:game_eleven/shared/models/timing.dart';
+import 'package:game_eleven/shared/noir/noir_motion.dart';
+import 'package:game_eleven/shared/noir/noir_text.dart';
+import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/providers/game_controller.dart';
 import 'package:game_eleven/shared/providers/session_provider.dart';
 import 'package:game_eleven/shared/services/game_service.dart';
@@ -53,25 +56,4 @@ class ElevenPhoneGame extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ElevenPhoneGame> createState() => _ElevenPhoneGameState();
-}
-
-/// 단계별 안내 문구입니다. 화면 교체 지점은 board_state의 build입니다.
-String elevenPhoneMessage(ElevenPhoneStage stage, ElevenGameState game) {
-  final pub = game.public;
-  return switch (stage) {
-    ElevenPhoneStage.connecting => GameFlowCopy.waitingForGameData,
-    ElevenPhoneStage.drawWaiting => ElevenCopy.waitingDraw,
-    ElevenPhoneStage.firstChoosing => ElevenCopy.yourTurn,
-    ElevenPhoneStage.secondPreselect => ElevenCopy.preselect,
-    ElevenPhoneStage.firstSubmitted => ElevenCopy.submitted,
-    ElevenPhoneStage.secondChoosing => switch (pub.currentRound.firstColor) {
-      ElevenTileColor.black => ElevenCopy.firstColor(ElevenCopy.black),
-      ElevenTileColor.white => ElevenCopy.firstColor(ElevenCopy.white),
-      null => ElevenCopy.yourTurn,
-    },
-    ElevenPhoneStage.secondSubmitted => ElevenCopy.submitted,
-    ElevenPhoneStage.roundResult => ElevenCopy.roundResultPhone,
-    ElevenPhoneStage.finished => '',
-    ElevenPhoneStage.closing => GameFlowCopy.gameFinished,
-  };
 }
