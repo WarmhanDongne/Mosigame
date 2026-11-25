@@ -210,7 +210,8 @@ class OverflowSweep {
       if (render is! RenderParagraph || !render.hasSize || !render.attached) {
         continue;
       }
-      final text = render.text.toPlainText().replaceAll('\n', ' ');
+      final rawText = render.text.toPlainText();
+      final text = rawText.replaceAll('\n', ' ');
       if (text.trim().isEmpty || _invisible(render)) continue;
       final short = text.length > 30 ? '${text.substring(0, 30)}…' : text;
       if (render.didExceedMaxLines) {
@@ -221,6 +222,39 @@ class OverflowSweep {
           render.size.height + 1) {
         problems.add('$where | 글자 높이 잘림 | "$short"');
         continue;
+      }
+      if (where.startsWith('휴대폰') &&
+          !rawText.contains('\n') &&
+          rawText.contains(RegExp(r'\s')) &&
+          rawText.trim().runes.length <= 40 &&
+          rawText.trim().runes.length >= 8) {
+        final boxes = render.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: rawText.length),
+        );
+        final lineBands = _textLineBands(boxes);
+        final lastBand = lineBands.isEmpty ? null : lineBands.last;
+        var offset = 0;
+        var lastLineCharacters = 0;
+        for (final rune in rawText.runes) {
+          final character = String.fromCharCode(rune);
+          final end = offset + character.length;
+          final characterBoxes = render.getBoxesForSelection(
+            TextSelection(baseOffset: offset, extentOffset: end),
+          );
+          if (lastBand != null &&
+              characterBoxes.any(
+                (box) =>
+                    box.top < lastBand[1] - .5 && box.bottom > lastBand[0] + .5,
+              ) &&
+              !RegExp(r'[\s\p{P}\p{S}]', unicode: true).hasMatch(character)) {
+            lastLineCharacters++;
+          }
+          offset = end;
+        }
+        if (lineBands.length > 1 && lastLineCharacters <= 2) {
+          problems.add('$where | 마지막 줄 고립 | "$short"');
+          continue;
+        }
       }
       final rect = MatrixUtils.transformRect(
         render.getTransformTo(null),
@@ -260,6 +294,23 @@ class OverflowSweep {
         problems.add('$where | 글자 일부 잘림($cutBy) | "$short"');
       }
     }
+  }
+
+  static List<List<double>> _textLineBands(List<TextBox> boxes) {
+    final bands = <List<double>>[];
+    for (final box in boxes) {
+      final index = bands.indexWhere(
+        (band) => box.top < band[1] - .5 && box.bottom > band[0] + .5,
+      );
+      if (index < 0) {
+        bands.add([box.top, box.bottom]);
+      } else {
+        if (box.top < bands[index][0]) bands[index][0] = box.top;
+        if (box.bottom > bands[index][1]) bands[index][1] = box.bottom;
+      }
+    }
+    bands.sort((a, b) => a[0].compareTo(b[0]));
+    return bands;
   }
 
   static bool _insideScroll(RenderObject render) {

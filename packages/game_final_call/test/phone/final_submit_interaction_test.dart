@@ -6,6 +6,7 @@ import 'package:game_final_call/phone/screens/game_screen.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
 import 'package:game_final_call/shared/providers/game_controller.dart';
 import 'package:game_kit/game_flow/game_flow_config.dart';
+import 'package:game_kit/game_flow/turn_timeout_record.dart';
 
 FinalCallCard _card(String color, int value) =>
     FinalCallCard(id: '${color}_$value', color: color, value: value);
@@ -29,6 +30,8 @@ class _SubmitGame extends Fake implements FinalCallController {
   int get revision => 5;
   @override
   FinalCallRoundResult? get roundResult => null;
+  @override
+  TurnTimeoutRecord? get lastTimeout => null;
   @override
   bool get holdsFourCard => false;
   @override

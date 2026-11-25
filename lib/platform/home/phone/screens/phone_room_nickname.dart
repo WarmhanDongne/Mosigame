@@ -364,13 +364,14 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      Text(
+                                      MosiBalancedText(
                                         GameLocale.select(
                                           ko: '이 그룹에서만 쓰는 이름이에요. 다른 사람과 겹치면 안 돼요.',
                                           en: 'Only used in this room. It must differ from everyone else’s.',
                                           zhHans: '仅在此房间使用，不能与其他人重复。',
                                           zhHant: '僅在此房間使用，不能與其他人重複。',
                                         ),
+                                        maxLines: 3,
                                         style: MosiFonts.sans(
                                           size: 12.5,
                                           color: MosiColors.muted,

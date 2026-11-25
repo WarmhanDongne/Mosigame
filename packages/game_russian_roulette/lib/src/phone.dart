@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/mosi_ui/mosi_balanced_text.dart';
 import 'package:game_kit/phone/animations/game_entry_unroll.dart';
 import 'package:game_kit/phone/widgets/exit_modal.dart';
 import 'package:game_kit/phone/widgets/ripple_dialog.dart';
@@ -101,7 +102,8 @@ class _RussianRoulettePhoneScreenState
             RussianRouletteTiming.revealing(game.aliveCount).inMilliseconds,
       'rotating' =>
         elapsed < RussianRouletteTiming.rotating(game.spinCount).inMilliseconds,
-      'firing' => elapsed < RussianRouletteTiming.firingHold.inMilliseconds,
+      // 발포 직전 1인칭 장면은 서버가 결과를 낼 때까지 계속 숨 쉬듯 움직입니다.
+      'firing' => true,
       'outcome' => elapsed < 600,
       _ => false,
     };
@@ -175,6 +177,8 @@ class _RussianRoulettePhoneScreenState
     final me = game.players[_uid];
     final submitted = session.privateState['choiceSubmitted'] == true;
     final myAction = actionFromWire(session.privateState['action']);
+    // 시간 초과로 서버가 '아무것도 안 하기'를 대신 골랐는지입니다(내 화면 안내 전용).
+    _autoSelected = session.privateState['autoSelected'] == true;
     final elapsed = _elapsedMs(game);
     final pending = _pendingTurn == _turnId(game) ? _pending : null;
     final screen = _screen(
@@ -342,6 +346,9 @@ class _RussianRoulettePhoneScreenState
     return 0;
   }
 
+  /// 이번 턴 내 선택이 시간 초과로 자동으로 정해졌는지입니다.
+  bool _autoSelected = false;
+
   _PhoneScreen _screen(
     RussianRouletteView game,
     RoulettePlayerView? me,
@@ -462,6 +469,7 @@ class _RussianRoulettePhoneScreenState
           pending: pending,
           locked: lockedLead,
           lockedTotal: order.length,
+          autoSelected: _autoSelected,
         ),
       );
     }
@@ -518,7 +526,13 @@ class _RussianRoulettePhoneScreenState
           _ => fire,
         },
       ),
-      body: _RevealBody(game: game, me: me, meUid: _uid, elapsed: elapsed),
+      body: _RevealBody(
+        game: game,
+        me: me,
+        meUid: _uid,
+        elapsed: elapsed,
+        autoSelected: _autoSelected,
+      ),
     );
   }
 }
@@ -694,11 +708,28 @@ class _MeHeader extends StatelessWidget {
 class _LockedTimer extends StatelessWidget {
   const _LockedTimer();
 
+  /// 타이머 상자와 같은 높이(숫자 40 + 위아래 4)로 맞춰 자리가 흔들리지 않게 합니다.
+  static const _height = 48.0;
+
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    color: RouletteColors.red,
-    child: Text('00:00', style: RouletteType.number(40, RouletteColors.cream)),
+    height: _height,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: RouletteColors.red,
+      border: Border.all(color: RouletteColors.cream, width: 2),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.lock_outline, color: RouletteColors.cream, size: 22),
+        const SizedBox(width: 6),
+        Text(
+          rouletteText('선택 마감', 'Locked', '选择截止', '選擇截止'),
+          style: RouletteType.display(20, RouletteColors.cream, height: 1),
+        ),
+      ],
+    ),
   );
 }
 
@@ -812,13 +843,15 @@ class _Alert extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              MosiBalancedText(
                 title,
+                maxLines: 2,
                 style: RouletteType.display(22, RouletteColors.cream),
               ),
               const SizedBox(height: 4),
-              Text(
+              MosiBalancedText(
                 description,
+                maxLines: 3,
                 style: RouletteType.body(13, RouletteColors.sub, height: 1.5),
               ),
             ],
@@ -1087,6 +1120,45 @@ class _PickedTag extends StatelessWidget {
 }
 
 /// 서버 확인을 기다리는 동안 '선택함' 앞에서 움직이는 작은 점 세 개입니다.
+/// 시간 초과로 저절로 눌린 '아무것도 안 하기'에 붙는 꼬리표입니다.
+class _AutoPickedTag extends StatelessWidget {
+  const _AutoPickedTag();
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 360),
+    curve: Curves.easeOutBack,
+    builder: (context, v, child) => Opacity(
+      opacity: v.clamp(0.0, 1.0),
+      child: Transform.scale(scale: 1.3 - .3 * v, child: child),
+    ),
+    child: Container(
+      color: RouletteColors.ink,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.timer_outlined,
+            color: RouletteColors.cream,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            rouletteText('자동 선택', 'Auto', '自动选择', '自動選擇'),
+            style: RouletteType.body(
+              12,
+              RouletteColors.cream,
+              weight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _SendingDots extends StatefulWidget {
   const _SendingDots({super.key});
 
@@ -1141,11 +1213,15 @@ class _NoneButton extends StatelessWidget {
     required this.mode,
     required this.onTap,
     this.autoTag = false,
+    this.autoPicked = false,
     this.confirmed = true,
   });
   final _ButtonMode mode;
   final VoidCallback? onTap;
   final bool confirmed;
+
+  /// 시간 초과로 저절로 눌렸는지입니다. '선택함' 대신 '자동 선택'을 붙입니다.
+  final bool autoPicked;
 
   /// 방패가 잠긴 턴에만 '시간 끝나면 자동 선택' 표시를 붙입니다(시안 잠긴 턴).
   final bool autoTag;
@@ -1165,16 +1241,17 @@ class _NoneButton extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 72),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
+            color: selected ? RouletteColors.red : RouletteColors.cream,
             border: Border.all(
-              color: RouletteColors.cream,
-              width: selected ? 4 : 2,
+              color: selected ? RouletteColors.cream : RouletteColors.ink,
+              width: selected ? 4 : 3,
             ),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.remove_circle_outline,
-                color: RouletteColors.cream,
+                color: selected ? RouletteColors.cream : RouletteColors.ink,
                 size: 30,
               ),
               const SizedBox(width: 14),
@@ -1185,10 +1262,13 @@ class _NoneButton extends StatelessWidget {
                   children: [
                     Text(
                       rouletteText('아무것도 안 하기', 'Do nothing', '什么都不做', '什麼都不做'),
-                      style: RouletteType.display(21, RouletteColors.cream),
+                      style: RouletteType.display(
+                        21,
+                        selected ? RouletteColors.cream : RouletteColors.ink,
+                      ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    MosiBalancedText(
                       autoTag
                           ? rouletteText(
                               '총구 그대로 · 방어 없음',
@@ -1202,13 +1282,20 @@ class _NoneButton extends StatelessWidget {
                               '枪口不动 · 无防御 · 下回合无限制',
                               '槍口不動 · 無防禦 · 下回合無限制',
                             ),
-                      style: RouletteType.body(12, RouletteColors.sub),
+                      maxLines: 2,
+                      style: RouletteType.body(
+                        12,
+                        selected ? RouletteColors.cream : RouletteColors.ink,
+                        weight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              if (selected)
+              if (selected && autoPicked)
+                const _AutoPickedTag()
+              else if (selected)
                 _PickedTag(confirmed: confirmed)
               else if (autoTag)
                 Container(
@@ -1217,6 +1304,7 @@ class _NoneButton extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
+                    color: RouletteColors.ink,
                     border: Border.all(color: RouletteColors.cream, width: 1.5),
                   ),
                   child: Text(
@@ -1246,6 +1334,7 @@ class _NoneButton extends StatelessWidget {
 class _ActionPanel extends StatelessWidget {
   const _ActionPanel({
     required this.shieldLocked,
+    this.autoPicked = false,
     required this.onChoose,
     this.picked,
     this.confirmed = false,
@@ -1253,6 +1342,9 @@ class _ActionPanel extends StatelessWidget {
     this.introLocked = false,
   });
   final bool shieldLocked;
+
+  /// 시간 초과로 '아무것도 안 하기'가 자동으로 골라졌는지입니다.
+  final bool autoPicked;
   final void Function(RouletteAction)? onChoose;
 
   /// 버튼 위에 잠깐 띄우는 한 줄 안내입니다(시작 연출 대기, 자동 선택 예고).
@@ -1314,6 +1406,7 @@ class _ActionPanel extends StatelessWidget {
           mode: _mode(RouletteAction.none),
           onTap: _tap(RouletteAction.none),
           autoTag: shieldLocked,
+          autoPicked: autoPicked,
           confirmed: confirmed,
         ),
       ],
@@ -1336,9 +1429,10 @@ class _ActionPanel extends StatelessWidget {
                 : Padding(
                     key: ValueKey(hint),
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
+                    child: MosiBalancedText(
                       hint!,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
                       style: RouletteType.body(
                         13,
                         RouletteColors.cream,
@@ -1377,11 +1471,16 @@ class _ChooseBody extends StatefulWidget {
     this.pending,
     this.locked = false,
     this.lockedTotal = 0,
+    this.autoSelected = false,
   });
   final RussianRouletteView game;
   final RoulettePlayerView me;
   final bool busy;
   final void Function(RouletteAction) onChoose;
+
+  /// 시간 초과로 '아무것도 안 하기'가 자동으로 정해졌는지입니다. 마감 순간에
+  /// 기다림 화면으로 넘어가지 않고, 저절로 눌린 버튼을 보여 줍니다.
+  final bool autoSelected;
 
   /// 서버가 내 선택을 받았는지입니다.
   final bool submitted;
@@ -1436,6 +1535,8 @@ class _ChooseBodyState extends State<_ChooseBody> {
 
   @override
   Widget build(BuildContext context) {
+    // 시간 초과로 자동 선택된 마감 순간에는 기다림 화면 대신 눌린 버튼을 둡니다.
+    final settled = _settled && !(widget.autoSelected && widget.locked);
     final game = widget.game;
     final me = widget.me;
     final target = game.players[game.targetUid];
@@ -1511,11 +1612,11 @@ class _ChooseBodyState extends State<_ChooseBody> {
             child: AnimatedSlide(
               duration: fade,
               curve: Curves.easeInCubic,
-              offset: _settled ? const Offset(0, -.12) : Offset.zero,
+              offset: settled ? const Offset(0, -.12) : Offset.zero,
               child: AnimatedOpacity(
                 duration: fade,
                 curve: Curves.easeIn,
-                opacity: _settled ? 0 : 1,
+                opacity: settled ? 0 : 1,
                 child: alert,
               ),
             ),
@@ -1527,11 +1628,11 @@ class _ChooseBodyState extends State<_ChooseBody> {
               duration: const Duration(milliseconds: 650),
               // 버튼이 거의 사라진 뒤에 떠오르게 조금 늦게 시작합니다.
               curve: const Interval(.35, 1, curve: Curves.easeOut),
-              opacity: _settled ? 1 : 0,
+              opacity: settled ? 1 : 0,
               child: AnimatedSlide(
                 duration: const Duration(milliseconds: 650),
                 curve: const Interval(.35, 1, curve: Curves.easeOutCubic),
-                offset: _settled ? Offset.zero : const Offset(0, .02),
+                offset: settled ? Offset.zero : const Offset(0, .02),
                 child: _WaitingMiddle(
                   total: total,
                   ready: ready,
@@ -1547,15 +1648,15 @@ class _ChooseBodyState extends State<_ChooseBody> {
           right: 0,
           bottom: 0,
           child: IgnorePointer(
-            ignoring: _settled,
+            ignoring: settled,
             child: AnimatedSlide(
               duration: fade,
               curve: Curves.easeInCubic,
-              offset: _settled ? const Offset(0, .06) : Offset.zero,
+              offset: settled ? const Offset(0, .06) : Offset.zero,
               child: AnimatedOpacity(
                 duration: fade,
                 curve: Curves.easeIn,
-                opacity: _settled ? 0 : 1,
+                opacity: settled ? 0 : 1,
                 // 1초마다 남은 시간을 보고 버튼 잠금과 안내를 정합니다.
                 child: GameTurnCountdown(
                   expiresAt: game.deadlineAt == 0 ? null : game.deadlineAt,
@@ -1572,6 +1673,7 @@ class _ChooseBodyState extends State<_ChooseBody> {
                         left != null &&
                         left <= 5000;
                     return _ActionPanel(
+                      autoPicked: widget.autoSelected,
                       shieldLocked: me.shieldLocked,
                       onChoose: widget.busy ? null : widget.onChoose,
                       picked: picked,
@@ -1698,26 +1800,36 @@ class _WaitingMiddle extends StatelessWidget {
                     children: [
                       Opacity(
                         opacity: 1 - v,
-                        child: Text(
-                          rouletteText(
-                            '누가 골랐는지는 공개되지 않아요',
-                            'Who has chosen stays hidden',
-                            '不会公开谁已经选择',
-                            '不會公開誰已經選擇',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            rouletteText(
+                              '누가 골랐는지는 공개되지 않아요',
+                              'Who has chosen stays hidden',
+                              '不会公开谁已经选择',
+                              '不會公開誰已經選擇',
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: RouletteType.body(13, RouletteColors.sub),
                           ),
-                          style: RouletteType.body(13, RouletteColors.sub),
                         ),
                       ),
                       Opacity(
                         opacity: v,
-                        child: Text(
-                          rouletteText(
-                            '총구 대상부터 한 명씩 공개해요',
-                            'Revealing from the target, one by one',
-                            '从枪口对象开始逐一公开',
-                            '從槍口對象開始逐一公開',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            rouletteText(
+                              '총구 대상부터 한 명씩 공개해요',
+                              'Revealing from the target, one by one',
+                              '从枪口对象开始逐一公开',
+                              '從槍口對象開始逐一公開',
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: RouletteType.body(13, RouletteColors.sub),
                           ),
-                          style: RouletteType.body(13, RouletteColors.sub),
                         ),
                       ),
                     ],
@@ -1857,11 +1969,15 @@ class _RevealBody extends StatelessWidget {
     required this.me,
     required this.meUid,
     required this.elapsed,
+    this.autoSelected = false,
   });
   final RussianRouletteView game;
   final RoulettePlayerView me;
   final String meUid;
   final int elapsed;
+
+  /// 시간 초과로 내 선택이 자동으로 정해졌으면 공개 목록 위에 알려 줍니다.
+  final bool autoSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -1892,6 +2008,10 @@ class _RevealBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 30),
+              if (revealing && autoSelected) ...[
+                const _AutoChoiceCard(),
+                const SizedBox(height: 16),
+              ],
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -1952,6 +2072,119 @@ class _RevealBody extends StatelessWidget {
 }
 
 /// 붉은 '선택 마감' 도장입니다.
+/// 시간 초과로 정해진 내 선택을 크게 알려 주는 카드입니다.
+class _AutoChoiceCard extends StatelessWidget {
+  const _AutoChoiceCard();
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 420),
+    curve: Curves.easeOutBack,
+    builder: (context, v, child) => Opacity(
+      opacity: v.clamp(0.0, 1.0),
+      child: Transform.translate(offset: Offset(0, 16 * (1 - v)), child: child),
+    ),
+    child: Semantics(
+      liveRegion: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: RouletteColors.ink,
+          border: Border.all(color: RouletteColors.cream, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              color: RouletteColors.red,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.timer_outlined,
+                    color: RouletteColors.cream,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      rouletteText(
+                        '시간 초과로 자동 선택됐어요',
+                        'Time ran out, so this was picked for you',
+                        '超时，已为你自动选择',
+                        '逾時，已為你自動選擇',
+                      ),
+                      style: RouletteType.body(
+                        13,
+                        RouletteColors.cream,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.remove_circle_outline,
+                    color: RouletteColors.cream,
+                    size: 34,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rouletteText('내 선택', 'My choice', '我的选择', '我的選擇'),
+                          style: RouletteType.body(
+                            13,
+                            RouletteColors.sub,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          rouletteText(
+                            '아무것도 안 하기',
+                            'Do nothing',
+                            '什么都不做',
+                            '什麼都不做',
+                          ),
+                          style: RouletteType.display(
+                            24,
+                            RouletteColors.cream,
+                            height: 1.2,
+                          ),
+                        ),
+                        Text(
+                          rouletteText(
+                            '총구 그대로 · 방어 없음',
+                            'Gun stays · no defense',
+                            '枪口不动 · 无防御',
+                            '槍口不動 · 無防禦',
+                          ),
+                          style: RouletteType.body(
+                            12,
+                            RouletteColors.sub,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _LockBadge extends StatelessWidget {
   const _LockBadge();
 
@@ -2055,7 +2288,7 @@ class _SpinTally extends StatelessWidget {
                   ],
                 ),
               const SizedBox(height: 8),
-              Text(
+              MosiBalancedText(
                 spins == 0
                     ? rouletteText(
                         '총구는 움직이지 않아요',
@@ -2069,6 +2302,7 @@ class _SpinTally extends StatelessWidget {
                         '枪口将顺时针移动$spins格',
                         '槍口將順時針移動$spins格',
                       ),
+                maxLines: 2,
                 style: RouletteType.body(13, RouletteColors.cream),
               ),
             ],
@@ -2163,12 +2397,7 @@ class _RotationBody extends StatelessWidget {
                         width: _w,
                         height: _h,
                         child: CustomPaint(
-                          painter: _MiniTablePainter(
-                            gunAngle: angle,
-                            trail: marks.isEmpty
-                                ? const []
-                                : marks.sublist(0, done + 1),
-                          ),
+                          painter: _MiniTablePainter(gunAngle: angle),
                         ),
                       ),
                       for (final p in players)
@@ -2313,9 +2542,8 @@ class _RotationBody extends StatelessWidget {
 }
 
 class _MiniTablePainter extends CustomPainter {
-  const _MiniTablePainter({required this.gunAngle, required this.trail});
+  const _MiniTablePainter({required this.gunAngle});
   final double gunAngle;
-  final List<double> trail;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2336,36 +2564,6 @@ class _MiniTablePainter extends CustomPainter {
         ..close(),
       Paint()..color = RouletteColors.red,
     );
-    if (trail.length > 1) {
-      const rx = _RotationBody._rx - 58;
-      const ry = _RotationBody._ry - 62;
-      Offset along(double a) {
-        final r =
-            1 /
-            math.sqrt(
-              math.cos(a) * math.cos(a) / (rx * rx) +
-                  math.sin(a) * math.sin(a) / (ry * ry),
-            );
-        return c + Offset(math.cos(a) * r, math.sin(a) * r);
-      }
-
-      final dot = Paint()..color = RouletteColors.red;
-      for (var a = trail.first + .18; a <= trail.last - .1; a += .14) {
-        canvas.drawCircle(along(a), 2.6, dot);
-      }
-      for (final mark in trail.skip(1)) {
-        final p = along(mark);
-        canvas.drawCircle(p, 6, Paint()..color = RouletteColors.ink);
-        canvas.drawCircle(
-          p,
-          6,
-          Paint()
-            ..color = RouletteColors.red
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.5,
-        );
-      }
-    }
     canvas.drawCircle(
       c,
       62,
@@ -2384,12 +2582,17 @@ class _MiniTablePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MiniTablePainter old) =>
-      old.gunAngle != gunAngle || old.trail.length != trail.length;
+      old.gunAngle != gunAngle;
 }
 
 //=======================발포 직전==============================
-/// 위쪽 원판의 총이 아래를 겨누고, 숨 쉬듯 깜빡이는 빔이 대상의 큰 프로필로
-/// 이어집니다. 내가 대상이면 붉은 바탕에 먹색 빔과 '총구가 당신을 겨누고 있습니다'.
+/// 발포 직전 화면입니다(시안 B-P13·P14·P16·P17).
+///
+/// 총구가 나를 겨누면 1인칭으로 총구를 마주 봅니다. 내 선택에 따라 그림이
+/// 다릅니다. 방패면 방패 뒤에서, 돌리기면 실린더가 도는 총구를 정면으로,
+/// 아무것도 안 하기면 같은 총구를 실린더 없이 봅니다.
+/// 다른 사람이 대상이면 옆으로 돌아간 총이 그 사람을 겨누는 장면을 보고,
+/// 내가 방패를 골랐다면 화면 아래에 내 방패가 보입니다.
 class _FiringBody extends StatelessWidget {
   const _FiringBody({
     required this.game,
@@ -2401,142 +2604,144 @@ class _FiringBody extends StatelessWidget {
   final RoulettePlayerView me;
   final int elapsed;
 
+  static const _stage = Size(342, 400);
+
   @override
   Widget build(BuildContext context) {
     final target = game.players[game.targetUid];
     final aimedAtMe = target?.uid == me.uid;
-    final breathe =
-        .55 + .45 * (0.5 - 0.5 * math.cos(elapsed / 1400 * math.pi * 2));
-    final tremble = Offset(
-      math.sin(elapsed * .09) * 1.2,
-      math.cos(elapsed * .11) * 1.2,
-    );
-    final choice = game.actions[target?.uid];
+    final mine = game.actions[me.uid];
+    final t = elapsed.toDouble();
+
+    final Widget stage;
+    if (aimedAtMe) {
+      final kind = switch (mine) {
+        RouletteAction.shield => _PovKind.shield,
+        RouletteAction.spin => _PovKind.spin,
+        _ => _PovKind.bare,
+      };
+      stage = CustomPaint(
+        size: _stage,
+        painter: _PovPainter(kind: kind, t: t),
+      );
+    } else {
+      final tremble = Offset(
+        math.sin(elapsed * .09) * 1.2,
+        math.cos(elapsed * .11) * 1.2,
+      );
+      stage = ClipRect(
+        child: SizedBox.fromSize(
+          size: _stage,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: _SideAimPainter(t: t)),
+              ),
+              Positioned(
+                left: _SideAimPainter.target.dx - 56,
+                top: _SideAimPainter.target.dy - 56,
+                child: Transform.translate(
+                  offset: tremble,
+                  child: _AimedProfile(player: target),
+                ),
+              ),
+              if (mine == RouletteAction.shield)
+                Positioned.fill(
+                  child: CustomPaint(painter: _HeldShieldPainter(t: t)),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final name = target?.nickname ?? '';
+    final title = aimedAtMe
+        ? rouletteText(
+            '총구가 당신을\n겨누고 있습니다',
+            'The gun is\naimed at you',
+            '枪口\n正对着你',
+            '槍口\n正對著你',
+          )
+        : rouletteText(
+            '총구가 $name${_objectParticle(name)}\n겨누고 있어요',
+            'The gun is\naimed at $name',
+            '枪口\n正对着$name',
+            '槍口\n正對著$name',
+          );
+    final sub = !aimedAtMe
+        ? null
+        : switch (mine) {
+            RouletteAction.shield => rouletteText(
+              '방패를 들었어요 · 맞아도 살아남아요',
+              'Shield up · you survive a hit',
+              '举起了护盾 · 中弹也能存活',
+              '舉起了護盾 · 中彈也能存活',
+            ),
+            RouletteAction.spin => rouletteText(
+              '돌리기를 골라 막을 수 없어요',
+              'You spun, so you cannot block',
+              '选择了转动，无法防御',
+              '選擇了轉動，無法防禦',
+            ),
+            _ => rouletteText('곧 발포해요', 'Firing soon', '即将开枪', '即將開槍'),
+          };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Spacer(),
-        Center(
-          child: SizedBox(
-            width: 342,
-            height: 330,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _AimPainter(
-                      beam:
-                          (aimedAtMe ? RouletteColors.ink : RouletteColors.red)
-                              .withValues(alpha: breathe),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 96,
-                  top: 168,
-                  width: 150,
-                  height: 150,
-                  child: Transform.translate(
-                    offset: tremble,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: RouletteColors.cream,
-                        border: Border.all(
-                          color: RouletteColors.cream,
-                          width: 6,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black,
-                            offset: Offset(10, 10),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          RouletteProfile(
-                            characterId: target?.characterId,
-                            size: 138,
-                          ),
-                          if (aimedAtMe)
-                            const Positioned(
-                              right: -18,
-                              bottom: -18,
-                              child: _MeTag(),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        Flexible(
+          flex: 8,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox.fromSize(size: _stage, child: stage),
           ),
         ),
-        const SizedBox(height: 8),
-        if (aimedAtMe) ...[
-          Text(
-            rouletteText(
-              '총구가 당신을\n겨누고 있습니다',
-              'The gun is\naimed at you',
-              '枪口\n正对着你',
-              '槍口\n正對著你',
-            ),
-            textAlign: TextAlign.center,
-            style: RouletteType.display(34, RouletteColors.cream, height: 1.2),
-          ),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: RouletteType.display(34, RouletteColors.cream, height: 1.2),
+        ),
+        if (sub != null) ...[
           const SizedBox(height: 8),
           Text(
-            rouletteText('곧 발포해요', 'Firing soon', '即将开枪', '即將開槍'),
+            sub,
             textAlign: TextAlign.center,
             style: RouletteType.body(
               15,
-              RouletteColors.cream.withValues(alpha: .8),
+              RouletteColors.cream.withValues(alpha: .85),
             ),
-          ),
-        ] else ...[
-          Text(
-            rouletteText('발포 직전', 'ABOUT TO FIRE', '即将开枪', '即將開槍'),
-            textAlign: TextAlign.center,
-            style: RouletteType.display(46, RouletteColors.cream, height: 1),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            rouletteText(
-              '총구가 ${target?.nickname ?? ''}에게 멈췄어요',
-              'The gun stopped on ${target?.nickname ?? ''}',
-              '枪口停在${target?.nickname ?? ''}',
-              '槍口停在${target?.nickname ?? ''}',
-            ),
-            textAlign: TextAlign.center,
-            style: RouletteType.body(15, RouletteColors.sub),
           ),
         ],
-        if (choice != null) ...[
-          const SizedBox(height: 14),
+        if (mine != null) ...[
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                aimedAtMe
-                    ? rouletteText('내 선택', 'My choice', '我的选择', '我的選擇')
-                    : rouletteText(
-                        '${target?.nickname ?? ''}의 선택',
-                        "${target?.nickname ?? ''}'s choice",
-                        '${target?.nickname ?? ''}的选择',
-                        '${target?.nickname ?? ''}的選擇',
-                      ),
+                rouletteText('내 선택', 'My choice', '我的选择', '我的選擇'),
                 style: RouletteType.body(
                   13,
-                  aimedAtMe ? RouletteColors.cream : RouletteColors.sub,
+                  aimedAtMe
+                      ? RouletteColors.cream.withValues(alpha: .8)
+                      : RouletteColors.sub,
                   weight: FontWeight.w700,
                 ),
               ),
               const SizedBox(width: 10),
-              RouletteActionChip(action: choice, size: 16),
+              // 붉은 배경 위 붉은 돌리기 칩은 크림 테두리로 구분합니다.
+              if (aimedAtMe && mine == RouletteAction.spin)
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: RouletteColors.cream, width: 2),
+                  ),
+                  child: RouletteActionChip(action: mine, size: 15),
+                )
+              else
+                RouletteActionChip(action: mine, size: 16),
             ],
           ),
         ],
@@ -2546,39 +2751,453 @@ class _FiringBody extends StatelessWidget {
   }
 }
 
-class _AimPainter extends CustomPainter {
-  const _AimPainter({required this.beam});
-  final Color beam;
+/// 다른 사람이 겨눠질 때 그 사람 프로필(붉은 테두리 + '조준' 표시)입니다.
+class _AimedProfile extends StatelessWidget {
+  const _AimedProfile({required this.player});
+  final RoulettePlayerView? player;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 112,
+    height: 112,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: const BoxDecoration(
+            color: RouletteColors.red,
+            boxShadow: [
+              BoxShadow(color: Color(0x99000000), offset: Offset(8, 8)),
+            ],
+          ),
+          child: RouletteProfile(characterId: player?.characterId, size: 100),
+        ),
+        Positioned(
+          left: 20,
+          top: -26,
+          width: 72,
+          height: 26,
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: RouletteColors.red,
+              border: Border.all(color: RouletteColors.cream, width: 2),
+            ),
+            child: Text(
+              rouletteText('조준', 'AIM', '瞄准', '瞄準'),
+              style: RouletteType.display(15, RouletteColors.cream, height: 1),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+enum _PovKind { spin, shield, bare }
+
+/// 0 → 1 → 0으로 숨 쉬듯 오가는 값입니다.
+double _pulse(double t, double periodMs) =>
+    0.5 - 0.5 * math.cos(t / periodMs * math.pi * 2);
+
+void _paintRays(
+  Canvas canvas,
+  Offset c, {
+  required int count,
+  required double r0,
+  required double r1,
+  required double widthDeg,
+  required Color color,
+}) {
+  final paint = Paint()..color = color;
+  for (var k = 0; k < count; k++) {
+    final a = k * math.pi * 2 / count;
+    final b = a + widthDeg / 2 * math.pi / 180;
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx + r0 * math.cos(a), c.dy + r0 * math.sin(a))
+        ..lineTo(c.dx + r1 * math.cos(a), c.dy + r1 * math.sin(a))
+        ..lineTo(c.dx + r1 * math.cos(b), c.dy + r1 * math.sin(b))
+        ..lineTo(c.dx + r0 * math.cos(b), c.dy + r0 * math.sin(b))
+        ..close(),
+      paint,
+    );
+  }
+}
+
+Paint _fill(Color c) => Paint()..color = c;
+Paint _stroke(Color c, double w) => Paint()
+  ..color = c
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = w
+  ..strokeJoin = StrokeJoin.round
+  ..strokeCap = StrokeCap.round;
+
+/// 정면에서 본 리볼버(총열 끝 구멍 + 뒤쪽 실린더 면)를 그립니다.
+/// [r]은 총열 바깥 반지름, [spin]은 실린더 회전각(라디안, null이면 정지).
+void _paintMuzzle(
+  Canvas canvas,
+  Offset c,
+  double r, {
+  required double glow,
+  double? spin,
+  bool arrows = false,
+}) {
+  final cylR = r * 1.85;
+  final cyl = Offset(c.dx, c.dy + r * 1.55);
+  canvas.drawCircle(
+    cyl + const Offset(8, 8),
+    cylR,
+    _fill(const Color(0x8C000000)),
+  );
+  canvas.drawCircle(cyl, cylR, _fill(RouletteColors.ink));
+  canvas.drawCircle(cyl, cylR, _stroke(RouletteColors.cream, 4));
+  canvas.save();
+  canvas.translate(cyl.dx, cyl.dy);
+  canvas.rotate(spin ?? 0);
+  for (var k = 0; k < 6; k++) {
+    final a = (90 + k * 60) * math.pi / 180;
+    final h = Offset(cylR * .62 * math.cos(a), cylR * .62 * math.sin(a));
+    canvas.drawCircle(h, cylR * .2, _fill(RouletteColors.track));
+    canvas.drawCircle(h, cylR * .2, _stroke(RouletteColors.cream, 3));
+    canvas.drawCircle(h, cylR * .1, _fill(RouletteColors.ink));
+  }
+  canvas.drawCircle(Offset.zero, cylR * .13, _fill(RouletteColors.cream));
+  canvas.restore();
+  if (arrows) {
+    // 돌린 실린더: 바깥쪽 회전 흔적 두 줄과 화살촉
+    final rect = Rect.fromCircle(center: cyl, radius: cylR + 18);
+    final arc = _stroke(RouletteColors.cream, 5);
+    canvas.drawArc(rect, 190 * math.pi / 180, 60 * math.pi / 180, false, arc);
+    canvas.drawArc(rect, 10 * math.pi / 180, 60 * math.pi / 180, false, arc);
+    for (final end in [250.0, 70.0]) {
+      final a = end * math.pi / 180;
+      final p =
+          cyl + Offset((cylR + 18) * math.cos(a), (cylR + 18) * math.sin(a));
+      final dir = Offset(-math.sin(a), math.cos(a)); // 시계 방향 접선
+      final n = Offset(math.cos(a), math.sin(a));
+      canvas.drawPath(
+        Path()
+          ..moveTo(p.dx + dir.dx * 12, p.dy + dir.dy * 12)
+          ..lineTo(p.dx + n.dx * 9, p.dy + n.dy * 9)
+          ..lineTo(p.dx - n.dx * 9, p.dy - n.dy * 9)
+          ..close(),
+        _fill(RouletteColors.cream),
+      );
+    }
+  }
+  // 총열을 감싸는 몸체와 가늠쇠
+  final body = RRect.fromRectAndRadius(
+    Rect.fromLTWH(c.dx - r * 1.25, c.dy - r * 1.25, r * 2.5, r * 2.9),
+    Radius.circular(r * .5),
+  );
+  canvas.drawRRect(
+    body.shift(const Offset(8, 8)),
+    _fill(const Color(0x8C000000)),
+  );
+  canvas.drawRRect(body, _fill(RouletteColors.ink));
+  canvas.drawRRect(body, _stroke(RouletteColors.cream, 4));
+  final sight = Rect.fromLTWH(
+    c.dx - r * .16,
+    c.dy - r * 1.62,
+    r * .32,
+    r * .42,
+  );
+  canvas.drawRect(sight, _fill(RouletteColors.ink));
+  canvas.drawRect(sight, _stroke(RouletteColors.cream, 3));
+  // 총구 구멍: 크림 테두리, 강선 무늬, 붉게 깜빡이는 속
+  canvas.drawCircle(c, r, _fill(RouletteColors.cream));
+  canvas.drawCircle(c, r * .78, _fill(RouletteColors.ink));
+  final rifling = _stroke(RouletteColors.line, r * .12)
+    ..strokeCap = StrokeCap.butt;
+  final ring = Rect.fromCircle(center: c, radius: r * .78);
+  for (var k = 0; k < 10; k++) {
+    canvas.drawArc(ring, k * math.pi / 5, math.pi / 5 * .53, false, rifling);
+  }
+  canvas.drawCircle(c, r * .5, _fill(Colors.black));
+  canvas.drawCircle(
+    c,
+    r * .5,
+    _fill(RouletteColors.red.withValues(alpha: .35 + .45 * glow)),
+  );
+  canvas.drawCircle(c, r * .3, _fill(Colors.black));
+}
+
+/// 총구가 나를 겨눌 때의 1인칭 장면입니다(342×400 기준).
+class _PovPainter extends CustomPainter {
+  const _PovPainter({required this.kind, required this.t});
+  final _PovKind kind;
+  final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const c = Offset(171, 70);
-    canvas.drawPath(
-      Path()
-        ..moveTo(c.dx, c.dy)
-        ..lineTo(120, 300)
-        ..lineTo(222, 300)
-        ..close(),
-      Paint()..color = beam,
+    const rays = Color(0x2E121110);
+    final glow = _pulse(t, 1400);
+    if (kind == _PovKind.shield) {
+      _paintRays(
+        canvas,
+        const Offset(171, 100),
+        count: 16,
+        r0: 70,
+        r1: 360,
+        widthDeg: 9,
+        color: rays,
+      );
+      _breathe(canvas, const Offset(171, 96), 1400, () {
+        _paintMuzzle(canvas, const Offset(171, 96), 34, glow: glow);
+      });
+      _paintShieldBack(canvas);
+      return;
+    }
+    final spin = kind == _PovKind.spin;
+    _paintRays(
+      canvas,
+      const Offset(171, 130),
+      count: 20,
+      r0: 90,
+      r1: 420,
+      widthDeg: 8,
+      color: rays,
     );
-    canvas.drawCircle(
-      c,
-      62,
-      Paint()
-        ..color = RouletteColors.track
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 6,
-    );
-    canvas.drawCircle(c, 56, Paint()..color = RouletteColors.cream);
+    _breathe(canvas, const Offset(171, 130), 1200, () {
+      _paintMuzzle(
+        canvas,
+        const Offset(171, 112),
+        52,
+        glow: glow,
+        spin: spin ? t / 1600 * math.pi * 2 : null,
+        arrows: spin,
+      );
+    });
+  }
+
+  void _breathe(Canvas canvas, Offset c, double period, VoidCallback draw) {
+    final s = 1 + .035 * _pulse(t, period);
     canvas.save();
     canvas.translate(c.dx, c.dy);
-    canvas.rotate(math.pi / 2);
-    paintRouletteGun(canvas, scale: .235);
+    canvas.scale(s);
+    canvas.translate(-c.dx, -c.dy);
+    draw();
+    canvas.restore();
+  }
+
+  /// 방패 안쪽(손잡이 쪽)을 내 눈앞에서 봅니다.
+  void _paintShieldBack(Canvas canvas) {
+    canvas.save();
+    canvas.translate(math.sin(t * .018) * 1.5, math.cos(t * .021) * 1.0);
+    final outer = Path()
+      ..moveTo(18, 196)
+      ..quadraticBezierTo(171, 150, 324, 196)
+      ..lineTo(324, 300)
+      ..quadraticBezierTo(324, 372, 171, 400)
+      ..quadraticBezierTo(18, 372, 18, 300)
+      ..close();
+    canvas.drawPath(
+      outer.shift(const Offset(8, 8)),
+      _fill(const Color(0x8C000000)),
+    );
+    canvas.drawPath(outer, _fill(RouletteColors.cream));
+    canvas.drawPath(outer, _stroke(RouletteColors.ink, 6));
+    final inner = Path()
+      ..moveTo(40, 210)
+      ..quadraticBezierTo(171, 172, 302, 210)
+      ..lineTo(302, 296)
+      ..quadraticBezierTo(302, 350, 171, 376)
+      ..quadraticBezierTo(40, 350, 40, 296)
+      ..close();
+    canvas.drawPath(inner, _stroke(const Color(0xFFC9BFAA), 4));
+    canvas.drawRRect(
+      RRect.fromLTRBR(96, 252, 246, 286, const Radius.circular(6)),
+      _fill(RouletteColors.ink),
+    );
+    canvas.drawRRect(
+      RRect.fromLTRBR(112, 258, 230, 280, const Radius.circular(11)),
+      _fill(RouletteColors.track),
+    );
+    for (final x in [104.0, 238.0]) {
+      canvas.drawCircle(Offset(x, 269), 7, _fill(RouletteColors.cream));
+      canvas.drawCircle(Offset(x, 269), 7, _stroke(RouletteColors.ink, 3));
+    }
+    for (final p in const [
+      Offset(48, 220),
+      Offset(294, 220),
+      Offset(58, 330),
+      Offset(284, 330),
+    ]) {
+      canvas.drawCircle(p, 5, _fill(RouletteColors.ink));
+    }
+    canvas.drawRRect(
+      RRect.fromLTRBR(150, 296, 192, 356, const Radius.circular(8)),
+      _fill(RouletteColors.ink),
+    );
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _AimPainter old) => old.beam != beam;
+  bool shouldRepaint(covariant _PovPainter old) =>
+      old.kind != kind || old.t != t;
+}
+
+/// 다른 사람이 겨눠질 때: 빛줄기, 붉은 조준선, 옆에서 본 리볼버(342×400 기준).
+class _SideAimPainter extends CustomPainter {
+  const _SideAimPainter({required this.t});
+  final double t;
+
+  /// 총구 끝과 대상 프로필 가운데입니다.
+  static const muzzle = Offset(172, 176);
+  static const target = Offset(262, 256);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _paintRays(
+      canvas,
+      muzzle,
+      count: 14,
+      r0: 60,
+      r1: 360,
+      widthDeg: 7,
+      color: const Color(0x2E2A2724),
+    );
+    final glow = _pulse(t, 1400);
+    canvas.drawPath(
+      Path()
+        ..moveTo(muzzle.dx, muzzle.dy - 6)
+        ..lineTo(target.dx, target.dy - 46)
+        ..lineTo(target.dx, target.dy + 46)
+        ..lineTo(muzzle.dx, muzzle.dy + 6)
+        ..close(),
+      _fill(RouletteColors.red.withValues(alpha: .5 + .4 * glow)),
+    );
+    final angle = math.atan2(target.dy - muzzle.dy, target.dx - muzzle.dx);
+    canvas.save();
+    canvas.translate(muzzle.dx, muzzle.dy);
+    canvas.rotate(angle);
+    canvas.scale(.8);
+    canvas.translate(-200, -31); // 그림 안의 총구 끝(200, 31)
+    canvas.save();
+    canvas.translate(8, 8);
+    _revolver(canvas, const Color(0x99000000), const Color(0x99000000));
+    canvas.restore();
+    _revolver(canvas, RouletteColors.cream, RouletteColors.ink);
+    canvas.restore();
+  }
+
+  /// 총구가 오른쪽을 향한 리볼버 옆모습입니다(손잡이가 왼쪽 아래).
+  void _revolver(Canvas canvas, Color fill, Color line) {
+    void shape(Path p, double w) {
+      canvas.drawPath(p, _fill(fill));
+      canvas.drawPath(p, _stroke(line, w));
+    }
+
+    shape(Path()..addRect(const Rect.fromLTWH(96, 22, 104, 18)), 4);
+    shape(Path()..addRect(const Rect.fromLTWH(188, 14, 8, 10)), 3);
+    shape(Path()..addRect(const Rect.fromLTWH(100, 40, 74, 9)), 3);
+    shape(
+      Path()
+        ..moveTo(40, 18)
+        ..lineTo(100, 14)
+        ..lineTo(100, 66)
+        ..lineTo(52, 70)
+        ..close(),
+      4,
+    );
+    shape(
+      Path()
+        ..addRRect(RRect.fromLTRBR(60, 14, 112, 60, const Radius.circular(9))),
+      4,
+    );
+    final flutes = _stroke(line, 3);
+    for (final y in [26.0, 37.0, 48.0]) {
+      canvas.drawLine(Offset(68, y), Offset(104, y), flutes);
+    }
+    shape(
+      Path()
+        ..moveTo(40, 20)
+        ..lineTo(30, 4)
+        ..lineTo(46, 6)
+        ..lineTo(52, 18)
+        ..close(),
+      3,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(62, 66)
+        ..quadraticBezierTo(64, 90, 86, 88)
+        ..quadraticBezierTo(96, 86, 94, 66),
+      _stroke(line, 4),
+    );
+    canvas.drawLine(
+      const Offset(76, 66),
+      const Offset(74, 80),
+      _stroke(line, 4),
+    );
+    shape(
+      Path()
+        ..moveTo(42, 62)
+        ..lineTo(70, 66)
+        ..lineTo(58, 112)
+        ..quadraticBezierTo(40, 118, 22, 110)
+        ..close(),
+      4,
+    );
+    canvas.drawLine(const Offset(36, 78), const Offset(56, 80), flutes);
+    canvas.drawLine(const Offset(32, 92), const Offset(52, 94), flutes);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SideAimPainter old) => old.t != t;
+}
+
+/// 다른 사람이 겨눠질 때 화면 아래로 보이는 내 방패 윗부분입니다.
+class _HeldShieldPainter extends CustomPainter {
+  const _HeldShieldPainter({required this.t});
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(math.sin(t * .012) * 1.5, math.cos(t * .014) * 1.0);
+    final outer = Path()
+      ..moveTo(30, 330)
+      ..quadraticBezierTo(171, 296, 312, 330)
+      ..lineTo(312, 430)
+      ..lineTo(30, 430)
+      ..close();
+    canvas.drawPath(
+      outer.shift(const Offset(8, 8)),
+      _fill(const Color(0x8C000000)),
+    );
+    canvas.drawPath(outer, _fill(RouletteColors.cream));
+    canvas.drawPath(outer, _stroke(RouletteColors.ink, 6));
+    canvas.drawPath(
+      Path()
+        ..moveTo(50, 342)
+        ..quadraticBezierTo(171, 314, 292, 342)
+        ..lineTo(292, 430),
+      _stroke(const Color(0xFFC9BFAA), 4),
+    );
+    canvas.drawRRect(
+      RRect.fromLTRBR(106, 362, 236, 392, const Radius.circular(6)),
+      _fill(RouletteColors.ink),
+    );
+    for (final x in [114.0, 228.0]) {
+      canvas.drawCircle(Offset(x, 377), 6, _fill(RouletteColors.cream));
+      canvas.drawCircle(Offset(x, 377), 6, _stroke(RouletteColors.ink, 3));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _HeldShieldPainter old) => old.t != t;
+}
+
+/// 이름 끝 글자에 받침이 있으면 '을', 없으면 '를'을 붙입니다(한국어 안내 문구용).
+String _objectParticle(String name) {
+  if (name.isEmpty) return '를';
+  final code = name.codeUnitAt(name.length - 1);
+  if (code < 0xAC00 || code > 0xD7A3) return '를';
+  return (code - 0xAC00) % 28 == 0 ? '를' : '을';
 }
 
 List<RoulettePlayerView> _revealOrder(RussianRouletteView game) {
@@ -2890,7 +3509,7 @@ class _SpectateBody extends StatelessWidget {
             ],
           ),
         ),
-        Text(
+        MosiBalancedText(
           rouletteText(
             '선택 내용은 공개 전까지 관전자에게도 보이지 않아요',
             'Choices stay hidden from spectators until the reveal',
@@ -2898,6 +3517,7 @@ class _SpectateBody extends StatelessWidget {
             '公開前觀戰者也看不到選擇',
           ),
           textAlign: TextAlign.center,
+          maxLines: 2,
           style: RouletteType.body(13, RouletteColors.sub),
         ),
       ],
@@ -2991,7 +3611,7 @@ class _ResultBody extends StatelessWidget {
                           size: 38,
                         ),
                         const SizedBox(width: 12),
-                        Flexible(
+                        Expanded(
                           child: Text(
                             entry.$1.nickname,
                             maxLines: 1,
@@ -3009,17 +3629,31 @@ class _ResultBody extends StatelessWidget {
                           const SizedBox(width: 6),
                           const _MeTag(),
                         ],
-                        const Spacer(),
-                        Text(
-                          entry.$2 == null
-                              ? '–'
-                              : rouletteText(
-                                  '${entry.$2}위',
-                                  '#${entry.$2}',
-                                  '第${entry.$2}名',
-                                  '第${entry.$2}名',
-                                ),
-                          style: RouletteType.display(20, RouletteColors.cream),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          key: ValueKey('roulette-result-rank-${entry.$1.uid}'),
+                          width: 58,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              entry.$2 == null
+                                  ? '–'
+                                  : rouletteText(
+                                      '${entry.$2}위',
+                                      '#${entry.$2}',
+                                      '第${entry.$2}名',
+                                      '第${entry.$2}名',
+                                    ),
+                              maxLines: 1,
+                              softWrap: false,
+                              textAlign: TextAlign.right,
+                              style: RouletteType.display(
+                                20,
+                                RouletteColors.cream,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),

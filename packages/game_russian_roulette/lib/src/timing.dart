@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/animation.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
@@ -36,7 +38,7 @@ abstract final class RussianRouletteTiming {
 
   /// 새 게임 화면이 다소 늦게 준비되어도 시작 연출을 한 번 보여 줄 수 있는
   /// 첫 턴의 최소 남은 시간입니다.
-  static const introMinimumRemaining = Duration(seconds: 22);
+  static const introMinimumRemaining = Duration(seconds: 8);
 
   /// 격발 표시 후 피격 결과가 나오기 전 정지 시간입니다.
   static const firingHold = Duration(milliseconds: 1400);
@@ -91,6 +93,27 @@ abstract final class RussianRouletteTiming {
     return ((afterLead.inMilliseconds ~/ rotationStep.inMilliseconds) + 1)
         .clamp(0, total);
   }
+}
+
+/// 회전 단계에 진입한 뒤 실제 총구 모션과 효과음을 맞추기 위한 남은 시간입니다.
+/// 첫 이동 전 준비 구간에는 [delay]만 기다리고, 이미 이동이 시작됐다면
+/// [Duration.zero]으로 즉시 이어 재생합니다.
+({Duration delay, Duration window})? rouletteRotationAudioTiming(
+  Duration elapsed,
+  int spinCount,
+) {
+  if (spinCount <= 0) return null;
+  final startMs = RussianRouletteTiming.rotationLead.inMilliseconds;
+  final endMs =
+      startMs +
+      RussianRouletteTiming.rotationStep.inMilliseconds * spinCount.clamp(0, 8);
+  final elapsedMs = elapsed.inMilliseconds.clamp(0, endMs).toInt();
+  if (elapsedMs >= endMs) return null;
+  final delayMs = math.max(0, startMs - elapsedMs);
+  return (
+    delay: Duration(milliseconds: delayMs),
+    window: Duration(milliseconds: endMs - math.max(startMs, elapsedMs)),
+  );
 }
 
 /// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.

@@ -93,6 +93,7 @@ test("직전 제출이 없으면 손패에서 한 장을 자동 제출하고 턴
   assert.equal(game.public.lastPlay.cardCount, 1);
   assert.equal(game.server.lastPlayCards.length, 1);
   assert.equal(game.public.revision, 11);
+  assert.deepEqual(game.public.lastTimeout, {uid: "p1", kind: "submit", at: 2000});
 });
 
 test("직전 제출이 있으면 LIAR를 대신 선언한다 — 거짓이면 제출자가 벌칙", () => {
@@ -110,6 +111,8 @@ test("직전 제출이 있으면 LIAR를 대신 선언한다 — 거짓이면 �
   assert.equal(result.type, "forcedLiar");
   assert.equal(result.truthful, false);
   assert.equal(result.penaltyTargetUid, "p3");
+  assert.equal(game.public.lastTimeout.kind, "liar");
+  assert.equal(game.public.lastTimeout.uid, result.challengerUid);
   assert.equal(game.public.phase, "penalty");
   assert.equal(game.public.turnUid, null);
   assert.equal(game.public.lastPlay.revealed, true);
@@ -177,6 +180,7 @@ test("마지막 카드 도전 단계에서는 FOLD로 자신이 벌칙을 받는
   assert.equal(result.type, "forcedFold");
   assert.equal(game.public.phase, "penalty");
   assert.equal(game.public.penaltyTargetUid, "p1");
+  assert.deepEqual(game.public.lastTimeout, {uid: "p1", kind: "fold", at: 2000});
 });
 
 test("마지막 한 장 제출로 lastCardChallenge가 열리는 경우를 계산한다", () => {

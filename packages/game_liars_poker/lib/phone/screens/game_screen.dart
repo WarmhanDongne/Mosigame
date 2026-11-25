@@ -24,6 +24,8 @@ import 'package:game_liars_poker/phone/widgets/exit_modal.dart';
 import 'package:game_liars_poker/phone/widgets/settings_dialog.dart';
 import 'package:game_liars_poker/phone/widgets/turn_timer.dart';
 import 'package:game_liars_poker/phone/widgets/top_bar.dart';
+import 'package:game_liars_poker/phone/widgets/my_profile_plate.dart';
+import 'package:game_liars_poker/phone/widgets/timeout_notice.dart';
 import 'package:game_liars_poker/phone/widgets/truth_count_hint.dart';
 import 'package:game_liars_poker/phone/widgets/turn_action_switcher.dart';
 import 'package:game_liars_poker/shared/widgets/pressable_button.dart';
@@ -92,6 +94,18 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   /// 덮은 채로 겹쳐 보이지 않게, 안내가 다 사라진 뒤 카드가 내려옵니다.
   bool _holdHandForTruthHint = false;
   Timer? _truthHintExitTimer;
+
+  /// 지금 타이머 자리에 보이는 시간 초과 안내입니다. 없으면 null입니다.
+  LiarsPokerTimeoutKind? _timeoutNotice;
+  int _timeoutNoticeId = 0;
+  Timer? _timeoutNoticeTimer;
+
+  /// 이미 안내한 서버 시간 초과 기록의 시각입니다. 같은 기록은 한 번만 띄웁니다.
+  int? _handledTimeoutAt;
+
+  /// 이 휴대폰이 직접 시간 초과 행동을 보낸 시각입니다. 바로 뒤에 태블릿이
+  /// 같은 턴을 대신 처리해도 안내가 두 번 뜨지 않게 막습니다.
+  DateTime? _localTimeoutAt;
   static const _truthHintExitHold = Duration(milliseconds: 300);
 
   @override
@@ -223,6 +237,7 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   @override
   void dispose() {
     _truthHintExitTimer?.cancel();
+    _timeoutNoticeTimer?.cancel();
     _handCardStackController.dispose();
     _controlsEntryController.dispose();
     super.dispose();
@@ -241,6 +256,7 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
   }
 
   Widget _buildGameScreen(LiarsPokerController? controller) {
+    _watchServerTimeout(controller);
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final turnPlayer = controller?.players[controller.turnUid];
@@ -288,7 +304,9 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
     final showControls =
         regions.showActions &&
         !widget.showSpectatorTopBar &&
-        (controller == null || controller.handCards.isNotEmpty);
+        (controller == null ||
+            controller.handCards.isNotEmpty ||
+            controller.showFoldPrompt);
     final announcement = flowStep.buildAnnouncement();
 
     // 공개 완료 콜백 전에 화면이 재생성되거나 hot reload된 경우에도
@@ -333,6 +351,21 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
         title: "LIAR'S POKER",
         markdown: LiarsPokerCopy.tabletRules,
       ),
+    );
+  }
+
+  /// 상단바 왼쪽의 내 프로필 명패입니다. 내 플레이어 정보가 아직 없으면 비웁니다.
+  Widget? _buildMyProfilePlate(
+    LiarsPokerController? controller, {
+    required bool isLandscape,
+  }) {
+    if (controller == null) return null;
+    final me = controller.players[controller.uid];
+    if (me == null) return null;
+    return LiarsPokerMyProfilePlate(
+      nickname: me.nickname,
+      characterId: me.characterId,
+      isLandscape: isLandscape,
     );
   }
 
@@ -448,6 +481,11 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
     }
     // '태블릿을 봐 주세요!' 안내가 다 사라진 뒤에 카드가 내려옵니다.
     if (_holdHandForTruthHint) return const SizedBox.shrink();
+    // 벌칙 룰렛으로 넘어가는 짧은 틈과 탈락 확정 뒤에는 빈 손패 문구를
+    // 만들지 않습니다. 해당 단계는 판정·룰렛 또는 관전 화면이 소유합니다.
+    if (controller.phase == 'penalty' || controller.isEliminated) {
+      return const SizedBox.shrink();
+    }
     // 손패가 아직 없거나 모두 소진된 동안에는 빈 상태 문구를 표시합니다.
     if (controller.handCards.isEmpty && !controller.hasRevealedHand) {
       _showControlsAfterFrame();
@@ -519,15 +557,78 @@ class _LiarsPokerPhoneGameScreenState extends State<LiarsPokerPhoneGameScreen>
     // 잔여카드를 가진 마지막 1인이 응답하지 않으면 상대를 의심하지 않고
     // FOLD 처리해 새 라운드로 진행합니다.
     if (controller.showFoldPrompt && controller.canFoldLastCardChallenge) {
+      _showTimeoutNotice(LiarsPokerTimeoutKind.fold, local: true);
       unawaited(controller.foldLastCardChallenge());
       return;
     }
 
     if (controller.canCallLiar) {
+      _showTimeoutNotice(LiarsPokerTimeoutKind.liar, local: true);
       unawaited(controller.callLiar());
       return;
     }
+    _showTimeoutNotice(LiarsPokerTimeoutKind.submit, local: true);
     unawaited(controller.submitCardIndexes([0]));
+  }
+
+  // ---------------------------------------------------------------------------
+  // 시간 초과 안내
+  // ---------------------------------------------------------------------------
+  //
+  // 두 길로 들어옵니다.
+  // 1. 이 휴대폰 타이머가 0이 되어 직접 자동 행동을 보낸 경우(_handleTurnTimeout)
+  // 2. 휴대폰이 늦거나 끊겨 태블릿이 대신 처리하고 서버가 lastTimeout을 남긴 경우
+  // 안내는 화면 표시만 바꾸고 게임 진행에는 끼어들지 않습니다.
+  void _showTimeoutNotice(LiarsPokerTimeoutKind kind, {bool local = false}) {
+    if (!mounted) return;
+    if (local) _localTimeoutAt = DateTime.now();
+    _timeoutNoticeTimer?.cancel();
+    setState(() {
+      _timeoutNotice = kind;
+      _timeoutNoticeId += 1;
+    });
+    _timeoutNoticeTimer = Timer(LiarsPokerTimeoutNotice.visibleFor, () {
+      if (mounted) setState(() => _timeoutNotice = null);
+    });
+  }
+
+  void _watchServerTimeout(LiarsPokerController? controller) {
+    final record = controller?.lastTimeout;
+    if (controller == null || record == null) return;
+    if (record.at == _handledTimeoutAt) return;
+    _handledTimeoutAt = record.at;
+    if (!record.isFreshFor(controller.uid)) return;
+    final kind = LiarsPokerTimeoutKind.fromWire(record.kind);
+    if (kind == null) return;
+    final local = _localTimeoutAt;
+    if (local != null &&
+        DateTime.now().difference(local) < const Duration(seconds: 5)) {
+      return;
+    }
+    // build 도중이라 다음 프레임에 띄웁니다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showTimeoutNotice(kind);
+    });
+  }
+
+  Widget _buildTimeoutNoticeLayer({required Key key, required double textTop}) {
+    final kind = _timeoutNotice;
+    return Positioned.fill(
+      key: key,
+      child: IgnorePointer(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          reverseDuration: const Duration(milliseconds: 320),
+          child: kind == null
+              ? const SizedBox.expand(key: ValueKey('timeout-notice-off'))
+              : LiarsPokerTimeoutNotice(
+                  key: ValueKey('timeout-notice-$_timeoutNoticeId'),
+                  kind: kind,
+                  textTop: textTop,
+                ),
+        ),
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------

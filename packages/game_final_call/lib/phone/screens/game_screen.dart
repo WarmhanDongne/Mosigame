@@ -19,6 +19,7 @@ import 'package:game_final_call/shared/widgets/party_pop.dart';
 import 'package:game_final_call/phone/widgets/game_actions.dart';
 import 'package:game_final_call/phone/widgets/hand_card_stack.dart';
 import 'package:game_final_call/phone/widgets/four_card_call_splash.dart';
+import 'package:game_final_call/phone/widgets/timeout_alarm.dart';
 import 'package:game_kit/phone/animations/control_entry_animation.dart';
 import 'package:game_kit/localization/game_locale.dart';
 
@@ -77,6 +78,14 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
   String? _pendingActionLabel;
   int? _pendingActionRevision;
 
+  /// 지금 조작 패널을 덮고 있는 시간 초과 안내입니다. 없으면 null입니다.
+  FinalCallTimeoutKind? _timeoutAlarm;
+  int _timeoutAlarmId = 0;
+  Timer? _timeoutAlarmTimer;
+
+  /// 이미 안내한 서버 시간 초과 기록의 시각입니다. 같은 기록은 한 번만 띄웁니다.
+  int? _handledTimeoutAt;
+
   FinalCallController get controller => widget.controller;
   bool get handRevealed => widget.handRevealed;
   String? get selectedCardId => widget.selectedCardId;
@@ -107,6 +116,7 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
 
   @override
   void dispose() {
+    _timeoutAlarmTimer?.cancel();
     _controlsEntryController.dispose();
     super.dispose();
   }
@@ -158,6 +168,51 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
       if (!mounted || widget.controller.phase != 'dealing') return;
       _controlsEntryController.reset();
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 시간 초과 안내
+  // ---------------------------------------------------------------------------
+  //
+  // 파이널콜은 태블릿이 시간 초과를 보내고 서버가 대신 처리합니다. 서버가
+  // 공개 상태에 남긴 lastTimeout이 나이고 방금 일어난 일이면 한 번 띄웁니다.
+  // 안내는 화면 표시만 바꾸고 차례 진행에는 끼어들지 않습니다.
+  void _watchServerTimeout() {
+    final record = controller.lastTimeout;
+    if (record == null || record.at == _handledTimeoutAt) return;
+    _handledTimeoutAt = record.at;
+    if (!record.isFreshFor(controller.uid)) return;
+    final kind = FinalCallTimeoutKind.fromWire(record.kind);
+    if (kind == null) return;
+    // build 도중이라 다음 프레임에 띄웁니다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _timeoutAlarmTimer?.cancel();
+      setState(() {
+        _timeoutAlarm = kind;
+        _timeoutAlarmId += 1;
+        // 보내던 '새 카드' 표시가 남아 있으면 함께 걷습니다.
+        _pendingActionLabel = null;
+        _pendingActionRevision = null;
+      });
+      _timeoutAlarmTimer = Timer(FinalCallTimeoutAlarm.visibleFor, () {
+        if (mounted) setState(() => _timeoutAlarm = null);
+      });
+    });
+  }
+
+  Widget _buildTimeoutAlarm() {
+    final kind = _timeoutAlarm;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 160),
+      reverseDuration: const Duration(milliseconds: 280),
+      child: kind == null
+          ? const SizedBox.shrink(key: ValueKey('timeout-alarm-off'))
+          : SizedBox.expand(
+              key: ValueKey('timeout-alarm-$_timeoutAlarmId'),
+              child: FinalCallTimeoutAlarm(kind: kind),
+            ),
+    );
   }
 
   /// 덱 또는 공개 카드에서 새 카드를 가져옵니다.
@@ -212,6 +267,7 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
   Widget build(BuildContext context) {
     // 새 라운드 배분이 시작되면 다음 공개까지 상단바·조작부를 다시 감춥니다.
     if (controller.phase == 'dealing') _resetEntryForNewRound();
+    _watchServerTimeout();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -277,11 +333,36 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
                         style: ControlEntryStyle.heavyDrop,
                         begin: 0.12,
                         end: 1,
-                        child: FinalCallPhonePanel(
-                          child: _buildControl(context),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            FinalCallPhonePanel(
+                              child: _buildControl(context),
+                            ),
+                            // 패널 테두리(4px) 안쪽을 노란 안내로 덮습니다.
+                            Positioned.fill(
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: _buildTimeoutAlarm(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       )
-                    : const SizedBox.shrink(),
+                    // 라운드가 바로 끝나 조작 패널이 사라져도 안내는
+                    // 같은 자리에 노란 상자로 남깁니다(덱이 다 떨어진 경우).
+                    : _timeoutAlarm == null
+                    ? const SizedBox.shrink()
+                    : FinalCallPopBox(
+                        color: FinalCallColors.yellow,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: _buildTimeoutAlarm(),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -294,6 +375,8 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
   // 포카드 완성 축하
   // ---------------------------------------------------------------------------
   // 내 손패가 포카드가 되는 순간 카드가 통통 튀고 FOUR CARD! 도장이 찍힙니다.
+  // 포카드 효과음은 손패 완성 시점이 아니라 태블릿의 포카드 CALL 공개
+  // 애니메이션이 시작될 때만 재생합니다.
   // 같은 라운드의 같은 네 장이면 키가 같아서 다시 재생하지 않습니다.
   // 이 연출은 내 휴대폰에만 나오고 태블릿에는 CALL 전까지 아무것도 보이지
   // 않습니다.
@@ -373,7 +456,9 @@ class _FinalCallPhoneGameScreenState extends State<FinalCallPhoneGameScreen>
         _pendingActionRevision == controller.revision &&
         controller.isMyTurn) {
       key = 'seal';
-      child = Center(child: _FinalCallActionSeal(label: _pendingActionLabel!));
+      child = _pendingActionLabel == FinalCallCopy.newCard
+          ? const FinalCallNewCardLoadingPanel()
+          : Center(child: _FinalCallActionSeal(label: _pendingActionLabel!));
     } else if (controller.isMyTurn) {
       key = controller.pendingDraw == null ? 'turn-start' : 'pending-draw';
       child = FinalCallPhoneActions(

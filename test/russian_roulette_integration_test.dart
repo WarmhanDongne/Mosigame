@@ -5,10 +5,10 @@ import 'package:project00/games/game_registry.dart';
 import 'package:project00/platform/home/tablet/widgets/detail/game_detail_previews.dart';
 
 void main() {
-  test('registry exposes Russian Roulette as a 2-6 player game', () {
+  test('registry exposes Russian Roulette as a 2-8 player game', () {
     final game = const GameRegistry().find('russian_roulette');
     expect(game, isNotNull);
-    expect(game!.supportedPlayerCounts, [2, 3, 4, 5, 6]);
+    expect(game!.supportedPlayerCounts, [2, 3, 4, 5, 6, 7, 8]);
     expect(game.leaveFunctionName, 'game_russian_roulette_leave_game');
   });
 

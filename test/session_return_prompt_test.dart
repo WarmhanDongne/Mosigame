@@ -33,7 +33,7 @@ void main() {
   testWidgets('진행 중인 게임은 게임 다시 참여를 보여 준다', (tester) async {
     await pumpPrompt(tester, session: RestorableSession.activeGame);
 
-    expect(find.text('진행 중인 게임이 있어요'), findsOneWidget);
+    expect(find.bySemanticsLabel('진행 중인 게임이 있어요'), findsOneWidget);
     expect(find.text('게임 다시 참여'), findsOneWidget);
     expect(find.text('그룹 다시 참여'), findsNothing);
     expect(find.text('나중에'), findsOneWidget);
@@ -42,7 +42,7 @@ void main() {
   testWidgets('대기실은 그룹 다시 참여를 보여 준다', (tester) async {
     await pumpPrompt(tester, session: RestorableSession.waitingRoom);
 
-    expect(find.text('참여 중인 그룹이 있어요'), findsOneWidget);
+    expect(find.bySemanticsLabel('참여 중인 그룹이 있어요'), findsOneWidget);
     expect(find.text('그룹 다시 참여'), findsOneWidget);
     expect(find.text('게임 다시 참여'), findsNothing);
   });

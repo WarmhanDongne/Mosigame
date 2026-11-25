@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// The game route remains visible while a patterned diagonal wipe covers it.
 /// The destination appears under the same wipe as it clears in that direction.
-const gameExitTransitionDuration = Duration(milliseconds: 960);
+const gameExitTransitionDuration = Duration(milliseconds: 620);
 
 class GameExitMaterialPageRoute<T> extends MaterialPageRoute<T> {
   GameExitMaterialPageRoute({required super.builder, super.settings});
@@ -14,6 +14,12 @@ class GameExitMaterialPageRoute<T> extends MaterialPageRoute<T> {
   /// `Navigator.pop`을 사용하는 기존 종료 흐름은 그대로 동작합니다.
   @override
   bool get popGestureEnabled => false;
+
+  /// Android 시스템 뒤로가기와 `Navigator.maybePop`은 게임의 명시적 종료
+  /// 절차를 건너뛰므로 막습니다. 게임 안의 종료 버튼이 사용하는
+  /// `Navigator.pop`은 [popDisposition]과 무관하게 그대로 동작합니다.
+  @override
+  RoutePopDisposition get popDisposition => RoutePopDisposition.doNotPop;
 
   @override
   Duration get reverseTransitionDuration => gameExitTransitionDuration;
@@ -51,6 +57,9 @@ class GameExitInstantPageRoute<T> extends PageRouteBuilder<T> {
 
   @override
   bool get popGestureEnabled => false;
+
+  @override
+  RoutePopDisposition get popDisposition => RoutePopDisposition.doNotPop;
 }
 
 /// 자리 배치 뒤 한지 창호문이 양옆에서 닫혔다가 열리며 게임을 공개합니다.
@@ -72,6 +81,9 @@ class GameDoorEntryPageRoute<T> extends PageRouteBuilder<T> {
 
   @override
   bool get popGestureEnabled => false;
+
+  @override
+  RoutePopDisposition get popDisposition => RoutePopDisposition.doNotPop;
 }
 
 /// 닫힘 0.84초 + 닫힌 채 1.08초 + 열림 1.08초입니다.

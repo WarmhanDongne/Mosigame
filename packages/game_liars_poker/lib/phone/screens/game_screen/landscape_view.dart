@@ -46,13 +46,18 @@ extension _LandscapeGameView on _LiarsPokerPhoneGameScreenState {
                     bottom: false,
                     child: PhoneGameTopBar(
                       isLandscape: true,
+                      leadingWidget: _buildMyProfilePlate(
+                        controller,
+                        isLandscape: true,
+                      ),
                       centerWidget:
                           regions.showTimer &&
                               !widget.showSpectatorTopBar &&
                               controller.turnDeadlineAt != null &&
                               controller.phase != 'dealing' &&
                               controller.phase != 'penalty' &&
-                              controller.isMyTurn
+                              controller.isMyTurn &&
+                              _timeoutNotice == null
                           ? PhoneTimer(
                               expiresAt: controller.turnDeadlineAt!,
                               onTimeout: () => _handleTurnTimeout(controller),
@@ -170,6 +175,11 @@ extension _LandscapeGameView on _LiarsPokerPhoneGameScreenState {
                     }
                   },
                 ),
+              ),
+              // 가로 화면은 타이머가 상단바 가운데에 있어 그 높이에 띄웁니다.
+              _buildTimeoutNoticeLayer(
+                key: const ValueKey('landscape-timeout-notice-slot'),
+                textTop: 12,
               ),
             ],
           );

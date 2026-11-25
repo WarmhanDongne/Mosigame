@@ -11,6 +11,7 @@ import 'package:game_mafia/game_assets.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_mafia/phone/phone_board.dart';
 import 'package:game_mafia/tablet/screens/role_setup_screen.dart';
 import 'package:game_mafia/tablet/tablet_board.dart';
@@ -141,7 +142,7 @@ class MafiaGame extends TemplateGame {
       builder: (context) => CriticalNetworkGuard(
         provider: provider,
         exitLabel: '대기실로'.localized,
-        onExit: () => Navigator.of(context).maybePop(),
+        onExit: () => exitGameRoute(context),
         child: MafiaTabletGame(
           roomCode: roomCode,
           gameService: MafiaService(),

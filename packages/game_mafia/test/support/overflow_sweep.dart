@@ -31,8 +31,7 @@ class SweepDevice {
   );
 
   @override
-  String toString() =>
-      '$name ${size.width.toInt()}×${size.height.toInt()}';
+  String toString() => '$name ${size.width.toInt()}×${size.height.toInt()}';
 }
 
 /// 작은 SE부터 큰 Pro Max·안드로이드까지 세로 휴대폰입니다.
@@ -41,27 +40,56 @@ const sweepPhones = [
   SweepDevice('작은 안드로이드', Size(360, 640)),
   SweepDevice('Galaxy S', Size(360, 780), padding: EdgeInsets.only(top: 24)),
   SweepDevice('iPhone SE 3', Size(375, 667), padding: EdgeInsets.only(top: 20)),
-  SweepDevice('iPhone 13 mini', Size(375, 812), padding: EdgeInsets.only(top: 50, bottom: 34)),
-  SweepDevice('iPhone 14', Size(390, 844), padding: EdgeInsets.only(top: 47, bottom: 34)),
+  SweepDevice(
+    'iPhone 13 mini',
+    Size(375, 812),
+    padding: EdgeInsets.only(top: 50, bottom: 34),
+  ),
+  SweepDevice(
+    'iPhone 14',
+    Size(390, 844),
+    padding: EdgeInsets.only(top: 47, bottom: 34),
+  ),
   SweepDevice('Pixel 7', Size(412, 915), padding: EdgeInsets.only(top: 24)),
-  SweepDevice('iPhone Pro Max', Size(430, 932), padding: EdgeInsets.only(top: 59, bottom: 34)),
+  SweepDevice(
+    'iPhone Pro Max',
+    Size(430, 932),
+    padding: EdgeInsets.only(top: 59, bottom: 34),
+  ),
 ];
 
 /// 태블릿 게임은 가로로만 씁니다.
 const sweepTablets = [
   SweepDevice('작은 안드로이드 탭', Size(960, 600), padding: EdgeInsets.only(top: 24)),
   SweepDevice('iPad 9', Size(1080, 810), padding: EdgeInsets.only(top: 20)),
-  SweepDevice('iPad mini', Size(1133, 744), padding: EdgeInsets.only(top: 24, bottom: 20)),
-  SweepDevice('iPad Air', Size(1180, 820), padding: EdgeInsets.only(top: 24, bottom: 20)),
-  SweepDevice('iPad Pro 11', Size(1194, 834), padding: EdgeInsets.only(top: 24, bottom: 20)),
+  SweepDevice(
+    'iPad mini',
+    Size(1133, 744),
+    padding: EdgeInsets.only(top: 24, bottom: 20),
+  ),
+  SweepDevice(
+    'iPad Air',
+    Size(1180, 820),
+    padding: EdgeInsets.only(top: 24, bottom: 20),
+  ),
+  SweepDevice(
+    'iPad Pro 11',
+    Size(1194, 834),
+    padding: EdgeInsets.only(top: 24, bottom: 20),
+  ),
   SweepDevice('Galaxy Tab', Size(1280, 800), padding: EdgeInsets.only(top: 24)),
-  SweepDevice('iPad Pro 13', Size(1366, 1024), padding: EdgeInsets.only(top: 24, bottom: 20)),
+  SweepDevice(
+    'iPad Pro 13',
+    Size(1366, 1024),
+    padding: EdgeInsets.only(top: 24, bottom: 20),
+  ),
   SweepDevice('큰 안드로이드 탭', Size(1920, 1200), padding: EdgeInsets.only(top: 24)),
   SweepDevice('iPad 1024', Size(1024, 768), padding: EdgeInsets.only(top: 20)),
 ];
 
-List<SweepDevice> get sweepPhonesLandscape =>
-    [for (final device in sweepPhones) device.landscape];
+List<SweepDevice> get sweepPhonesLandscape => [
+  for (final device in sweepPhones) device.landscape,
+];
 
 /// 실제 글꼴로 그려야 글자 폭·높이가 기기와 같아집니다.
 ///
@@ -167,27 +195,66 @@ class OverflowSweep {
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 1);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-      File('$dir/${name.replaceAll(RegExp(r'[^0-9A-Za-z가-힣×]+'), '_')}.png')
-          .writeAsBytesSync(bytes!.buffer.asUint8List());
+      File(
+        '$dir/${name.replaceAll(RegExp(r'[^0-9A-Za-z가-힣×]+'), '_')}.png',
+      ).writeAsBytesSync(bytes!.buffer.asUint8List());
     });
   }
 
   /// 말줄임표로 잘렸거나 잘라 내는 부모·화면 밖으로 빠진 글자를 찾습니다.
   void scanText(WidgetTester tester) {
-    final screen = Offset.zero & (tester.view.physicalSize / tester.view.devicePixelRatio);
+    final screen =
+        Offset.zero & (tester.view.physicalSize / tester.view.devicePixelRatio);
     for (final element in find.byType(RichText).evaluate()) {
       final render = element.renderObject;
-      if (render is! RenderParagraph || !render.hasSize || !render.attached) continue;
-      final text = render.text.toPlainText().replaceAll('\n', ' ');
+      if (render is! RenderParagraph || !render.hasSize || !render.attached) {
+        continue;
+      }
+      final rawText = render.text.toPlainText();
+      final text = rawText.replaceAll('\n', ' ');
       if (text.trim().isEmpty || _invisible(render)) continue;
       final short = text.length > 30 ? '${text.substring(0, 30)}…' : text;
       if (render.didExceedMaxLines) {
         problems.add('$where | 말줄임 | "$short"');
         continue;
       }
-      if (render.getMinIntrinsicHeight(render.size.width) > render.size.height + 1) {
+      if (render.getMinIntrinsicHeight(render.size.width) >
+          render.size.height + 1) {
         problems.add('$where | 글자 높이 잘림 | "$short"');
         continue;
+      }
+      if (where.startsWith('휴대폰') &&
+          !rawText.contains('\n') &&
+          rawText.contains(RegExp(r'\s')) &&
+          rawText.trim().runes.length <= 40 &&
+          rawText.trim().runes.length >= 8) {
+        final boxes = render.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: rawText.length),
+        );
+        final lineBands = _textLineBands(boxes);
+        final lastBand = lineBands.isEmpty ? null : lineBands.last;
+        var offset = 0;
+        var lastLineCharacters = 0;
+        for (final rune in rawText.runes) {
+          final character = String.fromCharCode(rune);
+          final end = offset + character.length;
+          final characterBoxes = render.getBoxesForSelection(
+            TextSelection(baseOffset: offset, extentOffset: end),
+          );
+          if (lastBand != null &&
+              characterBoxes.any(
+                (box) =>
+                    box.top < lastBand[1] - .5 && box.bottom > lastBand[0] + .5,
+              ) &&
+              !RegExp(r'[\s\p{P}\p{S}]', unicode: true).hasMatch(character)) {
+            lastLineCharacters++;
+          }
+          offset = end;
+        }
+        if (lineBands.length > 1 && lastLineCharacters <= 2) {
+          problems.add('$where | 마지막 줄 고립 | "$short"');
+          continue;
+        }
       }
       final rect = MatrixUtils.transformRect(
         render.getTransformTo(null),
@@ -198,16 +265,23 @@ class OverflowSweep {
       if (_insideScroll(render)) continue;
       var bounds = screen;
       var cutBy = '화면';
-      for (RenderObject? node = render.parent; node != null; node = node.parent) {
-        final clips = node is RenderClipRect ||
+      for (
+        RenderObject? node = render.parent;
+        node != null;
+        node = node.parent
+      ) {
+        final clips =
+            node is RenderClipRect ||
             node is RenderClipRRect ||
             node is RenderClipPath ||
             (node is RenderStack && node.clipBehavior != Clip.none);
         if (clips && node is RenderBox && node.hasSize) {
-          final next = bounds.intersect(MatrixUtils.transformRect(
-            node.getTransformTo(null),
-            Offset.zero & node.size,
-          ));
+          final next = bounds.intersect(
+            MatrixUtils.transformRect(
+              node.getTransformTo(null),
+              Offset.zero & node.size,
+            ),
+          );
           if (next != bounds) cutBy = node.runtimeType.toString();
           bounds = next;
         }
@@ -215,10 +289,28 @@ class OverflowSweep {
       final visible = bounds.intersect(rect);
       // 완전히 화면 밖·가려진 글자는 연출 중일 수 있어 건너뜁니다.
       if (visible.width <= 0 || visible.height <= 0) continue;
-      if (visible.width < rect.width - 1.5 || visible.height < rect.height - 1.5) {
+      if (visible.width < rect.width - 1.5 ||
+          visible.height < rect.height - 1.5) {
         problems.add('$where | 글자 일부 잘림($cutBy) | "$short"');
       }
     }
+  }
+
+  static List<List<double>> _textLineBands(List<TextBox> boxes) {
+    final bands = <List<double>>[];
+    for (final box in boxes) {
+      final index = bands.indexWhere(
+        (band) => box.top < band[1] - .5 && box.bottom > band[0] + .5,
+      );
+      if (index < 0) {
+        bands.add([box.top, box.bottom]);
+      } else {
+        if (box.top < bands[index][0]) bands[index][0] = box.top;
+        if (box.bottom > bands[index][1]) bands[index][1] = box.bottom;
+      }
+    }
+    bands.sort((a, b) => a[0].compareTo(b[0]));
+    return bands;
   }
 
   static bool _insideScroll(RenderObject render) {
@@ -231,7 +323,9 @@ class OverflowSweep {
   static bool _invisible(RenderObject render) {
     for (RenderObject? node = render; node != null; node = node.parent) {
       if (node is RenderOpacity && node.opacity < .05) return true;
-      if (node is RenderAnimatedOpacity && node.opacity.value < .05) return true;
+      if (node is RenderAnimatedOpacity && node.opacity.value < .05) {
+        return true;
+      }
       if (node is RenderOffstage && node.offstage) return true;
     }
     return false;

@@ -32,6 +32,11 @@ abstract final class FinalCallSounds {
   static const win =
       'packages/game_final_call/assets/games/final_call/sounds/win.mp3';
 
+  /// 태블릿의 포카드 CALL 공개 애니메이션이 시작될 때 재생합니다. 제공받은
+  /// 원본의 0~3초 구간만 별도 에셋으로 잘라 사용합니다.
+  static const fourCard =
+      'packages/game_final_call/assets/games/final_call/sounds/four_card.mp3';
+
   // ---------------------------------------------------------------------------
   // 나레이션(사람 목소리)
   // ---------------------------------------------------------------------------
@@ -70,7 +75,7 @@ abstract final class FinalCallSounds {
   /// 않으면 첫 재생이 화면보다 늦습니다.
   /// 여러 사람이 동시에 눌러 겹쳐 날 수 있는 짧은 소리입니다. 사본을 여러 개
   /// 물려 둡니다.
-  static const preloadTargets = [heartbreak, win];
+  static const preloadTargets = [heartbreak, win, fourCard];
 
   /// 한 번에 하나만 나는 안내 음성입니다. **[preloadTargets]와 나눠 둡니다** —
   /// 겹칠 일이 없어 사본 하나로 충분하고, 사본을 아껴야 기기 디코더가 모자라

@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/recovery/services/durable_room_operation_store.dart';
 import 'package:game_kit/recovery/models/room_session_identity.dart';
 import 'package:game_kit/recovery/services/room_session_identity_store.dart';
+import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:project00/platform/home/room/services/room_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -84,11 +85,44 @@ void main() {
         h.calls.clear();
         final players = await h.service.beginPlayerSeating('ABCDE');
         expect(h.calls, ['beginRealtimeRoomSeating']);
-        expect(players.map((player) => player.uid), ['player-a']);
+        expect(players.map((player) => player.uid), ['player-a', 'player-b']);
         expect(h.readPaths, legacyServer ? ['rooms/ABCDE/players'] : isEmpty);
+        if (!legacyServer) {
+          final savedLayout = await h.service.getSavedSeatLayout('ABCDE');
+          expect(savedLayout?.playerUids, {'player-a', 'player-b'});
+          expect(savedLayout?.mode, SeatLayoutMode.sides);
+          expect(h.readPaths, isEmpty);
+        }
       },
     );
   }
+
+  test('saved seats remain available without an RTDB metadata read', () async {
+    await h.service.createRoom();
+    GameRecoverySession.forRoom(
+      'ABCDE',
+      h.uid,
+    ).context = const GameRecoveryContext(
+      gameInstanceId: 'game-1',
+      phaseSeq: 1,
+      turnSeq: 1,
+      dataSeq: 1,
+      resumeEpoch: 1,
+    );
+    h.calls.clear();
+    await h.service.savePlayerSeatIndexes(
+      roomCode: 'ABCDE',
+      seatIndexesByUid: const {'player-a': 1, 'player-b': 0},
+      seatLayoutMode: SeatLayoutMode.sides,
+    );
+
+    final savedLayout = await h.service.getSavedSeatLayout('ABCDE');
+
+    expect(h.calls, ['saveRealtimePlayerSeatIndexes']);
+    expect(savedLayout?.playerUids, {'player-a', 'player-b'});
+    expect(savedLayout?.mode, SeatLayoutMode.sides);
+    expect(h.readPaths, isEmpty);
+  });
 
   test('first close sends once without status lookup', () async {
     await h.service.createRoom();
@@ -383,6 +417,12 @@ class _Harness {
       'nickname': 'A',
       'characterId': 'bear',
     },
+    'player-b': {
+      'role': 'player',
+      'status': 'active',
+      'nickname': 'B',
+      'characterId': 'cat',
+    },
   };
   Completer<void>? cancelGate, registrationGate, closeGate;
   final closeEntered = Completer<void>();
@@ -460,9 +500,15 @@ class _Harness {
       'closeRoom' => {'success': true},
       'beginRealtimeRoomSeating' => {
         'success': true,
-        'playerUids': ['player-a'],
+        'playerUids': ['player-a', 'player-b'],
         if (!legacySeating) 'players': seatingPlayers,
+        if (!legacySeating)
+          'seatingPreference': {
+            'playerUids': ['player-a', 'player-b'],
+            'mode': 'sides',
+          },
       },
+      'saveRealtimePlayerSeatIndexes' => {'success': true},
       'game_final_call_leave_game' => {'status': 'applied'},
       'game_common_operation_status' => {'status': status},
       _ => throw StateError('Unexpected $name'),

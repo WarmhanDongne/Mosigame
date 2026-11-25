@@ -9,7 +9,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {assertControllerSession} from "../room/controller-session.js";
 import {autoSubmitFinalCallHand, nextFinalCallPlayer, resolveFinalCallRound,
   startTurn} from "./game.js";
-import {FinalCallCard, FinalCallRoom} from "./types.js";
+import {FinalCallCard, FinalCallRoom, FinalCallTurnTimeout} from "./types.js";
 import {
   FINAL_CALL_REGION,
   finalCallRoomCode,
@@ -50,11 +50,13 @@ export const game_final_call_timeout_turn = onCall<Data>(
           throw new HttpsError("data-loss", "CALL 선언자를 확인할 수 없습니다.");
         }
         autoSubmitFinalCallHand(game, turnUid, now);
+        game.public.lastTimeout = {uid: turnUid, kind: "finalSubmit", at: now};
         response = {success: true, type: "callerHandAutoSubmitted", turnUid: game.public.turnUid};
         return room;
       }
       if (game.public.phase === "finalSubmit") {
         autoSubmitFinalCallHand(game, turnUid, now);
+        game.public.lastTimeout = {uid: turnUid, kind: "finalSubmit", at: now};
         response = {success: true, type: "finalHandAutoSubmitted", turnUid: game.public.turnUid};
         return room;
       }
@@ -66,9 +68,11 @@ export const game_final_call_timeout_turn = onCall<Data>(
       const privatePlayer = game.private[turnUid];
       if (!privatePlayer) throw new HttpsError("data-loss", "현재 플레이어의 손패가 없습니다.");
       let discarded: FinalCallCard | undefined = privatePlayer.pendingDraw;
+      const hadPendingDraw = discarded !== undefined;
       if (!discarded) {
         if (game.server.deck.length === 0) {
           resolveFinalCallRound(game, now, true);
+          game.public.lastTimeout = {uid: turnUid, kind: "deckEmpty", at: now};
           response = {success: true, type: "automaticCall"};
           return room;
         }
@@ -81,6 +85,11 @@ export const game_final_call_timeout_turn = onCall<Data>(
       game.public.pendingDrawUid = null;
       game.public.pendingDrawSource = null;
 
+      // 휴대폰 안내용 기록입니다. 아래 전이가 끝난 뒤 덮어써 지워지지 않게 합니다.
+      const timeoutKind: FinalCallTurnTimeout["kind"] =
+        game.server.deck.length === 0 ? "deckEmpty" :
+          game.public.phase === "finalTurns" ? "lastSwapSubmit" :
+            hadPendingDraw ? "discardDrawn" : "discardDeck";
       if (game.server.deck.length === 0) {
         resolveFinalCallRound(game, now, true);
       } else if (game.public.phase === "finalTurns") {
@@ -91,6 +100,7 @@ export const game_final_call_timeout_turn = onCall<Data>(
         startTurn(game, nextFinalCallPlayer(game.public.players, turnUid), now);
         game.public.revision += 1;
       }
+      game.public.lastTimeout = {uid: turnUid, kind: timeoutKind, at: now};
       game.public.updatedAt = now;
       response = {success: true, type: "turnTimedOut", turnUid: game.public.turnUid};
       return room;

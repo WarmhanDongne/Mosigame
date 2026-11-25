@@ -88,6 +88,10 @@ interface RealtimeRoom extends ControllerSessionRoom {
     lastSeen?: number;
   };
   players?: Record<string, unknown>;
+  seatingPreference?: {
+    playerUids?: unknown;
+    mode?: unknown;
+  };
   game?: {public?: {status?: string}};
   retainUntil?: number;
   cleanupAt?: number;
@@ -506,6 +510,10 @@ export const beginRealtimeRoomSeating = onCall<RoomData>(
       // The controller already receives this roster via RTDB. Returning the
       // committed snapshot avoids a separate client read after seating.
       players: committedRoom.players ?? {},
+      // The controller needs this exact roster to decide whether old seats are
+      // safe to restore. Returning the committed value avoids a second RTDB
+      // read, while old clients simply ignore the additive response field.
+      seatingPreference: committedRoom.seatingPreference ?? null,
     };
   },
 );

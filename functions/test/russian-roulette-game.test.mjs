@@ -31,7 +31,7 @@ function submit(gameState, actions, now = 2000) {
   }
 }
 
-test("starts 2-6 players with a deterministic random target and 30 second timer", () => {
+test("starts 2-8 players with a deterministic random target and 30 second timer", () => {
   const first = game();
   const second = game();
   assert.equal(first.public.targetUid, second.public.targetUid);
@@ -41,13 +41,16 @@ test("starts 2-6 players with a deterministic random target and 30 second timer"
   assert.equal(first.public.phaseStartedAt, 1000);
   assert.doesNotThrow(() => createRussianRouletteGame(players.slice(0, 2), 0));
   assert.throws(() => createRussianRouletteGame(players.slice(0, 1), 0), {code: "failed-precondition"});
-  const sevenPlayers = Array.from({length: 7}, (_, seatIndex) => ({
+  const eightPlayers = Array.from({length: 8}, (_, seatIndex) => ({
     uid: `extra-${seatIndex}`,
     nickname: `Extra ${seatIndex}`,
     characterId: `face-extra-${seatIndex}`,
     seatIndex,
   }));
-  assert.throws(() => createRussianRouletteGame(sevenPlayers, 0), {code: "failed-precondition"});
+  assert.doesNotThrow(() => createRussianRouletteGame(eightPlayers, 0));
+  assert.throws(() => createRussianRouletteGame([...eightPlayers, {
+    uid: "extra-8", nickname: "Extra 8", characterId: "face-extra-8", seatIndex: 8,
+  }], 0), {code: "failed-precondition"});
 });
 test("restart accepts both an active and a finished Russian Roulette game", () => {
   const state = game();
@@ -58,10 +61,10 @@ test("restart accepts both an active and a finished Russian Roulette game", () =
   assert.equal(canRestartRussianRouletteGame(undefined), false);
 });
 
-test("room seating pins Russian Roulette to two through six players", () => {
+test("room seating pins Russian Roulette to two through eight players", () => {
   assert.deepEqual(resolveRoomPlayerRange("russian_roulette", 3, 8), {
     minPlayers: 2,
-    maxPlayers: 6,
+    maxPlayers: 8,
   });
 });
 
@@ -83,6 +86,8 @@ test("timeout assigns none and an unshielded target is eliminated", () => {
   assert.throws(() => timeoutRussianRouletteTurn(state, 31000), {code: "failed-precondition"});
   timeoutRussianRouletteTurn(state, state.public.turnDeadlineAt);
   assert.equal(state.public.revealedActions.b, "none");
+  assert.equal(state.private.b.autoSelected, true);
+  assert.equal(state.private.a.autoSelected, undefined);
   completeRussianRoulettePhase(state, 32000);
   completeRussianRoulettePhase(state, 33000);
   completeRussianRoulettePhase(state, 34000);
@@ -135,6 +140,7 @@ test("intro length matches the tablet start animation", () => {
   assert.equal(russianRouletteIntroMs(2), 4380);
   assert.equal(russianRouletteIntroMs(4), 5340);
   assert.equal(russianRouletteIntroMs(6), 6300);
+  assert.equal(russianRouletteIntroMs(8), 6798);
 });
 
 test("every phase change records the server start time for synced animations", () => {

@@ -46,6 +46,10 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
                   right: layout.horizontalPadding,
                   child: PhoneGameTopBar(
                     isLandscape: false,
+                    leadingWidget: _buildMyProfilePlate(
+                      controller,
+                      isLandscape: false,
+                    ),
                     entryAnimation: controller?.recoverySession.canSend == false
                         ? null
                         : _controlsEntryController,
@@ -71,7 +75,8 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
                   !controller.isInitialLoading &&
                   controller.phase != 'dealing' &&
                   controller.phase != 'penalty' &&
-                  controller.isMyTurn)
+                  controller.isMyTurn &&
+                  _timeoutNotice == null)
                 Positioned(
                   key: const ValueKey('portrait-timer-slot'),
                   top: layout.timerTop,
@@ -185,6 +190,11 @@ extension _PortraitGameView on _LiarsPokerPhoneGameScreenState {
                     }
                   },
                 ),
+              ),
+              // 시간 초과 안내는 타이머가 있던 자리에 뜹니다(라이어스 '라' 안).
+              _buildTimeoutNoticeLayer(
+                key: const ValueKey('portrait-timeout-notice-slot'),
+                textTop: layout.timerTop,
               ),
             ],
           );

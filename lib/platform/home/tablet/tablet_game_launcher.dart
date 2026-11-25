@@ -286,18 +286,21 @@ class _TabletGameLauncher {
     if (!context.mounted || !isCurrent() || provider.roomCode != roomCode) {
       return;
     }
-    final savedSeats = PlayerLayoutFactory.fromSavedSeats(lockedPlayers);
-    final previousLayout =
-        savedSeatLayout?.matches(lockedPlayers.map((player) => player.uid)) ==
-                true &&
-            savedSeats != null
-        ? savedSeats.withSeatLayoutMode(savedSeatLayout?.mode)
-        : null;
+    final savedSeats = savedSeatLayout == null
+        ? null
+        : PlayerLayoutFactory.mergeSavedRoster(
+            lockedPlayers,
+            savedPlayerUids: savedSeatLayout.playerUids,
+          );
+    final previousLayout = savedSeats?.withSeatLayoutMode(
+      savedSeatLayout?.mode,
+    );
     final defaultMode = templateGame.layoutSeatPositionsBuilder == null
         ? SeatLayoutMode.corners
         : SeatLayoutMode.sides;
-    // 유효한 지난 좌석 번호가 있으면 새 게임도 그 자리에서 시작합니다.
-    // 새 참가자가 있거나 번호가 겹치면 참가자 순서 배치로 돌아갑니다.
+    // 유효한 지난 좌석 번호가 있으면 기존 참가자는 그 자리를 유지하고,
+    // 새 참가자는 남는 자리에 배치합니다. 기록이 손상된 경우에만 참가자
+    // 순서의 기본 배치로 돌아갑니다.
     final initialLayout =
         previousLayout ??
         PlayerLayoutFactory.create(

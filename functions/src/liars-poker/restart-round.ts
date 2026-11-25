@@ -64,4 +64,8 @@ export function restartRound(
   game.server.roundStarterUid = starterUid;
   game.server.unrevealedCards = unrevealedCards;
   delete game.server.penaltyCountIncrementedBeforeRoulette;
+  // 벌칙 대상이 강퇴되어 라운드를 다시 시작한 경우 이전 추첨 결과를 다음
+  // 벌칙에서 재사용하면 안 됩니다.
+  delete game.server.pendingPenaltyResolution;
+  delete game.public.penaltyResult;
 }

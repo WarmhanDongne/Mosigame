@@ -78,16 +78,20 @@ void main() {
   test('4인 게임 프로필과 자리배치는 모서리가 아닌 네 면의 같은 좌표를 쓴다', () {
     const boardSize = Size(1280, 800);
     const expected = [
-      Offset(640, 672),
-      Offset(1075.2, 400),
       Offset(640, 128),
+      Offset(1075.2, 400),
+      Offset(640, 672),
       Offset(204.8, 400),
     ];
     final gameCenters = finalCallSeatCenters(
       playerCount: 4,
       boardSize: boardSize,
     );
-    expect(gameCenters, expected);
+    expect(gameCenters.length, expected.length);
+    for (var index = 0; index < expected.length; index++) {
+      expect(gameCenters[index].dx, closeTo(expected[index].dx, 1e-9));
+      expect(gameCenters[index].dy, closeTo(expected[index].dy, 1e-9));
+    }
 
     const cardSize = Size(220, 92);
     final setupPositions = finalCallSeatingCardTopLeftPositions(
@@ -103,7 +107,10 @@ void main() {
           ),
         )
         .toList(growable: false);
-    expect(setupCenters, gameCenters);
+    for (var index = 0; index < gameCenters.length; index++) {
+      expect(setupCenters[index].dx, closeTo(gameCenters[index].dx, 1e-9));
+      expect(setupCenters[index].dy, closeTo(gameCenters[index].dy, 1e-9));
+    }
   });
 
   test('6인 좌석은 네 면 위에 있고 반대 좌석끼리 같은 팀이다', () {
@@ -122,10 +129,10 @@ void main() {
       expect(onFace, isTrue);
     }
     for (var seat = 0; seat < 3; seat++) {
-      expect(
-        centers[seat] + centers[seat + 3],
-        boardSize.center(Offset.zero) * 2,
-      );
+      final oppositePair = centers[seat] + centers[seat + 3];
+      final tableCenter = boardSize.center(Offset.zero) * 2;
+      expect(oppositePair.dx, closeTo(tableCenter.dx, 1e-9));
+      expect(oppositePair.dy, closeTo(tableCenter.dy, 1e-9));
     }
   });
 

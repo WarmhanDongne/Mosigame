@@ -525,13 +525,13 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('태블릿에서\n자리를 맞추고 있어요'), findsOneWidget);
+    expect(find.bySemanticsLabel('태블릿에서 자리를 맞추고 있어요'), findsOneWidget);
 
     provider
       ..roomStatus = 'playing'
       ..notifyListeners();
     await tester.pump();
-    expect(find.text('곧 게임이\n시작해요'), findsOneWidget);
+    expect(find.bySemanticsLabel('곧 게임이 시작해요'), findsOneWidget);
     expect(find.text('게임 규칙'), findsNothing);
     expect(find.text('그룹 나가기'), findsOneWidget);
     expect(tester.takeException(), isNull);
