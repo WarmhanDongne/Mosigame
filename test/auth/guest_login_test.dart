@@ -18,6 +18,7 @@ import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:project00/platform/home/home.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../support/firebase_test_bootstrap.dart';
 
 void main() {
@@ -68,6 +69,167 @@ void main() {
     await service.createUserDocument();
     expect(functions.name, 'completeOnboardingProfile');
     expect(functions.data, {'nickname': '게스트abc123', 'profileImageUrl': null});
+  });
+
+  testWidgets('휴대폰 첫 실행은 로그인 화면 없이 게스트 인증을 한 번 자동 요청한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final users = StreamController<User?>();
+    final auth = _LoginService();
+    final onboarding = _Onboarding();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: users.stream,
+          onboardingService: onboarding,
+          authService: auth,
+        ),
+      ),
+    );
+
+    users.add(null);
+    await tester.pump();
+    await tester.pump();
+    expect(auth.calls, 1);
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(
+      find.byKey(const ValueKey('automatic-guest-sign-in')),
+      findsOneWidget,
+    );
+
+    await tester.pump();
+    expect(auth.calls, 1, reason: '리빌드가 익명 로그인을 중복 요청하면 안 됩니다.');
+    auth.pending.complete();
+    users.add(_Guest());
+    await tester.pump();
+    onboarding.states.add(null);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(GuestSetupScreen), findsOneWidget);
+    expect(find.byType(LoginScreen), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(users.close());
+    unawaited(onboarding.states.close());
+  });
+
+  testWidgets('태블릿 첫 실행은 게스트 인증 없이 로그인 화면을 유지한다', (tester) async {
+    tester.view.physicalSize = const Size(1194, 834);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final users = StreamController<User?>();
+    final auth = _LoginService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: users.stream,
+          onboardingService: _Onboarding(),
+          authService: auth,
+        ),
+      ),
+    );
+
+    users.add(null);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(auth.calls, 0);
+    expect(find.byKey(const ValueKey('automatic-guest-sign-in')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(users.close());
+  });
+
+  testWidgets('휴대폰은 첫 실행을 소비한 뒤 다시 시작하면 로그인 화면을 유지한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final firstUsers = StreamController<User?>();
+    final firstAuth = _LoginService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: firstUsers.stream,
+          onboardingService: _Onboarding(),
+          authService: firstAuth,
+        ),
+      ),
+    );
+    firstUsers.add(null);
+    await tester.pump();
+    await tester.pump();
+    expect(firstAuth.calls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(firstUsers.close());
+
+    final nextUsers = StreamController<User?>();
+    final nextAuth = _LoginService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: nextUsers.stream,
+          onboardingService: _Onboarding(),
+          authService: nextAuth,
+        ),
+      ),
+    );
+    nextUsers.add(null);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(nextAuth.calls, 0);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(nextUsers.close());
+  });
+
+  testWidgets('자동 게스트 로그인 실패는 재시도와 기존 계정 로그인을 제공한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final users = StreamController<User?>();
+    final auth = _LoginService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          userChanges: users.stream,
+          onboardingService: _Onboarding(),
+          authService: auth,
+        ),
+      ),
+    );
+
+    users.add(null);
+    await tester.pump();
+    await tester.pump();
+    auth.pending.completeError(
+      const AuthServiceException('unavailable', '게스트 자동 로그인 실패'),
+    );
+    await tester.pump();
+    expect(find.text('게스트 자동 로그인 실패'), findsOneWidget);
+
+    auth.pending = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('automatic-guest-retry')));
+    await tester.pump();
+    await tester.pump();
+    expect(auth.calls, 2);
+    auth.pending.completeError(
+      const AuthServiceException('unavailable', '다시 실패'),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('automatic-guest-existing-login')),
+    );
+    await tester.pump();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(users.close());
   });
 
   for (final size in [const Size(390, 844), const Size(1194, 834)]) {
@@ -153,9 +315,14 @@ void main() {
       addTearDown(tester.view.reset);
       final users = StreamController<User?>();
       final service = _Onboarding();
+      final auth = _LoginService();
       await tester.pumpWidget(
         MaterialApp(
-          home: AuthGate(userChanges: users.stream, onboardingService: service),
+          home: AuthGate(
+            userChanges: users.stream,
+            onboardingService: service,
+            authService: auth,
+          ),
         ),
       );
       users.add(_Guest());
@@ -180,8 +347,12 @@ void main() {
       users.add(null);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
-      await tester.pump(const Duration(milliseconds: 600));
       expect(find.byType(LoginScreen), findsOneWidget);
+      expect(auth.calls, 0);
+      expect(
+        find.byKey(const ValueKey('automatic-guest-sign-in')),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       unawaited(users.close());
@@ -192,7 +363,7 @@ void main() {
 
 class _LoginService extends FirebaseAuthService {
   int calls = 0;
-  final pending = Completer<void>();
+  Completer<void> pending = Completer<void>();
   @override
   Future<void> signInAsGuest() {
     calls++;
