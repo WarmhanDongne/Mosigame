@@ -61,7 +61,7 @@ class LiarsPokerGame extends TemplateGame {
 
   // 자리 배치 뒤 처음 하는 사람이 있으면 태블릿·휴대폰 튜토리얼을 먼저 봅니다.
   @override
-  GameTutorial get tutorial => const LiarsPokerTutorial();
+  GameTutorial get tutorial => const LiarsPokerQuickTutorial();
 
   // ---------------------------------------------------------------------------
   // 서버 게임 시작과 상태 구독

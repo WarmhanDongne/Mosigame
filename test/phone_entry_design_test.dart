@@ -11,6 +11,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_join.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
+import 'package:project00/platform/home/phone/widgets/phone_join_scanner.dart';
 import 'package:project00/platform/home/phone/widgets/phone_own_game_list.dart';
 import 'support/firebase_test_bootstrap.dart';
 
@@ -178,6 +179,49 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('3 / 3'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final size in [const Size(320, 700), const Size(390, 844)]) {
+    testWidgets('QR 로비는 ${size.width.toInt()} 폭에서 참여·코드 입력을 연다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var joins = 0;
+      var codeEntries = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: phoneScannerLobbyBackground,
+            body: Column(
+              children: [
+                PhoneJoinScanner(
+                  busy: false,
+                  onJoin: () => joins++,
+                  onEnterCode: () => codeEntries++,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.textContaining('QR'), findsWidgets);
+      expect(find.text('그룹 참여'), findsOneWidget);
+      expect(find.text('QR이 안 찍히나요?'), findsOneWidget);
+      await tester.tap(find.text('그룹 참여'));
+      await tester.tap(find.text('QR이 안 찍히나요?'));
+      expect(joins, 1);
+      expect(codeEntries, 1);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
   }
 
