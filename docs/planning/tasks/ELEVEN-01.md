@@ -454,3 +454,5 @@
   `a582cd1d`에서 유입, ELEVEN 무관)로 실패. 하준 승인으로 이 맥에서만 `flutter config --no-enable-swift-package-manager`,
   `flutter clean` 뒤 CocoaPods(`Podfile.lock`, 전부 12.19.3)로 `flutter build ios --simulator --debug --dart-define=MOSIGAME_BACKEND=test`
   → exit 0. 추적 파일(`ios/Runner.xcodeproj/project.pbxproj`, `ios/Podfile.lock`) 변화 없음. 플러그인 버전 정렬은 develop 후속 과제.
+- 테스트 계정: `dongdong7@handong.ac.kr`(Google 로그인)으로 TEST 첫 로그인 뒤 `users/{uid}.ownedGames`를 `[]` → `["eleven"]`로 갱신
+  (TEST Firestore, 해당 필드만 updateMask). 다시 읽어 확인.
