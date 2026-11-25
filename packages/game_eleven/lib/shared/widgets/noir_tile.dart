@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 import 'package:game_eleven/shared/noir/noir_text.dart';
 import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/models/tiles.dart';
+import 'package:game_eleven/shared/widgets/noir_dashed_box.dart';
 
 // ============================================================
 
@@ -28,8 +29,12 @@ enum ElevenTileFace {
   /// 뒷면 `back` (빨강 사선).
   back,
 
-  /// 빈 자리 `empty` (회베이지 점선, “?”).
-  empty;
+  /// 빈 자리 `empty` (회베이지 점선, “?”). 어두운 태블릿 판 위의 빈 슬롯·전적칸.
+  empty,
+
+  /// 크림 패널 안의 빈 타일 자리(프로토타입 ②: 크림-카드 바탕 + 회베이지 점선, 글자 없음).
+  /// 휴대폰 패널에서 아직 고르지 않았을 때 쓴다.
+  placeholder;
 
   static ElevenTileFace of(ElevenTileColor color) => switch (color) {
     ElevenTileColor.black => ElevenTileFace.black,
@@ -64,6 +69,12 @@ enum ElevenTileState {
 
   /// 뽑기에서 고른 카드 `pickA`: 빨간 외곽선 5px(offset 3).
   picked,
+
+  /// 안내 카드 그림 줄의 이긴 타일(G4·G5): 빨간 외곽선 4px(offset 3), 번짐 없음.
+  guideWin,
+
+  /// 안내 카드 그림 줄의 진 타일(G4·G5): opacity .45. G6은 [ElevenNoirOpacity.guideLoserRoundResult].
+  guideLose,
 }
 
 /// 부품별 크기 변형입니다. 값은 screens.md 2절 원문입니다.
@@ -131,7 +142,7 @@ class ElevenTileSpec {
     dotAnchor: Offset(8, 12),
   );
 
-  /// 안내 카드 그림 타일 50×66, 테두리 3, 그림자 없음, 숫자 30.
+  /// 안내 카드 그림 타일 50×66, 테두리 3, 그림자 없음, 숫자 30, 모서리 숫자 11, 모서리 점 없음.
   static const phoneGuide = ElevenTileSpec(
     size: Size(50, 66),
     radius: ElevenNoirRadius.tile,
@@ -139,6 +150,16 @@ class ElevenTileSpec {
     shadow: [],
     innerInset: 5,
     innerRadius: ElevenNoirRadius.tileInner,
+    cornerNumberSize: 11,
+  );
+
+  /// P05 요약줄 작은 타일 22×30, 테두리 2, 그림자·안쪽선·모서리 장식 없음(색만).
+  static const phoneSummaryMini = ElevenTileSpec(
+    size: Size(22, 30),
+    radius: ElevenNoirRadius.tile,
+    numberSize: 0,
+    border: ElevenNoirBorder.thin,
+    shadow: [],
   );
 
   /// 태블릿 슬롯 `.slot` 124×166(회전 전), 반경 18, 그림자 `0 6px 0`, 숫자 68,
@@ -246,13 +267,14 @@ class ElevenNoirTile extends StatelessWidget {
   final String? semanticsLabel;
 
   static const _selectedLift = -8.0;
-  static const _selectedDegrees = -3.0;
+  static const _selectedDegrees = ElevenNoirBadgeLayout.selectedDegrees;
 
   double get _opacity => switch (state) {
     ElevenTileState.used => ElevenNoirOpacity.used,
     ElevenTileState.locked => ElevenNoirOpacity.wait,
     ElevenTileState.dim => ElevenNoirOpacity.dim,
     ElevenTileState.lose => ElevenNoirOpacity.lose,
+    ElevenTileState.guideLose => ElevenNoirOpacity.guideLoser,
     _ => 1,
   };
 
@@ -264,6 +286,7 @@ class ElevenNoirTile extends StatelessWidget {
     ElevenTileState.selected => (4, 4),
     ElevenTileState.win => spec.inHistoryRow ? (3, 1) : (4, 2),
     ElevenTileState.picked => (5, 3),
+    ElevenTileState.guideWin => (4, 3),
     _ => null,
   };
 
@@ -274,6 +297,7 @@ class ElevenNoirTile extends StatelessWidget {
       ElevenTileFace.white => ElevenNoirColors.whiteTile,
       ElevenTileFace.back => ElevenNoirColors.backStripeDark,
       ElevenTileFace.empty => ElevenNoirColors.emptySlot,
+      ElevenTileFace.placeholder => ElevenNoirColors.creamCard,
     };
     final foreground = face == ElevenTileFace.black
         ? ElevenNoirColors.cream
@@ -283,9 +307,11 @@ class ElevenNoirTile extends StatelessWidget {
         (face == ElevenTileFace.black || face == ElevenTileFace.white);
     final radius = BorderRadius.circular(spec.radius);
     // `winT`의 box-shadow(번짐)는 타일 자체의 단단한 그림자를 대신한다(CSS 같은 속성).
+    final dashed =
+        face == ElevenTileFace.empty || face == ElevenTileFace.placeholder;
     final shadows = state == ElevenTileState.win
         ? ElevenNoirShadow.winGlow(inHistoryRow: spec.inHistoryRow)
-        : _dropsShadow || face == ElevenTileFace.empty
+        : _dropsShadow || dashed
         ? const <BoxShadow>[]
         : spec.shadow;
 
@@ -295,7 +321,7 @@ class ElevenNoirTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: radius,
-        border: face == ElevenTileFace.empty
+        border: dashed
             ? null
             : Border.all(color: ElevenNoirColors.ink, width: spec.border),
         boxShadow: shadows,
@@ -310,9 +336,9 @@ class ElevenNoirTile extends StatelessWidget {
               ),
               child: const CustomPaint(painter: _BackStripePainter()),
             ),
-          if (face == ElevenTileFace.empty)
+          if (dashed)
             CustomPaint(
-              painter: _DashedBorderPainter(
+              painter: ElevenDashedBorderPainter(
                 radius: spec.radius,
                 width: spec.border,
               ),
@@ -409,7 +435,7 @@ class ElevenNoirTile extends StatelessWidget {
             Positioned(
               left: 0,
               right: 0,
-              bottom: -16,
+              bottom: ElevenNoirBadgeLayout.selectedBottom,
               child: Center(
                 child: Transform.rotate(
                   angle: _selectedDegrees * math.pi / 180,
@@ -443,6 +469,30 @@ class ElevenNoirTile extends StatelessWidget {
       child: card,
     );
   }
+}
+
+/// 타일 왼쪽 위에 붙는 기울어진 배지(`.auto`: 자동 제출·제출 완료)입니다.
+/// 타일과 함께 `Stack(clipBehavior: Clip.none)` 안에 넣습니다. P04는 [left]에
+/// [ElevenNoirBadgeLayout.tiltedLeftP04]를 넘깁니다.
+class ElevenNoirTiltedBadge extends StatelessWidget {
+  const ElevenNoirTiltedBadge({
+    super.key,
+    required this.label,
+    this.left = ElevenNoirBadgeLayout.tiltedLeft,
+  });
+
+  final String label;
+  final double left;
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+    top: ElevenNoirBadgeLayout.tiltedTop,
+    left: left,
+    child: Transform.rotate(
+      angle: ElevenNoirBadgeLayout.tiltedDegrees * math.pi / 180,
+      child: ElevenNoirBadge(label: label),
+    ),
+  );
 }
 
 /// 작은 기울어진 배지(선택·자동 제출·제출 완료) 공통 모양입니다.
@@ -502,36 +552,6 @@ class _BackStripePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BackStripePainter oldDelegate) => false;
-}
-
-/// `.empty` 점선 테두리 `3px dashed #b9ae9c`(전적 빈칸 2px).
-class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter({required this.radius, required this.width});
-
-  final double radius;
-  final double width;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = (Offset.zero & size).deflate(width / 2);
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)));
-    final paint = Paint()
-      ..color = ElevenNoirColors.greyBeige
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width;
-    // 브라우저 dashed는 두께의 약 3배 길이로 그린다.
-    final dash = width * 3;
-    for (final metric in path.computeMetrics()) {
-      for (var d = 0.0; d < metric.length; d += dash * 2) {
-        canvas.drawPath(metric.extractPath(d, d + dash), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
-      radius != oldDelegate.radius || width != oldDelegate.width;
 }
 
 /// 모서리 점 6개: 오른쪽 위·왼쪽 아래 대각선으로 3개씩(#d42a2f).

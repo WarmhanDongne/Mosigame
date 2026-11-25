@@ -12,6 +12,8 @@ import 'package:game_eleven/shared/noir/noir_motion.dart';
 import 'package:game_eleven/shared/noir/noir_toast_schedule.dart';
 import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/models/timing.dart';
+import 'package:game_eleven/shared/widgets/noir_dashed_box.dart';
+import 'package:game_eleven/shared/widgets/noir_icons.dart';
 import 'package:game_eleven/shared/widgets/noir_tile.dart';
 import 'package:game_eleven/shared/widgets/noir_toast.dart';
 
@@ -282,6 +284,53 @@ void main() {
       expect(await opacityOf(ElevenTileState.locked), 0.6);
       expect(await opacityOf(ElevenTileState.dim), 0.35);
       expect(await opacityOf(ElevenTileState.lose), 0.38);
+      expect(await opacityOf(ElevenTileState.guideLose), 0.45);
+      expect(await opacityOf(ElevenTileState.guideWin), isNull);
+    });
+
+    testWidgets('placeholder is a dashed cream slot without a mark', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _stage(
+          const ElevenNoirTile(
+            face: ElevenTileFace.placeholder,
+            spec: ElevenTileSpec.phonePanel,
+            value: 5,
+          ),
+        ),
+      );
+      expect(find.text('?'), findsNothing);
+      expect(find.text('5'), findsNothing);
+    });
+
+    testWidgets('guide tile shows a corner number, summary mini tile none', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _stage(
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevenNoirTile(
+                face: ElevenTileFace.white,
+                spec: ElevenTileSpec.phoneGuide,
+                value: 7,
+                state: ElevenTileState.guideWin,
+              ),
+              ElevenNoirTile(
+                face: ElevenTileFace.black,
+                spec: ElevenTileSpec.phoneSummaryMini,
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('7'), findsNWidgets(2));
+      expect(
+        tester.getSize(find.byType(ElevenNoirTile).last),
+        const Size(22, 30),
+      );
     });
 
     testWidgets('selected tile shows the badge label', (tester) async {
@@ -309,6 +358,88 @@ void main() {
         ),
       );
       expect(find.text('?'), findsOneWidget);
+    });
+  });
+
+  group('shared parts added in lane A review', () {
+    testWidgets('dashed box shows its label in a 56px box', (tester) async {
+      await tester.pumpWidget(
+        _stage(
+          SizedBox(
+            width: 232,
+            child: ElevenNoirDashedBox(label: ElevenScreenCopy.resultOnTablet),
+          ),
+        ),
+      );
+      expect(find.text(ElevenScreenCopy.resultOnTablet), findsOneWidget);
+      expect(tester.getSize(find.byType(ElevenNoirDashedBox)).height, 56);
+    });
+
+    testWidgets('icons draw at the design sizes', (tester) async {
+      await tester.pumpWidget(
+        _stage(
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevenNoirIcon(ElevenNoirIconKind.exit),
+              ElevenNoirIcon.tablet(ElevenNoirIconKind.rules),
+            ],
+          ),
+        ),
+      );
+      final sizes = tester
+          .widgetList<ElevenNoirIcon>(find.byType(ElevenNoirIcon))
+          .map((icon) => (icon.size, icon.strokeWidth))
+          .toList();
+      expect(sizes, [(22.0, 2.6), (34.0, 2.4)]);
+    });
+
+    testWidgets('tilted badge sits at the .auto position', (tester) async {
+      await tester.pumpWidget(
+        _stage(
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const ElevenNoirTile(
+                face: ElevenTileFace.black,
+                spec: ElevenTileSpec.phonePanel,
+                value: 0,
+              ),
+              ElevenNoirTiltedBadge(label: ElevenScreenCopy.autoSubmittedBadge),
+            ],
+          ),
+        ),
+      );
+      final positioned = tester.widget<Positioned>(
+        find.ancestor(
+          of: find.text(ElevenScreenCopy.autoSubmittedBadge),
+          matching: find.byType(Positioned),
+        ),
+      );
+      expect((positioned.top, positioned.left), (-12.0, 22.0));
+    });
+
+    test('phone game end follows prototype 6 phone layer', () {
+      expect(ElevenPhoneEndMotion.crossFade, const Duration(milliseconds: 250));
+      expect(
+        ElevenPhoneEndMotion.crownDelay +
+            ElevenPhoneEndMotion.crownAppear +
+            ElevenPhoneEndMotion.crownFall,
+        const Duration(milliseconds: 400),
+        reason: 'kEPcrown 3800 시작 → 4100 착지(전환 시작 3700 기준)',
+      );
+      expect(ElevenPhoneEndMotion.total, const Duration(milliseconds: 750));
+    });
+
+    test('panel prompts and rulebook exist', () {
+      expect(ElevenScreenCopy.pickTilePrompt, '타일을 골라 주세요');
+      expect(ElevenScreenCopy.preselectPrompt, '미리 골라 둘 수 있어요');
+      expect(ElevenScreenCopy.emptyValue, '—');
+      final titles = RegExp(
+        r'^# (.+)$',
+        multiLine: true,
+      ).allMatches(ElevenScreenCopy.rulebookMarkdown).map((m) => m.group(1));
+      expect(titles, ['게임 방법', '흑과 백', '승패 판정', '선공 뽑기', '게임 종료']);
     });
   });
 
@@ -364,6 +495,78 @@ void main() {
       await expectLater(
         find.byKey(const ValueKey('golden')),
         matchesGoldenFile('goldens/phone_hand.png'),
+      );
+    });
+
+    testWidgets('phone panel parts: guide tiles, placeholder, badges, box', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _stage(
+          Container(
+            color: ElevenNoirColors.cream,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 24,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 18,
+                  children: [
+                    const ElevenNoirTile(
+                      face: ElevenTileFace.white,
+                      spec: ElevenTileSpec.phoneGuide,
+                      value: 7,
+                      state: ElevenTileState.guideWin,
+                    ),
+                    const ElevenNoirTile(
+                      face: ElevenTileFace.white,
+                      spec: ElevenTileSpec.phoneGuide,
+                      value: 3,
+                      state: ElevenTileState.guideLose,
+                    ),
+                    const ElevenNoirTile(
+                      face: ElevenTileFace.placeholder,
+                      spec: ElevenTileSpec.phonePanel,
+                    ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const ElevenNoirTile(
+                          face: ElevenTileFace.black,
+                          spec: ElevenTileSpec.phonePanel,
+                          value: 0,
+                        ),
+                        ElevenNoirTiltedBadge(
+                          label: ElevenScreenCopy.autoSubmittedBadge,
+                        ),
+                      ],
+                    ),
+                    const ElevenNoirTile(
+                      face: ElevenTileFace.black,
+                      spec: ElevenTileSpec.phoneSummaryMini,
+                    ),
+                    const ElevenNoirIcon(ElevenNoirIconKind.exit),
+                    const ElevenNoirIcon.tablet(ElevenNoirIconKind.rules),
+                    const ElevenNoirIcon.tablet(ElevenNoirIconKind.settings),
+                  ],
+                ),
+                SizedBox(
+                  width: 232,
+                  child: ElevenNoirDashedBox(
+                    label: ElevenScreenCopy.resultOnTablet,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          size: const Size(720, 300),
+        ),
+      );
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/phone_parts.png'),
       );
     });
 

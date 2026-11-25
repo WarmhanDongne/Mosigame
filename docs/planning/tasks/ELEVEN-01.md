@@ -329,3 +329,17 @@
 - 검증: `packages/game_eleven` `flutter test --no-pub` 111/111 PASS exit 0, `flutter analyze --no-pub
   packages/game_eleven` exit 0, `dart format --set-exit-if-changed` exit 0, 패키지 경계 0건 exit 0,
   `bash -n scripts/eleven_lanes.sh` exit 0. validate --full 미실행.
+
+<a id="s5-lane-a-review1-20261125"></a>
+### 2026-11-25 레인 A 검수 1회차 · 공통 부품 보강 (Claude Code)
+
+- 레인 A 검수 판정 FIX(`project00-lanes/lane-a/docs/planning/eleven-lanes/REVIEW-A.md`). 레인 검증
+  재실행: 패키지 테스트 131 통과(캡처 33 skip), analyze·format·경계 PASS, 디자인 가드 허용 목록 비움.
+- 공통 부품 보강(REVIEW-A B1–B6): `ElevenNoirDashedBox`·`ElevenDashedBorderPainter`(점선 상자),
+  `ElevenNoirIcon`(나가기·규칙·설정 선 아이콘), `ElevenNoirTiltedBadge`·`ElevenNoirBadgeLayout`,
+  `ElevenNoirIconSpec`, 안내 카드 간격·요약줄 토큰, 타일 `placeholder` 면·`guideWin`/`guideLose` 상태·
+  `phoneSummaryMini` spec·`phoneGuide` 모서리 숫자, `ElevenPhoneEndMotion`(프로토타입 ⑥ 휴대폰 레이어),
+  문구 `pickTilePrompt`·`emptyValue`·`preselectPrompt`(프로토타입 ② 원문), 룰북 본문 초안
+  `rulebookMarkdown`(계약 2절 요약, 하준 확인 대상). B7(P08 패배·동점·후공 문구)은 하준 결정 대기.
+- 검증: 패키지 테스트 119/119 PASS exit 0, analyze exit 0, format exit 0, 경계 0건 exit 0. 골든
+  `phone_parts.png` 추가.

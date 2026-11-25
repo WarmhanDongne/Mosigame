@@ -195,6 +195,39 @@ abstract final class ElevenNoirOpacity {
 
   /// 뽑기 후 남은 카드 `.dim`.
   static const dim = 0.35;
+
+  /// 안내 카드 그림 줄의 진 타일(G4·G5 `opacity:.45`).
+  static const guideLoser = 0.45;
+
+  /// G6 그림 줄의 타일(`opacity:.4`).
+  static const guideLoserRoundResult = 0.4;
+}
+
+/// 기울어진 배지·선택 배지 배치(screens.md 2-2).
+abstract final class ElevenNoirBadgeLayout {
+  /// `.auto`(자동 제출·제출 완료): `top:-12px;left:22px;transform:rotate(8deg)`.
+  static const tiltedTop = -12.0;
+  static const tiltedLeft = 22.0;
+
+  /// P04 제출 완료 배지는 인라인 `left:30px`.
+  static const tiltedLeftP04 = 30.0;
+  static const tiltedDegrees = 8.0;
+
+  /// 손패 선택 배지 `.badge`: `bottom:-16px; rotate(-3deg)`(타일 자체도 −3°).
+  static const selectedBottom = -16.0;
+  static const selectedDegrees = -3.0;
+}
+
+/// 선 아이콘 크기·굵기(screens.md 2-1·2-2).
+abstract final class ElevenNoirIconSpec {
+  /// 휴대폰 아이콘 버튼 안 svg 22×22, stroke 2.6. 버튼은 52×52.
+  static const phoneSize = 22.0;
+  static const phoneStroke = 2.6;
+  static const phoneButtonSize = 52.0;
+
+  /// 태블릿 메뉴 버튼 안 svg 34×34, stroke 2.4. 버튼은 72×72.
+  static const tabletSize = 34.0;
+  static const tabletStroke = 2.4;
 }
 
 /// screens.md 1-5 간격과 부품 고정 크기(px).
@@ -218,11 +251,30 @@ abstract final class ElevenNoirSpacing {
   static const phonePanelWidth = 268.0;
   static const phonePanelPadding = 18.0;
   static const phonePanelGap = 14.0;
+
+  /// 휴대폰 대시 상자 높이 56.
+  static const dashedBoxHeight = 56.0;
+
+  /// P05 요약줄 `padding:6px 10px; gap:8px`, 높이 42.
+  static const summaryRowPadding = EdgeInsets.symmetric(
+    vertical: 6,
+    horizontal: 10,
+  );
+  static const summaryRowGap = 8.0;
+  static const summaryRowHeight = 42.0;
   static const guideCardSize = Size(680, 240);
   static const guideCardPadding = EdgeInsets.symmetric(
     vertical: 16,
     horizontal: 40,
   );
+
+  /// 안내 카드 세로 간격: 그림 줄 `margin:14px 0 4px; gap:10px`, 본문 `margin-top:12px`,
+  /// 보조 `margin-top:4px`.
+  static const guideImageTop = 14.0;
+  static const guideImageBottom = 4.0;
+  static const guideImageGap = 10.0;
+  static const guideBodyTop = 12.0;
+  static const guideSubTop = 4.0;
 
   // 태블릿
   static const tabletSideSize = Size(760, 320);

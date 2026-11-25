@@ -248,6 +248,38 @@ abstract final class ElevenGameEndMotion {
   static const losePillCurve = ElevenCurves.ease;
 }
 
+/// 휴대폰 게임 종료(P10/P11) 등장: 프로토타입 ⑥·⑦·⑧ 휴대폰 레이어(`kEA1`·`kEPcrown`·`kEPwin`).
+/// 시점은 휴대폰이 결과 화면으로 넘어가는 순간(⑥은 3.7초, `gameEndRevealed`가 true가 되는 때) 기준이다.
+/// MotionKit 칸 9(`ElevenGameEndMotion`)는 태블릿 왕관·조각·pill에 쓰고, 휴대폰은 이 값을 쓴다
+/// (휴대폰에는 조각이 없다).
+abstract final class ElevenPhoneEndMotion {
+  /// 앞 화면(G7 등) → P10/P11 교차 전환. 진 쪽(B)은 프로토타입에서 300ms.
+  static const crossFade = Duration(milliseconds: 250);
+  static const crossFadeLoser = Duration(milliseconds: 300);
+
+  /// 왕관: 100ms 뒤 50ms 동안 나타나고, 250ms 낙하(70px 위 → 0), 100ms 8px 튀어오름, 100ms 복귀.
+  static const crownDelay = Duration(milliseconds: 100);
+  static const crownAppear = Duration(milliseconds: 50);
+  static const crownFall = Duration(milliseconds: 250);
+  static const crownFallFrom = -70.0;
+  static const crownBounceUp = Duration(milliseconds: 100);
+  static const crownBounceDown = Duration(milliseconds: 100);
+  static const crownBounceHeight = -8.0;
+
+  /// WINNER: 400ms 뒤 0.9배·투명 → 250ms에 1.04배 → 100ms에 1배.
+  static const winnerDelay = Duration(milliseconds: 400);
+  static const winnerGrow = Duration(milliseconds: 250);
+  static const winnerSettle = Duration(milliseconds: 100);
+  static const winnerFrom = 0.9;
+  static const winnerPeak = 1.04;
+
+  /// 프로토타입 키프레임 사이 보간은 선형이다(motion.md 읽는 법).
+  static const curve = ElevenCurves.linear;
+
+  /// 전체 길이.
+  static Duration get total => winnerDelay + winnerGrow + winnerSettle;
+}
+
 /// 프로토타입 ①·⑧ 공용 뽑기(9장) 연출.
 abstract final class ElevenDrawMotion {
   /// 9장 딜: 카드당 30ms 간격, 각 260ms(위 24px·0.6배 → 3px·1.04배(180ms) → 제자리).
