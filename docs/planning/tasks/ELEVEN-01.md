@@ -346,3 +346,15 @@
 - P08 문구 하준 결정(2026-11-25, Claude 제안 말투 채택): 진 경우 “상대가 이겼어요”, 동점 “동점이에요! +0”,
   후공 표식 “후공”, 후공 안내 “상대 다음에 내요”. `ElevenScreenCopy.roundOpponentWon`·`roundTieStatus`·
   `secondMark`·`iPlayAfterOpponent` 추가. REVIEW-A B7 해제. 룰북 본문 초안은 아직 하준 확인 전.
+
+<a id="s5-lane-bc-review1-20261125"></a>
+### 2026-11-25 레인 B·C 검수 1회차 · 공통 부품 보강 2 (Claude Code)
+
+- 레인 B 판정 FIX(REVIEW-B.md, A1–A12), 레인 C 판정 FIX 가벼움(REVIEW-C.md, A1–A5). 재실행: 레인 B
+  analyze No issues·테스트 126 통과 2 skip, 레인 C functions build·lint exit 0·테스트 680 통과 1 skip 0 실패.
+- 레인 C 에뮬레이터 BLOCKED 원인: 이 맥에 Java 런타임 없음(`java -version` 실패 확인). 설치는 새 도구라 하준 승인 대상.
+- 공통 부품 보강(REVIEW-B B1–B4): `ElevenNoirCrown`(svg path, 태블릿 54×34·휴대폰 76×44),
+  `ElevenNoirSpark`·`ElevenNoirSparkBurst`(10×10·테두리 2·반경 2, 크림·경고 빨강 번갈아, `kESp0–5` 원자료),
+  `ElevenNoirStage`(`.stage` 사선 배경), `historyCell` 모서리 점(1.2, 7/10.2), `historyTie`·`historyTieMark` 글자 스타일.
+  조각 시간 해석 정정: `sparkTravel` 980ms 안에 처음 140ms 동안 나타난다(kNSp 770→910→1750).
+- 검증: 패키지 테스트 123/123 PASS exit 0, analyze·format·경계 exit 0. 골든 `tablet_parts.png` 추가.

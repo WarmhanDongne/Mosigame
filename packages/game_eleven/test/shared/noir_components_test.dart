@@ -9,11 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_eleven/game_copy.dart';
 import 'package:game_eleven/shared/noir/noir_motion.dart';
+import 'package:game_eleven/shared/noir/noir_text.dart';
 import 'package:game_eleven/shared/noir/noir_toast_schedule.dart';
 import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/models/timing.dart';
+import 'package:game_eleven/shared/widgets/noir_crown.dart';
 import 'package:game_eleven/shared/widgets/noir_dashed_box.dart';
 import 'package:game_eleven/shared/widgets/noir_icons.dart';
+import 'package:game_eleven/shared/widgets/noir_stage.dart';
 import 'package:game_eleven/shared/widgets/noir_tile.dart';
 import 'package:game_eleven/shared/widgets/noir_toast.dart';
 
@@ -448,6 +451,76 @@ void main() {
     });
   });
 
+  group('shared parts added in lane B review', () {
+    testWidgets('crown and sparks use design sizes and colors', (tester) async {
+      await tester.pumpWidget(
+        _stage(
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevenNoirCrown(),
+              ElevenNoirCrown(size: ElevenNoirCrown.phoneSize),
+              ElevenNoirSpark(index: 0),
+              ElevenNoirSpark(index: 1),
+            ],
+          ),
+        ),
+      );
+      final crowns = find.byType(ElevenNoirCrown);
+      expect(tester.getSize(crowns.first), const Size(54, 34));
+      expect(tester.getSize(crowns.last), const Size(76, 44));
+      Color colorOf(int i) =>
+          ((tester
+                      .widget<Container>(
+                        find.descendant(
+                          of: find.byType(ElevenNoirSpark).at(i),
+                          matching: find.byType(Container),
+                        ),
+                      )
+                      .decoration!
+                  as BoxDecoration)
+              .color!);
+      expect(colorOf(0), ElevenNoirColors.cream);
+      expect(colorOf(1), ElevenNoirColors.warnRed);
+      expect(
+        tester.getSize(find.byType(ElevenNoirSpark).first),
+        const Size(10, 10),
+      );
+    });
+
+    testWidgets('spark burst ends invisible at the target offsets', (
+      tester,
+    ) async {
+      Future<List<double>> opacities(double progress) async {
+        await tester.pumpWidget(
+          _stage(ElevenNoirSparkBurst(progress: progress)),
+        );
+        return tester
+            .widgetList<Opacity>(
+              find.descendant(
+                of: find.byType(ElevenNoirSparkBurst),
+                matching: find.byType(Opacity),
+              ),
+            )
+            .map((o) => o.opacity)
+            .toList();
+      }
+
+      expect(await opacities(0), everyElement(0));
+      expect(await opacities(140 / 980), everyElement(closeTo(1, 1e-9)));
+      expect(await opacities(1), everyElement(0));
+    });
+
+    test('history cell has corner dots, tie mark style is 24/900', () {
+      expect(ElevenTileSpec.historyCell.dotRadius, 1.2);
+      final mark = ElevenNoirText.historyTieMark();
+      expect(
+        (mark.fontSize, mark.fontWeight, mark.height),
+        (24.0, FontWeight.w900, 0.8),
+      );
+    });
+  });
+
   group('goldens', () {
     testWidgets('phone hand row: normal, selected, used, locked', (
       tester,
@@ -572,6 +645,58 @@ void main() {
       await expectLater(
         find.byKey(const ValueKey('golden')),
         matchesGoldenFile('goldens/phone_parts.png'),
+      );
+    });
+
+    testWidgets('tablet stage, crown, sparks and history cells', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _stage(
+          ElevenNoirStage(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 30,
+                children: [
+                  const ElevenNoirCrown(),
+                  const SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: ElevenNoirSparkBurst(progress: 0.5),
+                  ),
+                  const ElevenNoirTile(
+                    face: ElevenTileFace.black,
+                    spec: ElevenTileSpec.historyCell,
+                    state: ElevenTileState.win,
+                  ),
+                  const ElevenNoirTile(
+                    face: ElevenTileFace.white,
+                    spec: ElevenTileSpec.historyCell,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        ElevenScreenCopy.historyTie,
+                        style: ElevenNoirText.historyTie(),
+                      ),
+                      Text(
+                        ElevenScreenCopy.historyTieMark,
+                        style: ElevenNoirText.historyTieMark(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          size: const Size(720, 200),
+        ),
+      );
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/tablet_parts.png'),
       );
     });
 

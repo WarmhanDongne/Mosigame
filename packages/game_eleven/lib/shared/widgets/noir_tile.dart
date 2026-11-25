@@ -193,7 +193,8 @@ class ElevenTileSpec {
   );
 
   /// 전적칸 `.mini` 높이 58, 비율 166/124(측정 77.6×58), 반경 8, 테두리 2,
-  /// 안쪽선 inset 4. 그림자는 [ElevenNoirShadow.historyCell]로 플레이어 쪽만 준다.
+  /// 안쪽선 inset 4, 모서리 점 1.2(측정: 오른쪽에서 7px·위 10.2px). 그림자는
+  /// [ElevenNoirShadow.historyCell]로 플레이어 쪽만 준다.
   static const historyCell = ElevenTileSpec(
     size: Size(58 * 166 / 124, 58),
     radius: ElevenNoirRadius.historyCell,
@@ -202,6 +203,8 @@ class ElevenTileSpec {
     shadow: [],
     innerInset: 4,
     innerRadius: ElevenNoirRadius.historyCellInner,
+    dotRadius: 1.2,
+    dotAnchor: Offset(7, 10.2),
     inHistoryRow: true,
   );
 

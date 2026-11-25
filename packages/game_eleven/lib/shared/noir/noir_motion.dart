@@ -216,7 +216,7 @@ abstract final class ElevenGameEndMotion {
   static const crownBounceHeight = -10.0;
   static const crownBounceCurve = ElevenCurves.ease;
 
-  /// 조각: 왕관 시작 490ms 뒤 140ms 페이드인, 980ms 동안 퍼지며 사라짐.
+  /// 조각: 왕관 시작 490ms 뒤 출발해 980ms 동안 퍼지며 사라짐. 그중 처음 140ms에 나타난다.
   static const sparkDelay = Duration(milliseconds: 490);
   static const sparkFadeIn = Duration(milliseconds: 140);
   static const sparkTravel = Duration(milliseconds: 980);

@@ -96,6 +96,18 @@ abstract final class ElevenNoirText {
   static TextStyle historyResult({Color color = ElevenNoirColors.ink}) =>
       body(20, weight: FontWeight.w900, color: color);
 
+  /// 전적 동점 기호 `=` 24/900, line-height .8(`.resTie`, 보조 글자색).
+  static TextStyle historyTieMark() => body(
+    24,
+    weight: FontWeight.w900,
+    color: ElevenNoirColors.mutedText,
+    height: 0.8,
+  );
+
+  /// 전적 동점 글자 “동점” 20/900 보조 글자색(`.resTie`).
+  static TextStyle historyTie() =>
+      body(20, weight: FontWeight.w900, color: ElevenNoirColors.mutedText);
+
   /// `+1` 배지 20/900.
   static TextStyle plusBadge() => body(20, weight: FontWeight.w900);
 
