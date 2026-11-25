@@ -54,7 +54,7 @@ class TabletGameSettingsDialog extends StatelessWidget {
                 style: MosiFonts.sans(
                   size: 38,
                   weight: FontWeight.w700,
-                  color: MosiColors.navy,
+                  color: theme.onSurface,
                   letterSpacing: -1.5,
                 ),
               ),
@@ -84,34 +84,37 @@ class TabletGameSettingsDialog extends StatelessWidget {
                             color: MosiColors.muted,
                           ),
                         ),
-                        for (final char in code.split('')) ...[
+                        for (final (i, char) in code.split('').indexed) ...[
                           const SizedBox(width: 8),
-                          Container(
-                            width: 34,
-                            height: 40,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: MosiColors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: MosiColors.ink,
-                                width: 2,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
+                          if (theme.tileCodeChips)
+                            _TileCodeChip(char: char, dark: i.isEven)
+                          else
+                            Container(
+                              width: 34,
+                              height: 40,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: MosiColors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
                                   color: MosiColors.ink,
-                                  offset: Offset(2, 2),
+                                  width: 2,
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              char,
-                              style: MosiFonts.grotesk(
-                                size: 20,
-                                color: MosiColors.navy,
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: MosiColors.ink,
+                                    offset: Offset(2, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                char,
+                                style: MosiFonts.grotesk(
+                                  size: 20,
+                                  color: MosiColors.navy,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ],
                     ),
@@ -143,8 +146,8 @@ class TabletGameSettingsDialog extends StatelessWidget {
               MosiButton(
                 label: '게임 재시작'.localized,
                 leading: const Icon(Icons.refresh_rounded),
-                background: MosiColors.sky,
-                foreground: MosiColors.white,
+                background: theme.secondaryButton,
+                foreground: theme.secondaryButtonFg,
                 shadowColor: MosiColors.ink,
                 height: 60,
                 fontSize: 18,
@@ -201,6 +204,7 @@ class _GameInfo extends StatelessWidget {
     final players = provider.players.where((p) => p.isPlayer).length;
     final gameId = _gameIdFromName(game?.name);
     return MosiCreamPanel(
+      theme: MosiGameModalTheme.fromName(game?.name),
       child: Column(
         children: [
           Align(
@@ -277,6 +281,7 @@ String? _gameIdFromName(String? name) {
       lower.contains('俄羅斯')) {
     return 'russian_roulette';
   }
+  if (lower.contains('eleven') || lower.contains('일레븐')) return 'eleven';
   return null;
 }
 
@@ -325,8 +330,7 @@ class _RoomInfoState extends State<_RoomInfo> {
   }
 
   void _tapRemove(GameRoomPlayer player) {
-    if (_pendingUids.contains(player.uid) ||
-        _leaving.containsKey(player.uid)) {
+    if (_pendingUids.contains(player.uid) || _leaving.containsKey(player.uid)) {
       return;
     }
     if (_confirmUid != player.uid) {
@@ -434,6 +438,9 @@ class _RoomInfoState extends State<_RoomInfo> {
         ];
         final online = counted.where((player) => player.isConnected).length;
         return MosiCreamPanel(
+          theme: MosiGameModalTheme.fromName(
+            widget.provider.selectedGame?.name,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -489,8 +496,7 @@ class _RoomInfoState extends State<_RoomInfo> {
                     ? Text(
                         GameLocale.select(
                           ko: '연결이 끊긴 사람은 30초 동안 자리를 지켜 둬요.',
-                          en:
-                              'A disconnected player keeps their seat for 30 seconds.',
+                          en: 'A disconnected player keeps their seat for 30 seconds.',
                           zhHans: '断线玩家的座位会保留 30 秒。',
                           zhHant: '斷線玩家的座位會保留 30 秒。',
                         ),
@@ -794,6 +800,7 @@ class _SoundSettingsState extends State<_SoundSettings> {
     final sound = context.watch<SoundProvider>();
     final muted = sound.masterVolume == 0;
     return MosiCreamPanel(
+      theme: widget.theme,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -814,7 +821,7 @@ class _SoundSettingsState extends State<_SoundSettings> {
           _SoundSlider(
             title: '전체'.localized,
             icon: Icons.volume_up_rounded,
-            iconBackground: MosiColors.sun,
+            iconBackground: widget.theme.soundIcons[0],
             value: sound.masterVolume,
             onChanged: sound.setMasterVolume,
             accent: widget.theme.deep,
@@ -822,7 +829,7 @@ class _SoundSettingsState extends State<_SoundSettings> {
           _SoundSlider(
             title: '효과'.localized,
             icon: Icons.auto_awesome_rounded,
-            iconBackground: MosiColors.lime,
+            iconBackground: widget.theme.soundIcons[1],
             value: sound.effectVolume,
             onChanged: sound.setEffectVolume,
             accent: widget.theme.deep,
@@ -830,7 +837,7 @@ class _SoundSettingsState extends State<_SoundSettings> {
           _SoundSlider(
             title: '배경'.localized,
             icon: Icons.music_note_rounded,
-            iconBackground: const Color(0xFF9CC3FF),
+            iconBackground: widget.theme.soundIcons[2],
             value: sound.bgmVolume,
             onChanged: sound.setBgmVolume,
             accent: widget.theme.deep,
@@ -976,4 +983,38 @@ class _BorderedThumb extends SliderComponentShape {
         ..strokeWidth = 2.5,
     );
   }
+}
+
+/// ELEVEN 방 코드 글자: 흑·백 타일을 번갈아 놓고 스텐실 숫자 글꼴로 씁니다.
+class _TileCodeChip extends StatelessWidget {
+  const _TileCodeChip({required this.char, required this.dark});
+
+  final String char;
+  final bool dark;
+
+  static const _ink = Color(0xFF141414);
+  static const _cream = Color(0xFFF7F0E4);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 34,
+    height: 40,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: dark ? const Color(0xFF1B1B1B) : _cream,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: dark ? _cream : _ink, width: 2),
+      boxShadow: const [BoxShadow(color: _ink, offset: Offset(0, 3))],
+    ),
+    child: Text(
+      char,
+      style: TextStyle(
+        fontFamily: 'StardosStencil',
+        fontWeight: FontWeight.w700,
+        fontSize: 22,
+        height: 1,
+        color: dark ? _cream : _ink,
+      ),
+    ),
+  );
 }

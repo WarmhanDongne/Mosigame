@@ -116,7 +116,7 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                       style: MosiFonts.sans(
                         size: 34,
                         weight: FontWeight.w700,
-                        color: MosiColors.navy,
+                        color: theme.onSurface,
                         letterSpacing: -1.5,
                       ),
                     ),
@@ -154,7 +154,7 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                     style: MosiFonts.sans(
                       size: 15,
                       weight: FontWeight.w700,
-                      color: MosiColors.navy,
+                      color: theme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -180,7 +180,7 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                     style: MosiFonts.sans(
                       size: 15,
                       weight: FontWeight.w700,
-                      color: MosiColors.navy,
+                      color: theme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -249,7 +249,7 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                                   decoration: BoxDecoration(
                                     color: index == _page
                                         ? theme.deep
-                                        : MosiColors.white,
+                                        : theme.tabIdle,
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
                                       color: MosiColors.ink,
@@ -287,10 +287,19 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                       width: double.infinity,
                       height: double.infinity,
                       padding: const EdgeInsets.fromLTRB(28, 26, 28, 20),
+                      margin: EdgeInsets.only(
+                        bottom: theme.panelShadow ? 8 : 0,
+                      ),
                       decoration: BoxDecoration(
-                        color: MosiColors.cream,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: MosiColors.ink, width: 2),
+                        color: theme.panel,
+                        borderRadius: BorderRadius.circular(
+                          theme.panelShadow ? theme.panelRadius : 16,
+                        ),
+                        border: Border.all(
+                          color: MosiColors.ink,
+                          width: theme.panelBorderWidth,
+                        ),
+                        boxShadow: theme.panelShadows,
                       ),
                       child: SingleChildScrollView(
                         child: Column(
@@ -353,9 +362,7 @@ class _TabletGameRulebookDialogState extends State<TabletGameRulebookDialog> {
                               width: i == _page ? 22 : 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: i == _page
-                                    ? theme.deep
-                                    : const Color(0x400E0A3D),
+                                color: i == _page ? theme.deep : theme.dotIdle,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
@@ -564,7 +571,7 @@ class _RuleVideoState extends State<_RuleVideo> {
           height: 250,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: widget.theme.deep,
+            color: widget.theme.mediaColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: MosiColors.ink, width: 3),
           ),

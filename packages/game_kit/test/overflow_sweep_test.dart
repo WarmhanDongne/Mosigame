@@ -20,7 +20,7 @@ final _rules = [
         '남은 시간이 지나면 자동으로 넘어가며, 벌칙 룰렛은 갈수록 불리해져요.',
 ].join('\n\n');
 
-const _games = ['라이어스 포커', '마피아', '파이널콜', '텍사스 홀덤'];
+const _games = ['라이어스 포커', '마피아', '파이널콜', '텍사스 홀덤', '일레븐'];
 
 Future<void> _settle(WidgetTester tester) async {
   for (var i = 0; i < 12; i++) {

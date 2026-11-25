@@ -14,8 +14,9 @@ import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_eleven/game_copy.dart';
-import 'package:game_eleven/game_theme.dart';
 import 'package:game_eleven/phone/phone_board.dart';
+import 'package:game_eleven/preview/seat_layout.dart';
+import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/services/command_service.dart';
 import 'package:game_eleven/shared/services/game_service.dart';
 import 'package:game_eleven/tablet/tablet_board.dart';
@@ -44,11 +45,21 @@ class ElevenGame extends TemplateGame {
   PhoneGameOrientation get phoneOrientation =>
       PhoneGameOrientation.landscapeOnly;
 
+  /// 자리 배치 뒤 테이블이 화면을 덮는 색입니다. 게임 테이블(`.stage`)과 같은 먹색입니다.
   @override
-  Color get tableColor => ElevenColors.table;
+  Color get tableColor => ElevenNoirColors.table;
 
   @override
   ImageProvider? get tableBackgroundImage => null;
+
+  /// 자리 배치 완료 연출: 흑·백 사선 원탁과 가운데 물음표 카드.
+  @override
+  Widget? buildLayoutTable(BuildContext context) => const ElevenLayoutTable();
+
+  /// 자리 배치 완료 연출: 첫 자리는 흑 카드, 둘째 자리는 백 카드.
+  @override
+  Widget? buildLayoutChair(BuildContext context, int seatIndex) =>
+      ElevenLayoutSeat(seatIndex: seatIndex);
 
   @override
   Future<void> startGame(String roomCode, {Map<String, Object?>? options}) =>
