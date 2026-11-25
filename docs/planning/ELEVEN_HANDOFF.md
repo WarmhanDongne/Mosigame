@@ -160,3 +160,16 @@ timing 변경: roundResult 2000→3200, drawReveal 600→4700, roundIntro 800→
 하준 확인: Noto Sans KR 번들 여부, P08 패배·동점·후공 문구 부재, 모서리 점 간격 검수.
 다음: 하준 기준 커밋 승인 → 레인 지시문(LANE-A/B/C)·worktree 스크립트.
 ```
+
+## 2026-11-25 · S5 레인 준비 (Claude Code, 맥)
+
+```text
+기준 커밋: feature/black-and-white-ui (6e6a1ede S5-0a, 06cb21cf S5-0b, 678104e5 디자인 자료, 레인 준비 커밋).
+레인: scripts/eleven_lanes.sh → ~/Developer/projects/project00-lanes/lane-{a,b,c}
+  (eleven/lane-a-phone, eleven/lane-b-tablet, eleven/lane-c-integration).
+Codex 입력: 각 폴더에서 "docs/planning/eleven-lanes/LANE-A.md 읽고 진행"(B·C 같음).
+검수: 레인 LOG에 "검수 요청: 예"가 오면 Claude가 review_out/<레인>/ 과 docs/design/eleven 기준을 비교해
+  REVIEW-<레인>.md 작성 → Codex에 "REVIEW-A.md 반영".
+하준 결정 대기: P08 패배·동점·후공 문구, Noto Sans KR 번들 여부.
+다음: 세 레인 PASS 뒤 S6-M 지시문(S6-M.md) 작성·병합.
+```

@@ -1,14 +1,18 @@
 // 디자인 가드: 화면(lib/phone, lib/tablet)은 색·글꼴·글자 스타일·연출 시간·곡선을 직접
 // 만들지 않고 lib/shared/noir/ 토큰과 lib/shared/widgets/ 공통 부품을 쓴다(S5-0b).
 //
-// 지금 있는 위반은 S4 임시 골격 화면에 있고, 시안 화면 구현이 레인 A·B 범위라
-// 공통 부품으로 옮기지 않고 아래 허용 목록(파일·규칙·줄 내용·이유)에 둔다. 레인이 화면을
-// 교체해 위반이 사라지면 이 테스트가 “허용 목록에 남은 항목”으로 실패하므로 그 항목도
-// 함께 지운다. 새 위반은 허용 목록에 추가하지 말고 토큰·공통 부품을 쓴다.
+// 지금 있는 위반은 S4 임시 골격 화면에 있고(이유: 시안 화면 구현이 레인 A·B 범위),
+// 공통 부품으로 옮기지 않고 허용 목록(파일·규칙·줄 내용)에 둔다. 허용 목록은 레인 소유
+// 폴더 test/phone/design_guard_allowlist.dart, test/tablet/design_guard_allowlist.dart에
+// 있다. 레인이 화면을 교체해 위반이 사라지면 이 테스트가 “허용 목록에 남은 항목”으로
+// 실패하므로 그 항목도 함께 지운다. 새 위반은 추가하지 말고 토큰·공통 부품을 쓴다.
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import '../phone/design_guard_allowlist.dart';
+import '../tablet/design_guard_allowlist.dart';
 
 /// 검사 규칙: 이름 → 정규식. 주석은 검사 전에 지운다.
 final _rules = <String, RegExp>{
@@ -23,46 +27,12 @@ final _rules = <String, RegExp>{
   'Cubic(': RegExp(r'(?<![A-Za-z0-9_])Cubic\s*\('),
 };
 
-const _s4Skeleton = 'S4 임시 골격 화면. 시안 화면 구현은 레인 A·B 범위라 교체하면서 제거한다';
-
-/// (파일, 규칙) → 허용하는 줄 내용(앞뒤 공백 제거). 같은 줄이 여러 번이면 그만큼 적는다.
+/// (파일, 규칙) → 허용하는 줄 내용. 레인끼리 같은 파일을 고치지 않도록 허용 목록은
+/// 레인 소유 폴더에 나눠 둔다: test/phone/(레인 A), test/tablet/(레인 B).
 final _allowed = <(String, String), List<String>>{
-  ('lib/phone/src/board_state.dart', 'TextStyle('): [
-    'style: const TextStyle(color: ElevenColors.ink),',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'const style = TextStyle(color: ElevenColors.ink, fontSize: 16);',
-    'style: const TextStyle(color: ElevenColors.accent, fontSize: 15),',
-  ],
-  ('lib/tablet/src/board_state.dart', 'TextStyle('): [
-    'style: const TextStyle(color: ElevenColors.ink),',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-  ],
-  ('lib/tablet/src/board_state.dart', 'Color(0x'): [
-    'color: const Color(0x99000000),',
-  ],
-  ('lib/tablet/widgets/draw_grid.dart', 'TextStyle('): [
-    'style: const TextStyle(color: ElevenColors.ink, fontSize: 14),',
-  ],
-  ('lib/tablet/widgets/score_board.dart', 'TextStyle('): [
-    'style: const TextStyle(',
-    'style: const TextStyle(color: ElevenColors.inkMuted, fontSize: 15),',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-    'style: const TextStyle(',
-  ],
-  ('lib/tablet/widgets/score_board.dart', 'Duration(<숫자>'): [
-    'duration: const Duration(milliseconds: 200),',
-  ],
+  ...phoneDesignGuardAllowlist,
+  ...tabletDesignGuardAllowlist,
 };
-
-/// 허용 이유. 모든 허용 항목이 같은 이유다.
-String _reasonFor((String, String) key) => _s4Skeleton;
 
 /// `//` 주석을 지운다(문자열 안 `//`는 이 패키지 화면 코드에 없다).
 String _stripComments(String line) {
@@ -155,9 +125,13 @@ final g = ElevenColors.table;
     expect(stale, isEmpty, reason: '허용 목록에 있지만 더는 없는 위반이다. 허용 목록에서 지운다.');
   });
 
-  test('every allowlist entry has a reason', () {
-    for (final key in _allowed.keys) {
-      expect(_reasonFor(key), isNotEmpty);
+  test('allowlist entries name a known rule and their own lane folder', () {
+    for (final key in phoneDesignGuardAllowlist.keys) {
+      expect(key.$1, startsWith('lib/phone/'));
+      expect(_rules.keys, contains(key.$2));
+    }
+    for (final key in tabletDesignGuardAllowlist.keys) {
+      expect(key.$1, startsWith('lib/tablet/'));
       expect(_rules.keys, contains(key.$2));
     }
   });

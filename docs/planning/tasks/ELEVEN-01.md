@@ -305,3 +305,27 @@
   3. 카드 모서리 점은 측정 자료에 첫 점 위치만 있어 나머지 두 점 간격은 기준 PNG를 보고 맞췄다.
   4. `game_theme.dart`의 S4 임시 색(`ElevenColors`)은 가드 규칙 밖이라 남겨 두었다. 게임 목록
      테이블 색(`ElevenColors.table` #111111)도 바꾸지 않았다.
+
+<a id="s5-lanes-setup-20261125"></a>
+### 2026-11-25 S5 레인 준비 (Claude Code, 맥 로컬)
+
+- 하준 지시로 S5-0 기준 커밋을 승인받아 진행. 커밋: `6e6a1ede`(S5-0a), `06cb21cf`(S5-0b),
+  `678104e5`(디자인 기준 자료 추적), 이 항목의 레인 준비 커밋.
+- 디자인 기준 자료: `.gitignore` 59행 `design/`이 `docs/design/eleven`을 무시해 레인 worktree에 없고
+  `screen_copy_test`가 다른 checkout에서 실패하는 문제를 고쳤다. `!docs/design/` 예외로 추적하고, 모션
+  프레임은 긴 변 1080px·JPEG 품질 60으로 줄였다(45MB → 10MB, 원본 PNG는 git 밖
+  `motion-frames-full/`). 추적 용량 약 19MB.
+- 레인이 같은 파일을 고치지 않도록: 디자인 가드 허용 목록을 `test/phone/`·`test/tablet/`의 레인 소유 파일로
+  나눴고, `test/widgets_test.dart`를 `test/shared/entry_test.dart`·`test/phone/tile_rack_test.dart`·
+  `test/tablet/draw_grid_test.dart`로 나눴다(뽑기 테스트 값을 1–9로 정정).
+- 검수 스크린샷 도우미 `test/support/eleven_test_support.dart`: 숫자 StardosStencil, 한글은 저장소의
+  IBMPlexSansKR을 “Noto Sans KR” 이름으로 등록해 실제 글자로 그린다. `ELEVEN_REVIEW=1`일 때만
+  `review_out/<레인>/`에 저장(`.gitignore`에 `review_out/` 추가). 골든 3개를 이 글꼴로 다시 만들었다.
+- 지시문: `docs/planning/eleven-lanes/LANES-COMMON.md`, `LANE-A.md`, `LANE-B.md`, `LANE-C.md`.
+  스크립트: `scripts/eleven_lanes.sh`(worktree `~/Developer/projects/project00-lanes/lane-{a,b,c}`,
+  브랜치 `eleven/lane-a-phone`·`eleven/lane-b-tablet`·`eleven/lane-c-integration`).
+- 레인 표시 결정(Claude): 문구의 사람 이름은 실제 닉네임, 아바타·A/B 표식 글자는 좌석 표시(seatIndex 0 = A).
+  P08 패배·동점·후공 문구는 하준 결정 전까지 만들지 않고 레인 A가 요청으로 남긴다.
+- 검증: `packages/game_eleven` `flutter test --no-pub` 111/111 PASS exit 0, `flutter analyze --no-pub
+  packages/game_eleven` exit 0, `dart format --set-exit-if-changed` exit 0, 패키지 경계 0건 exit 0,
+  `bash -n scripts/eleven_lanes.sh` exit 0. validate --full 미실행.

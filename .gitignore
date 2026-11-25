@@ -63,3 +63,6 @@ docs/design/eleven/motion-frames-full/
 work-items/
 *.apk
 packages.zip
+
+# ELEVEN 레인 검수 스크린샷(커밋 제외)
+review_out/

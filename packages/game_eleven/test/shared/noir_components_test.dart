@@ -1,14 +1,11 @@
 // 시안 A 공통 부품(토큰·타일·토스트·모션 상수) 위젯 테스트와 골든(S5-0b 3).
 //
 // 골든은 macOS에서 만든 PNG라 다른 OS의 글자·안티에일리어싱 차이로 픽셀이 달라질 수
-// 있어 macOS에서만 비교한다. 숫자 글꼴은 루트 assets/fonts/StardosStencil-Bold.ttf를
-// 불러 실제 글꼴로 그린다(한글은 테스트 기본 글꼴 상자로 그려진다).
+// 있어 macOS에서만 비교한다. 글꼴은 test/support/eleven_test_support.dart가 불러 숫자는
+// StardosStencil, 한글은 대체 글꼴(IBMPlexSansKR)로 그린다.
 // 갱신: packages/game_eleven 에서 `flutter test --update-goldens test/shared/noir_components_test.dart`.
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_eleven/game_copy.dart';
 import 'package:game_eleven/shared/noir/noir_motion.dart';
@@ -18,18 +15,7 @@ import 'package:game_eleven/shared/models/timing.dart';
 import 'package:game_eleven/shared/widgets/noir_tile.dart';
 import 'package:game_eleven/shared/widgets/noir_toast.dart';
 
-final _goldenSkip = Platform.isMacOS
-    ? false
-    : '골든 PNG는 macOS 기준이다(다른 OS는 글자 렌더링 차이)';
-
-Future<void> _loadNumberFont() async {
-  final bytes = File(
-    '../../assets/fonts/StardosStencil-Bold.ttf',
-  ).readAsBytesSync();
-  final loader = FontLoader(ElevenNoirFonts.number)
-    ..addFont(Future.value(ByteData.sublistView(bytes)));
-  await loader.load();
-}
+import '../support/eleven_test_support.dart';
 
 Widget _stage(Widget child, {Size size = const Size(400, 200)}) => MaterialApp(
   debugShowCheckedModeBanner: false,
@@ -51,7 +37,7 @@ Widget _stage(Widget child, {Size size = const Size(400, 200)}) => MaterialApp(
 );
 
 void main() {
-  setUpAll(_loadNumberFont);
+  setUpAll(loadElevenTestFonts);
 
   group('tokens', () {
     test('colors are the screens.md 1-1 values', () {
@@ -480,11 +466,11 @@ void main() {
           const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ElevenToastText(text: '7 : 3'),
-              ElevenToastText(text: '11', accent: true),
+              ElevenToastText(text: '숫자 공개'),
+              ElevenToastText(text: '6라운드\nA 선공', accent: true),
             ],
           ),
-          size: const Size(520, 320),
+          size: const Size(720, 520),
         ),
       );
       await expectLater(
@@ -492,5 +478,5 @@ void main() {
         matchesGoldenFile('goldens/tablet_toast.png'),
       );
     });
-  }, skip: _goldenSkip);
+  }, skip: elevenGoldenSkip);
 }
