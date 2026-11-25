@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/shared/widgets/game_turn_countdown.dart';
 import 'package:game_eleven/game_copy.dart';
 import 'package:game_eleven/phone/providers/game_stage.dart';
@@ -75,7 +76,12 @@ class ElevenPhoneNoirView extends StatelessWidget {
             child: ElevenNoirStage(
               child: Stack(
                 children: [
-                  _playerChip(mySeat, myScore, theirScore),
+                  _playerChip(
+                    mySeat,
+                    myScore,
+                    theirScore,
+                    pub.players[uid]?.characterId ?? '',
+                  ),
                   if (!isEnd)
                     _statusChip(
                       status,
@@ -229,43 +235,58 @@ class ElevenPhoneNoirView extends StatelessWidget {
         child: child,
       );
 
-  Widget _playerChip(int seat, int mine, int theirs) => Positioned(
-    left: 20,
-    top: 18,
-    height: ElevenNoirSpacing.chipHeight,
-    child: _card(
-      radius: ElevenNoirRadius.chip,
-      child: Padding(
-        padding: ElevenNoirSpacing.playerChipPadding,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: ElevenNoirColors.avatarCream,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: ElevenNoirColors.ink,
-                  width: ElevenNoirBorder.thin,
+  /// 참가자가 고른 캐릭터 얼굴(공용 MosiFace). 캐릭터 정보가 없으면 좌석 글자(A/B)로 대신한다.
+  Widget _avatarFace(
+    String characterId,
+    String seatLetter,
+    double size,
+    TextStyle letterStyle,
+  ) => characterId.isEmpty
+      ? Text(seatLetter, style: letterStyle)
+      : ClipOval(
+          child: MosiFace(characterId: characterId, size: size),
+        );
+
+  Widget _playerChip(int seat, int mine, int theirs, String characterId) =>
+      Positioned(
+        left: 20,
+        top: 18,
+        height: ElevenNoirSpacing.chipHeight,
+        child: _card(
+          radius: ElevenNoirRadius.chip,
+          child: Padding(
+            padding: ElevenNoirSpacing.playerChipPadding,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: ElevenNoirColors.avatarCream,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: ElevenNoirColors.ink,
+                      width: ElevenNoirBorder.thin,
+                    ),
+                  ),
+                  child: _avatarFace(
+                    characterId,
+                    seat == 0 ? 'A' : 'B',
+                    34,
+                    ElevenNoirText.avatar(),
+                  ),
                 ),
-              ),
-              child: Text(
-                seat == 0 ? 'A' : 'B',
-                style: ElevenNoirText.avatar(),
-              ),
+                const SizedBox(width: ElevenNoirSpacing.playerChipGap),
+                Text(ElevenScreenCopy.me, style: ElevenNoirText.topBar()),
+                const SizedBox(width: ElevenNoirSpacing.playerChipGap),
+                Text('$mine : $theirs', style: ElevenNoirText.topBarScore()),
+              ],
             ),
-            const SizedBox(width: ElevenNoirSpacing.playerChipGap),
-            Text(ElevenScreenCopy.me, style: ElevenNoirText.topBar()),
-            const SizedBox(width: ElevenNoirSpacing.playerChipGap),
-            Text('$mine : $theirs', style: ElevenNoirText.topBarScore()),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _statusChip((String, String) status, bool reducedMotion) => Positioned(
     left: 174,
@@ -1106,7 +1127,12 @@ class ElevenPhoneNoirView extends StatelessWidget {
                           width: ElevenNoirBorder.regular,
                         ),
                       ),
-                      child: Text(seat, style: ElevenNoirText.winnerAvatar()),
+                      child: _avatarFace(
+                        winner?.characterId ?? '',
+                        seat,
+                        80,
+                        ElevenNoirText.winnerAvatar(),
+                      ),
                     ),
                   ),
                 ),

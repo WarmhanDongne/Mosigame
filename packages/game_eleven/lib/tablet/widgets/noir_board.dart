@@ -130,7 +130,16 @@ class ElevenTabletBoardView extends StatelessWidget {
                               onPick: onPick,
                             )
                           : ElevenHistoryStrip(
-                              history: game.history,
+                              // 이번 라운드 행은 결과 단계에서 아직 채우지 않는다. 서버는
+                              // 판정과 동시에 기록하지만, 시안·MotionKit 7은 새 라운드가 시작될
+                              // 때 직전 라운드 행을 채운다(카드 결과 공개보다 먼저 보이지 않게).
+                              history: [
+                                for (final entry in game.history)
+                                  if (pub.status != 'playing' ||
+                                      pub.phase != 'roundResult' ||
+                                      entry.round != pub.round)
+                                    entry,
+                              ],
                               seatOrder: [for (final p in seats) p.uid],
                               animatedRound:
                                   motionEnabled &&
@@ -153,10 +162,19 @@ class ElevenTabletBoardView extends StatelessWidget {
               Positioned.fromRect(
                 rect: ElevenNoirSpacing.toastRect,
                 child: _BoardToast(
+                  // 화면 내용이 바뀔 때만 다시 재생한다. revision은 복구·준비 상태 같은
+                  // 화면과 무관한 서버 쓰기에도 오르므로 키에 넣지 않는다(다시하기 직후
+                  // “타일 선택”이 두 번 나오던 원인).
                   key: ValueKey(
-                    'eleven-toast-${pub.phase}-${pub.round}-${pub.revision}-${screen.id}',
+                    'eleven-toast-${pub.startedAt}-${pub.phase}-${pub.round}-${pub.draw?.picks.length}-${screen.id}',
                   ),
-                  playKey: (pub.phase, pub.round, pub.revision, screen.id),
+                  playKey: (
+                    pub.startedAt,
+                    pub.phase,
+                    pub.round,
+                    pub.draw?.picks.length,
+                    screen.id,
+                  ),
                   steps: _toastSteps(),
                   secondSteps: _secondToastSteps(),
                   delay: switch (screen) {

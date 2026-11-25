@@ -461,3 +461,23 @@
   하준 승인으로 `firebase deploy --only database --config firebase.test.json --project ban-pick-simulator --non-interactive`
   → exit 0. 배포 전 차이는 추가 3개(`game/controller/.read` controller만, `seatingPreference/.read` controller만,
   `.write:false`), 배포 후 TEST rules = 저장소 `database.rules.json` 일치 확인.
+
+<a id="s8-device-fix1-20261125"></a>
+### 2026-11-25 S8 실기기 확인 1차 결과 반영 (하준 D01–D17 → Claude Code)
+
+- 하준 결과: D01–D11, D14, D16, D17 통과. D12 실패(휴대폰 강제 종료 뒤 재실행 시 방 복귀 안 됨), D13 보류(iOS 방법),
+  D15 휴대폰 문구 번역 안 됨. 추가 결함 4건.
+- 수정:
+  1. 전적판이 카드 결과 공개 전에 승패를 보임 → 결과 단계(`roundResult`)에서는 이번 라운드 행을 숨기고 다음 라운드가
+     시작될 때 채움(`tablet/widgets/noir_board.dart`, `test/tablet/history_timing_test.dart`).
+  2. 뽑기 결과가 태블릿 뒤집기 전에 휴대폰에 먼저 보임 → `resolveElevenPhoneScreen(drawResultRevealed)` 추가, 휴대폰은
+     `drawReveal` 진입 뒤 `ElevenDrawMotion.flipAt`(1.9초)까지 G3/G8 유지(재접속 시 바로 결과). 테스트 추가.
+  3. 휴대폰 아바타가 A/B 글자 → 고른 캐릭터 얼굴(game_kit `MosiFace`), 정보가 없으면 좌석 글자. 상단 칩·P10/P11 승자 아바타.
+  4. 다시하기 때 “타일 선택” 토스트 2번 → 토스트 재생 키에서 `revision`을 빼고 시작 시각·phase·round·뽑기 수·화면 ID로
+     바꿈(revision은 화면과 무관한 복구·준비 쓰기에도 오름).
+- D15 조사: 휴대폰 화면 코드는 모든 문구를 번역 키로 그리며, 앱 언어를 en·zh-Hans로 바꾼 위젯 테스트에서 한국어가 남지
+  않음(`test/phone/locale_screen_test.dart`). 언어는 기기·앱별 설정(`GameLocale.current = settings.language.locale`)이라
+  휴대폰 앱의 언어 설정이 한국어였을 가능성이 높다. 하준 확인 대기.
+- D12 조사: 재실행 복귀는 플랫폼 공통 흐름(`PlayerRoomSessionStore` → `restorableSession` → 자동 복귀)이며 ELEVEN 전용
+  분기는 없다. 당시 방이 이미 닫혀 서버 상태를 볼 수 없어 재현 정보 대기.
+- 검증: `packages/game_eleven` `flutter test --no-pub` 168 PASS·37 skip, 루트 `flutter analyze --no-pub` exit 0, format·경계 exit 0.

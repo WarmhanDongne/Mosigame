@@ -166,6 +166,9 @@ enum ElevenPhoneScreen {
 /// - [locallySubmittedRound]: [resolveElevenPhoneStage]와 같습니다(P07).
 /// - [roundResultRevealed]: false면 `roundResult`에서 결과 공개 전 안내 G6을,
 ///   true면 P08을 돌려줍니다. 프로토타입 ④는 0초 G6 → 1.4초 P08입니다.
+/// - [drawResultRevealed]: false면 뽑기 공개(`drawReveal`) 직후에도 결과(G4/G5, 최종 동점 뽑기의
+///   P10/P11)를 보여 주지 않고 대기 화면(G3, G8)을 유지한다. 태블릿이 카드를 뒤집는 시점
+///   (`ElevenDrawMotion.flipAt`)에 맞추기 위해서다(하준 실기기 확인 2026-11-25).
 /// - [gameEndRevealed]: false면 조기 종료(`finishDetail: earlyEnd`)에서 G7을,
 ///   true면 P10/P11을 돌려줍니다. 프로토타입 ⑥은 G7 → 3.7초 P10/P11입니다.
 ///   11라운드 종료·동점 뽑기 종료는 바로 P10/P11입니다(프로토타입 ⑦·⑧).
@@ -175,6 +178,7 @@ ElevenPhoneScreen resolveElevenPhoneScreen(
   int? locallySubmittedRound,
   bool roundResultRevealed = true,
   bool gameEndRevealed = true,
+  bool drawResultRevealed = true,
 }) {
   final pub = game.public;
   final stage = resolveElevenPhoneStage(
@@ -203,13 +207,15 @@ ElevenPhoneScreen resolveElevenPhoneScreen(
       if (draw.purpose == ElevenDrawPurpose.finalTie) {
         // 프로토타입 ⑧: 공개되면 휴대폰은 바로 게임 종료 화면(왕관은 아직 없음).
         final winner = draw.winnerUid;
-        return pub.phase == 'drawReveal' && winner != null
+        return pub.phase == 'drawReveal' && winner != null && drawResultRevealed
             ? endFor(winner)
             : ElevenPhoneScreen.g8TieDraw;
       }
       if (pub.phase == 'drawReveal') {
         final winner = draw.winnerUid;
-        if (winner == null) return ElevenPhoneScreen.g3DrawPicked;
+        if (winner == null || !drawResultRevealed) {
+          return ElevenPhoneScreen.g3DrawPicked;
+        }
         return winner == uid
             ? ElevenPhoneScreen.g4DrawResultFirst
             : ElevenPhoneScreen.g5DrawResultSecond;

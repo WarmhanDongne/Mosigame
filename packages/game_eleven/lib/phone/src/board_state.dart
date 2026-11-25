@@ -28,6 +28,9 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame>
   String? _previousDrawPickerUid;
   bool _roundResultRevealed = true;
   bool _gameEndRevealed = true;
+
+  /// 뽑기 공개 직후 태블릿이 카드를 뒤집기 전까지 결과를 숨긴다(재접속 때는 바로 보임).
+  bool _drawResultRevealed = true;
   Timer? _timeoutTimer;
   (int, String)? _timeoutKey;
 
@@ -125,7 +128,13 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame>
       _revealTimer?.cancel();
       _roundResultRevealed = true;
       _gameEndRevealed = true;
-      if (previous != null && phase == 'roundResult') {
+      _drawResultRevealed = true;
+      if (previous != null && phase == 'drawReveal') {
+        _drawResultRevealed = false;
+        _revealTimer = Timer(ElevenDrawMotion.flipAt, () {
+          if (mounted) setState(() => _drawResultRevealed = true);
+        });
+      } else if (previous != null && phase == 'roundResult') {
         _roundResultRevealed = false;
         _revealTimer = Timer(ElevenRoundFlowMotion.toastAt, () {
           if (mounted) setState(() => _roundResultRevealed = true);
@@ -277,6 +286,7 @@ class _ElevenPhoneGameState extends ConsumerState<ElevenPhoneGame>
       locallySubmittedRound: _submittedRound,
       roundResultRevealed: _roundResultRevealed,
       gameEndRevealed: _gameEndRevealed,
+      drawResultRevealed: _drawResultRevealed,
     );
     return Scaffold(
       backgroundColor: ElevenNoirColors.table,

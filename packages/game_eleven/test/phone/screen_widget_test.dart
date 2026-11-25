@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_eleven/game_copy.dart';
+import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_eleven/phone/noir_view.dart';
 import 'package:game_eleven/shared/noir/noir_motion.dart';
 import 'package:game_eleven/shared/noir/noir_tokens.dart';
@@ -79,6 +80,15 @@ void main() {
               .first,
         );
         expect(loserOpacity.opacity, ElevenNoirOpacity.guideLoserRoundResult);
+      }
+      // 하준 실기기 확인(2026-11-25): 아바타는 좌석 글자가 아니라 고른 캐릭터 얼굴이다.
+      final faces = tester
+          .widgetList<MosiFace>(find.byType(MosiFace))
+          .map((face) => face.characterId)
+          .toList();
+      expect(faces.first, fixture.uid == 'b' ? 'bee' : 'bear');
+      if (fixture.id == 'P10' || fixture.id == 'P11') {
+        expect(faces, contains('bear'), reason: '승자 A의 캐릭터');
       }
       if (fixture.id == 'P05') expect(find.text('1 : 2'), findsOneWidget);
       if (fixture.id == 'P08') expect(find.text('3 : 1'), findsOneWidget);

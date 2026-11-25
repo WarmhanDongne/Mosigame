@@ -37,8 +37,18 @@ class PhoneCase {
       'firstUid': 'a',
       'secondUid': 'b',
       'players': {
-        'a': {'uid': 'a', 'nickname': 'A', 'seatIndex': 0},
-        'b': {'uid': 'b', 'nickname': 'B', 'seatIndex': 1},
+        'a': {
+          'uid': 'a',
+          'nickname': 'A',
+          'seatIndex': 0,
+          'characterId': 'bear',
+        },
+        'b': {
+          'uid': 'b',
+          'nickname': 'B',
+          'seatIndex': 1,
+          'characterId': 'bee',
+        },
       },
       if (countdownSeconds != null)
         'turnDeadlineAt': ServerClock.nowMillis() + countdownSeconds! * 1000,
