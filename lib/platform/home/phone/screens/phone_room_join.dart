@@ -268,11 +268,12 @@ class _PhoneRoomJoinState extends State<PhoneRoomJoin>
                               stateKey: showCodeEntry
                                   ? 'code-title'
                                   : 'scanner-title',
-                              child: Text(
+                              child: MosiBalancedText(
                                 showCodeEntry
                                     ? '방 코드 입력'.localized
                                     : '어느 방에 들어갈까요?'.localized,
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
                                 style: MosiFonts.sans(
                                   size: 23,
                                   weight: FontWeight.w700,

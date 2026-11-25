@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/models/game_room_context.dart';
+import 'package:game_kit/mosi_ui/mosi_balanced_text.dart';
 import 'package:game_kit/phone/animations/game_entry_unroll.dart';
 import 'package:game_kit/phone/widgets/exit_modal.dart';
 import 'package:game_kit/phone/widgets/ripple_dialog.dart';
@@ -842,13 +843,15 @@ class _Alert extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              MosiBalancedText(
                 title,
+                maxLines: 2,
                 style: RouletteType.display(22, RouletteColors.cream),
               ),
               const SizedBox(height: 4),
-              Text(
+              MosiBalancedText(
                 description,
+                maxLines: 3,
                 style: RouletteType.body(13, RouletteColors.sub, height: 1.5),
               ),
             ],
@@ -1265,7 +1268,7 @@ class _NoneButton extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    MosiBalancedText(
                       autoTag
                           ? rouletteText(
                               '총구 그대로 · 방어 없음',
@@ -1279,6 +1282,7 @@ class _NoneButton extends StatelessWidget {
                               '枪口不动 · 无防御 · 下回合无限制',
                               '槍口不動 · 無防禦 · 下回合無限制',
                             ),
+                      maxLines: 2,
                       style: RouletteType.body(
                         12,
                         selected ? RouletteColors.cream : RouletteColors.ink,
@@ -1425,9 +1429,10 @@ class _ActionPanel extends StatelessWidget {
                 : Padding(
                     key: ValueKey(hint),
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
+                    child: MosiBalancedText(
                       hint!,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
                       style: RouletteType.body(
                         13,
                         RouletteColors.cream,
@@ -1795,26 +1800,36 @@ class _WaitingMiddle extends StatelessWidget {
                     children: [
                       Opacity(
                         opacity: 1 - v,
-                        child: Text(
-                          rouletteText(
-                            '누가 골랐는지는 공개되지 않아요',
-                            'Who has chosen stays hidden',
-                            '不会公开谁已经选择',
-                            '不會公開誰已經選擇',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            rouletteText(
+                              '누가 골랐는지는 공개되지 않아요',
+                              'Who has chosen stays hidden',
+                              '不会公开谁已经选择',
+                              '不會公開誰已經選擇',
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: RouletteType.body(13, RouletteColors.sub),
                           ),
-                          style: RouletteType.body(13, RouletteColors.sub),
                         ),
                       ),
                       Opacity(
                         opacity: v,
-                        child: Text(
-                          rouletteText(
-                            '총구 대상부터 한 명씩 공개해요',
-                            'Revealing from the target, one by one',
-                            '从枪口对象开始逐一公开',
-                            '從槍口對象開始逐一公開',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            rouletteText(
+                              '총구 대상부터 한 명씩 공개해요',
+                              'Revealing from the target, one by one',
+                              '从枪口对象开始逐一公开',
+                              '從槍口對象開始逐一公開',
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: RouletteType.body(13, RouletteColors.sub),
                           ),
-                          style: RouletteType.body(13, RouletteColors.sub),
                         ),
                       ),
                     ],
@@ -2273,7 +2288,7 @@ class _SpinTally extends StatelessWidget {
                   ],
                 ),
               const SizedBox(height: 8),
-              Text(
+              MosiBalancedText(
                 spins == 0
                     ? rouletteText(
                         '총구는 움직이지 않아요',
@@ -2287,6 +2302,7 @@ class _SpinTally extends StatelessWidget {
                         '枪口将顺时针移动$spins格',
                         '槍口將順時針移動$spins格',
                       ),
+                maxLines: 2,
                 style: RouletteType.body(13, RouletteColors.cream),
               ),
             ],
@@ -2381,9 +2397,7 @@ class _RotationBody extends StatelessWidget {
                         width: _w,
                         height: _h,
                         child: CustomPaint(
-                          painter: _MiniTablePainter(
-                            gunAngle: angle,
-                          ),
+                          painter: _MiniTablePainter(gunAngle: angle),
                         ),
                       ),
                       for (final p in players)
@@ -2832,7 +2846,11 @@ void _paintMuzzle(
 }) {
   final cylR = r * 1.85;
   final cyl = Offset(c.dx, c.dy + r * 1.55);
-  canvas.drawCircle(cyl + const Offset(8, 8), cylR, _fill(const Color(0x8C000000)));
+  canvas.drawCircle(
+    cyl + const Offset(8, 8),
+    cylR,
+    _fill(const Color(0x8C000000)),
+  );
   canvas.drawCircle(cyl, cylR, _fill(RouletteColors.ink));
   canvas.drawCircle(cyl, cylR, _stroke(RouletteColors.cream, 4));
   canvas.save();
@@ -2855,7 +2873,8 @@ void _paintMuzzle(
     canvas.drawArc(rect, 10 * math.pi / 180, 60 * math.pi / 180, false, arc);
     for (final end in [250.0, 70.0]) {
       final a = end * math.pi / 180;
-      final p = cyl + Offset((cylR + 18) * math.cos(a), (cylR + 18) * math.sin(a));
+      final p =
+          cyl + Offset((cylR + 18) * math.cos(a), (cylR + 18) * math.sin(a));
       final dir = Offset(-math.sin(a), math.cos(a)); // 시계 방향 접선
       final n = Offset(math.cos(a), math.sin(a));
       canvas.drawPath(
@@ -2873,16 +2892,25 @@ void _paintMuzzle(
     Rect.fromLTWH(c.dx - r * 1.25, c.dy - r * 1.25, r * 2.5, r * 2.9),
     Radius.circular(r * .5),
   );
-  canvas.drawRRect(body.shift(const Offset(8, 8)), _fill(const Color(0x8C000000)));
+  canvas.drawRRect(
+    body.shift(const Offset(8, 8)),
+    _fill(const Color(0x8C000000)),
+  );
   canvas.drawRRect(body, _fill(RouletteColors.ink));
   canvas.drawRRect(body, _stroke(RouletteColors.cream, 4));
-  final sight = Rect.fromLTWH(c.dx - r * .16, c.dy - r * 1.62, r * .32, r * .42);
+  final sight = Rect.fromLTWH(
+    c.dx - r * .16,
+    c.dy - r * 1.62,
+    r * .32,
+    r * .42,
+  );
   canvas.drawRect(sight, _fill(RouletteColors.ink));
   canvas.drawRect(sight, _stroke(RouletteColors.cream, 3));
   // 총구 구멍: 크림 테두리, 강선 무늬, 붉게 깜빡이는 속
   canvas.drawCircle(c, r, _fill(RouletteColors.cream));
   canvas.drawCircle(c, r * .78, _fill(RouletteColors.ink));
-  final rifling = _stroke(RouletteColors.line, r * .12)..strokeCap = StrokeCap.butt;
+  final rifling = _stroke(RouletteColors.line, r * .12)
+    ..strokeCap = StrokeCap.butt;
   final ring = Rect.fromCircle(center: c, radius: r * .78);
   for (var k = 0; k < 10; k++) {
     canvas.drawArc(ring, k * math.pi / 5, math.pi / 5 * .53, false, rifling);
@@ -2907,8 +2935,15 @@ class _PovPainter extends CustomPainter {
     const rays = Color(0x2E121110);
     final glow = _pulse(t, 1400);
     if (kind == _PovKind.shield) {
-      _paintRays(canvas, const Offset(171, 100),
-          count: 16, r0: 70, r1: 360, widthDeg: 9, color: rays);
+      _paintRays(
+        canvas,
+        const Offset(171, 100),
+        count: 16,
+        r0: 70,
+        r1: 360,
+        widthDeg: 9,
+        color: rays,
+      );
       _breathe(canvas, const Offset(171, 96), 1400, () {
         _paintMuzzle(canvas, const Offset(171, 96), 34, glow: glow);
       });
@@ -2916,8 +2951,15 @@ class _PovPainter extends CustomPainter {
       return;
     }
     final spin = kind == _PovKind.spin;
-    _paintRays(canvas, const Offset(171, 130),
-        count: 20, r0: 90, r1: 420, widthDeg: 8, color: rays);
+    _paintRays(
+      canvas,
+      const Offset(171, 130),
+      count: 20,
+      r0: 90,
+      r1: 420,
+      widthDeg: 8,
+      color: rays,
+    );
     _breathe(canvas, const Offset(171, 130), 1200, () {
       _paintMuzzle(
         canvas,
@@ -2943,10 +2985,7 @@ class _PovPainter extends CustomPainter {
   /// 방패 안쪽(손잡이 쪽)을 내 눈앞에서 봅니다.
   void _paintShieldBack(Canvas canvas) {
     canvas.save();
-    canvas.translate(
-      math.sin(t * .018) * 1.5,
-      math.cos(t * .021) * 1.0,
-    );
+    canvas.translate(math.sin(t * .018) * 1.5, math.cos(t * .021) * 1.0);
     final outer = Path()
       ..moveTo(18, 196)
       ..quadraticBezierTo(171, 150, 324, 196)
@@ -2954,7 +2993,10 @@ class _PovPainter extends CustomPainter {
       ..quadraticBezierTo(324, 372, 171, 400)
       ..quadraticBezierTo(18, 372, 18, 300)
       ..close();
-    canvas.drawPath(outer.shift(const Offset(8, 8)), _fill(const Color(0x8C000000)));
+    canvas.drawPath(
+      outer.shift(const Offset(8, 8)),
+      _fill(const Color(0x8C000000)),
+    );
     canvas.drawPath(outer, _fill(RouletteColors.cream));
     canvas.drawPath(outer, _stroke(RouletteColors.ink, 6));
     final inner = Path()
@@ -3008,8 +3050,15 @@ class _SideAimPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _paintRays(canvas, muzzle,
-        count: 14, r0: 60, r1: 360, widthDeg: 7, color: const Color(0x2E2A2724));
+    _paintRays(
+      canvas,
+      muzzle,
+      count: 14,
+      r0: 60,
+      r1: 360,
+      widthDeg: 7,
+      color: const Color(0x2E2A2724),
+    );
     final glow = _pulse(t, 1400);
     canvas.drawPath(
       Path()
@@ -3055,9 +3104,7 @@ class _SideAimPainter extends CustomPainter {
     );
     shape(
       Path()
-        ..addRRect(
-          RRect.fromLTRBR(60, 14, 112, 60, const Radius.circular(9)),
-        ),
+        ..addRRect(RRect.fromLTRBR(60, 14, 112, 60, const Radius.circular(9))),
       4,
     );
     final flutes = _stroke(line, 3);
@@ -3080,7 +3127,11 @@ class _SideAimPainter extends CustomPainter {
         ..quadraticBezierTo(96, 86, 94, 66),
       _stroke(line, 4),
     );
-    canvas.drawLine(const Offset(76, 66), const Offset(74, 80), _stroke(line, 4));
+    canvas.drawLine(
+      const Offset(76, 66),
+      const Offset(74, 80),
+      _stroke(line, 4),
+    );
     shape(
       Path()
         ..moveTo(42, 62)
@@ -3113,7 +3164,10 @@ class _HeldShieldPainter extends CustomPainter {
       ..lineTo(312, 430)
       ..lineTo(30, 430)
       ..close();
-    canvas.drawPath(outer.shift(const Offset(8, 8)), _fill(const Color(0x8C000000)));
+    canvas.drawPath(
+      outer.shift(const Offset(8, 8)),
+      _fill(const Color(0x8C000000)),
+    );
     canvas.drawPath(outer, _fill(RouletteColors.cream));
     canvas.drawPath(outer, _stroke(RouletteColors.ink, 6));
     canvas.drawPath(
@@ -3455,7 +3509,7 @@ class _SpectateBody extends StatelessWidget {
             ],
           ),
         ),
-        Text(
+        MosiBalancedText(
           rouletteText(
             '선택 내용은 공개 전까지 관전자에게도 보이지 않아요',
             'Choices stay hidden from spectators until the reveal',
@@ -3463,6 +3517,7 @@ class _SpectateBody extends StatelessWidget {
             '公開前觀戰者也看不到選擇',
           ),
           textAlign: TextAlign.center,
+          maxLines: 2,
           style: RouletteType.body(13, RouletteColors.sub),
         ),
       ],

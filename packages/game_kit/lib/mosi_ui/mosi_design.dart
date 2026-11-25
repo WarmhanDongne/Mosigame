@@ -13,6 +13,7 @@ import 'package:game_kit/mosi_ui/mosi_motion.dart';
 import 'package:flutter/material.dart';
 
 export 'package:game_kit/mosi_ui/mosi_motion.dart';
+export 'package:game_kit/mosi_ui/mosi_balanced_text.dart';
 import 'package:flutter/services.dart';
 import 'package:game_kit/core/constants/room_character.dart';
 import 'package:game_kit/localization/game_locale.dart';

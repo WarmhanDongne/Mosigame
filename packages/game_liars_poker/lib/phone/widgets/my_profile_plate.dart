@@ -66,14 +66,18 @@ class LiarsPokerMyProfilePlate extends StatelessWidget {
                     bottom: BorderSide(color: _gold, width: 2),
                   ),
                 ),
-                child: Text(
-                  nickname,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MosiFonts.sans(
-                    size: isLandscape ? 14 : 15,
-                    weight: FontWeight.w700,
-                    color: _cream,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    nickname,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: MosiFonts.sans(
+                      size: isLandscape ? 14 : 15,
+                      weight: FontWeight.w700,
+                      color: _cream,
+                    ),
                   ),
                 ),
               ),
@@ -94,7 +98,11 @@ class LiarsPokerMyProfilePlate extends StatelessWidget {
       border: Border.all(color: _ink, width: 2.5),
       boxShadow: const [
         BoxShadow(color: _gold, spreadRadius: 2.5),
-        BoxShadow(color: Color(0x66000000), blurRadius: 6, offset: Offset(0, 2)),
+        BoxShadow(
+          color: Color(0x66000000),
+          blurRadius: 6,
+          offset: Offset(0, 2),
+        ),
       ],
     ),
     child: ClipOval(

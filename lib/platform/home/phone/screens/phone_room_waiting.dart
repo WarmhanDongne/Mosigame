@@ -2083,21 +2083,22 @@ class _PhoneSeatingViewState extends State<_PhoneSeatingView>
                           style: MosiFonts.sans(size: 14, color: soft),
                         ),
                         const SizedBox(height: 18),
-                        Text(
+                        MosiBalancedText(
                           widget.starting
                               ? GameLocale.select(
-                                  ko: '곧 게임이\n시작해요',
-                                  en: 'The game starts\nsoon',
-                                  zhHans: '游戏即将\n开始',
-                                  zhHant: '遊戲即將\n開始',
+                                  ko: '곧 게임이 시작해요',
+                                  en: 'The game starts soon',
+                                  zhHans: '游戏即将开始',
+                                  zhHant: '遊戲即將開始',
                                 )
                               : GameLocale.select(
-                                  ko: '태블릿에서\n자리를 맞추고 있어요',
-                                  en: 'Arranging seats\non the tablet',
-                                  zhHans: '正在平板上\n调整座位',
-                                  zhHant: '正在平板上\n調整座位',
+                                  ko: '태블릿에서 자리를 맞추고 있어요',
+                                  en: 'Arranging seats on the tablet',
+                                  zhHans: '正在平板上调整座位',
+                                  zhHant: '正在平板上調整座位',
                                 ),
                           textAlign: TextAlign.center,
+                          maxLines: 2,
                           style: MosiFonts.sans(
                             size: 24,
                             weight: FontWeight.w700,
@@ -2142,21 +2143,22 @@ class _PhoneSeatingViewState extends State<_PhoneSeatingView>
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Text(
+                        MosiBalancedText(
                           widget.starting
                               ? GameLocale.select(
-                                  ko: '휴대폰을 들고\n태블릿 앞에서 기다려 주세요',
-                                  en: 'Keep your phone with you\nand wait by the tablet',
-                                  zhHans: '请拿好手机，\n在平板前等待',
-                                  zhHant: '請拿好手機，\n在平板前等待',
+                                  ko: '휴대폰을 들고 태블릿 앞에서 기다려 주세요',
+                                  en: 'Keep your phone with you and wait by the tablet',
+                                  zhHans: '请拿好手机，在平板前等待',
+                                  zhHant: '請拿好手機，在平板前等待',
                                 )
                               : GameLocale.select(
-                                  ko: '내 이름 카드가 내가 앉은 쪽에\n오면 돼요',
-                                  en: 'Move your name card\nto the side where you are sitting',
-                                  zhHans: '将自己的姓名卡\n移到所坐的一侧',
-                                  zhHant: '將自己的姓名卡\n移到所坐的一側',
+                                  ko: '내 이름 카드가 내가 앉은 쪽에 오면 돼요',
+                                  en: 'Move your name card to the side where you are sitting',
+                                  zhHans: '将自己的姓名卡移到所坐的一侧',
+                                  zhHant: '將自己的姓名卡移到所坐的一側',
                                 ),
                           textAlign: TextAlign.center,
+                          maxLines: 2,
                           style: MosiFonts.sans(
                             size: 14,
                             color: soft,
