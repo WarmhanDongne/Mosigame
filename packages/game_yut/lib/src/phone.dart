@@ -490,10 +490,15 @@ class _TurnBand extends StatelessWidget {
               children: [
                 edition
                     ? YutHoloText(title, style: YutFonts.title(22))
-                    : Text(title, style: YutFonts.title(22, color: fg)),
+                    : MosiBalancedText(
+                        title,
+                        maxLines: 2,
+                        style: YutFonts.title(22, color: fg),
+                      ),
                 const SizedBox(height: 3),
-                Text(
+                MosiBalancedText(
                   subtitle,
+                  maxLines: 2,
                   style: YutFonts.text(
                     13,
                     color: edition
@@ -905,7 +910,8 @@ class _ShakeStage extends StatefulWidget {
   State<_ShakeStage> createState() => _ShakeStageState();
 }
 
-class _ShakeStageState extends State<_ShakeStage> with TickerProviderStateMixin {
+class _ShakeStageState extends State<_ShakeStage>
+    with TickerProviderStateMixin {
   late final _wobble = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 220),
@@ -1255,7 +1261,18 @@ class _LabeledButton extends StatelessWidget {
                     ),
                   ],
           ),
-          child: Text(label, style: YutFonts.title(23, color: fg)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: YutFonts.title(23, color: fg),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1440,9 +1457,10 @@ class _WaitStageState extends State<_WaitStage>
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
+              MosiBalancedText(
                 caption,
                 textAlign: TextAlign.center,
+                maxLines: 2,
                 style: YutFonts.title(
                   20,
                   color: edition ? YutColors.moon : YutColors.ink,
@@ -1487,11 +1505,18 @@ class _WaitStageState extends State<_WaitStage>
                   color: edition ? YutColors.lilac : YutColors.blue,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  footer,
-                  style: YutFonts.title(
-                    19,
-                    color: edition ? YutColors.lilac : YutColors.blue,
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: MosiBalancedText(
+                      footer,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      style: YutFonts.title(
+                        19,
+                        color: edition ? YutColors.lilac : YutColors.blue,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1649,12 +1674,7 @@ class _PhoneResultState extends State<_PhoneResult>
             '請等待平板操作',
           )
         : won
-        ? yutText(
-            '말 2개가 났어요',
-            'Two pieces are home',
-            '2枚棋子已到家',
-            '2枚棋子已到家',
-          )
+        ? yutText('말 2개가 났어요', 'Two pieces are home', '2枚棋子已到家', '2枚棋子已到家')
         : yutText(
             '$winnerName이 먼저 말 2개를 냈어요 · 우리는 $mine개',
             '$winnerName got two home first · we had $mine',
@@ -1816,7 +1836,7 @@ class _PhoneNotice extends StatelessWidget {
       color: const Color(0xFF8A5C21),
       borderRadius: BorderRadius.circular(10),
     ),
-    child: Text(
+    child: MosiBalancedText(
       yutText(
         '참가자 기기 연결을 확인하고 있어요. 잠시 기다려 주세요.',
         'Waiting for player devices to reconnect.',
@@ -1824,6 +1844,7 @@ class _PhoneNotice extends StatelessWidget {
         '正在確認玩家裝置連線，請稍候。',
       ),
       textAlign: TextAlign.center,
+      maxLines: 3,
       style: YutFonts.text(14, color: Colors.white, weight: FontWeight.w700),
     ),
   );

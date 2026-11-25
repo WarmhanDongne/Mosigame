@@ -208,8 +208,9 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
+                          child: MosiBalancedText(
                             _pages[index].title,
+                            maxLines: 5,
                             style: MosiFonts.sans(
                               size: 13,
                               weight: FontWeight.w700,
@@ -252,8 +253,9 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
+                child: MosiBalancedText(
                   page.title,
+                  maxLines: 5,
                   style: MosiFonts.sans(
                     size: 20,
                     weight: FontWeight.w700,
