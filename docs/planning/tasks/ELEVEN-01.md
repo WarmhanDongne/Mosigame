@@ -456,3 +456,8 @@
   → exit 0. 추적 파일(`ios/Runner.xcodeproj/project.pbxproj`, `ios/Podfile.lock`) 변화 없음. 플러그인 버전 정렬은 develop 후속 과제.
 - 테스트 계정: `dongdong7@handong.ac.kr`(Google 로그인)으로 TEST 첫 로그인 뒤 `users/{uid}.ownedGames`를 `[]` → `["eleven"]`로 갱신
   (TEST Firestore, 해당 필드만 updateMask). 다시 읽어 확인.
+- 실기기 확인 첫 결함: 태블릿 전적판이 점수가 바뀌어도 비어 있음. 원인: TEST RTDB rules에 `game/controller` 읽기 규칙이
+  없어(`game` `.read:false`, public·private·server만) 태블릿의 `controller/history` 구독이 거부됨. 앱 코드 문제 아님.
+  하준 승인으로 `firebase deploy --only database --config firebase.test.json --project ban-pick-simulator --non-interactive`
+  → exit 0. 배포 전 차이는 추가 3개(`game/controller/.read` controller만, `seatingPreference/.read` controller만,
+  `.write:false`), 배포 후 TEST rules = 저장소 `database.rules.json` 일치 확인.
