@@ -189,7 +189,7 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
                   onTap: () => setState(() => _page = index),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 6,
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
@@ -206,13 +206,13 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
                             color: selected ? theme.accent : theme.deep,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         Expanded(
                           child: MosiBalancedText(
                             _pages[index].title,
                             maxLines: 5,
                             style: MosiFonts.sans(
-                              size: 13,
+                              size: 11,
                               weight: FontWeight.w700,
                               color: selected
                                   ? MosiColors.white
@@ -239,6 +239,21 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
     MosiGameModalTheme theme,
     _RulePage page,
   ) {
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final title = MosiBalancedText(
+      page.title,
+      maxLines: 5,
+      style: MosiFonts.sans(
+        size: compact ? 16 : 20,
+        weight: FontWeight.w700,
+        color: MosiColors.navy,
+        letterSpacing: -0.8,
+      ),
+    );
+    final close = MosiSquareCloseButton(
+      size: 36,
+      onPressed: () => Navigator.of(context).pop(),
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 10, 0),
       decoration: BoxDecoration(
@@ -249,28 +264,19 @@ class _PhoneGameRulebookDialogState extends State<PhoneGameRulebookDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: MosiBalancedText(
-                  page.title,
-                  maxLines: 5,
-                  style: MosiFonts.sans(
-                    size: 20,
-                    weight: FontWeight.w700,
-                    color: MosiColors.navy,
-                    letterSpacing: -0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              MosiSquareCloseButton(
-                size: 36,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
+          if (compact) ...[
+            Align(alignment: Alignment.centerRight, child: close),
+            const SizedBox(height: 4),
+            title,
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: title),
+                const SizedBox(width: 8),
+                close,
+              ],
+            ),
           const SizedBox(height: 6),
           Expanded(
             child: SingleChildScrollView(
