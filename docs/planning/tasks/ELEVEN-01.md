@@ -447,3 +447,5 @@
 - 테스트 계정 `ownedGames`: 요청 계정은 아직 TEST Auth에 없어(조회 결과 사용자 없음) 추가하지 못했다. TEST 빌드로 한 번
   로그인한 뒤 추가한다.
 - RTDB rules는 이번에 배포하지 않았다(하준 선택). TEST rules에 `game/controller` 읽기 규칙이 없으면 태블릿 전적판이 비어 보일 수 있다.
+- (후속) 하준이 Cloud Run 콘솔에서 ELEVEN 7개 서비스의 인증을 “공개 액세스 허용”으로 바꿨다. 재확인: 무인증 POST →
+  7개 모두 함수 응답 401 “로그인이 필요합니다”(403 해소). 남은 것: 테스트 계정 TEST 로그인 뒤 `ownedGames`에 eleven 추가.
