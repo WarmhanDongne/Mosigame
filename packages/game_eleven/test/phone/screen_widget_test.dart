@@ -60,6 +60,26 @@ void main() {
         await tester.tap(find.text('?'));
         expect(rulesOpened, 1);
       }
+      if (fixture.id == 'G6') {
+        // 시안 G6: 이번 라운드 두 타일의 색만(숫자 없음), 이긴 쪽 외곽선·진 쪽 흐림.
+        final tiles = tester
+            .widgetList<ElevenNoirTile>(find.byType(ElevenNoirTile))
+            .where((t) => t.spec == ElevenTileSpec.phoneGuideColor)
+            .toList();
+        expect(tiles.map((t) => (t.face, t.state, t.value)), [
+          (ElevenTileFace.black, ElevenTileState.guideWin, null),
+          (ElevenTileFace.white, ElevenTileState.normal, null),
+        ]);
+        final loserOpacity = tester.widget<Opacity>(
+          find
+              .ancestor(
+                of: find.byWidget(tiles.last),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        );
+        expect(loserOpacity.opacity, ElevenNoirOpacity.guideLoserRoundResult);
+      }
       if (fixture.id == 'P05') expect(find.text('1 : 2'), findsOneWidget);
       if (fixture.id == 'P08') expect(find.text('3 : 1'), findsOneWidget);
       if (fixture.id == 'P10') {

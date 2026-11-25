@@ -153,6 +153,18 @@ class ElevenTileSpec {
     cornerNumberSize: 11,
   );
 
+  /// G6 그림 줄 타일 50×66: 숫자 없이 이번 라운드 색만, 안쪽선·모서리 점(1.5)은 있고 모서리 숫자 없음.
+  static const phoneGuideColor = ElevenTileSpec(
+    size: Size(50, 66),
+    radius: ElevenNoirRadius.tile,
+    numberSize: 0,
+    shadow: [],
+    innerInset: 5,
+    innerRadius: ElevenNoirRadius.tileInner,
+    dotRadius: 1.5,
+    dotAnchor: Offset(8, 12),
+  );
+
   /// P05 요약줄 작은 타일 22×30, 테두리 2, 그림자·안쪽선·모서리 장식 없음(색만).
   static const phoneSummaryMini = ElevenTileSpec(
     size: Size(22, 30),
@@ -346,8 +358,11 @@ class ElevenNoirTile extends StatelessWidget {
                 width: spec.border,
               ),
             ),
+          // 안쪽 1px 선: 흑·백 앞면과 뒷면(`.back::before`, 잉크 55%)에 있다. 빈 자리에는 없다.
           if (spec.innerInset case final inset?
-              when face == ElevenTileFace.black || face == ElevenTileFace.white)
+              when face == ElevenTileFace.black ||
+                  face == ElevenTileFace.white ||
+                  face == ElevenTileFace.back)
             Positioned.fill(
               left: inset - spec.border,
               top: inset - spec.border,

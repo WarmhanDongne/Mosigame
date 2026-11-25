@@ -238,6 +238,11 @@ const phoneCases = <PhoneCase>[
     {
       'phase': 'roundResult',
       'scores': {'a': 3, 'b': 1},
+      'currentRound': {
+        'round': 5,
+        'firstColor': 'black',
+        'secondColor': 'white',
+      },
       'lastRoundResult': {'round': 5, 'winnerUid': 'a'},
     },
     resultRevealed: false,

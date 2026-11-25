@@ -848,6 +848,8 @@ class ElevenPhoneNoirView extends StatelessWidget {
                           style: ElevenNoirText.earlyEndScore(),
                         ),
                       )
+                    : screen == ElevenPhoneScreen.g6RoundResultWait
+                    ? _roundColorPair()
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -859,9 +861,7 @@ class ElevenPhoneNoirView extends StatelessWidget {
                             )
                           else
                             _guideBack(),
-                          if (result ||
-                              screen ==
-                                  ElevenPhoneScreen.g6RoundResultWait) ...[
+                          if (result) ...[
                             const SizedBox(
                               width: ElevenNoirSpacing.guideImageGap,
                             ),
@@ -872,18 +872,14 @@ class ElevenPhoneNoirView extends StatelessWidget {
                             const SizedBox(
                               width: ElevenNoirSpacing.guideImageGap,
                             ),
-                            if (result && otherDraw != null)
+                            if (otherDraw != null)
                               _guideTile(
                                 otherDraw,
                                 win: resultSecond,
                                 lose: resultFirst,
                               )
                             else
-                              Opacity(
-                                opacity:
-                                    ElevenNoirOpacity.guideLoserRoundResult,
-                                child: _guideTile(null),
-                              ),
+                              _guideBack(),
                           ] else if (screen !=
                               ElevenPhoneScreen.g3DrawPicked) ...[
                             const SizedBox(
@@ -920,6 +916,54 @@ class ElevenPhoneNoirView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// G6: 이번 라운드에 낸 두 타일의 색만(숫자 없음) 보여 준다. 왼쪽이 나, 오른쪽이 상대.
+  /// 결과가 공개돼 있으면 이긴 쪽은 빨간 외곽선, 진 쪽은 흐리게(.4). 동점이면 둘 다 그대로.
+  Widget _roundColorPair() {
+    final pub = game.public;
+    final round = pub.currentRound;
+    final mineColor = pub.firstUid == uid
+        ? round.firstColor
+        : round.secondColor;
+    final theirColor = pub.firstUid == uid
+        ? round.secondColor
+        : round.firstColor;
+    final outcome = game.roundOutcomeFor(uid);
+    Widget tile(ElevenTileColor? color, ElevenRoundOutcome? side) {
+      final face = color == null
+          ? ElevenTileFace.back
+          : ElevenTileFace.of(color);
+      final card = ElevenNoirTile(
+        face: face,
+        spec: ElevenTileSpec.phoneGuideColor,
+        state: side == ElevenRoundOutcome.win
+            ? ElevenTileState.guideWin
+            : ElevenTileState.normal,
+      );
+      return side == ElevenRoundOutcome.lose
+          ? Opacity(
+              opacity: ElevenNoirOpacity.guideLoserRoundResult,
+              child: card,
+            )
+          : card;
+    }
+
+    final theirOutcome = switch (outcome) {
+      ElevenRoundOutcome.win => ElevenRoundOutcome.lose,
+      ElevenRoundOutcome.lose => ElevenRoundOutcome.win,
+      final other => other,
+    };
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        tile(mineColor, outcome),
+        const SizedBox(width: ElevenNoirSpacing.guideImageGap),
+        Text(ElevenScreenCopy.versus, style: ElevenNoirText.versus(size: 22)),
+        const SizedBox(width: ElevenNoirSpacing.guideImageGap),
+        tile(theirColor, theirOutcome),
+      ],
     );
   }
 

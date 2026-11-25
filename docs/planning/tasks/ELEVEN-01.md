@@ -380,3 +380,17 @@
 - 스크린샷 묶음: `packages/game_eleven/review_out/S6-M.html`(git 제외) — 시안과 구현 캡처를 화면 ID별로 나란히 둠.
   하준 확인 ②(휴대폰·태블릿 스크린샷 검토) 대기.
 - 레인 worktree·브랜치(`project00-lanes/lane-{a,b,c}`, `eleven/lane-*`)는 지우지 않았다(하준 확인 뒤 정리).
+
+<a id="s6-m-review2-20261125"></a>
+### 2026-11-25 S6-M 스크린샷 검토 ② 반영 (하준 → Claude Code)
+
+- 하준 검토 결과 수정 2건:
+  1. G6: 그림 줄이 뒷면 카드·회색 카드로 나왔다. 시안은 이번 라운드에 낸 두 타일의 **색**(숫자 없음, 안쪽선·모서리 점)이고
+     이긴 쪽 빨간 외곽선(4px, offset 3), 진 쪽 투명도 .4다. `currentRound` 색과 `lastRoundResult`로 그리게 고쳤다
+     (왼쪽 나, 오른쪽 상대, 동점은 둘 다 그대로). 공통 spec `ElevenTileSpec.phoneGuideColor` 추가.
+  2. 뒷면 카드(P01·G1·G2·G8 그림 줄, 태블릿 뒷면 슬롯)에 안쪽 1px 선이 없었다. 측정값(`.back::before` inset 5/9,
+     잉크 55%)대로 공통 타일이 뒷면에도 안쪽선을 그린다.
+- 하준 결정(시안과 다르게 유지): ① 글꼴은 사전에 합의한 글꼴(숫자 StardosStencil, 본문 대체)을 쓴다.
+  ② 카드 **앞면** 테두리는 구현 결과가 더 낫다고 판단해 현재 구현을 유지한다.
+- 검증: `packages/game_eleven` `flutter test --no-pub` 159 PASS·37 skip exit 0(G6 색·외곽선·흐림 위젯 테스트 추가),
+  analyze·format·경계 exit 0. 골든 `tablet_tiles.png`, 검수 캡처, 시스템 맵 캡처 16장 갱신.
