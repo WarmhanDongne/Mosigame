@@ -13,6 +13,7 @@ import 'package:project00/platform/auth/legal/signup_terms.dart';
 import 'package:project00/platform/auth/models/onboarding_state.dart';
 import 'package:project00/platform/auth/screens/login_screen.dart';
 import 'package:project00/platform/auth/screens/register_screen.dart';
+import 'package:project00/platform/auth/services/auth_service.dart';
 import 'package:project00/platform/auth/services/onboarding_service.dart';
 import 'package:project00/platform/auth/widgets/auth_gate.dart';
 import 'package:project00/platform/home/home.dart';
@@ -32,7 +33,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   for (final reducedMotion in [false, true]) {
-    testWidgets('로그아웃은 홈 퇴장 후 로그인으로 전환한다 (동작 줄이기=$reducedMotion)', (
+    testWidgets('로그아웃은 홈 퇴장 후 로그인 화면을 유지한다 (동작 줄이기=$reducedMotion)', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -41,6 +42,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final users = StreamController<User?>();
       final onboarding = _Onboarding();
+      final auth = _AutoGuestService();
       await tester.pumpWidget(
         MaterialApp(
           home: MediaQuery(
@@ -51,6 +53,7 @@ void main() {
             child: AuthGate(
               userChanges: users.stream,
               onboardingService: onboarding,
+              authService: auth,
             ),
           ),
         ),
@@ -69,30 +72,14 @@ void main() {
       expect(find.byType(Home), findsOneWidget);
       users.add(null);
       await tester.pump();
-      if (!reducedMotion) {
-        expect(find.byType(Home), findsOneWidget);
-        final blockedHome = find.ancestor(
-          of: find.byType(Home),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is IgnorePointer && widget.ignoring,
-          ),
-        );
-        expect(blockedHome, findsWidgets);
-        await tester.pump(const Duration(milliseconds: 200));
-        expect(find.byType(Home), findsNothing);
-        final loginOpacity = tester.widget<Opacity>(
-          find
-              .ancestor(
-                of: find.byType(LoginScreen),
-                matching: find.byType(Opacity),
-              )
-              .last,
-        );
-        expect(loginOpacity.opacity, lessThan(1));
-      }
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(Home), findsNothing);
       expect(find.byType(LoginScreen), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('automatic-guest-sign-in')),
+        findsNothing,
+      );
+      expect(auth.calls, 0);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       addTearDown(users.close);
@@ -220,12 +207,14 @@ void main() {
 
   testWidgets('인증 대기 화면이 퇴장 중이어도 지난 타이머가 로그인 상태를 지우지 않는다', (tester) async {
     final users = StreamController<User?>();
+    final auth = _AutoGuestService();
     var timeouts = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
           userChanges: users.stream,
           onboardingService: _Onboarding(),
+          authService: auth,
           onAuthRestoreTimeout: () => timeouts++,
         ),
       ),
@@ -237,6 +226,8 @@ void main() {
     expect(timeouts, 0);
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('automatic-guest-sign-in')), findsNothing);
+    expect(auth.calls, 0);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     addTearDown(users.close);
@@ -551,6 +542,16 @@ class _Observer extends NavigatorObserver {
   int pushes = 0;
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => pushes++;
+}
+
+class _AutoGuestService extends FirebaseAuthService {
+  int calls = 0;
+
+  @override
+  Future<void> signInAsGuest() {
+    calls++;
+    return Completer<void>().future;
+  }
 }
 
 class _FirebaseCore extends MockFirebaseApp {
