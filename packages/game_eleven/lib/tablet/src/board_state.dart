@@ -14,8 +14,9 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
 
   /// 마감 뒤 보내는 `timeout_turn`(태블릿이 주 호출).
   final GameProgressCommand _timeoutCommand = GameProgressCommand();
-  Timer? _phaseTimer;
-  Object? _phaseKey;
+  late final ElevenTabletPhaseClock _phaseClock = ElevenTabletPhaseClock(
+    _phaseCommand,
+  );
   Timer? _timeoutTimer;
   Object? _timeoutKey;
 
@@ -24,6 +25,17 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
   int? _lastSubmitRound;
   Timer? _introTimer;
   Timer? _closingTimer;
+  Timer? _resultRevealTimer;
+  Timer? _resultEmphasisTimer;
+  Timer? _gameEndTimer;
+  Timer? _drawFaceTimer;
+  Object? _visualKey;
+  bool _seenSnapshot = false;
+  bool _roundResultRevealed = true;
+  bool _resultEmphasized = true;
+  bool _gameEndRevealed = true;
+  bool _drawRevealed = true;
+  bool _animateVisuals = false;
 
   @override
   void initState() {
@@ -48,11 +60,14 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
 
   @override
   void dispose() {
-    _phaseTimer?.cancel();
     _timeoutTimer?.cancel();
     _introTimer?.cancel();
     _closingTimer?.cancel();
-    _phaseCommand.dispose();
+    _resultRevealTimer?.cancel();
+    _resultEmphasisTimer?.cancel();
+    _gameEndTimer?.cancel();
+    _drawFaceTimer?.cancel();
+    _phaseClock.dispose();
     _timeoutCommand.dispose();
     _subscription?.close();
     super.dispose();
@@ -79,36 +94,26 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
     _armPhaseCompletion(game, stage);
     _armTimeout(game, stage);
     _armRoundIntro(game, stage);
+    _armVisuals(game, stage);
   }
 
   // ---------------------------------------------------------------------------
   // 연출 완료 → complete_phase
   // ---------------------------------------------------------------------------
   void _armPhaseCompletion(ElevenGameState game, ElevenTabletStage stage) {
-    final pub = game.public;
-    final key = stage.completesPhase ? (pub.startedAt, pub.revision) : null;
-    if (key == _phaseKey) return;
-    _phaseKey = key;
-    _phaseTimer?.cancel();
-    _phaseCommand.cancel();
-    if (key == null) return;
-    final revision = pub.revision;
-    final wait = stage.isDrawReveal
-        ? ElevenTiming.drawReveal
-        : ElevenTiming.roundResult;
-    bool isCurrent() =>
-        mounted &&
-        _game.public.revision == revision &&
-        resolveElevenTabletStage(_game).completesPhase;
-    _phaseTimer = Timer(wait, () {
-      if (!isCurrent()) return;
-      _phaseCommand.run(
-        key: key,
-        isCurrent: isCurrent,
-        send: () => _controller.sendCompletePhase(revision),
-      );
-      if (mounted) setState(() {});
-    });
+    final revision = game.public.revision;
+    _phaseClock.arm(
+      game,
+      stage,
+      isCurrent: () =>
+          mounted &&
+          _game.public.revision == revision &&
+          resolveElevenTabletStage(_game).completesPhase,
+      send: _controller.sendCompletePhase,
+      onFired: () {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -149,15 +154,73 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
   // T09 새 라운드 안내 (겹침 표시)
   // ---------------------------------------------------------------------------
   void _armRoundIntro(ElevenGameState game, ElevenTabletStage stage) {
-    if (stage != ElevenTabletStage.firstSubmit) return;
+    if (stage != ElevenTabletStage.firstSubmit) {
+      _introTimer?.cancel();
+      if (_introRound != null) setState(() => _introRound = null);
+      return;
+    }
     final round = game.public.round;
     if (_lastSubmitRound == round) return;
     _lastSubmitRound = round;
+    if (!_seenSnapshot || round <= 1) return;
     _introTimer?.cancel();
     setState(() => _introRound = round);
     _introTimer = Timer(ElevenTiming.roundIntro, () {
       if (mounted) setState(() => _introRound = null);
     });
+  }
+
+  void _armVisuals(ElevenGameState game, ElevenTabletStage stage) {
+    if (game.loading) return;
+    final pub = game.public;
+    final key = (pub.startedAt, pub.round, pub.phase, pub.revision);
+    if (_visualKey == key) return;
+    _resultRevealTimer?.cancel();
+    _resultEmphasisTimer?.cancel();
+    _gameEndTimer?.cancel();
+    _drawFaceTimer?.cancel();
+    _visualKey = key;
+    final animate = _seenSnapshot;
+    _seenSnapshot = true;
+    _animateVisuals = animate;
+    _roundResultRevealed =
+        !animate ||
+        stage != ElevenTabletStage.roundResult ||
+        pub.currentRound.autoSubmitted.isEmpty;
+    _resultEmphasized = !animate || stage != ElevenTabletStage.roundResult;
+    if (!_resultEmphasized) {
+      _resultEmphasisTimer = Timer(ElevenRoundFlowMotion.emphasisAt, () {
+        if (mounted && _visualKey == key) {
+          setState(() => _resultEmphasized = true);
+        }
+      });
+    }
+    _gameEndRevealed =
+        !animate ||
+        pub.finishDetail != 'earlyEnd' ||
+        stage != ElevenTabletStage.result;
+    _drawRevealed = !animate || !stage.isDrawReveal;
+    if (!_roundResultRevealed) {
+      _resultRevealTimer = Timer(ElevenRoundFlowMotion.emphasisAt, () {
+        if (mounted && _visualKey == key) {
+          setState(() => _roundResultRevealed = true);
+        }
+      });
+    }
+    if (!_gameEndRevealed) {
+      _gameEndTimer = Timer(ElevenGameEndFlowMotion.finalScreenAt, () {
+        if (mounted && _visualKey == key) {
+          setState(() => _gameEndRevealed = true);
+        }
+      });
+    }
+    if (!_drawRevealed) {
+      _drawFaceTimer = Timer(ElevenDrawMotion.flipAt, () {
+        if (mounted && _visualKey == key) {
+          setState(() => _drawRevealed = true);
+        }
+      });
+    }
   }
 
   void _retryProgress() {
@@ -187,16 +250,26 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
     if (mounted) await Navigator.of(context).maybePop();
   }
 
+  void _openRules() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => TabletGameRulebookDialog(
+        title: ElevenScreenCopy.rulebookTitle,
+        markdown: ElevenScreenCopy.rulebookMarkdown,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final error = _initializationError;
     if (error != null || _args == null) {
       return Scaffold(
-        backgroundColor: ElevenColors.background,
+        backgroundColor: ElevenNoirColors.table,
         body: Center(
           child: Text(
             error ?? GameFlowCopy.gameOpenFailed,
-            style: const TextStyle(color: ElevenColors.ink),
+            style: ElevenNoirText.body(20, color: ElevenNoirColors.cream),
           ),
         ),
       );
@@ -209,17 +282,12 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
         if (mounted) controller.reportScreenReady(assetsReady: true);
       });
     }
-    final stage = resolveElevenTabletStage(game);
-    final (title, subtitle) = elevenTabletHeadline(stage, game);
-    final pub = game.public;
-    final seated = pub.seatedPlayers;
     final needsRetry =
         _phaseCommand.needsRetry ||
         _timeoutCommand.needsRetry ||
         game.errorMessage != null;
-
     return Scaffold(
-      backgroundColor: ElevenColors.background,
+      backgroundColor: ElevenNoirColors.table,
       body: GameRecoveryLayer(
         session: controller.recoverySession,
         request: GameRequestRecovery(
@@ -238,177 +306,24 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
           onFinishNow: controller.endGame,
           onExpired: controller.expireInterruption,
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(width: 48),
-                        Expanded(
-                          child: Text(
-                            title,
-                            key: const ValueKey('eleven-tablet-title'),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: ElevenColors.ink,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => unawaited(_openSettings()),
-                          icon: const Icon(
-                            Icons.settings_rounded,
-                            color: ElevenColors.ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      subtitle,
-                      key: const ValueKey('eleven-tablet-subtitle'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: ElevenColors.inkMuted,
-                        fontSize: 20,
-                      ),
-                    ),
-                    if (stage.hasDeadline)
-                      GameTurnCountdown(
-                        expiresAt: pub.turnDeadlineAt,
-                        builder: (context, remaining) => Text(
-                          remaining == null ? '' : '${remaining.inSeconds}s',
-                          style: const TextStyle(
-                            color: ElevenColors.accent,
-                            fontSize: 26,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    Expanded(child: Center(child: _body(stage, game, seated))),
-                    if (game.history.isNotEmpty && !stage.isDrawPick)
-                      ElevenHistoryStrip(
-                        history: game.history,
-                        seatOrder: [for (final p in seated) p.uid],
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            // T09: 0.8초 겹침 안내. 입력을 막지 않고 deadline도 늦추지 않습니다.
-            if (_introRound case final round?)
-              IgnorePointer(
-                child: ColoredBox(
-                  color: const Color(0x99000000),
-                  child: Center(
-                    child: Text(
-                      GameFlowCopy.round(round),
-                      key: const ValueKey('eleven-round-intro'),
-                      style: const TextStyle(
-                        color: ElevenColors.ink,
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        child: ElevenTabletBoardView(
+          game: game,
+          screen: resolveElevenTabletScreen(
+            game,
+            roundIntroActive: _introRound == game.public.round,
+            roundResultRevealed: _roundResultRevealed,
+            gameEndRevealed: _gameEndRevealed,
+          ),
+          drawRevealed: _drawRevealed,
+          resultEmphasized: _resultEmphasized,
+          animate: _animateVisuals,
+          onPick: (slot) => unawaited(controller.pickDrawTile(slot)),
+          onRules: _openRules,
+          onSettings: () => unawaited(_openSettings()),
+          onRestart: () => unawaited(controller.restartGame()),
+          onHome: () => unawaited(Navigator.of(context).maybePop()),
         ),
       ),
     );
   }
-
-  Widget _body(
-    ElevenTabletStage stage,
-    ElevenGameState game,
-    List<ElevenPlayerView> seated,
-  ) {
-    final pub = game.public;
-    final draw = pub.draw;
-    switch (stage) {
-      case ElevenTabletStage.connecting:
-        return const SizedBox.shrink();
-      case ElevenTabletStage.firstDrawPick:
-      case ElevenTabletStage.tieDrawPick:
-      case ElevenTabletStage.firstDrawReveal:
-      case ElevenTabletStage.tieDrawReveal:
-        if (draw == null) return const SizedBox.shrink();
-        return ElevenDrawGrid(
-          draw: draw,
-          nicknameOf: pub.nicknameOf,
-          enabled: stage.isDrawPick && !game.commandInFlight,
-          onPick: (slot) => unawaited(_controller.pickDrawTile(slot)),
-        );
-      case ElevenTabletStage.firstSubmit:
-      case ElevenTabletStage.secondSubmit:
-      case ElevenTabletStage.roundResult:
-        final round = pub.currentRound;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            for (final player in seated)
-              ElevenPlayerPanel(
-                key: ValueKey('eleven-panel-${player.uid}'),
-                player: player,
-                score: pub.scores[player.uid] ?? 0,
-                isFirst: pub.firstUid == player.uid,
-                isSecond: pub.secondUid == player.uid,
-                isTurn: pub.turnUid == player.uid,
-                color: pub.firstUid == player.uid
-                    ? round.firstColor
-                    : pub.secondUid == player.uid
-                    ? round.secondColor
-                    : null,
-                autoSubmitted: round.autoSubmitted.contains(player.uid),
-              ),
-          ],
-        );
-      case ElevenTabletStage.result:
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              [for (final p in seated) '${pub.scores[p.uid] ?? 0}'].join(' : '),
-              style: const TextStyle(
-                color: ElevenColors.ink,
-                fontSize: 72,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 32),
-            _resultActions(),
-          ],
-        );
-      case ElevenTabletStage.closing:
-        // 머리 문구로 종료 사유만 보여 주고 곧 자동으로 방에 복귀합니다.
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _resultActions() => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      FilledButton(
-        key: const ValueKey('eleven-restart'),
-        onPressed: _game.commandInFlight
-            ? null
-            : () => unawaited(_controller.restartGame()),
-        child: Text(ElevenCopy.restart),
-      ),
-      const SizedBox(width: 16),
-      OutlinedButton(
-        key: const ValueKey('eleven-to-lobby'),
-        onPressed: () => unawaited(Navigator.of(context).maybePop()),
-        child: Text(ElevenCopy.toLobby),
-      ),
-    ],
-  );
 }

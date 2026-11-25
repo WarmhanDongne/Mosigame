@@ -17,19 +17,20 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/recovery/services/game_progress_command.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_route_exit.dart';
-import 'package:game_kit/shared/widgets/game_turn_countdown.dart';
 import 'package:game_kit/tablet/widgets/game_settings_dialog.dart';
+import 'package:game_kit/tablet/widgets/game_rulebook_dialog.dart';
 import 'package:game_eleven/game_copy.dart';
-import 'package:game_eleven/game_theme.dart';
 import 'package:game_eleven/shared/models/game_state.dart';
 import 'package:game_eleven/shared/models/timing.dart';
+import 'package:game_eleven/shared/noir/noir_motion.dart';
+import 'package:game_eleven/shared/noir/noir_text.dart';
+import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/providers/game_controller.dart';
 import 'package:game_eleven/shared/providers/session_provider.dart';
 import 'package:game_eleven/shared/services/game_service.dart';
-import 'package:game_eleven/shared/services/public_state_mapper.dart';
 import 'package:game_eleven/tablet/providers/game_stage.dart';
-import 'package:game_eleven/tablet/widgets/draw_grid.dart';
-import 'package:game_eleven/tablet/widgets/score_board.dart';
+import 'package:game_eleven/tablet/src/phase_clock.dart';
+import 'package:game_eleven/tablet/widgets/noir_board.dart';
 
 part 'src/board_state.dart';
 
