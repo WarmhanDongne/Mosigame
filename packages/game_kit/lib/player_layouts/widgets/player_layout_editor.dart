@@ -69,6 +69,8 @@ class PlayerLayoutEditor extends StatefulWidget {
     this.tableBackgroundImage,
     this.tableImage,
     this.chairImage,
+    this.tableBuilder,
+    this.chairBuilder,
     this.seatTheme = MosiSeatTheme.fallback,
     this.zoomHandoff = true,
     this.previousLayout,
@@ -110,6 +112,13 @@ class PlayerLayoutEditor extends StatefulWidget {
   /// 위에서 내려다본 의자 이미지입니다. 등받이가 위, 앉는 방향이 아래를 향하는
   /// 그림을 기준으로 각 자리에서 테이블 중심을 바라보도록 회전시킵니다.
   final ImageProvider? chairImage;
+
+  /// 테이블을 위젯으로 그립니다. null을 돌려주면 [tableImage]·[tableColor]를 씁니다.
+  final Widget? Function(BuildContext context)? tableBuilder;
+
+  /// 각 자리의 의자를 위젯으로 그립니다(회전 없음). null을 돌려주면
+  /// [chairImage] 또는 기본 의자 아이콘을 씁니다.
+  final Widget? Function(BuildContext context, int seatIndex)? chairBuilder;
 
   /// 시안(SeatSync)의 게임별 색입니다. 플랫폼이 게임 id로 골라 넘깁니다.
   final MosiSeatTheme seatTheme;
@@ -1159,6 +1168,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
         ? _phase(t, 0.25, 0.6, const Cubic(0.3, 1.4, 0.5, 1))
         : 0.0;
     final diameter = _tableDiameter(boardSize);
+    final customTable = widget.tableBuilder?.call(context);
     return Positioned(
       left: boardSize.width / 2 - diameter / 2,
       top: boardSize.height / 2 - diameter / 2,
@@ -1169,28 +1179,30 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
           opacity: tableT.clamp(0.0, 1.0),
           child: Transform.scale(
             scale: 0.94 + 0.06 * tableT,
-            child: widget.tableImage != null
-                // 테이블 이미지는 이미 원형과 그림자를 포함하므로 그대로 그립니다.
-                ? Image(image: widget.tableImage!, fit: BoxFit.contain)
-                : DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: widget.tableColor,
-                      image: widget.tableBackgroundImage == null
-                          ? null
-                          : DecorationImage(
-                              image: widget.tableBackgroundImage!,
-                              fit: BoxFit.cover,
+            child:
+                customTable ??
+                (widget.tableImage != null
+                    // 테이블 이미지는 이미 원형과 그림자를 포함하므로 그대로 그립니다.
+                    ? Image(image: widget.tableImage!, fit: BoxFit.contain)
+                    : DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.tableColor,
+                          image: widget.tableBackgroundImage == null
+                              ? null
+                              : DecorationImage(
+                                  image: widget.tableBackgroundImage!,
+                                  fit: BoxFit.cover,
+                                ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x40000000),
+                              blurRadius: 24,
+                              offset: Offset(0, 10),
                             ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x40000000),
-                          blurRadius: 24,
-                          offset: Offset(0, 10),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      )),
           ),
         ),
       ),
@@ -1297,6 +1309,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     if (towardTable.distance < 1) towardTable = const Offset(0, 1);
     final rotation = math.atan2(towardTable.dy, towardTable.dx) - math.pi / 2;
     final chairImage = widget.chairImage;
+    final customChair = widget.chairBuilder?.call(context, seatIndex);
 
     return Positioned(
       left: seatCenter.dx - chairSize / 2,
@@ -1312,28 +1325,33 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
               opacity: chairT.clamp(0.0, 1.0),
               child: Transform.scale(
                 scale: 0.55 + 0.45 * chairT,
-                child: chairImage == null
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: widget.tableColor,
-                            width: 3,
-                          ),
-                        ),
-                        child: SizedBox.expand(
-                          child: Icon(
-                            Icons.event_seat,
-                            color: widget.tableColor,
-                            size: 40,
-                          ),
-                        ),
-                      )
-                    : Transform.rotate(
-                        angle: rotation,
-                        child: Image(image: chairImage, fit: BoxFit.contain),
-                      ),
+                child:
+                    customChair ??
+                    (chairImage == null
+                        ? DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: widget.tableColor,
+                                width: 3,
+                              ),
+                            ),
+                            child: SizedBox.expand(
+                              child: Icon(
+                                Icons.event_seat,
+                                color: widget.tableColor,
+                                size: 40,
+                              ),
+                            ),
+                          )
+                        : Transform.rotate(
+                            angle: rotation,
+                            child: Image(
+                              image: chairImage,
+                              fit: BoxFit.contain,
+                            ),
+                          )),
               ),
             ),
           ],

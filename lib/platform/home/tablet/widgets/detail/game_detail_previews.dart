@@ -20,6 +20,7 @@ import 'package:game_mafia/shared/models/role_catalog.dart';
 import 'package:game_mafia/shared/widgets/noir.dart';
 import 'package:game_yut/ui.dart' as yut;
 import 'package:game_russian_roulette/ui.dart' as roulette;
+import 'package:game_eleven/ui.dart' as eleven;
 import 'package:game_kit/core/constants/room_character.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
@@ -44,6 +45,7 @@ Widget? buildGamePlayPreview(String gameId) => switch (gameId) {
   'strategy_yut' => const _YutPlayScene(edition: false, strategy: true),
   'strategy_yut_edition' => const _YutPlayScene(edition: true, strategy: true),
   'russian_roulette' => const _RussianRoulettePlayScene(),
+  'eleven' => const eleven.ElevenPlayPreview(),
   _ => null,
 };
 
