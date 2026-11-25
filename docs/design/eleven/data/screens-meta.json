@@ -1,0 +1,514 @@
+{
+ "T01": {
+  "file": "NoirTabletDrawStart.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2100,
+    "cls": "cToast cToastOn tq1",
+    "text": "타일 선택"
+   }
+  ],
+  "extraShots": [
+   "T01--base.png (모든 토스트 opacity 0, t=0)",
+   "T01--toast1.png (t=550ms, \"타일 선택\" 유지 구간 중간)"
+  ]
+ },
+ "T02": {
+  "file": "NoirTabletDrawFirst.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2100,
+    "cls": "cToast cToastOn tq1",
+    "text": "타일 선택"
+   }
+  ],
+  "extraShots": [
+   "T02--base.png (모든 토스트 opacity 0, t=0)",
+   "T02--toast1.png (t=550ms, \"타일 선택\" 유지 구간 중간)"
+  ]
+ },
+ "T03": {
+  "file": "NoirTabletDrawReveal.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 3500,
+    "cls": "cToast tq1",
+    "text": "숫자 공개"
+   },
+   {
+    "name": "tq2",
+    "dur": 3500,
+    "cls": "cToast cToastOn tq2",
+    "text": "A 선공"
+   }
+  ],
+  "extraShots": [
+   "T03--base.png (모든 토스트 opacity 0, t=0)",
+   "T03--toast1.png (t=450ms, \"숫자 공개\" 유지 구간 중간)",
+   "T03--toast2.png (t=1800ms, \"A 선공\" 유지 구간 중간)"
+  ]
+ },
+ "T04": {
+  "file": "NoirTabletFirstChoosing.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2200,
+    "cls": "cToast cToastOn tq1",
+    "text": "1라운드"
+   }
+  ],
+  "extraShots": [
+   "T04--base.png (모든 토스트 opacity 0, t=0)",
+   "T04--toast1.png (t=600ms, \"1라운드\" 유지 구간 중간)"
+  ]
+ },
+ "T05": {
+  "file": "NoirTabletPlay.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2000,
+    "cls": "cToast cToastOn tq1",
+    "text": "제출 완료"
+   }
+  ],
+  "extraShots": [
+   "T05--base.png (모든 토스트 opacity 0, t=0)",
+   "T05--toast1.png (t=500ms, \"제출 완료\" 유지 구간 중간)"
+  ]
+ },
+ "T06": {
+  "file": "NoirTabletTimeout.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2300,
+    "cls": "cToast cToastOn tq1",
+    "text": "타일 자동 제출"
+   }
+  ],
+  "extraShots": [
+   "T06--base.png (모든 토스트 opacity 0, t=0)",
+   "T06--toast1.png (t=650ms, \"타일 자동 제출\" 유지 구간 중간)"
+  ]
+ },
+ "T07": {
+  "file": "NoirTabletRoundResult.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2300,
+    "cls": "cToast cToastOn tq1",
+    "text": "A 승리"
+   }
+  ],
+  "extraShots": [
+   "T07--base.png (모든 토스트 opacity 0, t=0)",
+   "T07--toast1.png (t=650ms, \"A 승리\" 유지 구간 중간)"
+  ]
+ },
+ "T08": {
+  "file": "NoirTabletRoundTie.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2300,
+    "cls": "cToast cToastOn tq1",
+    "text": "동점"
+   }
+  ],
+  "extraShots": [
+   "T08--base.png (모든 토스트 opacity 0, t=0)",
+   "T08--toast1.png (t=650ms, \"동점\" 유지 구간 중간)"
+  ]
+ },
+ "T09": {
+  "file": "NoirTabletNewRound.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 2400,
+    "cls": "cToast cToastOn tq1",
+    "text": "6라운드\nA 선공"
+   }
+  ],
+  "extraShots": [
+   "T09--base.png (모든 토스트 opacity 0, t=0)",
+   "T09--toast1.png (t=700ms, \"6라운드 / A 선공\" 유지 구간 중간)"
+  ]
+ },
+ "T10": {
+  "file": "NoirTabletEarlyEnd.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 4300,
+    "cls": "cToast tq1",
+    "text": "게임 조기 종료"
+   },
+   {
+    "name": "tq2",
+    "dur": 4300,
+    "cls": "cToast cToastOn tq2",
+    "text": "승자\nA"
+   }
+  ],
+  "extraShots": [
+   "T10--base.png (모든 토스트 opacity 0, t=0)",
+   "T10--toast1.png (t=600ms, \"게임 조기 종료\" 유지 구간 중간)",
+   "T10--toast2.png (t=2350ms, \"승자 / A\" 유지 구간 중간)"
+  ]
+ },
+ "T11": {
+  "file": "NoirTabletTieDraw.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 4700,
+    "cls": "cToast tq1",
+    "text": "동점"
+   },
+   {
+    "name": "tq2",
+    "dur": 4700,
+    "cls": "cToast tq2",
+    "text": "최종 승부"
+   },
+   {
+    "name": "tq3",
+    "dur": 4700,
+    "cls": "cToast cToastOn tq3",
+    "text": "타일 선택"
+   }
+  ],
+  "extraShots": [
+   "T11--base.png (모든 토스트 opacity 0, t=0)",
+   "T11--toast1.png (t=500ms, \"동점\" 유지 구간 중간)",
+   "T11--toast2.png (t=1800ms, \"최종 승부\" 유지 구간 중간)",
+   "T11--toast3.png (t=3150ms, \"타일 선택\" 유지 구간 중간)"
+  ]
+ },
+ "T12": {
+  "file": "NoirTabletTieReveal.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [
+   {
+    "name": "tq1",
+    "dur": 4000,
+    "cls": "cToast tq1",
+    "text": "타일 공개"
+   },
+   {
+    "name": "tq2",
+    "dur": 4000,
+    "cls": "cToast cToastOn tq2",
+    "text": "B 승리"
+   }
+  ],
+  "extraShots": [
+   "T12--base.png (모든 토스트 opacity 0, t=0)",
+   "T12--toast1.png (t=450ms, \"타일 공개\" 유지 구간 중간)",
+   "T12--toast2.png (t=2050ms, \"B 승리\" 유지 구간 중간)"
+  ]
+ },
+ "T13": {
+  "file": "NoirTabletFinal.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "T13-B": {
+  "file": "NoirTabletFinalTieDraw.dc.html",
+  "size": [
+   1194,
+   834
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P01": {
+  "file": "NoirPhoneDrawWait.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "선공 뽑기\n내가 먼저 뽑아요"
+   }
+  ],
+  "extraShots": []
+ },
+ "P02": {
+  "file": "NoirStyledSelect.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "5R · 선공\n타일을 고르고 제출하세요\n0:42"
+   },
+   {
+    "name": "submitPop",
+    "dur": 4000,
+    "cls": "btn submitPop",
+    "text": "제출하기"
+   }
+  ],
+  "extraShots": []
+ },
+ "P03": {
+  "file": "NoirStyledLocked.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P04": {
+  "file": "NoirStyledSubmitted.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P05": {
+  "file": "NoirPhoneSecondSubmit.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "5R · 후공\n내 차례예요 · 타일을 고르고 제출하세요\n0:58"
+   },
+   {
+    "name": "submitPop",
+    "dur": 4000,
+    "cls": "btn submitPop",
+    "text": "제출하기"
+   }
+  ],
+  "extraShots": []
+ },
+ "P06": {
+  "file": "NoirPhoneTimeout.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P07": {
+  "file": "NoirPhoneSecondDone.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P08": {
+  "file": "NoirPhoneTransition.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P09": {
+  "file": "NoirPhoneLastTile.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "11R · 선공\n마지막 타일이에요 · 제출 버튼을 눌러 주세요\n0:51"
+   },
+   {
+    "name": "submitPop",
+    "dur": 4000,
+    "cls": "btn submitPop",
+    "text": "제출하기"
+   }
+  ],
+  "extraShots": []
+ },
+ "P10": {
+  "file": "NoirPhoneGameEnd.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "P11": {
+  "file": "NoirPhoneGameEndLose.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G1": {
+  "file": "NoirPhoneDrawGuide.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "선공 뽑기\n내가 먼저 뽑아요"
+   }
+  ],
+  "extraShots": []
+ },
+ "G2": {
+  "file": "NoirPhoneDrawOtherWait.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G3": {
+  "file": "NoirPhoneDrawPicked.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G4": {
+  "file": "NoirPhoneDrawResultWin.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G5": {
+  "file": "NoirPhoneDrawResultLose.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G6": {
+  "file": "NoirPhoneRoundResultWait.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G7": {
+  "file": "NoirPhoneEarlyEndWait.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [],
+  "extraShots": []
+ },
+ "G8": {
+  "file": "NoirPhoneTieDrawWait.dc.html",
+  "size": [
+   844,
+   390
+  ],
+  "anims": [
+   {
+    "name": "turnFlash",
+    "dur": 4000,
+    "cls": "chip turnFlash",
+    "text": "동점 뽑기\n내 차례"
+   }
+  ],
+  "extraShots": []
+ }
+}
