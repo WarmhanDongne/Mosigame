@@ -58,7 +58,10 @@ class FinalCallBurstRays extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-    child: CustomPaint(size: Size.square(size), painter: _BurstRaysPainter(rays)),
+    child: CustomPaint(
+      size: Size.square(size),
+      painter: _BurstRaysPainter(rays),
+    ),
   );
 }
 
@@ -564,10 +567,14 @@ class FinalCallPopTag extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: FinalCallColors.ink, width: borderWidth),
     ),
-    child: Text(
-      label,
-      maxLines: 1,
-      style: finalCallPopText(fontSize, color: textColor, height: 1.3),
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        style: finalCallPopText(fontSize, color: textColor, height: 1.3),
+      ),
     ),
   );
 }

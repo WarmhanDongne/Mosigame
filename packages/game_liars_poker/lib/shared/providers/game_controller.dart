@@ -3,6 +3,7 @@
 
 // ========================[ import ]==========================
 import 'dart:async';
+import 'package:game_kit/game_flow/turn_timeout_record.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
 import 'package:game_kit/errors/services/user_error_message.dart';
 import 'package:game_kit/core/diagnostics/dev_error_log.dart';
@@ -60,6 +61,9 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
   final String roomCode;
   @override
   final String uid;
+
+  /// 서버가 시간 초과로 대신 처리한 마지막 기록입니다(휴대폰 안내 전용).
+  TurnTimeoutRecord? lastTimeout;
   final LiarsPokerService service;
 
   // ---------------------------------------------------------------------------
@@ -329,6 +333,12 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
 
   bool get canSubmitCards => canSelectCards && isMyTurn && !commandInFlight;
 
+  /// 직전 제출자가 강퇴·퇴장한 뒤에는 그 제출에 LIAR를 선언할 수 없습니다.
+  bool get isLastPlayPlayerAlive {
+    final challengedUid = lastPlayPlayerUid;
+    return challengedUid != null && players[challengedUid]?.status == 'alive';
+  }
+
   bool get canCallLiar =>
       status == 'playing' &&
       recoverySession.canSend &&
@@ -336,7 +346,7 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
       (phase == 'playing' || phase == 'lastCardChallenge') &&
       isMyTurn &&
       !isEliminated &&
-      lastPlayPlayerUid != null &&
+      isLastPlayPlayerAlive &&
       !commandInFlight;
 
   bool get canFoldLastCardChallenge =>
@@ -414,6 +424,8 @@ class LiarsPokerController extends GameSessionController<LiarsPokerGameState> {
 
     final hadPublicSnapshot = _hasPublicSnapshot;
     final data = Map<Object?, Object?>.from(value);
+    // 시간 초과 안내용 기록입니다. 진행 판정에는 쓰지 않습니다.
+    lastTimeout = TurnTimeoutRecord.fromValue(data['lastTimeout']);
     final nextStatus = liarsPokerString(data['status'], fallback: 'playing');
     final nextFinishReason = liarsPokerNullableString(data['finishReason']);
     final nextPhase = liarsPokerString(data['phase'], fallback: 'playing');

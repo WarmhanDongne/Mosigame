@@ -82,7 +82,7 @@ void main() {
     );
   });
 
-  testWidgets('동일 참가자의 지난 자리와 배치 형태를 새 게임 기본값으로 쓴다', (tester) async {
+  testWidgets('참가자가 바뀌어도 기존 자리를 유지하고 새 참가자는 빈 자리에 둔다', (tester) async {
     final game = _Game('holdem');
     final room = _Room(game)
       ..players = [
@@ -90,7 +90,7 @@ void main() {
           uid: 'phone-0',
           nickname: 'phone',
           characterId: 'burger',
-          seatIndex: 1,
+          seatIndex: 2,
           isConnected: true,
           role: 'player',
           status: 'active',
@@ -106,9 +106,19 @@ void main() {
           status: 'active',
           penaltyAttemptCount: 0,
         ),
+        RoomPlayer(
+          uid: 'phone-new',
+          nickname: 'new',
+          characterId: 'cat',
+          seatIndex: -1,
+          isConnected: true,
+          role: 'player',
+          status: 'active',
+          penaltyAttemptCount: 0,
+        ),
       ]
       ..savedLayout = const SavedSeatLayout(
-        playerUids: {'phone-0', 'phone-1'},
+        playerUids: {'phone-0', 'phone-1', 'phone-old'},
         mode: SeatLayoutMode.sides,
       );
     addTearDown(room.dispose);
@@ -141,7 +151,7 @@ void main() {
 
     await tester.tap(find.text('launch'));
     await tester.pumpAndSettle();
-    expect(game.layout?.seatIndexes, [1, 0]);
+    expect(game.layout?.seatIndexes, [2, 0, 1]);
     expect(game.layout?.seatLayoutMode, SeatLayoutMode.sides);
   });
 

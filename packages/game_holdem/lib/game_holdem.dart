@@ -9,6 +9,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/template_game.dart';
 
 class HoldemGame extends TemplateGame {
@@ -78,7 +79,7 @@ class HoldemGame extends TemplateGame {
     builder: (context) => CriticalNetworkGuard(
       provider: provider,
       exitLabel: '대기실로'.localized,
-      onExit: () => Navigator.of(context).maybePop(),
+      onExit: () => exitGameRoute(context),
       child: HoldemTabletGame(
         playerLayout: playerLayout,
         provider: provider,

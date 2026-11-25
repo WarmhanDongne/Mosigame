@@ -20,6 +20,7 @@ import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 
 // ============================================================
 
@@ -96,7 +97,7 @@ class FinalCallGame extends TemplateGame {
       builder: (context) => CriticalNetworkGuard(
         provider: provider,
         exitLabel: '대기실로'.localized,
-        onExit: () => Navigator.of(context).maybePop(),
+        onExit: () => exitGameRoute(context),
         child: FinalCallTabletGame(
           roomCode: roomCode,
           gameService: FinalCallService(),

@@ -14,6 +14,7 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:game_liars_poker/tutorial/liars_tutorial.dart';
 
@@ -111,7 +112,7 @@ class LiarsPokerGame extends TemplateGame {
       builder: (context) => CriticalNetworkGuard(
         provider: provider,
         exitLabel: '대기실로'.localized,
-        onExit: () => Navigator.of(context).maybePop(),
+        onExit: () => exitGameRoute(context),
         child: LiarsPokerTabletGame(
           playerLayout: playerLayout,
           provider: provider,

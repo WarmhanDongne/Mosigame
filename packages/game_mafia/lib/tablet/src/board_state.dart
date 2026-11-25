@@ -627,6 +627,6 @@ class _MafiaTabletGameState extends ConsumerState<MafiaTabletGame> {
   Future<void> _endGameAndLeave(MafiaController game) async {
     final ended = await game.endGame();
     if (!mounted || !ended) return;
-    Navigator.of(context).maybePop();
+    exitGameRoute(context);
   }
 }

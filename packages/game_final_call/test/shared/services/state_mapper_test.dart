@@ -13,6 +13,9 @@ void main() {
 
     expect(audio.lengthInBytes, greaterThan(250 * 1024));
     expect(audio.lengthInBytes, lessThan(400 * 1024));
+    final fourCard = await rootBundle.load(FinalCallSounds.fourCard);
+    expect(fourCard.lengthInBytes, greaterThan(50 * 1024));
+    expect(fourCard.lengthInBytes, lessThan(100 * 1024));
   });
 
   test('세 번째 팀과 승리 팀을 서버 값 그대로 읽는다', () {

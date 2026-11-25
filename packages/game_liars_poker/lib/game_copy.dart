@@ -42,7 +42,7 @@ abstract final class LiarsPokerCopy {
     '判斷上一手是否在說謊',
   );
   static String get truthProven =>
-      _t('진실이 증명되었습니다.', 'The claim was true.', '证明是真话。', '證明是真話。');
+      _t('진실이 밝혀졌습니다.', 'The truth was revealed.', '真相已揭晓。', '真相已揭曉。');
   static String get lieRevealed =>
       _t('거짓이 밝혀졌습니다.', 'The lie was exposed.', '谎言被揭穿了。', '謊言被揭穿了。');
   static String get challengeSucceeded =>
@@ -59,10 +59,10 @@ abstract final class LiarsPokerCopy {
   /// 플레이 화면과 관전 화면이 같은 문구를 씁니다. 마크다운을 지원하지 않는
   /// 일반 텍스트로 표시되므로 기호 없이 문장으로만 씁니다.
   static String get phoneRules => _t(
-    '매 라운드에는 모든 사람에게 5장씩 나눠 주고, 3장은 끝까지 공개하지 않습니다. 시작 전에 진실·거짓 카드의 전체 장수만 확인합니다.\n\n내 차례에는 손패에서 1~3장을 뒷면으로 내며, 모두 진실 카드라고 주장합니다. 거짓 카드를 섞어 속일 수 있습니다.\n\n다음 차례 사람은 카드를 내는 대신 LIAR를 외칠 수 있습니다. 직전에 낸 카드가 공개되어 거짓이 하나라도 있으면 카드를 낸 사람이, 전부 진실이면 LIAR를 외친 사람이 벌칙 룰렛을 돌립니다.\n\n카드가 남은 사람이 나 혼자라면 LIAR 대신 FOLD를 골라, 의심을 접고 내가 룰렛을 돌릴 수 있습니다.\n\n손패를 먼저 비우는 것은 승리가 아닙니다. 마지막까지 살아남은 한 명이 승리합니다.',
-    'Every round deals five cards to each player and leaves three cards hidden for the entire round. Before dealing, only the total number of Truth and Lie cards is shown.\n\nOn your turn, play 1–3 cards face down and claim that every card is Truth. You may mix in Lie cards to bluff.\n\nThe next player may call LIAR instead of playing. The previous cards are revealed: if even one is a Lie, the player who played them spins the penalty roulette; if all are Truth, the challenger spins.\n\nIf you are the only player with cards, you may choose FOLD instead of LIAR and spin the roulette yourself.\n\nEmptying your hand does not win the game. The last surviving player wins.',
-    '每轮每人发 5 张牌，并留下 3 张牌全程不公开。发牌前只会显示真话牌与谎言牌的总数。\n\n轮到你时，将 1–3 张牌背面朝上打出，并宣称它们全是真话牌。你可以混入谎言牌来诈唬。\n\n下一位玩家可以不出牌而喊 LIAR。上一手牌会被公开：只要有一张谎言牌，出牌者转惩罚轮盘；全部是真话牌，则质疑者转轮盘。\n\n如果只有你还有手牌，可以选择 FOLD，由自己转轮盘。\n\n先出完手牌并不代表获胜。最后存活的玩家获胜。',
-    '每輪每人發 5 張牌，並留下 3 張牌全程不公開。發牌前只會顯示真話牌與謊言牌的總數。\n\n輪到你時，將 1–3 張牌背面朝上打出，並宣稱它們全是真話牌。你可以混入謊言牌來詐唬。\n\n下一位玩家可以不出牌而喊 LIAR。上一手牌會被公開：只要有一張謊言牌，出牌者轉懲罰輪盤；全部是真話牌，則質疑者轉輪盤。\n\n如果只有你還有手牌，可以選擇 FOLD，由自己轉輪盤。\n\n先出完手牌並不代表獲勝。最後存活的玩家獲勝。',
+    '매 라운드에는 생존자에게 5장씩 나눠 주며, 진실 카드와 거짓 카드는 정확히 반반입니다. 나눠 주고 남은 카드는 끝까지 공개하지 않고 시작 전에 두 카드의 전체 장수만 확인합니다.\n\n내 차례에는 손패에서 1~3장을 뒷면으로 내며, 모두 진실 카드라고 주장합니다. 거짓 카드를 섞어 속일 수 있습니다.\n\n다음 차례 사람은 카드를 내는 대신 LIAR를 외칠 수 있습니다. 직전에 낸 카드가 공개되어 거짓이 하나라도 있으면 카드를 낸 사람이, 전부 진실이면 LIAR를 외친 사람이 벌칙 룰렛을 돌립니다.\n\n카드가 남은 사람이 나 혼자라면 LIAR 대신 FOLD를 골라, 의심을 접고 내가 룰렛을 돌릴 수 있습니다.\n\n손패를 먼저 비우는 것은 승리가 아닙니다. 마지막까지 살아남은 한 명이 승리합니다.',
+    'Every round deals five cards to each survivor, with exactly half Truth and half Lie cards. Undealt cards stay hidden for the round; only the total counts are shown before dealing.\n\nOn your turn, play 1–3 cards face down and claim that every card is Truth. You may mix in Lie cards to bluff.\n\nThe next player may call LIAR instead of playing. The previous cards are revealed: if even one is a Lie, the player who played them spins the penalty roulette; if all are Truth, the challenger spins.\n\nIf you are the only player with cards, you may choose FOLD instead of LIAR and spin the roulette yourself.\n\nEmptying your hand does not win the game. The last surviving player wins.',
+    '每轮给每位存活玩家发 5 张牌，真话牌与谎言牌各占一半。未发出的牌整轮保持隐藏，发牌前只显示两种牌的总数。\n\n轮到你时，将 1–3 张牌背面朝上打出，并宣称它们全是真话牌。你可以混入谎言牌来诈唬。\n\n下一位玩家可以不出牌而喊 LIAR。上一手牌会被公开：只要有一张谎言牌，出牌者转惩罚轮盘；全部是真话牌，则质疑者转轮盘。\n\n如果只有你还有手牌，可以选择 FOLD，由自己转轮盘。\n\n先出完手牌并不代表获胜。最后存活的玩家获胜。',
+    '每輪給每位存活玩家發 5 張牌，真話牌與謊言牌各占一半。未發出的牌整輪保持隱藏，發牌前只顯示兩種牌的總數。\n\n輪到你時，將 1–3 張牌背面朝上打出，並宣稱它們全是真話牌。你可以混入謊言牌來詐唬。\n\n下一位玩家可以不出牌而喊 LIAR。上一手牌會被公開：只要有一張謊言牌，出牌者轉懲罰輪盤；全部是真話牌，則質疑者轉輪盤。\n\n如果只有你還有手牌，可以選擇 FOLD，由自己轉輪盤。\n\n先出完手牌並不代表獲勝。最後存活的玩家獲勝。',
   );
 
   /// 태블릿 규칙 화면에서 Markdown으로 표시하는 전체 규칙입니다.
@@ -75,7 +75,7 @@ abstract final class LiarsPokerCopy {
 
 # 한 판의 흐름
 
-매 라운드에는 생존한 모든 사람에게 **5장씩** 나눠 주고, **3장**은 끝까지 공개하지 않습니다.
+매 라운드에는 생존한 모든 사람에게 **5장씩** 나눠 줍니다. 진실 카드와 거짓 카드는 **정확히 반반**이며, 나눠 주고 남은 카드는 끝까지 공개하지 않습니다.
 분배 전에 진실·거짓 카드의 전체 장수만 공개합니다.
 
 내 차례에는 손패에서 **1~3장**을 뒷면으로 냅니다. 이것은 "지금 낸 카드가 모두 진실 카드다"라고 주장하는 것입니다.
@@ -111,7 +111,7 @@ Survive until you are the last player. Emptying your hand does not win the game.
 
 # Round flow
 
-Each round deals **five cards** to every living player and leaves **three cards** hidden for the entire round. Before dealing, only the total numbers of Truth and Lie cards are shown.
+Each round deals **five cards** to every living player. Truth and Lie cards are split **exactly half and half**, and undealt cards stay hidden for the entire round. Before dealing, only their total counts are shown.
 
 On your turn, play **1–3 cards** face down and claim they are all Truth cards. You may mix in Lie cards to bluff.
 
@@ -139,7 +139,7 @@ If you are the only player with cards, you may choose **FOLD** instead of LIAR a
 
 # 回合流程
 
-每轮给每位存活玩家发 **5 张牌**，并留下 **3 张牌** 全程不公开。发牌前只显示真话牌与谎言牌的总数。
+每轮给每位存活玩家发 **5 张牌**。真话牌与谎言牌 **各占一半**，未发出的牌全程不公开。发牌前只显示两种牌的总数。
 
 轮到你时，将 **1–3 张牌** 背面朝上打出，并宣称它们都是真话牌。你可以混入谎言牌来诈唬。
 
@@ -167,7 +167,7 @@ If you are the only player with cards, you may choose **FOLD** instead of LIAR a
 
 # 回合流程
 
-每輪給每位存活玩家發 **5 張牌**，並留下 **3 張牌** 全程不公開。發牌前只顯示真話牌與謊言牌的總數。
+每輪給每位存活玩家發 **5 張牌**。真話牌與謊言牌 **各占一半**，未發出的牌全程不公開。發牌前只顯示兩種牌的總數。
 
 輪到你時，將 **1–3 張牌** 背面朝上打出，並宣稱它們都是真話牌。你可以混入謊言牌來詐唬。
 

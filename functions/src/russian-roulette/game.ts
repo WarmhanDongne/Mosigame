@@ -10,7 +10,7 @@ import {
 
 export const RUSSIAN_ROULETTE_TURN_MS = 30000;
 export const RUSSIAN_ROULETTE_MIN_PLAYERS = 2;
-export const RUSSIAN_ROULETTE_MAX_PLAYERS = 6;
+export const RUSSIAN_ROULETTE_MAX_PLAYERS = 8;
 
 /**
  * 시간 초과 요청을 마감 직전에도 받아 주는 여유입니다. 태블릿의 서버 시각 보정은
@@ -77,7 +77,7 @@ export function createRussianRouletteGame(
   now: number,
 ): RussianRouletteGameState {
   if (players.length < RUSSIAN_ROULETTE_MIN_PLAYERS || players.length > RUSSIAN_ROULETTE_MAX_PLAYERS) {
-    throw new HttpsError("failed-precondition", "러시안 룰렛은 2~6명이 필요합니다.");
+    throw new HttpsError("failed-precondition", "러시안 룰렛은 2~8명이 필요합니다.");
   }
   const ordered = [...players].sort((a, b) => a.seatIndex - b.seatIndex);
   if (new Set(ordered.map((player) => player.uid)).size !== ordered.length ||
@@ -169,6 +169,7 @@ export function timeoutRussianRouletteTurn(game: RussianRouletteGameState, now: 
     if (!entry.choiceSubmitted) {
       entry.choiceSubmitted = true;
       entry.action = "none";
+      entry.autoSelected = true;
     }
   }
   revealActions(game, now);

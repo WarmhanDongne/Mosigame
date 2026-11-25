@@ -284,10 +284,11 @@ void main() {
     );
     addTearDown(provider.dispose);
 
-    expect(gamePlayerRangeLabel(_russianRoulette, provider), '2–6명');
+    expect(gamePlayerRangeLabel(_russianRoulette, provider), '2–8명');
     expect(isGamePlayableWith(_russianRoulette, 2, provider), isTrue);
     expect(isGamePlayableWith(_russianRoulette, 6, provider), isTrue);
-    expect(isGamePlayableWith(_russianRoulette, 7, provider), isFalse);
+    expect(isGamePlayableWith(_russianRoulette, 8, provider), isTrue);
+    expect(isGamePlayableWith(_russianRoulette, 9, provider), isFalse);
   });
 
   testWidgets('시작 인원이 부족하면 오류 메시지 대신 버튼 피드백을 요청한다', (tester) async {

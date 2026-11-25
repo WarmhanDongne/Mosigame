@@ -64,4 +64,68 @@ class PlayerLayoutFactory {
       ),
     );
   }
+
+  /// 저장 당시 명단과 현재 명단이 달라도 남아 있는 참가자의 자리를 최대한
+  /// 유지하고, 새 참가자는 빈 자리에 순서대로 배치합니다.
+  ///
+  /// 인원 감소로 예전 좌석 번호가 현재 범위를 벗어나면 남아 있는 참가자의
+  /// 상대 순서를 유지한 채 0부터 다시 매깁니다. 저장 명단과 겹치는 참가자가
+  /// 없거나 기존 참가자의 좌석 기록이 손상됐으면 안전하게 기본 배치로
+  /// 돌아갈 수 있도록 null을 반환합니다.
+  static PlayerLayoutModel? mergeSavedRoster(
+    List<GameRoomPlayer> players, {
+    required Set<String> savedPlayerUids,
+  }) {
+    if (players.length < 2 || savedPlayerUids.isEmpty) return null;
+
+    final returningPlayers = players
+        .where((player) => savedPlayerUids.contains(player.uid))
+        .toList(growable: false);
+    if (returningPlayers.isEmpty ||
+        returningPlayers.any((player) => player.seatIndex < 0) ||
+        returningPlayers.map((player) => player.seatIndex).toSet().length !=
+            returningPlayers.length) {
+      return null;
+    }
+
+    final seatByUid = <String, int>{};
+    final canKeepExactSeats = returningPlayers.every(
+      (player) => player.seatIndex < players.length,
+    );
+    if (canKeepExactSeats) {
+      for (final player in returningPlayers) {
+        seatByUid[player.uid] = player.seatIndex;
+      }
+    } else {
+      final byPreviousSeat = [...returningPlayers]
+        ..sort((left, right) => left.seatIndex.compareTo(right.seatIndex));
+      for (final (seatIndex, player) in byPreviousSeat.indexed) {
+        seatByUid[player.uid] = seatIndex;
+      }
+    }
+
+    final occupiedSeats = seatByUid.values.toSet();
+    final availableSeats = [
+      for (var seat = 0; seat < players.length; seat++)
+        if (!occupiedSeats.contains(seat)) seat,
+    ].iterator;
+    for (final player in players) {
+      if (seatByUid.containsKey(player.uid)) continue;
+      if (!availableSeats.moveNext()) return null;
+      seatByUid[player.uid] = availableSeats.current;
+    }
+
+    return PlayerLayoutModel(
+      players: List<PlayerLayoutPlayer>.unmodifiable(
+        players.map(
+          (player) => PlayerLayoutPlayer(
+            uid: player.uid,
+            nickname: player.nickname,
+            characterId: player.characterId,
+            seatIndex: seatByUid[player.uid]!,
+          ),
+        ),
+      ),
+    );
+  }
 }

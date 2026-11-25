@@ -149,6 +149,11 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
       (_tableDiameter(boardSize) * 0.34).clamp(72.0, 170.0);
   static const Duration _zoomHold = Duration(milliseconds: 250);
 
+  /// 모서리·면 배치를 바꿀 때 이름 카드가 테이블 둘레를 따라 도는 시간입니다.
+  static const Duration _layoutModeTransitionDuration = Duration(
+    milliseconds: 650,
+  );
+
   // 입장 연출(블록 퇴장 → 테이블 등장 → 의자 착석)은 [_entranceController]로,
   // 그 뒤 테이블로 카메라가 줌인해 화면이 게임 배경색으로 가득 차는 연출은
   // 별도의 [_zoomController]로 재생합니다. 둘을 분리해야 착석이 끝난 뒤 잠깐
@@ -184,7 +189,12 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   final Map<int, Offset> _draggingPositions = {};
   late final AnimationController _entranceController;
   late final AnimationController _zoomController;
+  late final AnimationController _layoutModeController;
   late final Listenable _transitionAnimation;
+
+  /// 모서리·면 전환 직전의 좌석 위치입니다. 새 좌표와 함께 원호를 계산합니다.
+  List<Offset>? _layoutTransitionFrom;
+  double _layoutTransitionAngle = 0;
 
   int? _draggingPlayerIndex;
   int? _hoveredSlotIndex;
@@ -219,9 +229,15 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
+    _layoutModeController = AnimationController(
+      vsync: this,
+      duration: _layoutModeTransitionDuration,
+      value: 1,
+    );
     _transitionAnimation = Listenable.merge([
       _entranceController,
       _zoomController,
+      _layoutModeController,
     ]);
   }
 
@@ -244,6 +260,8 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
       _draggingPositions.clear();
       _draggingPlayerIndex = null;
       _hoveredSlotIndex = null;
+      _layoutTransitionFrom = null;
+      _layoutModeController.value = 1;
     }
   }
 
@@ -251,6 +269,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   void dispose() {
     _entranceController.dispose();
     _zoomController.dispose();
+    _layoutModeController.dispose();
     if (!_handedOffToGame) {
       //================상태바 표시=================
       // 태블릿 로비도 같은 전체 화면 영역을 쓰므로 시스템 바를 다시 켜지 않습니다.
@@ -310,7 +329,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   }
 
   void _shuffle() {
-    if (_isCompleting) return;
+    if (_isCompleting || _layoutModeController.isAnimating) return;
     final slots = List<int>.generate(_playerCount, (index) => index)
       ..shuffle(_random);
     setState(() {
@@ -320,14 +339,23 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   }
 
   void _toggleSeatLayoutMode() {
-    if (_isCompleting) return;
+    if (_isCompleting ||
+        _layoutModeController.isAnimating ||
+        _slotPositions.length != _playerCount) {
+      return;
+    }
+    _layoutTransitionFrom = List<Offset>.unmodifiable(_slotPositions);
+    final nextMode = _seatLayoutMode == SeatLayoutMode.corners
+        ? SeatLayoutMode.sides
+        : SeatLayoutMode.corners;
+    _layoutTransitionAngle =
+        (nextMode == SeatLayoutMode.sides ? 1 : -1) * math.pi / _playerCount;
     setState(() {
-      _seatLayoutMode = _seatLayoutMode == SeatLayoutMode.corners
-          ? SeatLayoutMode.sides
-          : SeatLayoutMode.corners;
+      _seatLayoutMode = nextMode;
       _selectedSlotIndex = null;
       _draggingPositions.clear();
     });
+    _layoutModeController.forward(from: 0);
   }
 
   Future<void> _cancel() async {
@@ -443,7 +471,7 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
   }
 
   Future<void> _completeSetting() async {
-    if (_isCompleting) return;
+    if (_isCompleting || _layoutModeController.isAnimating) return;
     var handedOffToGame = false;
 
     final completedLayout = widget.initialLayout
@@ -691,7 +719,9 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
                     fontSize: 15,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     leading: const Icon(Icons.shuffle_rounded),
-                    onPressed: _shuffle,
+                    onPressed: _layoutModeController.isAnimating
+                        ? null
+                        : _shuffle,
                   ),
                   const SizedBox(width: 10),
                   MosiButton(
@@ -711,7 +741,9 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
                           ? Icons.splitscreen_rounded
                           : Icons.crop_free_rounded,
                     ),
-                    onPressed: _toggleSeatLayoutMode,
+                    onPressed: _layoutModeController.isAnimating
+                        ? null
+                        : _toggleSeatLayoutMode,
                   ),
                 ],
               ),
@@ -825,7 +857,9 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
                     fontSize: 21,
                     radius: 12,
                     expand: true,
-                    onPressed: _completeSetting,
+                    onPressed: _layoutModeController.isAnimating
+                        ? null
+                        : _completeSetting,
                   ),
                 ),
               ),
@@ -943,6 +977,56 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     return [heading(0, teams.left), heading(1, teams.right)];
   }
 
+  /// 좌석 묶음 전체를 같은 각도·방향으로 먼저 회전한 뒤, 마지막 구간에서만
+  /// 목표 면 좌표에 맞게 바깥쪽으로 정렬합니다. 전환 중 플레이어의 상대 순서와
+  /// 간격이 유지돼 각각 목표로 흩어지는 대신 자리판 하나가 도는 것처럼 보입니다.
+  ({Offset position, double tilt}) _layoutModeTransitionPose({
+    required int slotIndex,
+    required Size boardSize,
+    required Size cardSize,
+  }) {
+    final target = _slotPositions[slotIndex];
+    final previous = _layoutTransitionFrom;
+    if (!_layoutModeController.isAnimating ||
+        previous == null ||
+        previous.length != _slotPositions.length) {
+      return (position: target, tilt: 0);
+    }
+
+    final origin = previous[slotIndex];
+    final halfCard = Offset(cardSize.width / 2, cardSize.height / 2);
+    final tableCenter = boardSize.center(Offset.zero);
+    Offset cardCenter(Offset topLeft) =>
+        Offset(topLeft.dx * boardSize.width, topLeft.dy * boardSize.height) +
+        halfCard;
+
+    final fromVector = cardCenter(origin) - tableCenter;
+    final toVector = cardCenter(target) - tableCenter;
+    final progress = Curves.easeInOutCubic.transform(
+      _layoutModeController.value,
+    );
+    Offset rotate(Offset vector, double angle) => Offset(
+      vector.dx * math.cos(angle) - vector.dy * math.sin(angle),
+      vector.dx * math.sin(angle) + vector.dy * math.cos(angle),
+    );
+
+    final rotated = rotate(fromVector, _layoutTransitionAngle * progress);
+    final fullyRotated = rotate(fromVector, _layoutTransitionAngle);
+    final settleProgress = Curves.easeOutCubic.transform(
+      ((progress - 0.55) / 0.45).clamp(0.0, 1.0),
+    );
+    final correction = toVector - fullyRotated;
+    final center = tableCenter + rotated + correction * settleProgress;
+    final topLeft = center - halfCard;
+    return (
+      position: Offset(
+        topLeft.dx / boardSize.width,
+        topLeft.dy / boardSize.height,
+      ),
+      tilt: math.sin(math.pi * progress) * _layoutTransitionAngle.sign * 0.07,
+    );
+  }
+
   Widget _buildPlayer({
     required int playerIndex,
     required Size boardSize,
@@ -956,12 +1040,13 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     final teamSide = teams != null && _playerCount == 4
         ? (slotIndex.isEven ? teams.left : teams.right)
         : null;
+    final inputLocked = _isCompleting || _layoutModeController.isAnimating;
 
     final child = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _isCompleting ? null : () => _tapPlayer(playerIndex),
-      onPanStart: _isCompleting ? null : (_) => _startDragging(playerIndex),
-      onPanUpdate: _isCompleting
+      onTap: inputLocked ? null : () => _tapPlayer(playerIndex),
+      onPanStart: inputLocked ? null : (_) => _startDragging(playerIndex),
+      onPanUpdate: inputLocked
           ? null
           : (details) => _movePlayer(
               playerIndex: playerIndex,
@@ -969,8 +1054,8 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
               boardSize: boardSize,
               cardSize: metrics.size,
             ),
-      onPanEnd: _isCompleting ? null : (_) => _finishDragging(playerIndex),
-      onPanCancel: _isCompleting ? null : () => _finishDragging(playerIndex),
+      onPanEnd: inputLocked ? null : (_) => _finishDragging(playerIndex),
+      onPanCancel: inputLocked ? null : () => _finishDragging(playerIndex),
       child: _SeatCard(
         player: player,
         seatNumber: slotIndex + 1,
@@ -1004,6 +1089,20 @@ class _PlayerLayoutEditorState extends State<PlayerLayoutEditor>
     final position = isDragging
         ? _draggingPositions[playerIndex] ?? _slotPositions[slotIndex]
         : _slotPositions[slotIndex];
+
+    if (_layoutModeController.isAnimating && !isDragging) {
+      final pose = _layoutModeTransitionPose(
+        slotIndex: slotIndex,
+        boardSize: boardSize,
+        cardSize: metrics.size,
+      );
+      return Positioned(
+        key: ValueKey(player.uid),
+        left: pose.position.dx * boardSize.width,
+        top: pose.position.dy * boardSize.height,
+        child: Transform.rotate(angle: pose.tilt, child: child),
+      );
+    }
 
     return AnimatedPositioned(
       key: ValueKey(player.uid),
