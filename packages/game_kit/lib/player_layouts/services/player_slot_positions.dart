@@ -55,36 +55,21 @@ List<Offset> normalizedPlayerCenters(int playerCount) {
 
 /// 테이블의 네 면을 따라 고르게 놓인 좌석 중심입니다.
 ///
-/// 2·3·4·6인은 게임 화면에서 가장 읽기 좋은 대칭 배치를 고정하고, 그 외
-/// 인원은 아래쪽 가운데에서 시작해 화면 테두리를 시계 반대 방향으로 나눕니다.
+/// 모서리 배치의 원형 순서와 간격을 그대로 유지한 채 모든 좌석을 같은 방향으로
+/// 좌석 간격의 절반만큼 회전하고, 각 중심을 가장 가까운 면까지 밀어냅니다.
+/// 그래서 모서리↔면 전환 중 플레이어끼리 교차하거나 순서가 뒤집히지 않습니다.
 List<Offset> normalizedSideSeatCenters(int playerCount) {
   assert(playerCount > 0);
-  return switch (playerCount) {
-    1 => const [Offset(0.5, 0.84)],
-    2 => const [Offset(0.5, 0.84), Offset(0.5, 0.16)],
-    3 => const [Offset(0.5, 0.84), Offset(0.16, 0.5), Offset(0.84, 0.5)],
-    4 => const [
-      Offset(0.5, 0.84),
-      Offset(0.84, 0.5),
-      Offset(0.5, 0.16),
-      Offset(0.16, 0.5),
-    ],
-    6 => const [
-      Offset(0.35, 0.84),
-      Offset(0.65, 0.84),
-      Offset(0.84, 0.5),
-      Offset(0.65, 0.16),
-      Offset(0.35, 0.16),
-      Offset(0.16, 0.5),
-    ],
-    _ => List<Offset>.generate(playerCount, (index) {
-      final angle = math.pi / 2 - math.pi * 2 * index / playerCount;
-      final dx = math.cos(angle);
-      final dy = math.sin(angle);
-      final scale = 0.34 / math.max(dx.abs(), dy.abs());
-      return Offset(0.5 + dx * scale, 0.5 + dy * scale);
-    }, growable: false),
-  };
+  final startAngle = _startAngleForPlayerCount(playerCount);
+  final sharedRotation = math.pi / playerCount;
+  return List<Offset>.generate(playerCount, (index) {
+    final angle =
+        startAngle + sharedRotation + math.pi * 2 * index / playerCount;
+    final dx = math.cos(angle);
+    final dy = math.sin(angle);
+    final scale = 0.34 / math.max(dx.abs(), dy.abs());
+    return Offset(0.5 + dx * scale, 0.5 + dy * scale);
+  }, growable: false);
 }
 
 /// 자리 배치 선택에 맞는 정규화 좌석 중심입니다.

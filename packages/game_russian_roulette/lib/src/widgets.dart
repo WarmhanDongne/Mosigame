@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
+import 'package:game_russian_roulette/src/gun_art.dart';
 import 'package:game_russian_roulette/src/theme.dart';
 import 'package:game_russian_roulette/src/timing.dart';
 import 'package:game_russian_roulette/src/view.dart';
@@ -12,60 +14,195 @@ String rouletteText(String ko, String en, String zhHans, String zhHant) =>
     GameLocale.select(ko: ko, en: en, zhHans: zhHans, zhHant: zhHant);
 
 //=======================위에서 본 리볼버==============================
+// 총 그림은 시안(B-Anim) 좌표 그대로 [gun_art.dart]에 있습니다. 원판(r152)
+// 안에서 시안은 0.82배로 그리고 총 그림의 x = 85가 회전축입니다. 이 배율이면
+// 손잡이 끝과 총구 끝이 원판 가장자리에 닿습니다.
+const _gunArtScale = .82 / .64;
+const _gunArtPivot = 85.0;
+
 /// 위에서 내려다본 리볼버를 그립니다.
 ///
-/// 원점이 총의 회전축이고, 총구는 +x 방향을 봅니다. 시안 좌표(약 -229~263)를
-/// 그대로 쓰므로 [scale]로 크기를 맞춥니다. 실린더 원판(r152) 안에서는 0.64입니다.
+/// 원점이 총의 회전축이고, 총구는 +x 방향을 봅니다. 실린더 원판(r152) 안에서는
+/// [scale] 0.64입니다.
 void paintRouletteGun(Canvas canvas, {double scale = 0.64, bool shot = false}) {
-  const ink = RouletteColors.ink;
-  const cream = RouletteColors.cream;
   canvas.save();
-  canvas.scale(scale);
-  canvas.translate(-41, 0);
-  final fill = Paint()..color = ink;
-  Paint line(double width, {double opacity = 1, Color color = cream}) => Paint()
-    ..color = color.withValues(alpha: opacity)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = width
-    ..strokeCap = StrokeCap.round
-    ..strokeJoin = StrokeJoin.round;
-  RRect box(double x, double y, double w, double h, double r) =>
-      RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), Radius.circular(r));
-
-  final grip = Path()
-    ..moveTo(-58, -21)
-    ..cubicTo(-90, -25, -130, -34, -156, -36)
-    ..cubicTo(-188, -36, -188, 36, -156, 36)
-    ..cubicTo(-130, 34, -90, 25, -58, 21)
-    ..close();
-  canvas.drawPath(grip, fill);
-  canvas.drawPath(
-    Path()
-      ..moveTo(-70, -9)
-      ..cubicTo(-105, -13, -135, -19, -166, -18),
-    line(2.5, opacity: .5),
-  );
-  canvas.drawRRect(box(-80, -9, 18, 18, 4), fill);
-  canvas.drawRRect(box(-66, -23, 66, 46, 8), fill);
-  canvas.drawRRect(box(-48, -6, 28, 12, 6), line(2.5));
-  canvas.drawCircle(const Offset(-57, 0), 3, Paint()..color = cream);
-  canvas.drawRRect(box(-8, -33, 64, 66, 12), fill);
-  canvas.drawRRect(box(-8, -33, 64, 66, 12), line(2.5));
-  canvas.drawRRect(box(4, -5.5, 40, 11, 5.5), line(2.5));
-  canvas.drawLine(const Offset(8, -20), const Offset(40, -20), line(2.5, opacity: .6));
-  canvas.drawLine(const Offset(8, 20), const Offset(40, 20), line(2.5, opacity: .6));
-  canvas.drawRRect(box(54, -17, 12, 34, 4), fill);
-  canvas.drawRRect(box(64, -12.5, 8, 25, 2), Paint()..color = cream);
-  canvas.drawRRect(box(71, -9, 189, 18, 9), fill);
-  canvas.drawLine(const Offset(78, -3), const Offset(250, -3), line(2.5, opacity: .5));
-  canvas.drawRRect(box(250, -9, 12, 18, 6), Paint()..color = RouletteColors.red);
-  if (shot) {
-    final flash = line(5, color: RouletteColors.red);
-    canvas.drawLine(const Offset(268, 0), const Offset(304, -14), flash);
-    canvas.drawLine(const Offset(268, 0), const Offset(308, 0), flash);
-    canvas.drawLine(const Offset(268, 0), const Offset(304, 14), flash);
-  }
+  canvas.scale(scale * _gunArtScale);
+  canvas.translate(-_gunArtPivot, 0);
+  paintRouletteGunTopArt(canvas);
+  if (shot) _paintShotLines(canvas);
   canvas.restore();
+}
+
+/// 총구 앞에 튀는 붉은 선 세 줄입니다(총 그림 좌표).
+void _paintShotLines(Canvas canvas) {
+  final flash = Paint()
+    ..color = RouletteColors.red
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 5
+    ..strokeCap = StrokeCap.round;
+  canvas.drawLine(const Offset(268, 0), const Offset(304, -14), flash);
+  canvas.drawLine(const Offset(268, 0), const Offset(308, 0), flash);
+  canvas.drawLine(const Offset(268, 0), const Offset(304, 14), flash);
+}
+
+/// 원판 위 총의 자세입니다. 시작 연출에서 옆으로 눕혀 둔 총을 굴려 세울 때 씁니다.
+@immutable
+class RouletteGunPose {
+  const RouletteGunPose({
+    this.roll = 0,
+    this.shift = 0,
+    this.scale = 1,
+    this.tilt = 0,
+    this.lift = 0,
+    this.dust,
+  });
+
+  /// 옆으로 눕혀 내려놓은 총입니다. 원판 밖으로 나가지 않게 조금 작게, 가운데로
+  /// 옮겨 둡니다.
+  static const lying = RouletteGunPose(roll: 90, shift: 37, scale: .94);
+
+  /// 세워 둔(위에서 본) 총입니다.
+  static const standing = RouletteGunPose();
+
+  /// 총열을 축으로 굴린 각도(도)입니다. 90이면 옆으로 누움, 0이면 선 모습입니다.
+  final double roll;
+
+  /// 손잡이 반대쪽(-y)으로 옮기는 거리(판 px)입니다. 눕힌 총을 가운데 둡니다.
+  final double shift;
+  final double scale;
+
+  /// 들어 올릴 때 살짝 기우는 각도(도, 시계 방향 +)입니다.
+  final double tilt;
+
+  /// 들린 높이(0 → 1)입니다. 높을수록 그림자가 멀어지고 흐려집니다.
+  final double lift;
+
+  /// 내려앉을 때 양옆으로 튀는 먼지 자국의 진행(0 → 1)입니다.
+  final double? dust;
+}
+
+/// 원판(r152) 위에 [pose]대로 놓인 리볼버를 그림자와 함께 그립니다.
+///
+/// 캔버스는 원판 가운데로 옮겨 총구 방향([aim])으로 돌려 둔 상태여야 합니다.
+/// 그림자는 총 방향과 상관없이 판의 오른쪽 아래로 떨어집니다.
+void paintRouletteGunOnDisc(
+  Canvas canvas, {
+  required double aim,
+  RouletteGunPose pose = RouletteGunPose.standing,
+  bool shot = false,
+}) {
+  final roll = pose.roll * math.pi / 180;
+  final side = math.sin(roll);
+  final top = math.max(0.0, math.cos(roll));
+  // 옆모습은 굴러가며 납작해지다 사라지고, 윗모습은 점점 넓어지며 나타납니다.
+  final sideOpacity = ((pose.roll.abs() - 6) / 24).clamp(0.0, 1.0);
+  final topOpacity = ((62 - pose.roll) / 26).clamp(0.0, 1.0);
+
+  void place(Canvas c) {
+    c.translate(0, -pose.shift);
+    c.scale(pose.scale);
+    c.rotate(pose.tilt * math.pi / 180);
+    c.scale(.64 * _gunArtScale);
+    c.translate(-_gunArtPivot, 0);
+  }
+
+  void body(Canvas c, {required bool shade}) {
+    void layer(
+      double scaleY,
+      double opacity,
+      double brightness,
+      void Function(Canvas) art,
+    ) {
+      if (opacity <= 0 || scaleY.abs() < .005) return;
+      c.save();
+      c.scale(1, scaleY);
+      final dim = shade && (opacity < 1 || brightness < 1);
+      if (dim) {
+        c.saveLayer(
+          null,
+          Paint()
+            ..color = Color.fromRGBO(0, 0, 0, opacity)
+            ..colorFilter = ColorFilter.matrix(<double>[
+              brightness, 0, 0, 0, 0, //
+              0, brightness, 0, 0, 0, //
+              0, 0, brightness, 0, 0, //
+              0, 0, 0, 1, 0,
+            ]),
+        );
+      }
+      art(c);
+      if (dim) c.restore();
+      c.restore();
+    }
+
+    layer(side, sideOpacity, .55 + .45 * side.abs(), paintRouletteGunSideArt);
+    layer(top, topOpacity, .7 + .3 * top, paintRouletteGunTopArt);
+  }
+
+  // 판에 닿은 짙은 그림자와 넓게 퍼진 그림자를 겹칩니다. 들리면 멀어지고 흐려집니다.
+  final h = pose.lift.clamp(0.0, 1.0);
+  final shadows = <(double, double, double, double)>[
+    (1, 1, .5 + h, .35 - .15 * h),
+    (5 + 11 * h, 8 + 16 * h, 6 + 10 * h, .25 + .03 * h),
+  ];
+  final cosA = math.cos(aim);
+  final sinA = math.sin(aim);
+  for (final (dx, dy, blur, alpha) in shadows) {
+    canvas.save();
+    // 판 기준 (dx, dy)를 돌려 둔 캔버스 기준으로 바꿉니다.
+    canvas.translate(dx * cosA + dy * sinA, -dx * sinA + dy * cosA);
+    canvas.saveLayer(
+      Rect.fromCircle(center: Offset.zero, radius: 240),
+      Paint()
+        ..imageFilter = ui.ImageFilter.blur(sigmaX: blur / 2, sigmaY: blur / 2)
+        ..colorFilter = ColorFilter.mode(
+          Color.fromRGBO(0, 0, 0, alpha),
+          BlendMode.srcIn,
+        ),
+    );
+    place(canvas);
+    body(canvas, shade: false);
+    canvas.restore();
+    canvas.restore();
+  }
+
+  canvas.save();
+  place(canvas);
+  body(canvas, shade: true);
+  final dust = pose.dust;
+  if (dust != null && dust >= 0 && dust < 1) _paintDust(canvas, dust);
+  if (shot) _paintShotLines(canvas);
+  canvas.restore();
+}
+
+/// 내려앉는 순간 총 양옆으로 짧게 퍼지는 먼지 자국입니다(총 그림 좌표).
+void _paintDust(Canvas canvas, double t) {
+  final opacity = t < .25
+      ? .75 * Curves.easeOut.transform(t / .25)
+      : .75 * (1 - Curves.easeOut.transform((t - .25) / .75));
+  final spread = .85 + .85 * Curves.easeOut.transform(t);
+  final paint = Paint()
+    ..color = RouletteColors.ink.withValues(alpha: .4 * opacity)
+    ..strokeWidth = 2.2
+    ..strokeCap = StrokeCap.round;
+  const marks = <(double, double, double)>[
+    (-78, 24, 9),
+    (-50, 19, 7),
+    (42, 30, 9),
+    (70, 30, 8),
+    (150, 13, 7),
+    (215, 12, 6),
+  ];
+  for (final (x, y, length) in marks) {
+    for (final sign in const [-1.0, 1.0]) {
+      final dx = x < 0 ? -3 * sign : 3 * sign;
+      canvas.drawLine(
+        Offset(x, sign * y * spread),
+        Offset(x + dx, sign * (y + length) * spread),
+        paint,
+      );
+    }
+  }
 }
 
 /// 크림색 원판 위에 놓인 리볼버입니다. [angle]은 총구 방향(라디안, 0 = 오른쪽,

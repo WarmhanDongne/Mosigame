@@ -15,6 +15,7 @@ import 'package:game_final_call/shared/services/game_service.dart';
 import 'package:game_final_call/shared/services/private_state_mapper.dart';
 import 'package:game_final_call/shared/services/public_state_mapper.dart';
 import 'package:game_kit/game_flow/game_finish.dart';
+import 'package:game_kit/game_flow/turn_timeout_record.dart';
 import 'package:game_kit/recovery/models/game_interruption.dart';
 import 'package:game_kit/recovery/providers/game_session_controller.dart';
 import 'package:game_kit/services/game_query_service.dart';
@@ -56,6 +57,9 @@ class FinalCallController extends GameSessionController<FinalCallGameState> {
   String get commandCrashReason => '파이널콜 서버 명령';
 
   int _discardEventVersion = 0;
+
+  /// 서버가 시간 초과로 대신 처리한 마지막 기록입니다(휴대폰 안내 전용).
+  TurnTimeoutRecord? lastTimeout;
 
   @override
   FinalCallGameState build() {
@@ -222,6 +226,8 @@ class FinalCallController extends GameSessionController<FinalCallGameState> {
 
     final current = state;
     final map = Map<Object?, Object?>.from(value);
+    // 시간 초과 안내용 기록입니다. 진행 판정에는 쓰지 않습니다.
+    lastTimeout = TurnTimeoutRecord.fromValue(map['lastTimeout']);
     final nextRevision = (map['revision'] as num?)?.toInt() ?? current.revision;
     final nextPendingDrawUid = map['pendingDrawUid']?.toString();
     final nextPhase = map['phase']?.toString() ?? current.phase;

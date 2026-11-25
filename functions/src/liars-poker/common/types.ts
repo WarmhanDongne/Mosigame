@@ -65,6 +65,11 @@ export interface PublicGameState {
   turnDeadlineAt: number | null;
   isFirstTurnReady?: boolean;
   lastPlay: PublicLastPlay | null;
+  /**
+   * 마지막 시간 초과 처리입니다. 휴대폰은 uid가 자신이고 at이 새로우면
+   * 타이머 자리에 "시간 초과" 안내를 띄웁니다. 진행 판정에는 쓰지 않습니다.
+   */
+  lastTimeout?: PublicTurnTimeout;
   /** 현재 라운드에 제출된 공개 카드 묶음입니다. 실제 랭크는 공개 전까지 없습니다. */
   roundPlays?: Record<string, PublicLastPlay>;
   penaltyTargetUid: string | null;
@@ -125,4 +130,11 @@ export interface RealtimeRoom {
   selectedGame?: string;
   players?: Record<string, Record<string, unknown>>;
   game?: LiarsPokerGameState;
+}
+
+/** 시간 초과로 서버가 대신 처리한 행동입니다(휴대폰 안내 전용). */
+export interface PublicTurnTimeout {
+  uid: string;
+  kind: "submit" | "liar" | "fold";
+  at: number;
 }

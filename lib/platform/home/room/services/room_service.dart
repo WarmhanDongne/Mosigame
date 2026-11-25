@@ -45,6 +45,15 @@ class RoomService {
   final FirebaseFunctions _functions;
   final _identities = RoomSessionIdentityStore.instance;
   final _operations = DurableRoomOperationStore.instance;
+  final Map<String, SavedSeatLayout?> _savedSeatLayoutsByRoomInstance = {};
+
+  String? _seatLayoutCacheKey(Map<String, dynamic> envelope) {
+    final roomCode = envelope['roomCode'];
+    final roomInstanceId = envelope['roomInstanceId'];
+    if (roomCode is! String || roomInstanceId is! String) return null;
+    return '$roomCode:$roomInstanceId';
+  }
+
   Future<RoomSessionIdentity> roomIdentity(String code) => _sessionIdentity(
     code,
     ControllerRoomSessionStore.instance.sessionIdForRoom(code) != null
@@ -994,11 +1003,17 @@ class RoomService {
 
   /// 서버에서 `waiting → seating`을 확정한 뒤 잠긴 최신 참가자 명단을 반환합니다.
   Future<List<RoomPlayer>> beginPlayerSeating(String roomCode) async {
-    final result = await _call(
-      'beginRealtimeRoomSeating',
-      await _controllerEnvelope(roomCode),
-    );
+    final envelope = await _controllerEnvelope(roomCode);
+    final result = await _call('beginRealtimeRoomSeating', envelope);
     final data = result.data;
+    final cacheKey = _seatLayoutCacheKey(envelope);
+    if (cacheKey != null &&
+        data is Map &&
+        data.containsKey('seatingPreference')) {
+      _savedSeatLayoutsByRoomInstance[cacheKey] = SavedSeatLayout.fromWire(
+        data['seatingPreference'],
+      );
+    }
     if (data is Map && data['players'] is Map) {
       return _playersFromValue(data['players']);
     }
@@ -1032,19 +1047,37 @@ class RoomService {
     required Map<String, int> seatIndexesByUid,
     SeatLayoutMode? seatLayoutMode,
   }) async {
+    final envelope = await _controllerEnvelope(roomCode);
     await _call('saveRealtimePlayerSeatIndexes', {
-      ...await _controllerEnvelope(roomCode),
+      ...envelope,
       'seatIndexesByUid': seatIndexesByUid,
       if (seatLayoutMode != null) 'seatLayoutMode': seatLayoutMode.name,
     });
+    final cacheKey = _seatLayoutCacheKey(envelope);
+    if (cacheKey != null && seatIndexesByUid.length >= 2) {
+      _savedSeatLayoutsByRoomInstance[cacheKey] = SavedSeatLayout(
+        playerUids: Set<String>.unmodifiable(seatIndexesByUid.keys),
+        mode: seatLayoutMode,
+      );
+    }
   }
 
   /// 마지막 게임의 좌석 참가자 구성과 배치 형태를 컨트롤러가 한 번 읽습니다.
   Future<SavedSeatLayout?> getSavedSeatLayout(String roomCode) async {
-    final snapshot = await realtime
-        .ref('rooms/$roomCode/seatingPreference')
-        .get();
-    return SavedSeatLayout.fromWire(snapshot.value);
+    final identity = await _sessionIdentity(roomCode, 'controller');
+    final cacheKey = '$roomCode:${identity.roomInstanceId}';
+    if (_savedSeatLayoutsByRoomInstance.containsKey(cacheKey)) {
+      return _savedSeatLayoutsByRoomInstance[cacheKey];
+    }
+    // iOS가 포그라운드로 막 복귀했거나 RTDB 연결이 재개되는 순간 단발 get이
+    // 실패하면 유효한 seatIndex가 있어도 자동 복원 전체가 꺼졌습니다. 방의
+    // 다른 단발 읽기와 같은 재시도 경로를 사용해 일시 오류만 흡수합니다.
+    final snapshot = await _readWithRetry(
+      realtime.ref('rooms/$roomCode/seatingPreference'),
+    );
+    final savedLayout = SavedSeatLayout.fromWire(snapshot.value);
+    _savedSeatLayoutsByRoomInstance[cacheKey] = savedLayout;
+    return savedLayout;
   }
 
   Future<void> removePlayer(String roomCode, String userUid) async {

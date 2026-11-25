@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/sound/game_background_music.dart';
 import 'package:game_kit/sound/sound_effects.dart';
 import 'package:game_kit/tablet/widgets/game_menu_overlay.dart';
@@ -210,7 +211,7 @@ class _YutTabletScreenState extends ConsumerState<YutTabletScreen> {
           .execute(() => _service.command.endGame(widget.roomCode));
       if (!ended) return;
     }
-    if (mounted) await Navigator.of(context).maybePop();
+    if (mounted) exitGameRoute(context);
   }
 
   @override

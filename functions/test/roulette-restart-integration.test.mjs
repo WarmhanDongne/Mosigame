@@ -341,3 +341,30 @@ test('actual A/B/tablet ready rejects old connection and resumes only current co
   assert.equal(ref.value.game.public.recovery.paused, false);
   assert.equal(ref.listeners, 0);
 });
+
+test('LP rejects LIAR on a submission whose player was removed', async t => {
+  const ref = setup(t);
+  ref.value.players = Object.fromEntries(Object.entries(ref.value.players).slice(0, 3));
+  for (const [uid, player] of Object.entries(ref.value.players)) {
+    player.currentConnectionId = `connection-${uid}`;
+    player.connectionSeq = 1;
+    ref.value.connections[uid] = {[player.currentConnectionId]: {roomInstanceId: 'room-current',
+      membershipId: player.membershipId, connectionSeq: 1, connected: true, lastSeen: 1}};
+  }
+  await games[0].start.run(ref.request('start-skip-sequence'));
+  delete ref.value.game.public.recovery;
+  delete ref.value.game.server.recovery;
+  setTruthfulPlay(ref);
+  const game = ref.value.game;
+  // player1이 거짓 카드를 내고 강퇴된 상태입니다.
+  game.server.lastPlayCards = [{id: 'lie-card', rank: 'LIE'}];
+  game.public.players.player1.status = 'eliminated';
+  game.public.players.player1.remainingCardCount = 0;
+  const before = structuredClone(ref.value.game);
+
+  await assert.rejects(
+    callLiar.run(liarRequest(ref, 'removed-player-liar')),
+    error => error.code === 'failed-precondition',
+  );
+  assert.deepEqual(ref.value.game, before);
+});

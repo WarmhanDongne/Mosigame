@@ -125,7 +125,7 @@ class _PhoneGameKickNoticeState extends State<PhoneGameKickNotice>
                                     children: [
                                       _KickDoor(progress: _door.value),
                                       const SizedBox(height: 30),
-                                      Text(
+                                      MosiBalancedText(
                                         GameLocale.select(
                                           ko: '게임에서 나왔어요',
                                           en: 'You left the game',
@@ -133,6 +133,7 @@ class _PhoneGameKickNoticeState extends State<PhoneGameKickNotice>
                                           zhHant: '你已離開遊戲',
                                         ),
                                         textAlign: TextAlign.center,
+                                        maxLines: 2,
                                         style: MosiFonts.sans(
                                           size: 30,
                                           weight: FontWeight.w900,
@@ -171,7 +172,7 @@ class _PhoneGameKickNoticeState extends State<PhoneGameKickNotice>
                             ),
                           ),
                           const SizedBox(height: 14),
-                          Text(
+                          MosiBalancedText(
                             GameLocale.select(
                               ko: '$seconds초 뒤 자동으로 이동해요',
                               en: 'Moving automatically in $seconds seconds',
@@ -245,6 +246,8 @@ class _KickLobbyButton extends StatelessWidget {
                       zhHans: '返回大厅',
                       zhHant: '返回大廳',
                     ),
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
                     style: MosiFonts.sans(
                       size: 17,
                       weight: FontWeight.w800,

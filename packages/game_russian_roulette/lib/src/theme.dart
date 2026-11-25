@@ -39,7 +39,8 @@ abstract final class RouletteType {
     Color color, {
     FontWeight weight = FontWeight.w500,
     double height = 1.4,
-  }) => MosiFonts.sans(size: size, weight: weight, color: color, height: height);
+  }) =>
+      MosiFonts.sans(size: size, weight: weight, color: color, height: height);
 
   static TextStyle number(double size, Color color, {double spacing = 0}) =>
       MosiFonts.grotesk(
@@ -96,7 +97,7 @@ abstract final class RouletteCopy {
 
   static String get rulesMarkdown => GameLocale.select(
     ko: '''# 게임 목표
-마지막까지 살아남으면 승리합니다. 2~6명이 함께 하며 한 판은 약 5분입니다.
+마지막까지 살아남으면 승리합니다. 2~8명이 함께 하며 한 판은 약 5분입니다.
 
 # 한 턴의 순서
 모든 생존자는 30초 안에 **총 돌리기**, **방패 사용**, **아무것도 안 하기** 중 하나를 비공개로 고릅니다. 모두 고르면 즉시 공개됩니다.
@@ -110,7 +111,7 @@ abstract final class RouletteCopy {
 # 종료와 다시하기
 마지막 생존자가 승리합니다. 다시하기를 누르면 현재 자리를 유지하고 첫 대상부터 다시 무작위로 결정합니다.''',
     en: '''# Objective
-Be the last survivor. Russian Roulette is for 2–6 players and takes about 5 minutes.
+Be the last survivor. Russian Roulette is for 2–8 players and takes about 5 minutes.
 
 # Each turn
 Every living player secretly chooses **Spin the gun**, **Use shield**, or **Do nothing** within 30 seconds. Choices are revealed immediately when everyone has submitted.
@@ -124,7 +125,7 @@ A shield blocks the shot, but it cannot be used on consecutive turns. A timeout 
 # End and replay
 The last survivor wins. Replay keeps every seat and resets the game with a new random first target.''',
     zhHans: '''# 游戏目标
-成为最后的幸存者。支持2–6人，每局约5分钟。
+成为最后的幸存者。支持2–8人，每局约5分钟。
 
 # 每回合
 所有幸存者在30秒内秘密选择**转动手枪**、**使用护盾**或**什么都不做**。全员选完后立即公开。
@@ -138,7 +139,7 @@ The last survivor wins. Replay keeps every seat and resets the game with a new r
 # 结束与重玩
 最后幸存者获胜。重玩时保留座位，并重新随机选择首个目标。''',
     zhHant: '''# 遊戲目標
-成為最後的幸存者。支援2–6人，每局約5分鐘。
+成為最後的幸存者。支援2–8人，每局約5分鐘。
 
 # 每回合
 所有幸存者在30秒內秘密選擇**轉動手槍**、**使用護盾**或**什麼都不做**。全員選完後立即公開。

@@ -3,7 +3,7 @@
 set -eu
 
 project_root="$(cd "${SRCROOT}/.." && pwd)"
-backend="test"
+backend="server"
 
 old_ifs="$IFS"
 IFS=','

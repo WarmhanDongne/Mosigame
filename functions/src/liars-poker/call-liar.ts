@@ -85,6 +85,14 @@ export const game_liars_poker_call_liar = onCall<CallLiarData>(
           );
         }
 
+        const challengedPlayer = game.public.players[lastPlay.playerUid];
+        if (!challengedPlayer || challengedPlayer.status !== "alive") {
+          throw new HttpsError(
+            "failed-precondition",
+            "직전 제출자가 게임에서 나가 LIAR를 선언할 수 없습니다.",
+          );
+        }
+
         // 모든 제출은 진실 카드라고 주장합니다. 거짓 카드가 하나라도 섞이면
         // 선언은 거짓입니다.
         const truthful = actualCards.every((card) => card.rank === "TRUTH");

@@ -518,7 +518,7 @@ class _LiarsPokerTabletGameState extends ConsumerState<LiarsPokerTabletGame>
 
   void _returnToLobby() {
     // 현재 게임 화면만 닫아 기존 태블릿 방 화면과 RoomProvider를 유지합니다.
-    Navigator.of(context).maybePop();
+    exitGameRoute(context);
   }
 
   void _scheduleNonResultExit() {

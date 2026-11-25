@@ -4,6 +4,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_yut/src/phone.dart';
 import 'package:game_yut/src/tablet.dart';
@@ -56,7 +57,7 @@ class YutGame extends TemplateGame {
   }) => Builder(
     builder: (context) => CriticalNetworkGuard(
       provider: provider,
-      onExit: () => Navigator.of(context).maybePop(),
+      onExit: () => exitGameRoute(context),
       child: YutPhoneScreen(
         roomCode: roomCode,
         provider: provider,
@@ -79,7 +80,7 @@ class YutGame extends TemplateGame {
         zhHans: '返回大厅',
         zhHant: '返回大廳',
       ),
-      onExit: () => Navigator.of(context).maybePop(),
+      onExit: () => exitGameRoute(context),
       child: YutTabletScreen(
         roomCode: roomCode,
         provider: provider,

@@ -160,3 +160,64 @@ test("플레이어 제외 후 잔여카드 보유자가 한 명이면 그 사람
   assert.equal(game.public.turnUid, "uid2");
   assert.equal(game.public.players.uid3.status, "eliminated");
 });
+
+test("직전 제출자가 강퇴돼도 제출 기록과 다음 플레이어 턴을 유지한다", () => {
+  const seats = players([2, 3, 2]);
+  const lastPlay = {
+    playId: "lie-play",
+    round: 1,
+    playerUid: "uid1",
+    cardCount: 1,
+    declaredRank: "TRUTH",
+    revealed: false,
+    submittedAt: 1,
+  };
+  const game = {
+    public: {
+      status: "playing",
+      phase: "playing",
+      round: 1,
+      revision: 1,
+      table: "TRUTH",
+      truthCardCount: 9,
+      lieCardCount: 9,
+      unrevealedCardCount: 3,
+      turnUid: "uid2",
+      turnDeadlineAt: 1000,
+      isFirstTurnReady: true,
+      lastPlay,
+      roundPlays: {"lie-play": lastPlay},
+      penaltyTargetUid: null,
+      winnerUid: null,
+      players: seats,
+      startedAt: 0,
+      updatedAt: 0,
+    },
+    private: {
+      uid1: {hand: {}},
+      uid2: {hand: {}},
+      uid3: {hand: {}},
+    },
+    server: {
+      lastPlayCards: [{id: "lie-card", rank: "LIE"}],
+      processedCommands: {},
+      roundStarterUid: "uid1",
+    },
+  };
+
+  excludeLiarsPokerPlayer(game, "uid1", 100);
+
+  assert.equal(game.public.players.uid1.status, "eliminated");
+  assert.equal(game.public.players.uid1.remainingCardCount, 0);
+  assert.equal(game.public.phase, "playing");
+  assert.equal(game.public.round, 1);
+  assert.equal(game.public.turnUid, "uid2");
+  assert.deepEqual(game.public.lastPlay, lastPlay);
+  assert.deepEqual(game.public.roundPlays, {"lie-play": lastPlay});
+  assert.equal(game.public.penaltyTargetUid, null);
+  assert.deepEqual(game.server.lastPlayCards, [
+    {id: "lie-card", rank: "LIE"},
+  ]);
+  assert.equal(game.private.uid1, undefined);
+  assert.equal(game.server.roundStarterUid, "uid2");
+});

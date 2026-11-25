@@ -375,7 +375,7 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
     // 뒷정리인데, callable 왕복이 하나 더 붙어 종료가 그만큼 늦어지고 실패하면
     // 결과 화면이 잠깐 비칩니다. 새 게임 시작(game_final_call_start_game)이
     // finished 상태의 기존 게임을 그대로 교체하므로 미리 지울 필요가 없습니다.
-    Navigator.of(context).maybePop();
+    exitGameRoute(context);
   }
 
   Future<void> _returnHomeAfterResult() async {
@@ -406,7 +406,7 @@ class _FinalCallTabletGameState extends ConsumerState<FinalCallTabletGame> {
         );
       return;
     }
-    Navigator.of(context).maybePop();
+    exitGameRoute(context);
   }
 
   /// 현재 서버 상태로 계산한 단계입니다.

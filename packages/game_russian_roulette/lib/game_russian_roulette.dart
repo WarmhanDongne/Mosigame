@@ -4,6 +4,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_russian_roulette/src/phone.dart';
 import 'package:game_russian_roulette/src/service.dart';
@@ -39,7 +40,7 @@ class RussianRouletteGame extends TemplateGame {
   int? get fixedPlayerCount => null;
 
   @override
-  List<int>? get supportedPlayerCounts => const [2, 3, 4, 5, 6];
+  List<int>? get supportedPlayerCounts => const [2, 3, 4, 5, 6, 7, 8];
 
   @override
   String get leaveFunctionName => 'game_russian_roulette_leave_game';
@@ -80,7 +81,7 @@ class RussianRouletteGame extends TemplateGame {
   }) => Builder(
     builder: (context) => CriticalNetworkGuard(
       provider: provider,
-      onExit: () => Navigator.of(context).maybePop(),
+      onExit: () => exitGameRoute(context),
       child: RussianRoulettePhoneScreen(
         roomCode: roomCode,
         provider: provider,
@@ -103,7 +104,7 @@ class RussianRouletteGame extends TemplateGame {
         zhHans: '返回大厅',
         zhHant: '返回大廳',
       ),
-      onExit: () => Navigator.of(context).maybePop(),
+      onExit: () => exitGameRoute(context),
       child: RussianRouletteTabletScreen(
         roomCode: roomCode,
         provider: provider,

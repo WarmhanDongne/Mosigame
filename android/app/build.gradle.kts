@@ -25,7 +25,7 @@ fun selectedMosigameBackend(): String {
         }
         .firstOrNull { it.startsWith("MOSIGAME_BACKEND=") }
         ?.substringAfter('=')
-        ?: "test"
+        ?: "server"
     require(backend in setOf("server", "test", "local")) {
         "MOSIGAME_BACKEND must be server, test or local."
     }

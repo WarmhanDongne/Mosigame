@@ -10,9 +10,8 @@ import {CardRank, GameCard} from "./types.js";
 /**
  * 플레이어 수에 맞는 진실·거짓 덱을 생성하고 안전하게 섞습니다.
  *
- * 각 생존 플레이어는 5장을 받습니다. 전체 덱은 2·3인 15장,
- * 4인부터 인원 × 5장이며, 진실 카드는 인원 × 2.1장을 반올림합니다.
- * 나머지는 모두 거짓 카드입니다.
+ * 각 생존 플레이어는 5장을 받습니다. 진실·거짓을 정확히 반반으로 만들기
+ * 위해 필요한 카드 수가 홀수면 한 장을 더한 짝수 덱을 사용합니다.
  */
 export function createDeck(playerCount: number): GameCard[] {
   const counts = deckCounts(playerCount);
@@ -31,8 +30,8 @@ export function createDeck(playerCount: number): GameCard[] {
   return deck;
 }
 
-/** 인원 1명당 진실 카드 비율입니다. */
-export const TRUTH_CARDS_PER_PLAYER = 2.1;
+/** 전체 덱에서 진실 카드가 차지하는 비율입니다. */
+export const TRUTH_CARD_RATIO = 0.5;
 
 /** 플레이어 수가 라이어스 포커의 지원 범위인지 확인합니다. */
 function assertSupportedPlayerCount(playerCount: number): void {
@@ -44,13 +43,13 @@ function assertSupportedPlayerCount(playerCount: number): void {
 /** 플레이어 수에 따른 전체 덱 장수입니다. */
 export function totalCardCountForPlayerCount(playerCount: number): number {
   assertSupportedPlayerCount(playerCount);
-  return Math.max(15, playerCount * 5);
+  const minimum = Math.max(15, playerCount * 5);
+  return minimum % 2 === 0 ? minimum : minimum + 1;
 }
 
-/** 이번 라운드의 진실 카드 수를 고정 비율로 계산합니다. */
+/** 이번 라운드의 진실 카드 수를 전체 덱의 절반으로 계산합니다. */
 export function truthCardCountForPlayerCount(playerCount: number): number {
-  assertSupportedPlayerCount(playerCount);
-  return Math.round(playerCount * TRUTH_CARDS_PER_PLAYER);
+  return totalCardCountForPlayerCount(playerCount) * TRUTH_CARD_RATIO;
 }
 
 /** 모든 플레이어에게 5장씩 나눠 준 뒤 중앙 덱에 남는 장수입니다. */

@@ -4,6 +4,20 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('develop 기본 backend는 Dart·Android·iOS 모두 운영을 사용한다', () {
+    final backend = File(
+      'packages/game_kit/lib/firebase/firebase_backend.dart',
+    ).readAsStringSync();
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final iosSelector = File(
+      'tool/select_ios_firebase_config.sh',
+    ).readAsStringSync();
+
+    expect(backend, contains("defaultValue: 'server'"));
+    expect(gradle, contains('?: "server"'));
+    expect(iosSelector, contains('backend="server"'));
+  });
+
   test('iOS 푸시는 APNs entitlement와 background modes를 함께 유지한다', () {
     final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
     final entitlements = File(

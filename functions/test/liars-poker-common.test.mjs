@@ -61,13 +61,13 @@ function gameState(count = 3) {
   };
 }
 
-test("2~6인 덱은 요청 수량과 2.1배 진실 카드 비율을 따른다", () => {
+test("2~6인 덱은 진실과 거짓을 정확히 반반으로 구성한다", () => {
   const expected = {
-    2: {total: 15, truth: 4, lie: 11},
-    3: {total: 15, truth: 6, lie: 9},
-    4: {total: 20, truth: 8, lie: 12},
-    5: {total: 25, truth: 11, lie: 14},
-    6: {total: 30, truth: 13, lie: 17},
+    2: {total: 16, truth: 8, lie: 8},
+    3: {total: 16, truth: 8, lie: 8},
+    4: {total: 20, truth: 10, lie: 10},
+    5: {total: 26, truth: 13, lie: 13},
+    6: {total: 30, truth: 15, lie: 15},
   };
   for (let count = 2; count <= 6; count += 1) {
     const deck = createDeck(count);
@@ -80,17 +80,17 @@ test("2~6인 덱은 요청 수량과 2.1배 진실 카드 비율을 따른다", 
   }
 });
 
-test("덱 수량 계산은 2·3인 최소 15장과 2.1배 반올림을 적용한다", () => {
-  assert.equal(totalCardCountForPlayerCount(2), 15);
-  assert.equal(totalCardCountForPlayerCount(3), 15);
-  assert.equal(totalCardCountForPlayerCount(5), 25);
-  assert.equal(truthCardCountForPlayerCount(2), 4);
-  assert.equal(truthCardCountForPlayerCount(5), 11);
-  assert.equal(unrevealedCardCountForPlayerCount(2), 5);
-  assert.equal(unrevealedCardCountForPlayerCount(3), 0);
+test("홀수 최소 덱은 한 장을 더해 반반 구성을 유지한다", () => {
+  assert.equal(totalCardCountForPlayerCount(2), 16);
+  assert.equal(totalCardCountForPlayerCount(3), 16);
+  assert.equal(totalCardCountForPlayerCount(5), 26);
+  assert.equal(truthCardCountForPlayerCount(2), 8);
+  assert.equal(truthCardCountForPlayerCount(5), 13);
+  assert.equal(unrevealedCardCountForPlayerCount(2), 6);
+  assert.equal(unrevealedCardCountForPlayerCount(3), 1);
 });
 
-test("카드는 5장씩 분배되고 2인에서만 5장이 중앙 덱에 남는다", () => {
+test("카드는 5장씩 분배되고 남은 카드는 중앙 덱에 둔다", () => {
   for (let count = 2; count <= 6; count += 1) {
     const gamePlayers = players(count);
     const deck = createDeck(count);
@@ -129,8 +129,28 @@ test("새 라운드는 생존자에게만 손패를 재분배한다", () => {
   assert.equal(Object.keys(game.server.pendingHands.uid1.hand).length, 5);
   assert.equal(Object.keys(game.server.pendingHands.uid3.hand).length, 5);
   assert.equal(game.server.pendingHands.uid2, undefined);
-  assert.equal(game.server.unrevealedCards.length, 5);
-  assert.equal(game.public.unrevealedCardCount, 5);
+  assert.equal(game.server.unrevealedCards.length, 6);
+  assert.equal(game.public.unrevealedCardCount, 6);
+});
+
+test("벌칙 대상 강퇴로 새 라운드를 열면 이전 룰렛 추첨을 버린다", () => {
+  const game = gameState();
+  game.server.pendingPenaltyResolution = {
+    resolutionId: "old-resolution",
+    targetUid: "uid1",
+    result: "eliminated",
+    createdAt: 50,
+  };
+  game.public.penaltyResult = {
+    targetUid: "uid1",
+    result: "safe",
+    resolvedAt: 40,
+  };
+
+  restartRound(game, "uid2", 100);
+
+  assert.equal(game.server.pendingPenaltyResolution, undefined);
+  assert.equal(game.public.penaltyResult, undefined);
 });
 
 test("게임 종료 시 승자와 종료 상태가 기록된다", () => {

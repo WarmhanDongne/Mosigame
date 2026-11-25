@@ -1,28 +1,104 @@
 import 'dart:math' as math;
 
+// ignore: depend_on_referenced_packages
+import 'package:firebase_core/firebase_core.dart';
+// ignore: depend_on_referenced_packages
+import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
+import 'package:game_kit/recovery/models/game_recovery_context.dart';
+import 'package:game_kit/firebase/firebase_options_test.dart';
 import 'package:game_russian_roulette/game_russian_roulette.dart';
 import 'package:game_russian_roulette/game_sounds.dart';
+import 'package:game_russian_roulette/src/phone.dart';
+import 'package:game_russian_roulette/src/session.dart';
 import 'package:game_russian_roulette/src/stage.dart';
+import 'package:game_russian_roulette/src/tablet.dart';
 import 'package:game_russian_roulette/src/timing.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
 void main() {
-  test('game entrypoint exposes the 2-6 player portrait game', () {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  TestFirebaseCoreHostApi.setUp(MockFirebaseApp());
+  setUpAll(() async {
+    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      name: 'mosigame-test',
+      options: TestFirebaseOptions.currentPlatform,
+    );
+  });
+
+  test('game entrypoint exposes the 2-8 player portrait game', () {
     const game = RussianRouletteGame();
     expect(game.id, 'russian_roulette');
-    expect(game.supportedPlayerCounts, [2, 3, 4, 5, 6]);
+    expect(game.supportedPlayerCounts, [2, 3, 4, 5, 6, 7, 8]);
     expect(game.leaveFunctionName, 'game_russian_roulette_leave_game');
     expect(game.layoutChairImage, isA<AssetImage>());
   });
 
+  testWidgets('phone result ranks stay in one right-aligned column', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const args = RussianRouletteSessionArgs(
+      roomCode: 'RESULT',
+      uid: 'me',
+      watchPrivate: true,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          russianRouletteUidProvider.overrideWithValue('me'),
+          russianRouletteSessionProvider(
+            args,
+          ).overrideWith(() => _ResultSession(args)),
+        ],
+        child: MaterialApp(
+          home: RussianRoulettePhoneScreen(
+            roomCode: 'RESULT',
+            provider: _Room(),
+            onExitRoom: () async => true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1000));
+
+    final one = tester.getTopRight(
+      find.byKey(const ValueKey('roulette-result-rank-me')),
+    );
+    final two = tester.getTopRight(
+      find.byKey(const ValueKey('roulette-result-rank-second')),
+    );
+    final three = tester.getTopRight(
+      find.byKey(const ValueKey('roulette-result-rank-third')),
+    );
+    expect(one.dx, closeTo(two.dx, .1));
+    expect(two.dx, closeTo(three.dx, .1));
+    expect(one.dx, greaterThan(340));
+    expect(one.dy, lessThan(two.dy));
+    expect(two.dy, lessThan(three.dy));
+    for (final label in ['1위', '2위', '3위']) {
+      final text = tester.widget<Text>(find.text(label));
+      expect(text.maxLines, 1);
+      expect(text.softWrap, isFalse);
+      expect(text.textAlign, TextAlign.right);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   test('game seats and gun targets share both lobby layout positions', () {
     for (final mode in SeatLayoutMode.values) {
-      for (var count = 2; count <= 6; count++) {
+      for (var count = 2; count <= 8; count++) {
         final lobby = normalizedSeatCenters(count, mode: mode);
         for (var index = 0; index < count; index++) {
           final game = RouletteStageGeometry.seatCenter(
@@ -223,6 +299,31 @@ void main() {
     );
   });
 
+  test(
+    'rotation sound starts with the first gun motion and catches up safely',
+    () {
+      final fresh = rouletteRotationAudioTiming(Duration.zero, 2)!;
+      expect(fresh.delay, RussianRouletteTiming.rotationLead);
+      expect(fresh.window, RussianRouletteTiming.rotationStep * 2);
+
+      final late = rouletteRotationAudioTiming(
+        const Duration(milliseconds: 700),
+        2,
+      )!;
+      expect(late.delay, Duration.zero);
+      expect(late.window, const Duration(milliseconds: 1900));
+
+      expect(
+        rouletteRotationAudioTiming(
+          RussianRouletteTiming.rotationLead +
+              RussianRouletteTiming.rotationStep * 2,
+          2,
+        ),
+        isNull,
+      );
+    },
+  );
+
   test('gun turn crosses the angle boundary clockwise without reversing', () {
     final from = 350 * math.pi / 180;
     final to = RouletteStageGeometry.clockwiseFrom(from, 10 * math.pi / 180);
@@ -280,7 +381,8 @@ void main() {
         ),
         isTrue,
       );
-      // 같은 게임을 이미 보여 줬거나 첫 턴 후반·중단 중이면 다시 재생하지 않습니다.
+      // 같은 게임을 이미 보여 줬거나 연출을 끝낼 시간도 남지 않은 첫 턴
+      // 후반·중단 중이면 다시 재생하지 않습니다.
       expect(
         rouletteShouldStartIntro(
           game(),
@@ -291,7 +393,7 @@ void main() {
       );
       expect(
         rouletteShouldStartIntro(
-          game(deadlineAt: 122000),
+          game(deadlineAt: 107000),
           presentedStartedAt: 0,
           serverNow: 100000,
         ),
@@ -451,4 +553,105 @@ void main() {
       expect(data.lengthInBytes, greaterThan(0), reason: asset);
     }
   });
+
+  group('시작 연출 총', () {
+    final game = RussianRouletteView.fromPublic({
+      'status': 'playing',
+      'phase': 'selecting',
+      'round': 1,
+      'targetUid': 'b',
+      'players': {
+        'a': {
+          'nickname': 'A',
+          'characterId': 'frog',
+          'seatIndex': 0,
+          'status': 'alive',
+        },
+        'b': {
+          'nickname': 'B',
+          'characterId': 'milk',
+          'seatIndex': 1,
+          'status': 'alive',
+        },
+        'c': {
+          'nickname': 'C',
+          'characterId': 'frog',
+          'seatIndex': 2,
+          'status': 'alive',
+        },
+      },
+    });
+
+    test('눕혀 놓았다가 첫 불빛이 켜질 때 세워져 내려앉는다', () {
+      expect(rouletteIntroGunPose(100)!.roll, 90);
+      expect(rouletteIntroGunPose(600)!.roll, 90);
+      // 세우는 중에는 들렸다가(그림자가 멀어짐) 굴러 섭니다.
+      final rising = rouletteIntroGunPose(900)!;
+      expect(rising.lift, greaterThan(0));
+      expect(rising.roll, lessThan(90));
+      // 첫 불빛(1.2초)에 판에 닿아 먼지가 일기 시작합니다.
+      final landed = rouletteIntroGunPose(1200)!;
+      expect(landed.lift, closeTo(0, .01));
+      expect(landed.dust, closeTo(0, .01));
+      // 다 세우고 먼지도 걷히면 평소 총과 같습니다.
+      expect(rouletteIntroGunPose(1800), isNull);
+    });
+
+    test('총은 처음부터 첫 총구 대상 쪽을 보고 돌지 않는다', () {
+      final aims = {
+        for (final ms in [100, 1200, 1700, 2200, 3000])
+          rouletteIntroFrame(game, ms).desiredAim,
+      };
+      expect(aims, hasLength(1));
+      expect(rouletteIntroFrame(game, 3000).gunPose, isNull);
+    });
+  });
 }
+
+class _ResultSession extends RussianRouletteSessionController {
+  _ResultSession(super.args);
+
+  @override
+  final recoverySession = GameRecoverySession()
+    ..localUsable = true
+    ..serverConfirmed = true;
+
+  @override
+  RussianRouletteSessionState build() => const RussianRouletteSessionState(
+    loading: false,
+    publicState: {
+      'status': 'finished',
+      'phase': 'finished',
+      'round': 5,
+      'winnerUid': 'me',
+      'players': {
+        'me': {
+          'nickname': '나',
+          'characterId': 'milk',
+          'seatIndex': 0,
+          'status': 'alive',
+          'rank': 1,
+        },
+        'second': {
+          'nickname': '두 번째',
+          'characterId': 'frog',
+          'seatIndex': 1,
+          'status': 'eliminated',
+          'rank': 2,
+        },
+        'third': {
+          'nickname': '세 번째',
+          'characterId': 'water',
+          'seatIndex': 2,
+          'status': 'eliminated',
+          'rank': 3,
+        },
+      },
+    },
+  );
+
+  @override
+  void reportScreenReady({required bool assetsReady}) {}
+}
+
+class _Room extends Fake implements GameRoomContext {}
