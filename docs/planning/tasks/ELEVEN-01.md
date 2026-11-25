@@ -358,3 +358,25 @@
   `ElevenNoirStage`(`.stage` 사선 배경), `historyCell` 모서리 점(1.2, 7/10.2), `historyTie`·`historyTieMark` 글자 스타일.
   조각 시간 해석 정정: `sparkTravel` 980ms 안에 처음 140ms 동안 나타난다(kNSp 770→910→1750).
 - 검증: 패키지 테스트 123/123 PASS exit 0, analyze·format·경계 exit 0. 골든 `tablet_parts.png` 추가.
+
+<a id="s6-m-20261125"></a>
+### 2026-11-25 S6-M 병합 (Claude Code)
+
+- 레인 검수 최종: A 3회차 PASS, B 2회차 PASS, C 2회차 PASS(각 `docs/planning/eleven-lanes/REVIEW-*.md`).
+- 레인 커밋: `6eb440d4`(A 휴대폰), `e68ab7a9`(B 태블릿), `c6014223`(C 통합 준비). 기능 브랜치에 A → B → C 순서로
+  `--no-ff` 병합(`fcf837c2`, `7970d2e6`, `946583aa`), 충돌 없음. 세 레인 모두 `02e43e77`에서 출발.
+- 공유 파일 요청: 레인 검수 중 공통 부품 커밋(`dbd9922d`, `6dce2b69`, `02e43e77`)으로 모두 반영해 병합 시 남은 요청 없음.
+- 시스템 맵(`docs/engineering/MOSIGAME_SYSTEM_MAP.html`) 갱신: 확인일 2026.11.25, ELEVEN 게임 정보·8단계·
+  Functions 7개 설명·그룹·카탈로그 상태·게임 화면 안내(규칙·장면·단계별 캡처 16장 JPEG)를 레인 C 초안 기준으로 추가.
+  캡처는 `docs/engineering/screenshots/system-map/eleven_*.jpg`(sips가 WebP를 쓰지 못해 JPEG, 약 1MB). 템플릿이
+  확장자가 있는 캡처 이름을 그대로 쓰도록 이미지 경로 한 줄을 바꿨다(기존 .webp 캡처는 그대로). `node --check` 통과.
+- 검증(병합 결과):
+  - `packages/game_eleven` `flutter test --no-pub` 159 PASS·37 skip(검수 캡처), exit 0
+  - 루트 `flutter analyze --no-pub` No issues, exit 0
+  - `dart format --set-exit-if-changed packages/game_eleven/lib packages/game_eleven/test` exit 0
+  - `python3 tool/check_package_boundaries.py --max 0` 위반 0건, exit 0
+  - `functions/` `npm run build` exit 0, `npm run lint` exit 0, `node --test test/*.test.mjs` 681 PASS·1 skip·0 FAIL
+  - validate --full 미실행(S7 승인 대상). 에뮬레이터 시나리오는 Java 21 부재로 미실행.
+- 스크린샷 묶음: `packages/game_eleven/review_out/S6-M.html`(git 제외) — 시안과 구현 캡처를 화면 ID별로 나란히 둠.
+  하준 확인 ②(휴대폰·태블릿 스크린샷 검토) 대기.
+- 레인 worktree·브랜치(`project00-lanes/lane-{a,b,c}`, `eleven/lane-*`)는 지우지 않았다(하준 확인 뒤 정리).

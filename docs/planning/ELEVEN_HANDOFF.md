@@ -173,3 +173,14 @@ Codex 입력: 각 폴더에서 "docs/planning/eleven-lanes/LANE-A.md 읽고 진�
 하준 결정 대기: P08 패배·동점·후공 문구, Noto Sans KR 번들 여부.
 다음: 세 레인 PASS 뒤 S6-M 지시문(S6-M.md) 작성·병합.
 ```
+
+## 2026-11-25 · S6-M 병합 (Claude Code, 맥)
+
+```text
+브랜치/HEAD: feature/black-and-white-ui, 레인 A→B→C --no-ff 병합(충돌 없음) + S6-M 기록 커밋. push 안 함.
+검증: game_eleven 159 PASS·37 skip, 루트 analyze No issues, format·경계 0, functions build·lint 0·681 PASS 1 skip.
+시스템 맵: ELEVEN 추가, 확인일 2026.11.25, 단계별 캡처 16장(JPEG).
+하준 확인 ②: packages/game_eleven/review_out/S6-M.html(시안 vs 구현). 참고: P05 선택 전 라벨 위치(시안 없음).
+남은 것: 룰북 본문 초안 확인, Java 21 설치 승인(에뮬레이터 시나리오), S7(가) 통합·S7(나) 번역, validate --full 승인.
+레인 worktree·브랜치는 아직 남겨 둠(정리는 하준 확인 뒤).
+```
