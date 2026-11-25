@@ -396,12 +396,21 @@ class _PhoneProfileMenuState extends State<PhoneProfileMenu>
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final width = math.min(media.size.width - 20, 300.0);
+    final isTablet = media.size.shortestSide >= 600;
+    // 휴대폰은 기존 말풍선 폭을 유지하고, 태블릿은 헤더의 여유 폭을
+    // 사용해 내용이 눌리지 않도록 키웁니다.
+    final width = isTablet
+        ? math.min(media.size.width - 64, 440.0)
+        : math.min(media.size.width - 20, 300.0);
+    // 태블릿 헤더는 로비 바깥 여백 안에 있으므로 말풍선 꼬리를
+    // 프로필 버튼의 오른쪽 아래에 맞춥니다.
+    final right = isTablet ? 32.0 : 10.0;
+    final top = media.padding.top + (isTablet ? 86.0 : 66.0);
     return Stack(
       children: [
         Positioned(
-          top: media.padding.top + 66,
-          right: 10,
+          top: top,
+          right: right,
           width: width,
           child: Material(
             type: MaterialType.transparency,

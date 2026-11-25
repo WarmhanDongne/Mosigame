@@ -403,9 +403,11 @@ void main() {
     await tester.enterText(find.byType(TextField), '방전용닉네임');
 
     final selectedFace = tester.widget<MosiFace>(
-      find.byWidgetPredicate(
-        (widget) => widget is MosiFace && widget.key is ValueKey<String>,
-      ),
+      find
+          .byWidgetPredicate(
+            (widget) => widget is MosiFace && widget.size == 60,
+          )
+          .first,
     );
     final takenCharacterId = selectedFace.characterId!;
     provider.players = [

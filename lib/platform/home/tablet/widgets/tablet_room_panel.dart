@@ -838,11 +838,13 @@ class _AnimatedPlayerListState extends State<_AnimatedPlayerList> {
   final GlobalKey<SliverAnimatedListState> _listKey =
       GlobalKey<SliverAnimatedListState>();
   late List<RoomPlayer> _players;
+  late final Set<String> _enteredUids;
 
   @override
   void initState() {
     super.initState();
     _players = List<RoomPlayer>.of(widget.players);
+    _enteredUids = Set<String>.of(widget.staticUids);
   }
 
   @override
@@ -859,6 +861,7 @@ class _AnimatedPlayerListState extends State<_AnimatedPlayerList> {
       final player = _players[index];
       if (nextUids.contains(player.uid)) continue;
       _players.removeAt(index);
+      _enteredUids.remove(player.uid);
       _listKey.currentState?.removeItem(
         index,
         (context, animation) => _PlayerExitTransition(
@@ -909,6 +912,9 @@ class _AnimatedPlayerListState extends State<_AnimatedPlayerList> {
           initialItemCount: _players.length,
           itemBuilder: (context, index, animation) {
             final player = _players[index];
+            // Sliver가 인덱스 이동·스크롤로 행을 다시 만들더라도 한 번
+            // 등장한 참가자는 즉시 제자리에 표시합니다.
+            final animateEntrance = _enteredUids.add(player.uid);
             return SizeTransition(
               sizeFactor: CurvedAnimation(
                 parent: animation,
@@ -918,7 +924,7 @@ class _AnimatedPlayerListState extends State<_AnimatedPlayerList> {
               child: _PlayerEntranceTransition(
                 key: ValueKey('room-player-entrance-${player.uid}'),
                 playerUid: player.uid,
-                animate: !widget.staticUids.contains(player.uid),
+                animate: animateEntrance,
                 child: _buildPlayerTile(player),
               ),
             );

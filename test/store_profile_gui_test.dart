@@ -284,6 +284,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('태블릿 프로필 버튼도 같은 말풍선 프로필 메뉴를 연다', (tester) async {
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Align(alignment: Alignment.topRight, child: Profile()),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(Profile));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PhoneProfileMenu), findsOneWidget);
+    expect(find.byType(TabletProfileModal), findsNothing);
+    expect(find.text('로그아웃'), findsOneWidget);
+    expect(find.text('회원탈퇴'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final owned in [true, false]) {
     testWidgets('상점 실제 보유=$owned를 표시하고 선택 게임 ID를 선반으로 반환한다', (tester) async {
       final games = GameProvider(service: _Games())

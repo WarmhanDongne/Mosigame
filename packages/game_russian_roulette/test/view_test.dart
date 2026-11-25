@@ -299,30 +299,33 @@ void main() {
     );
   });
 
-  test(
-    'rotation sound starts with the first gun motion and catches up safely',
-    () {
-      final fresh = rouletteRotationAudioTiming(Duration.zero, 2)!;
-      expect(fresh.delay, RussianRouletteTiming.rotationLead);
-      expect(fresh.window, RussianRouletteTiming.rotationStep * 2);
-
-      final late = rouletteRotationAudioTiming(
-        const Duration(milliseconds: 700),
-        2,
-      )!;
-      expect(late.delay, Duration.zero);
-      expect(late.window, const Duration(milliseconds: 1900));
-
-      expect(
-        rouletteRotationAudioTiming(
-          RussianRouletteTiming.rotationLead +
-              RussianRouletteTiming.rotationStep * 2,
-          2,
-        ),
-        isNull,
-      );
-    },
-  );
+  test('rotation sound plays once for every current or future gun step', () {
+    expect(rouletteRotationAudioDelays(Duration.zero, 3), const [
+      Duration(milliseconds: 500),
+      Duration(milliseconds: 1550),
+      Duration(milliseconds: 2600),
+    ]);
+    expect(
+      rouletteRotationAudioDelays(const Duration(milliseconds: 700), 3),
+      const [
+        Duration.zero,
+        Duration(milliseconds: 850),
+        Duration(milliseconds: 1900),
+      ],
+    );
+    expect(
+      rouletteRotationAudioDelays(const Duration(milliseconds: 1400), 3),
+      const [Duration(milliseconds: 150), Duration(milliseconds: 1200)],
+    );
+    expect(
+      rouletteRotationAudioDelays(const Duration(milliseconds: 1600), 3),
+      const [Duration.zero, Duration(milliseconds: 1000)],
+    );
+    expect(
+      rouletteRotationAudioDelays(const Duration(milliseconds: 3350), 3),
+      isEmpty,
+    );
+  });
 
   test('gun turn crosses the angle boundary clockwise without reversing', () {
     final from = 350 * math.pi / 180;

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/core/layout/app_system_ui.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
-import 'package:project00/platform/home/phone/screens/phone_room_join.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_waiting.dart';
 import 'package:project00/platform/home/phone/widgets/phone_header.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
@@ -200,17 +199,8 @@ class _PhoneHomeState extends State<PhoneHome> {
     if (mounted) setState(() => _restorable = RestorableSession.none);
   }
 
-  Future<void> _openRoomJoin({bool startWithCode = false}) async {
-    if (_restoreInFlight || _waitingRoomOpen) return;
-    await Navigator.push<void>(
-      context,
-      PhoneFlowRoute<void>(
-        builder: (_) => PhoneRoomJoin(
-          gameCatalog: widget.gameCatalog,
-          startWithCode: startWithCode,
-        ),
-      ),
-    );
+  /// 닉네임 화면에서 돌아오면 방 상태를 다시 확인합니다.
+  void _handleJoinFinished() {
     // 방금 직접 입장했다면 묻지 않고 그 방을 씁니다. 새로 들어간 방을 두고
     // '돌아가시겠어요?'를 묻는 것은 말이 되지 않습니다.
     _declined = false;
@@ -272,11 +262,12 @@ class _PhoneHomeState extends State<PhoneHome> {
             child: Column(
               children: [
                 const PhoneHeader(),
-                PhoneJoinScanner(
-                  busy: _restoreInFlight || _waitingRoomOpen,
-                  onJoin: () => unawaited(_openRoomJoin()),
-                  onEnterCode: () =>
-                      unawaited(_openRoomJoin(startWithCode: true)),
+                Expanded(
+                  child: PhoneJoinScanner(
+                    gameCatalog: widget.gameCatalog,
+                    busy: _restoreInFlight || _waitingRoomOpen,
+                    onJoinFinished: _handleJoinFinished,
+                  ),
                 ),
               ],
             ),

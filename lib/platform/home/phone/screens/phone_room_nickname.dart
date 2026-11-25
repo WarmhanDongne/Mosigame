@@ -30,10 +30,15 @@ class PhoneRoomNickname extends StatefulWidget {
   State<PhoneRoomNickname> createState() => _PhoneRoomNicknameState();
 }
 
+const _roomNicknameMaxLength = 10;
+
+enum _NicknameFieldStatus { empty, typing, available, duplicate, invalid }
+
 class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   static const _characterTakenReason = 'characterTaken';
   final math.Random _random = math.Random();
   late final TextEditingController _nicknameController;
+  final FocusNode _nicknameFocus = FocusNode();
   String? _selectedCharacterId;
   bool _nicknameFollowsGuestCharacter = false;
 
@@ -61,9 +66,10 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
       pendingNickname: pendingNickname,
       displayName: user?.displayName,
       email: user?.email,
-      maxLength: nicknameMaxLength,
+      maxLength: _roomNicknameMaxLength,
     );
     _nicknameController = TextEditingController(text: seed.nickname);
+    _nicknameFocus.addListener(_handleNicknameFocus);
     _nicknameFollowsGuestCharacter = seed.followsCharacter;
     _roomProvider.addListener(_handleRoomUpdate);
     _roomProvider.listenRoomPreview(widget.roomCode);
@@ -145,8 +151,30 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
   void dispose() {
     _roomProvider.removeListener(_handleRoomUpdate);
     _roomProvider.stopRoomPreview();
+    _nicknameFocus.removeListener(_handleNicknameFocus);
+    _nicknameFocus.dispose();
     _nicknameController.dispose();
     super.dispose();
+  }
+
+  void _handleNicknameFocus() {
+    if (mounted) setState(() {});
+  }
+
+  _NicknameFieldStatus _nicknameStatus({
+    required String nickname,
+    required bool duplicate,
+  }) {
+    if (nickname.isEmpty) return _NicknameFieldStatus.empty;
+    if (nickname == '나' || nickname.runes.length < nicknameMinLength) {
+      return _nicknameFocus.hasFocus
+          ? _NicknameFieldStatus.typing
+          : _NicknameFieldStatus.invalid;
+    }
+    if (duplicate) return _NicknameFieldStatus.duplicate;
+    return _nicknameFocus.hasFocus
+        ? _NicknameFieldStatus.typing
+        : _NicknameFieldStatus.available;
   }
 
   /// 입력한 닉네임과 캐릭터를 이 방의 참가자 정보에만 저장하고 입장합니다.
@@ -177,12 +205,12 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
       setState(() => _nicknameShake++);
       return;
     }
-    if (nickname.length > nicknameMaxLength) {
+    if (nickname.runes.length > _roomNicknameMaxLength) {
       _roomProvider.errorMessage = GameLocale.select(
-        ko: '닉네임은 $nicknameMaxLength자 이하로 입력해주세요.',
-        en: 'Use no more than $nicknameMaxLength characters.',
-        zhHans: '昵称不得超过 $nicknameMaxLength 个字符。',
-        zhHant: '暱稱不得超過 $nicknameMaxLength 個字元。',
+        ko: '닉네임은 $_roomNicknameMaxLength자 이하로 입력해주세요.',
+        en: 'Use no more than $_roomNicknameMaxLength characters.',
+        zhHans: '昵称不得超过 $_roomNicknameMaxLength 个字符。',
+        zhHant: '暱稱不得超過 $_roomNicknameMaxLength 個字元。',
       );
       setState(() => _nicknameShake++);
       return;
@@ -309,11 +337,10 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
         final nickname = _nicknameController.text.trim();
         final nicknameTaken =
             nickname.isNotEmpty && _occupiedNicknames.contains(nickname);
-        final ownerByCharacter = <String, String>{
-          for (final player in _roomProvider.players)
-            if (player.uid != FirebaseBackend.auth.currentUser?.uid)
-              roomCharacterById(player.characterId).id: player.nickname,
-        };
+        final nicknameStatus = _nicknameStatus(
+          nickname: nickname,
+          duplicate: nicknameTaken,
+        );
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light,
           child: Scaffold(
@@ -325,13 +352,14 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                 child: Column(
                   children: [
                     _JoinHeader(
+                      roomCode: widget.roomCode,
                       players: _roomProvider.players,
                       checking: !_roomProvider.roomPreviewReady,
                       onBack: _cancelSetup,
                     ),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(18, 6, 18, 20),
+                        padding: const EdgeInsets.fromLTRB(18, 2, 18, 16),
                         child: Align(
                           alignment: Alignment.topCenter,
                           child: ConstrainedBox(
@@ -339,115 +367,106 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _JoinCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      _JoinStep(
-                                        number: 1,
-                                        label: GameLocale.select(
-                                          ko: '닉네임 정하기',
-                                          en: 'Pick a nickname',
-                                          zhHans: '设置昵称',
-                                          zhHant: '設定暱稱',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      MosiShake(
-                                        trigger: _nicknameShake == 0
-                                            ? null
-                                            : _nicknameShake,
-                                        child: _nicknameField(
-                                          nickname: nickname,
-                                          taken: nicknameTaken,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      MosiBalancedText(
-                                        GameLocale.select(
-                                          ko: '이 그룹에서만 쓰는 이름이에요. 다른 사람과 겹치면 안 돼요.',
-                                          en: 'Only used in this room. It must differ from everyone else’s.',
-                                          zhHans: '仅在此房间使用，不能与其他人重复。',
-                                          zhHant: '僅在此房間使用，不能與其他人重複。',
-                                        ),
-                                        maxLines: 3,
-                                        style: MosiFonts.sans(
-                                          size: 12.5,
-                                          color: MosiColors.muted,
-                                          height: 1.45,
-                                        ),
-                                      ),
-                                    ],
+                                Text(
+                                  GameLocale.select(
+                                    ko: '닉네임 정하기',
+                                    en: 'Pick a nickname',
+                                    zhHans: '设置昵称',
+                                    zhHant: '設定暱稱',
+                                  ),
+                                  style: TextStyle(
+                                    fontFamily:
+                                        'packages/${MosiFonts.package}'
+                                        '/${MosiFonts.logo}',
+                                    fontSize: 26,
+                                    height: 1.2,
+                                    color: MosiColors.white,
                                   ),
                                 ),
-                                const SizedBox(height: 18),
-                                _JoinCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _JoinStep(
-                                              number: 2,
-                                              label: GameLocale.select(
-                                                ko: '캐릭터 고르기',
-                                                en: 'Pick a character',
-                                                zhHans: '选择角色',
-                                                zhHant: '選擇角色',
-                                              ),
-                                            ),
-                                          ),
-                                          _RandomCharacterButton(
-                                            onPressed:
-                                                _availableCharacters.isEmpty
-                                                ? null
-                                                : _selectRandomAvailableCharacter,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      GridView.builder(
-                                        key: const Key('room-character-grid'),
-                                        shrinkWrap: true,
-                                        padding: EdgeInsets.zero,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        itemCount: roomCharacters.length,
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 4,
-                                              mainAxisSpacing: 8,
-                                              crossAxisSpacing: 6,
-                                              // 16개 이름과 얼굴이 4×4 한 화면 안에
-                                              // 들어오도록 세로 여백을 압축합니다.
-                                              childAspectRatio: 1.0,
-                                            ),
-                                        itemBuilder: (context, index) {
-                                          final character =
-                                              roomCharacters[index];
-                                          return _CharacterChoice(
-                                            character: character,
-                                            selected:
-                                                character.id ==
-                                                _selectedCharacterId,
-                                            owner:
-                                                _occupiedCharacterIds.contains(
-                                                  character.id,
-                                                )
-                                                ? (ownerByCharacter[character
-                                                          .id] ??
-                                                      '')
-                                                : null,
-                                            onTap: () =>
-                                                _selectCharacter(character.id),
-                                          );
-                                        },
-                                      ),
-                                    ],
+                                const SizedBox(height: 6),
+                                MosiBalancedText(
+                                  GameLocale.select(
+                                    ko: '이 그룹에서만 쓰는 이름이에요. 다른 사람과 겹치면 안 돼요.',
+                                    en: 'Only used in this room. It must differ from everyone else’s.',
+                                    zhHans: '仅在此房间使用，不能与其他人重复。',
+                                    zhHant: '僅在此房間使用，不能與其他人重複。',
                                   ),
+                                  maxLines: 3,
+                                  style: MosiFonts.sans(
+                                    size: 12.5,
+                                    color: const Color(0xD9FFFFFF),
+                                    height: 1.45,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                MosiShake(
+                                  trigger: _nicknameShake == 0
+                                      ? null
+                                      : _nicknameShake,
+                                  child: _nicknameField(
+                                    nickname: nickname,
+                                    status: nicknameStatus,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        GameLocale.select(
+                                          ko: '캐릭터 고르기',
+                                          en: 'Pick a character',
+                                          zhHans: '选择角色',
+                                          zhHant: '選擇角色',
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontFamily:
+                                              'packages/${MosiFonts.package}'
+                                              '/${MosiFonts.logo}',
+                                          fontSize: 21,
+                                          height: 1.2,
+                                          color: MosiColors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    _RandomCharacterButton(
+                                      onPressed: _availableCharacters.isEmpty
+                                          ? null
+                                          : _selectRandomAvailableCharacter,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                GridView.builder(
+                                  key: const Key('room-character-grid'),
+                                  shrinkWrap: true,
+                                  padding: EdgeInsets.zero,
+                                  physics:
+                                      const NeverScrollableScrollPhysics(),
+                                  itemCount: roomCharacters.length,
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 4,
+                                        mainAxisSpacing: 12,
+                                        crossAxisSpacing: 6,
+                                        // 얼굴 아래 이름표까지 한 칸에 들어오는 비율입니다.
+                                        childAspectRatio: .9,
+                                      ),
+                                  itemBuilder: (context, index) {
+                                    final character = roomCharacters[index];
+                                    return _CharacterChoice(
+                                      character: character,
+                                      selected:
+                                          character.id == _selectedCharacterId,
+                                      taken: _occupiedCharacterIds.contains(
+                                        character.id,
+                                      ),
+                                      onTap: () =>
+                                          _selectCharacter(character.id),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -510,7 +529,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                               fontSize: 18,
                               radius: 16,
                               shadowOffset: 5,
-                              background: MosiColors.sun,
+                              background: MosiColors.lime,
                               foreground: MosiColors.ink,
                               trailing: const Icon(
                                 Icons.arrow_forward_rounded,
@@ -540,44 +559,44 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
     );
   }
 
-  /// 고른 캐릭터 얼굴이 앞에 붙은 닉네임 칸입니다. 쓸 수 있는지 바로 알려 줍니다.
-  Widget _nicknameField({required String nickname, required bool taken}) {
-    final selected = _selectedCharacterId;
+  /// 흰 닉네임 칸입니다. 오른쪽 끝에서 쓸 수 있는지 바로 알려 줍니다.
+  Widget _nicknameField({
+    required String nickname,
+    required _NicknameFieldStatus status,
+  }) {
+    final invalid = status == _NicknameFieldStatus.invalid;
+    final taken = status == _NicknameFieldStatus.duplicate;
     return Container(
       height: 58,
-      padding: const EdgeInsets.only(left: 8, right: 12),
+      padding: const EdgeInsets.only(left: 14, right: 10),
       decoration: BoxDecoration(
-        color: MosiColors.cream,
-        borderRadius: BorderRadius.circular(14),
+        color: MosiColors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: taken ? MosiColors.red : MosiColors.ink,
+          color: invalid || taken ? MosiColors.red : MosiColors.ink,
           width: 3,
         ),
+        boxShadow: const [
+          BoxShadow(color: MosiColors.navy, offset: Offset(0, 5)),
+        ],
       ),
       child: Row(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: selected == null
-                ? const SizedBox(width: 40)
-                : MosiFace(
-                    key: ValueKey(selected),
-                    characterId: selected,
-                    size: 40,
-                    ring: true,
-                  ),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _nicknameController,
-              maxLength: nicknameMaxLength,
+              focusNode: _nicknameFocus,
+              maxLength: _roomNicknameMaxLength,
               inputFormatters: [
-                LengthLimitingTextInputFormatter(nicknameMaxLength),
+                LengthLimitingTextInputFormatter(_roomNicknameMaxLength),
               ],
-              style: mosiFieldTextStyle(),
+              style: MosiFonts.sans(
+                size: 20,
+                weight: FontWeight.w800,
+                color: MosiColors.navy,
+              ),
               // 앱 테마의 입력칸 테두리(눌렀을 때 생기는 네모 선)를 모두 끕니다.
-              // 바깥 크림색 칸이 테두리 역할을 합니다.
+              // 바깥 흰 칸이 테두리 역할을 합니다.
               decoration: InputDecoration(
                 isCollapsed: true,
                 filled: false,
@@ -590,10 +609,10 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                 focusedErrorBorder: InputBorder.none,
                 counterText: '',
                 hintText: GameLocale.select(
-                  ko: '닉네임 · 최대 $nicknameMaxLength자',
-                  en: 'Nickname · up to $nicknameMaxLength characters',
-                  zhHans: '昵称 · 最多 $nicknameMaxLength 个字符',
-                  zhHant: '暱稱 · 最多 $nicknameMaxLength 個字元',
+                  ko: '닉네임 · 최대 $_roomNicknameMaxLength자',
+                  en: 'Nickname · up to $_roomNicknameMaxLength characters',
+                  zhHans: '昵称 · 最多 $_roomNicknameMaxLength 个字符',
+                  zhHant: '暱稱 · 最多 $_roomNicknameMaxLength 個字元',
                 ),
                 hintStyle: MosiFonts.sans(size: 15, color: MosiColors.muted),
               ),
@@ -615,32 +634,120 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
               },
             ),
           ),
-          if (nickname.isNotEmpty)
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              transitionBuilder: (child, animation) =>
-                  ScaleTransition(scale: animation, child: child),
-              child: taken
-                  ? Text(
-                      GameLocale.select(
-                        ko: '이미 있어요',
-                        en: 'Taken',
-                        zhHans: '已被使用',
-                        zhHant: '已被使用',
-                      ),
-                      key: const ValueKey('nickname-taken'),
-                      style: MosiFonts.sans(
-                        size: 12,
-                        weight: FontWeight.w700,
-                        color: MosiColors.red,
-                      ),
-                    )
-                  : const _NicknameOkBadge(key: ValueKey('nickname-ok')),
-            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: switch (status) {
+              _NicknameFieldStatus.empty => const SizedBox(
+                key: ValueKey('nickname-status-empty'),
+                width: 28,
+              ),
+              _NicknameFieldStatus.typing => _NicknameCountBadge(
+                key: const ValueKey('nickname-count'),
+                count: nickname.runes.length,
+              ),
+              _NicknameFieldStatus.available => const _NicknameOkBadge(
+                key: ValueKey('nickname-ok'),
+              ),
+              _NicknameFieldStatus.duplicate => const _NicknameTakenBadge(
+                key: ValueKey('nickname-taken'),
+              ),
+              _NicknameFieldStatus.invalid => const _NicknameInvalidBadge(
+                key: ValueKey('nickname-invalid'),
+              ),
+            },
+          ),
         ],
       ),
     );
   }
+}
+
+/// 같은 이름을 이미 쓰고 있을 때 체크 자리에 들어서는 분홍 알약입니다.
+class _NicknameTakenBadge extends StatelessWidget {
+  const _NicknameTakenBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = GameLocale.select(
+      ko: '이미 있어요',
+      en: 'Taken',
+      zhHans: '已被使用',
+      zhHant: '已被使用',
+    );
+    return Semantics(
+      label: label,
+      excludeSemantics: true,
+      child: Container(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 11),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD0D8),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: MosiColors.ink, width: 2.5),
+        ),
+        child: Text(
+          label,
+          style: MosiFonts.sans(
+            size: 12.5,
+            weight: FontWeight.w800,
+            color: const Color(0xFFC2283C),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 입력 중인 닉네임 길이를 보여 주는 오른쪽 카운터입니다.
+class _NicknameCountBadge extends StatelessWidget {
+  const _NicknameCountBadge({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    '$count/$_roomNicknameMaxLength',
+    key: const ValueKey('nickname-count-label'),
+    style: MosiFonts.grotesk(
+      size: 13,
+      color: MosiColors.muted,
+      weight: FontWeight.w700,
+    ),
+  );
+}
+
+/// 사용할 수 없는 닉네임에 표시하는 X 배지입니다.
+class _NicknameInvalidBadge extends StatelessWidget {
+  const _NicknameInvalidBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: GameLocale.select(
+      ko: '사용할 수 없는 닉네임',
+      en: 'Nickname unavailable',
+      zhHans: '昵称不可用',
+      zhHant: '暱稱不可用',
+    ),
+    excludeSemantics: true,
+    child: Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: MosiColors.red,
+        shape: BoxShape.circle,
+        border: Border.all(color: MosiColors.ink, width: 2.5),
+      ),
+      child: const Icon(
+        Icons.close_rounded,
+        size: 18,
+        color: MosiColors.white,
+        weight: 800,
+      ),
+    ),
+  );
 }
 
 /// 닉네임을 쓸 수 있을 때 칸 오른쪽에 붙는 초록 체크 배지입니다.
@@ -680,11 +787,13 @@ class _NicknameOkBadge extends StatelessWidget {
 /// 보라 바탕 위 뒤로가기 · 제목 · 이미 들어온 사람 얼굴입니다.
 class _JoinHeader extends StatelessWidget {
   const _JoinHeader({
+    required this.roomCode,
     required this.players,
     required this.checking,
     required this.onBack,
   });
 
+  final String roomCode;
   final List<RoomPlayer> players;
   final bool checking;
   final VoidCallback onBack;
@@ -718,19 +827,52 @@ class _JoinHeader extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '그룹 참여하기'.localized,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: MosiFonts.sans(
-                size: 20,
-                weight: FontWeight.w700,
-                color: MosiColors.white,
+          const SizedBox(width: 10),
+          // 어느 방에 들어가는 중인지 코드로 보여 줍니다.
+          Semantics(
+            label: GameLocale.select(
+              ko: '방 코드 ${roomCode.split('').join(' ')}',
+              en: 'Room code ${roomCode.split('').join(' ')}',
+              zhHans: '房间码 ${roomCode.split('').join(' ')}',
+              zhHant: '房間碼 ${roomCode.split('').join(' ')}',
+            ),
+            excludeSemantics: true,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(9, 5, 12, 5),
+              decoration: BoxDecoration(
+                color: const Color(0x33000000),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    GameLocale.select(
+                      ko: '방',
+                      en: 'ROOM',
+                      zhHans: '房间',
+                      zhHant: '房間',
+                    ),
+                    style: MosiFonts.sans(
+                      size: 10.5,
+                      weight: FontWeight.w700,
+                      color: const Color(0xCCFFFFFF),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    roomCode,
+                    style: MosiFonts.grotesk(
+                      size: 14,
+                      color: MosiColors.white,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const Spacer(),
           if (checking)
             Semantics(
               liveRegion: true,
@@ -796,71 +938,6 @@ class _JoinHeader extends StatelessWidget {
 }
 
 /// 검정 테두리와 남색 그림자를 가진 흰 카드입니다.
-class _JoinCard extends StatelessWidget {
-  const _JoinCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: MosiColors.white,
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: MosiColors.ink, width: 3),
-      boxShadow: const [
-        BoxShadow(color: MosiColors.navy, offset: Offset(0, 6)),
-      ],
-    ),
-    child: child,
-  );
-}
-
-/// 카드 제목 앞의 번호 동그라미입니다.
-class _JoinStep extends StatelessWidget {
-  const _JoinStep({required this.number, required this.label});
-
-  final int number;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 24,
-        height: 24,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: MosiColors.violet,
-          shape: BoxShape.circle,
-          border: Border.all(color: MosiColors.ink, width: 2),
-        ),
-        child: Text(
-          '$number',
-          style: MosiFonts.grotesk(
-            size: 13,
-            color: MosiColors.white,
-            height: 1,
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Flexible(
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: MosiFonts.sans(
-            size: 16,
-            weight: FontWeight.w700,
-            color: MosiColors.navy,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
 /// 주사위 두 개 아이콘이 붙은 노란 랜덤 버튼입니다.
 class _RandomCharacterButton extends StatefulWidget {
   const _RandomCharacterButton({required this.onPressed});
@@ -1034,21 +1111,21 @@ class _JoinDotsPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// 동그란 캐릭터 한 칸입니다. 고르면 라임 고리와 체크가, 다른 사람이 쓰면
-/// 흑백 얼굴 위에 그 사람 이름표가 붙습니다.
+/// 동그란 캐릭터 한 칸입니다. 얼굴 아래에 이름표가 붙고, 고르면 라임 고리와
+/// 체크가, 다른 사람이 쓰면 흑백 얼굴에 '사용 중' 이름표가 됩니다.
 class _CharacterChoice extends StatelessWidget {
   const _CharacterChoice({
     required this.character,
     required this.selected,
-    required this.owner,
+    required this.taken,
     required this.onTap,
   });
 
   final RoomCharacter character;
   final bool selected;
 
-  /// 이미 쓰는 사람의 닉네임입니다. null이면 고를 수 있습니다.
-  final String? owner;
+  /// 다른 사람이 이미 쓰고 있어 고를 수 없는 캐릭터입니다.
+  final bool taken;
   final VoidCallback onTap;
 
   static const _grayscale = ColorFilter.matrix(<double>[
@@ -1060,7 +1137,7 @@ class _CharacterChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disabled = owner != null;
+    final disabled = taken;
     final face = MosiFace(characterId: character.id, size: 60, ring: true);
     return Semantics(
       button: true,
@@ -1068,7 +1145,7 @@ class _CharacterChoice extends StatelessWidget {
       enabled: !disabled,
       label: disabled
           ? GameLocale.select(
-              ko: '${character.localizedLabel}, ${owner!.isEmpty ? '다른 사람' : owner}이 사용 중',
+              ko: '${character.localizedLabel}, 사용 중',
               en: '${character.localizedLabel}, already in use',
               zhHans: '${character.localizedLabel}，已被其他人使用',
               zhHant: '${character.localizedLabel}，已被其他人使用',
@@ -1089,12 +1166,12 @@ class _CharacterChoice extends StatelessWidget {
                       Positioned.fill(
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 160),
-                          padding: EdgeInsets.all(selected ? 3 : 0),
+                          padding: EdgeInsets.all(selected ? 4 : 0),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: selected ? MosiColors.lime : null,
                             border: selected
-                                ? Border.all(color: MosiColors.ink, width: 2.5)
+                                ? Border.all(color: MosiColors.ink, width: 4)
                                 : null,
                           ),
                           // 고른 얼굴이 살짝 커졌다 안착합니다(로비 연출 2번).
@@ -1114,38 +1191,6 @@ class _CharacterChoice extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (disabled && owner!.isNotEmpty)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: -4,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 1,
-                              ),
-                              decoration: BoxDecoration(
-                                color: MosiColors.navy,
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: MosiColors.white,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                owner!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: MosiFonts.sans(
-                                  size: 10,
-                                  weight: FontWeight.w700,
-                                  color: MosiColors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                       Positioned(
                         right: -4,
                         bottom: -2,
@@ -1176,14 +1221,36 @@ class _CharacterChoice extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              character.localizedLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: MosiFonts.sans(
-                size: 11,
-                weight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? MosiColors.navy : MosiColors.muted,
+            Container(
+              padding: selected
+                  ? const EdgeInsets.symmetric(horizontal: 7, vertical: 1)
+                  : EdgeInsets.zero,
+              decoration: selected
+                  ? BoxDecoration(
+                      color: MosiColors.lime,
+                      borderRadius: BorderRadius.circular(999),
+                    )
+                  : null,
+              child: Text(
+                disabled
+                    ? GameLocale.select(
+                        ko: '사용 중',
+                        en: 'In use',
+                        zhHans: '使用中',
+                        zhHant: '使用中',
+                      )
+                    : character.localizedLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MosiFonts.sans(
+                  size: 11,
+                  weight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected
+                      ? MosiColors.navy
+                      : disabled
+                      ? const Color(0x99FFFFFF)
+                      : const Color(0xE6FFFFFF),
+                ),
               ),
             ),
           ],

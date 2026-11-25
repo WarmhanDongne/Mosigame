@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/animation.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
@@ -95,25 +93,29 @@ abstract final class RussianRouletteTiming {
   }
 }
 
-/// 회전 단계에 진입한 뒤 실제 총구 모션과 효과음을 맞추기 위한 남은 시간입니다.
-/// 첫 이동 전 준비 구간에는 [delay]만 기다리고, 이미 이동이 시작됐다면
-/// [Duration.zero]으로 즉시 이어 재생합니다.
-({Duration delay, Duration window})? rouletteRotationAudioTiming(
-  Duration elapsed,
-  int spinCount,
-) {
-  if (spinCount <= 0) return null;
-  final startMs = RussianRouletteTiming.rotationLead.inMilliseconds;
-  final endMs =
-      startMs +
-      RussianRouletteTiming.rotationStep.inMilliseconds * spinCount.clamp(0, 8);
-  final elapsedMs = elapsed.inMilliseconds.clamp(0, endMs).toInt();
-  if (elapsedMs >= endMs) return null;
-  final delayMs = math.max(0, startMs - elapsedMs);
-  return (
-    delay: Duration(milliseconds: delayMs),
-    window: Duration(milliseconds: endMs - math.max(startMs, elapsedMs)),
-  );
+/// 회전 단계에서 아직 재생해야 할 각 칸의 효과음 시작 지연입니다.
+///
+/// 이미 끝난 칸은 건너뛰고, 현재 총구 이동이 진행 중이면 첫 효과음을 즉시
+/// 재생합니다. 이후 효과음은 각 총구 이동 시작 시점에 한 번씩 재생합니다.
+List<Duration> rouletteRotationAudioDelays(Duration elapsed, int spinCount) {
+  final count = spinCount.clamp(0, 8);
+  if (count == 0) return const [];
+
+  final elapsedMs = elapsed.inMilliseconds.clamp(0, 1 << 31).toInt();
+  final leadMs = RussianRouletteTiming.rotationLead.inMilliseconds;
+  final stepMs = RussianRouletteTiming.rotationStep.inMilliseconds;
+  final turnMs = RussianRouletteTiming.gunTurn.inMilliseconds;
+  final delays = <Duration>[];
+
+  for (var step = 0; step < count; step++) {
+    final startMs = leadMs + stepMs * step;
+    if (elapsedMs < startMs) {
+      delays.add(Duration(milliseconds: startMs - elapsedMs));
+    } else if (elapsedMs < startMs + turnMs) {
+      delays.add(Duration.zero);
+    }
+  }
+  return delays;
 }
 
 /// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.

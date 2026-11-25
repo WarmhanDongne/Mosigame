@@ -367,6 +367,50 @@ void main() {
       provider.dispose();
     });
 
+    testWidgets('새 참가자가 앞에 추가돼도 기존 참가자는 다시 등장하지 않는다', (tester) async {
+      RoomPlayer player(String uid) => RoomPlayer(
+        uid: uid,
+        nickname: uid,
+        characterId: 'frog',
+        isConnected: true,
+        seatIndex: 0,
+        role: 'player',
+        status: 'active',
+        penaltyAttemptCount: 0,
+      );
+      final provider = _provider(_FakeRoomService())..roomCode = 'ABCDE';
+      await _pumpPanel(tester, provider);
+      provider
+        ..players = [player('existing')]
+        ..notifyListeners();
+      await tester.pumpAndSettle();
+      double offset(String uid) => tester
+          .widget<Transform>(find.byKey(ValueKey('room-player-motion-$uid')))
+          .transform
+          .getTranslation()
+          .x;
+      expect(offset('existing'), 0);
+
+      provider
+        ..players = [player('new'), player('existing')]
+        ..notifyListeners();
+      await tester.pump();
+      expect(offset('existing'), 0);
+      // 새 슬롯의 높이가 0인 첫 프레임에는 Sliver가 자식을 아직 배치하지 않습니다.
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(offset('new'), greaterThan(0));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(offset('existing'), 0);
+      expect(offset('new'), greaterThan(0));
+      await tester.pumpAndSettle();
+      provider.notifyListeners();
+      await tester.pump();
+      expect(offset('existing'), 0);
+      expect(offset('new'), 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+    });
+
     testWidgets('내보내기는 해당 참가자만 로딩하고 초기화를 실행하지 않는다', (tester) async {
       final removeCompleter = Completer<void>();
       final service = _FakeRoomService(removeCompleter: removeCompleter);

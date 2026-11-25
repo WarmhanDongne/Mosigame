@@ -52,7 +52,7 @@ class _RussianRouletteTabletScreenState
 
   Timer? _phaseTimer;
   Timer? _victoryTimer;
-  Timer? _rotationSoundTimer;
+  final List<Timer> _rotationSoundTimers = [];
   String _scheduledKey = '';
   int _phaseAttempts = 0;
   String? _audioKey;
@@ -95,19 +95,9 @@ class _RussianRouletteTabletScreenState
     _ticker.dispose();
     _backgroundMusic.dispose();
     _victoryTimer?.cancel();
-    _rotationSoundTimer?.cancel();
-    _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
+    _cancelRotationSounds();
     _phaseTimer?.cancel();
     super.dispose();
-  }
-
-  void _runSound(Future<void>? operation, String message) {
-    if (operation == null) return;
-    unawaited(
-      operation.catchError((Object error) {
-        debugPrint('$message: $error');
-      }),
-    );
   }
 
   void _playEffect(String asset) => SoundEffects.play(context, asset);
@@ -122,8 +112,8 @@ class _RussianRouletteTabletScreenState
     }
 
     if (game.paused) {
-      _rotationSoundTimer?.cancel();
-      _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
+      _cancelRotationSounds();
+      _audioKey = null;
       return;
     }
 
@@ -134,7 +124,7 @@ class _RussianRouletteTabletScreenState
       _audioKey = key;
       _lastAudioPhase = game.phase;
       if (game.phase == 'rotating') {
-        _scheduleRotationSound(game, elapsed, key);
+        _scheduleRotationSounds(game, elapsed, key);
       }
       return;
     }
@@ -146,8 +136,7 @@ class _RussianRouletteTabletScreenState
     _victoryTimer?.cancel();
 
     if (game.phase != 'rotating') {
-      _rotationSoundTimer?.cancel();
-      _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
+      _cancelRotationSounds();
     }
 
     if (game.finished) {
@@ -167,7 +156,7 @@ class _RussianRouletteTabletScreenState
 
     switch (game.phase) {
       case 'rotating':
-        _scheduleRotationSound(game, elapsed, key);
+        _scheduleRotationSounds(game, elapsed, key);
         break;
       case 'outcome':
         _playEffect(RussianRouletteSounds.gunshot);
@@ -180,32 +169,38 @@ class _RussianRouletteTabletScreenState
     }
   }
 
-  /// 서버가 회전 단계로 바뀐 순간이 아니라 첫 총구 이동과 동시에 회전음을
-  /// 시작합니다. 상태 수신이 늦으면 이미 지난 만큼을 빼고 남은 모션 구간만
-  /// 재생해 화면과 소리가 다시 어긋나지 않게 합니다.
-  void _scheduleRotationSound(
+  void _cancelRotationSounds() {
+    for (final timer in _rotationSoundTimers) {
+      timer.cancel();
+    }
+    _rotationSoundTimers.clear();
+  }
+
+  /// 총구가 생존 좌석 사이를 한 칸 이동하기 시작할 때마다 짧은 회전음을 한 번
+  /// 재생합니다. 상태 수신이 늦으면 끝난 칸은 건너뛰고 현재·남은 칸만 맞춥니다.
+  void _scheduleRotationSounds(
     RussianRouletteView game,
     Duration elapsed,
     String audioKey,
   ) {
-    _rotationSoundTimer?.cancel();
-    final timing = rouletteRotationAudioTiming(elapsed, game.spinCount);
-    if (timing == null) return;
-    void play() {
-      if (!mounted || _audioKey != audioKey) return;
-      _runSound(
-        _sound?.playSustainedEffect(
-          RussianRouletteSounds.revolverSpin,
-          window: timing.window,
-        ),
-        '리볼버 회전음을 재생하지 못했습니다',
-      );
-    }
+    _cancelRotationSounds();
+    final delays = rouletteRotationAudioDelays(elapsed, game.spinCount);
+    for (final delay in delays) {
+      void play() {
+        if (!mounted || _audioKey != audioKey) return;
+        _playEffect(RussianRouletteSounds.revolverSpin);
+      }
 
-    if (timing.delay == Duration.zero) {
-      play();
-    } else {
-      _rotationSoundTimer = Timer(timing.delay, play);
+      if (delay == Duration.zero) {
+        play();
+        continue;
+      }
+      late final Timer timer;
+      timer = Timer(delay, () {
+        _rotationSoundTimers.remove(timer);
+        play();
+      });
+      _rotationSoundTimers.add(timer);
     }
   }
 
@@ -758,18 +753,43 @@ double _introKeys(List<(double, double)> keys, double p) {
 // 세우기(0.8초) 키입니다. 살짝 더 눕혔다(집기) 들어 올려 굴리고, 조금 지나치게
 // 돌았다 되돌아오며, 68%에 판에 닿아 살짝 눌렸다 튀어 오릅니다.
 const _standRoll = <(double, double)>[
-  (0, 90), (10, 94), (26, 82), (50, 28), (62, -14), (74, 6), (86, -2), (100, 0),
+  (0, 90),
+  (10, 94),
+  (26, 82),
+  (50, 28),
+  (62, -14),
+  (74, 6),
+  (86, -2),
+  (100, 0),
 ];
 const _standScale = <(double, double)>[
-  (0, .94), (10, .95), (30, 1.05), (50, 1.07), (62, 1.02), (68, .97),
-  (80, 1.01), (100, 1),
+  (0, .94),
+  (10, .95),
+  (30, 1.05),
+  (50, 1.07),
+  (62, 1.02),
+  (68, .97),
+  (80, 1.01),
+  (100, 1),
 ];
 const _standShift = <(double, double)>[(0, 37), (10, 37), (55, 0), (100, 0)];
 const _standTilt = <(double, double)>[
-  (0, 0), (10, 1.5), (35, -6), (55, -3), (68, 1.5), (84, -.5), (100, 0),
+  (0, 0),
+  (10, 1.5),
+  (35, -6),
+  (55, -3),
+  (68, 1.5),
+  (84, -.5),
+  (100, 0),
 ];
 const _standLift = <(double, double)>[
-  (0, 0), (10, .08), (30, .85), (50, 1), (62, .55), (68, 0), (100, 0),
+  (0, 0),
+  (10, .08),
+  (30, .85),
+  (50, 1),
+  (62, .55),
+  (68, 0),
+  (100, 0),
 ];
 
 /// 시작 연출 [ms]의 총 자세입니다. 다 세운 뒤 먼지도 걷히면 null입니다.
