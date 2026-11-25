@@ -165,6 +165,17 @@ export {
   game_russian_roulette_leave_game,
 } from "./russian-roulette/callables.js";
 
+// ---------------------------------------------- 게임: 일레븐
+export {
+  game_eleven_start_game,
+  game_eleven_pick_draw_tile,
+  game_eleven_submit_tile,
+  game_eleven_timeout_turn,
+  game_eleven_complete_phase,
+  game_eleven_end_game,
+  game_eleven_leave_game,
+} from "./eleven/callables.js";
+
 // ---------------------------------------------- 게임 공용: 중단·재접속
 export {
   game_common_interruption_exclude_player,

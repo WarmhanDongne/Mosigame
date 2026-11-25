@@ -43,6 +43,7 @@ export function resolveRoomPlayerRange(
 ): {minPlayers: number; maxPlayers: number} {
   if (gameId === "yut") return {minPlayers: 2, maxPlayers: 4};
   if (gameId === "russian_roulette") return {minPlayers: 2, maxPlayers: 8};
+  if (gameId === "eleven") return {minPlayers: 2, maxPlayers: 2};
   return {
     minPlayers: typeof catalogMin === "number" && catalogMin > 0 ?
       catalogMin : 2,

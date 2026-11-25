@@ -5,6 +5,7 @@ import {TURN_DURATION_MS, LAST_CARD_CHALLENGE_DURATION_MS} from "../liars-poker/
 import {FINAL_CALL_TURN_MS} from "../final-call/types.js";
 import {YUT_TURN_MS} from "../yut/game.js";
 import {RUSSIAN_ROULETTE_TURN_MS, russianRouletteFirstTurnMs} from "../russian-roulette/game.js";
+import {ELEVEN_TURN_MS} from "../eleven/rules.js";
 
 export interface GameContext {
   gameInstanceId: string;
@@ -145,7 +146,8 @@ export function beginRecoveryPause(
   const rouletteAlive = Object.values(game.public.players ?? {})
     .filter((player) => player.status === "alive").length;
   const resolvedTurnLimit = game.public.gameType === "russian_roulette" ?
-    (rouletteFirstTurn ? russianRouletteFirstTurnMs(rouletteAlive) : RUSSIAN_ROULETTE_TURN_MS) : turnLimit;
+    (rouletteFirstTurn ? russianRouletteFirstTurnMs(rouletteAlive) : RUSSIAN_ROULETTE_TURN_MS) :
+    game.public.gameType === "eleven" ? ELEVEN_TURN_MS : turnLimit;
   if (resolvedTurnLimit !== undefined && typeof deadline === "number" && Number.isFinite(deadline)) {
     timerReferenceAt = Math.max(timerReferenceAt, deadline - resolvedTurnLimit);
   }

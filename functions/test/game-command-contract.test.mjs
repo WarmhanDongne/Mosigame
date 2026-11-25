@@ -23,7 +23,7 @@ class Ref{
   this.value=next;return {committed:true,snapshot:{val:()=>this.value}};
  }
 }
-for(const type of ['liars_poker','final_call','mafia','holdem'])test(`${type} rejects old game/phase/turn and paused progress before mutation`,async()=>{
+for(const type of ['liars_poker','final_call','mafia','holdem','eleven'])test(`${type} rejects old game/phase/turn and paused progress before mutation`,async()=>{
  const ref=new Ref(fixture(type));let mutations=0;
  const update=raw=>{mutations++;return raw;};
  for(const extra of [{gameInstanceId:'game-old'},{phaseSeq:0},{turnSeq:0},{connectionId:'connection-old'}]){

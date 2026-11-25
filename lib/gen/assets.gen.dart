@@ -37,11 +37,36 @@ class $AssetsImagesGen {
 class $AssetsL10nGen {
   const $AssetsL10nGen();
 
+  /// File path: assets/l10n/app_en.arb
+  String get appEn => 'assets/l10n/app_en.arb';
+
   /// File path: assets/l10n/app_ko.arb
   String get appKo => 'assets/l10n/app_ko.arb';
 
+  /// File path: assets/l10n/app_zh.arb
+  String get appZh => 'assets/l10n/app_zh.arb';
+
+  /// File path: assets/l10n/app_zh_Hans.arb
+  String get appZhHans => 'assets/l10n/app_zh_Hans.arb';
+
+  /// File path: assets/l10n/app_zh_Hant.arb
+  String get appZhHant => 'assets/l10n/app_zh_Hant.arb';
+
   /// List of all assets
-  List<String> get values => [appKo];
+  List<String> get values => [appEn, appKo, appZh, appZhHans, appZhHant];
+}
+
+class $AssetsSoundsGen {
+  const $AssetsSoundsGen();
+
+  /// File path: assets/sounds/lobby.m4a
+  String get lobby => 'assets/sounds/lobby.m4a';
+
+  /// File path: assets/sounds/store.m4a
+  String get store => 'assets/sounds/store.m4a';
+
+  /// List of all assets
+  List<String> get values => [lobby, store];
 }
 
 class $AssetsImagesBackgroundsGen {
@@ -83,8 +108,96 @@ class $AssetsImagesLogoGen {
   SvgGenImage get googleG =>
       const SvgGenImage('assets/images/logo/google_g.svg');
 
+  /// File path: assets/images/logo/mosigame_app_icon.svg
+  SvgGenImage get mosigameAppIcon =>
+      const SvgGenImage('assets/images/logo/mosigame_app_icon.svg');
+
+  /// File path: assets/images/logo/mosigame_loading_icon.png
+  AssetGenImage get mosigameLoadingIconPng =>
+      const AssetGenImage('assets/images/logo/mosigame_loading_icon.png');
+
+  /// File path: assets/images/logo/mosigame_loading_icon.svg
+  SvgGenImage get mosigameLoadingIconSvg =>
+      const SvgGenImage('assets/images/logo/mosigame_loading_icon.svg');
+
+  /// File path: assets/images/logo/mosigame_logo.png
+  AssetGenImage get mosigameLogoPng =>
+      const AssetGenImage('assets/images/logo/mosigame_logo.png');
+
+  /// File path: assets/images/logo/mosigame_logo.svg
+  SvgGenImage get mosigameLogoSvg =>
+      const SvgGenImage('assets/images/logo/mosigame_logo.svg');
+
+  /// File path: assets/images/logo/mosigame_logo_dark.png
+  AssetGenImage get mosigameLogoDarkPng =>
+      const AssetGenImage('assets/images/logo/mosigame_logo_dark.png');
+
+  /// File path: assets/images/logo/mosigame_logo_dark.svg
+  SvgGenImage get mosigameLogoDarkSvg =>
+      const SvgGenImage('assets/images/logo/mosigame_logo_dark.svg');
+
+  /// File path: assets/images/logo/mosigame_logo_stacked.svg
+  SvgGenImage get mosigameLogoStacked =>
+      const SvgGenImage('assets/images/logo/mosigame_logo_stacked.svg');
+
+  /// File path: assets/images/logo/mosigame_logo_stacked_dark.svg
+  SvgGenImage get mosigameLogoStackedDark =>
+      const SvgGenImage('assets/images/logo/mosigame_logo_stacked_dark.svg');
+
+  /// File path: assets/images/logo/mosigame_symbol.png
+  AssetGenImage get mosigameSymbolPng =>
+      const AssetGenImage('assets/images/logo/mosigame_symbol.png');
+
+  /// File path: assets/images/logo/mosigame_symbol.svg
+  SvgGenImage get mosigameSymbolSvg =>
+      const SvgGenImage('assets/images/logo/mosigame_symbol.svg');
+
+  /// File path: assets/images/logo/mosigame_symbol_dark.svg
+  SvgGenImage get mosigameSymbolDark =>
+      const SvgGenImage('assets/images/logo/mosigame_symbol_dark.svg');
+
+  /// File path: assets/images/logo/mosigame_symbol_loading.png
+  AssetGenImage get mosigameSymbolLoadingPng =>
+      const AssetGenImage('assets/images/logo/mosigame_symbol_loading.png');
+
+  /// File path: assets/images/logo/mosigame_symbol_loading.svg
+  SvgGenImage get mosigameSymbolLoadingSvg =>
+      const SvgGenImage('assets/images/logo/mosigame_symbol_loading.svg');
+
+  /// File path: assets/images/logo/mosigame_symbol_white.svg
+  SvgGenImage get mosigameSymbolWhite =>
+      const SvgGenImage('assets/images/logo/mosigame_symbol_white.svg');
+
+  /// File path: assets/images/logo/mosigame_wordmark.svg
+  SvgGenImage get mosigameWordmark =>
+      const SvgGenImage('assets/images/logo/mosigame_wordmark.svg');
+
+  /// File path: assets/images/logo/mosigame_wordmark_dark.svg
+  SvgGenImage get mosigameWordmarkDark =>
+      const SvgGenImage('assets/images/logo/mosigame_wordmark_dark.svg');
+
   /// List of all assets
-  List<dynamic> get values => [aGitkeep, googleG];
+  List<dynamic> get values => [
+    aGitkeep,
+    googleG,
+    mosigameAppIcon,
+    mosigameLoadingIconPng,
+    mosigameLoadingIconSvg,
+    mosigameLogoPng,
+    mosigameLogoSvg,
+    mosigameLogoDarkPng,
+    mosigameLogoDarkSvg,
+    mosigameLogoStacked,
+    mosigameLogoStackedDark,
+    mosigameSymbolPng,
+    mosigameSymbolSvg,
+    mosigameSymbolDark,
+    mosigameSymbolLoadingPng,
+    mosigameSymbolLoadingSvg,
+    mosigameSymbolWhite,
+    mosigameWordmark,
+    mosigameWordmarkDark,
+  ];
 }
 
 class $AssetsImagesOthersGen {
@@ -120,6 +233,7 @@ class $AssetsImagesWidgetsLayoutGen {
 abstract final class Assets {
   static const $AssetsImagesGen images = $AssetsImagesGen();
   static const $AssetsL10nGen l10n = $AssetsL10nGen();
+  static const $AssetsSoundsGen sounds = $AssetsSoundsGen();
   static const String shorebird = 'shorebird.yaml';
 
   /// List of all assets
