@@ -466,7 +466,7 @@ void main() {
         r'^# (.+)$',
         multiLine: true,
       ).allMatches(ElevenScreenCopy.rulebookMarkdown).map((m) => m.group(1));
-      expect(titles, ['게임 방법', '흑과 백', '승패 판정', '선공 뽑기', '게임 종료']);
+      expect(titles, ['게임 방법', '카드 구성', '승패 판정', '선공 뽑기', '게임 종료']);
     });
   });
 

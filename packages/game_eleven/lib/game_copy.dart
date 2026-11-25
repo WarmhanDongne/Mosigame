@@ -1183,7 +1183,7 @@ abstract final class ElevenScreenCopy {
 라운드마다 선공이 먼저 타일 하나를 내고, 후공이 이어서 하나를 내요. 낸 타일은 다시 쓸 수 없어요.
 제한 시간은 각각 60초예요. 시간이 지나면 남은 타일 중 하나가 무작위로 제출돼요.
 
-# 흑과 백
+# 카드 구성
 흑 타일은 0, 2, 4, 6, 8, 11이고 백 타일은 1, 3, 5, 7, 9예요.
 상대가 낸 타일의 색만 공개되고 숫자는 끝까지 공개되지 않아요.
 
@@ -1207,7 +1207,7 @@ Each player has 11 number tiles (0–9 and 11) and plays 11 rounds. There is no 
 Each round the first player plays one tile, then the second player plays one. Played tiles can't be used again.
 Each player has 60 seconds. When time runs out, one remaining tile is submitted at random.
 
-# Black and white
+# Card set
 Black tiles are 0, 2, 4, 6, 8, 11 and white tiles are 1, 3, 5, 7, 9.
 Only the color of your opponent's tile is shown. The number stays hidden to the end.
 
@@ -1231,7 +1231,7 @@ If the score is tied after round 11, the same card draw decides the winner.
 每回合先手先出一张牌，后手接着出一张。出过的牌不能再用。
 每人各有 60 秒。时间到时，会从剩余牌中随机提交一张。
 
-# 黑与白
+# 卡牌构成
 黑牌是 0、2、4、6、8、11，白牌是 1、3、5、7、9。
 只公开对手出牌的颜色，数字到最后都不公开。
 
@@ -1255,7 +1255,7 @@ If the score is tied after round 11, the same card draw decides the winner.
 每回合先手先出一張牌，後手接著出一張。出過的牌不能再用。
 每人各有 60 秒。時間到時，會從剩餘牌中隨機提交一張。
 
-# 黑與白
+# 卡牌構成
 黑牌是 0、2、4、6、8、11，白牌是 1、3、5、7、9。
 只公開對手出牌的顏色，數字到最後都不公開。
 
