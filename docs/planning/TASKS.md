@@ -43,7 +43,7 @@ Flutter587개·session/auth 5단계 PASS, FULL·실기기·배포는 대기다.
 | [YUT-GAMEPLAY-01](tasks/YUT-GAMEPLAY-01.md#yut-gameplay-01) | 윷놀이 3종 서버 게임·휴대폰/태블릿 플레이 화면 | 구현 완료, 개별 검사 PASS/최종 FULL 확인 대기 | [통합 검증](DEVELOP1_WAIT_REDUCTION_INTEGRATION_20261020.md)의 Draft PR 검토·CI 확인, 4인 실제 플레이 검증. 카탈로그 공개·Functions 배포는 별도 출시 승인 |
 
 | [RUSSIAN-ROULETTE-01](tasks/RUSSIAN-ROULETTE-01.md#russian-roulette-01) | 러시안 룰렛 서버 규칙·휴대폰/태블릿·로비 아트 | 1차 구현 완료, targeted PASS/FULL 대기 | 사용자 승인 후 FULL, 3~8인 실기기 플레이, 음원 수령 후 연결. 카탈로그 공개·Functions 배포는 별도 승인 |
-| [ELEVEN-01](tasks/ELEVEN-01.md#eleven-01) | 2인 숫자 추리 게임 ELEVEN(구 흑과 백 리버스) | S4 한 판·종료/퇴장 수동 확인 PASS, 관련 검사 PASS/FULL 미실행 | [S4 수동 확인](tasks/ELEVEN-01.md#s4-manual-end-leave-20261123) 뒤 S5. FULL은 사용자 지시로 미실행, 배포·카탈로그는 별도 승인 |
+| [ELEVEN-01](tasks/ELEVEN-01.md#eleven-01) | 2인 숫자 추리 게임 ELEVEN(구 흑과 백 리버스) | 최신 develop 병합·FULL PASS·TEST Functions 재배포 완료(2026-11-26) | [병합 뒤 실기기 재확인](tasks/ELEVEN-01.md#develop-merge-test-redeploy-20261126) → develop PR(컨펌 후). 운영 배포·카탈로그는 별도 승인 |
 
 ## 출시 전 필수
 

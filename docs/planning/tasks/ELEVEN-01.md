@@ -527,3 +527,25 @@
 - 레인 병렬 작업 방식·검수 결과·회고는 하준이 노션 'ELEVEN S5–S7 작업 방식' 아래에 정리했다. 이 문서 위쪽의
   `eleven-lanes/…`, `ELEVEN_HANDOFF.md` 언급은 당시 기록이며 파일은 git 기록에서 볼 수 있다.
 - 이 파일들은 이미 브랜치 커밋 기록에 있으므로 저장소 용량까지 줄이려면 develop 병합을 스쿼시로 한다.
+
+<a id="develop-merge-test-redeploy-20261126"></a>
+### 2026-11-26 최신 develop 병합 · FULL · TEST 재배포 (하준 승인 → Claude Code)
+
+- 병합: `origin/develop`(`0b8066da`)의 6커밋을 `feature/black-and-white-ui`에 병합(`1f5619d4`, push 안 함).
+  충돌은 `functions/src/room/room-seating-policy.ts` 한 곳. develop의 러시안 룰렛 최대 6 → 8명과 ELEVEN 고정 2명을
+  함께 유지했다. `MOSIGAME_SYSTEM_MAP.html`은 자동 병합.
+- develop 쪽에서 들어온 공용 변경 중 ELEVEN과 맞닿는 것: 서버 `realtime-room-lifecycle.ts`, 앱 룰북 창(`rulebook_dialog`),
+  `game_exit_route`, 공지 레이어, 자리 배치 편집기, `tablet_game_launcher`. S8 실기기 확인은 이 변경 이전 코드 기준이다.
+- 병합 직후 관련 검사(모두 exit 0): functions build·lint, `node --test test/*.test.mjs` 684 PASS·1 skip; 루트
+  `flutter analyze --no-pub` No issues; 패키지 경계 0건; dart format(validate 범위·game_eleven); game_eleven 169 PASS·37 skip;
+  game_kit 179 PASS; 루트 관련 7개 파일 90 PASS.
+- FULL(하준 승인): HEAD `1f5619d4`에서 `dart run :mosigame validate --full` → **PASS, exit 0**. 15단계 통과·실패 0·
+  BLOCKED 0, functions-test 684 PASS·1 skip. 실행 전후 작업 트리 변화 없음.
+- TEST 배포(하준 승인): 소스 `1f5619d4`, 프로젝트 `ban-pick-simulator`만,
+  `npm --prefix functions run deploy:test -- --project=ban-pick-simulator` → **exit 0**("Deploy complete!").
+  Functions export 108개 모두 업데이트 성공(생성·삭제 없음). 도중 Cloud Functions 분당 변경 요청 한도(HTTP 429)로
+  28개 함수가 일시 실패했으나 CLI 재시도로 모두 성공했다. RTDB·Firestore·Storage rules는 병합으로 바뀌지 않아
+  배포하지 않았다. 사후 확인: 무인증 POST 시 `game_eleven_start_game`·`submit_tile`·`timeout_turn` 모두 401
+  “로그인이 필요합니다”(공개 호출 권한 유지). 운영 접근 없음.
+- 남은 일: develop 코드 `MOSIGAME_BACKEND=test` 빌드로 실기기 재확인(시작·한 판·룰북·다시하기·종료 뒤 방 복귀·
+  자리 배치 2인 고정, 러시안 룰렛 8명), push, Issue·`hajun` 브랜치 경유 develop PR(컨펌 후), 운영 배포 계획(별도 승인).
