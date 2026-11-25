@@ -424,3 +424,9 @@
 - 관찰(서버 변경 없음): 같은 방에서 명령 직후 다시하기를 누르면 드물게 위 ABORTED가 날 수 있다. 서버 설계상 재시도 대상이며,
   태블릿은 기존 요청 복구 화면으로 재시도를 보여 준다. S8 실기기에서 빈도를 본다.
 - 시뮬레이터 3대(태블릿 1·휴대폰 2) 화면 확인은 아직 하지 않았다(S8 실기기와 함께 진행 예정).
+- S7 전체 검증(하준 승인): HEAD `ca233d0c`에서 저장소 루트 `dart run :mosigame validate --full` → **PASS, exit 0**.
+  15단계 통과·실패 0·BLOCKED 0(preflight, dart-format, flutter-analyze, flutter-test, game_kit·liars_poker·final_call·
+  mafia·holdem·yut·russian_roulette·eleven 패키지 테스트, functions-lint, functions-test 681 PASS·1 skip,
+  working-tree-mutation). 실행 전후 작업 트리 변화 없음.
+- 남은 일(S8 이후): 시뮬레이터·실기기 3대 화면 확인(D01–D17, 언어별 길이·잘림 포함), 룰북 본문 하준 확인,
+  레인 worktree·브랜치 정리, TEST 배포(별도 승인), `tool/emulator/backend.test.mjs` 트리거 수(5) 정리.
