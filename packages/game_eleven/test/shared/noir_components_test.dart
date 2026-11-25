@@ -435,6 +435,11 @@ void main() {
       expect(ElevenScreenCopy.pickTilePrompt, '타일을 골라 주세요');
       expect(ElevenScreenCopy.preselectPrompt, '미리 골라 둘 수 있어요');
       expect(ElevenScreenCopy.emptyValue, '—');
+      // P08 패배·동점·후공 문구(하준 결정 2026-11-25, 시안에 없음).
+      expect(ElevenScreenCopy.roundOpponentWon, '상대가 이겼어요');
+      expect(ElevenScreenCopy.roundTieStatus, '동점이에요! +0');
+      expect(ElevenScreenCopy.secondMark, '후공');
+      expect(ElevenScreenCopy.iPlayAfterOpponent, '상대 다음에 내요');
       final titles = RegExp(
         r'^# (.+)$',
         multiLine: true,

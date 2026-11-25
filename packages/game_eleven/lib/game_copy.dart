@@ -431,8 +431,14 @@ abstract final class ElevenScreenCopy {
   static String get bothSubmitted => _ko('두 사람 모두 냈어요');
 
   // --- P08 결과·다음 라운드 전환 -------------------------------------------------
-  /// 상태(이긴 경우): “내가 이겼어요! +1”. 진 경우·동점 문구는 시안에 없다(S5-0b 보고).
+  /// 상태(이긴 경우): “내가 이겼어요! +1”.
   static String get roundIWon => _ko('내가 이겼어요! +1');
+
+  /// 상태(진 경우): “상대가 이겼어요”. 시안에 없어 하준 결정(2026-11-25)으로 정했다.
+  static String get roundOpponentWon => _ko('상대가 이겼어요');
+
+  /// 상태(동점): “동점이에요! +0”. 태블릿 T08 “+0” 배지와 맞춘 하준 결정(2026-11-25).
+  static String get roundTieStatus => _ko('동점이에요! +0');
 
   /// 패널 라벨: “곧 다음 라운드가 시작돼요”.
   static String get nextRoundSoon => _ko('곧 다음 라운드가 시작돼요');
@@ -443,8 +449,14 @@ abstract final class ElevenScreenCopy {
   /// 선공 표식: “선공”.
   static String get firstMark => _ko('선공');
 
-  /// 다음 라운드 안내(선공일 때): “내가 먼저 내요”. 후공 문구는 시안에 없다(S5-0b 보고).
+  /// 다음 라운드 안내(선공일 때): “내가 먼저 내요”.
   static String get iPlayFirst => _ko('내가 먼저 내요');
+
+  /// 후공 표식: “후공”. 선공 표식 자리에 같은 모양으로 쓴다(하준 결정 2026-11-25).
+  static String get secondMark => _ko('후공');
+
+  /// 다음 라운드 안내(후공일 때): “상대 다음에 내요”(하준 결정 2026-11-25).
+  static String get iPlayAfterOpponent => _ko('상대 다음에 내요');
 
   /// 대시 상자: “태블릿에서 결과를 보여주는 중”.
   static String get tabletShowingResult => _ko('태블릿에서 결과를 보여주는 중');

@@ -343,3 +343,6 @@
   `rulebookMarkdown`(계약 2절 요약, 하준 확인 대상). B7(P08 패배·동점·후공 문구)은 하준 결정 대기.
 - 검증: 패키지 테스트 119/119 PASS exit 0, analyze exit 0, format exit 0, 경계 0건 exit 0. 골든
   `phone_parts.png` 추가.
+- P08 문구 하준 결정(2026-11-25, Claude 제안 말투 채택): 진 경우 “상대가 이겼어요”, 동점 “동점이에요! +0”,
+  후공 표식 “후공”, 후공 안내 “상대 다음에 내요”. `ElevenScreenCopy.roundOpponentWon`·`roundTieStatus`·
+  `secondMark`·`iPlayAfterOpponent` 추가. REVIEW-A B7 해제. 룰북 본문 초안은 아직 하준 확인 전.
