@@ -55,7 +55,7 @@ license 동의, Firebase 로그인과 secret 입력은 사람이 처리합니다
 
 ### TEST 프로젝트
 
-`jinsung` 개발 브랜치, 기능 브랜치와 `TEST` 실기기 검증의 기본 모드입니다.
+`jinsung` 개발 브랜치에서 직접 작업하며 `TEST` 실기기 검증의 기본 모드입니다.
 `jinsung`에서는 `MOSIGAME_BACKEND`를 생략해도 TEST가 선택됩니다.
 
 ```bash
