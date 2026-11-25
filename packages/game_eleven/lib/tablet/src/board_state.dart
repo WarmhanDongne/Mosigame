@@ -37,6 +37,16 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
   bool _drawRevealed = true;
   bool _animateVisuals = false;
 
+  /// 판 내내 깔리는 배경음악입니다. 화면을 떠날 때 반드시 멈춥니다.
+  final GameBackgroundMusic _backgroundMusic = GameBackgroundMusic();
+
+  /// 인트로가 울린 뒤 배경음악을 시작하는 타이머입니다.
+  Timer? _backgroundStartTimer;
+
+  /// 효과음 판정에 쓰는 직전 공개 상태입니다.
+  ElevenPublicSnapshot? _soundSnapshot;
+  bool _soundsPreloaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +69,30 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // dispose에서는 context를 읽을 수 없으므로 미리 붙잡아 둡니다.
+    _backgroundMusic.attach(context);
+    if (_soundsPreloaded) return;
+    _soundsPreloaded = true;
+    final sound = SoundEffects.of(context);
+    if (sound == null) return;
+    unawaited(
+      sound
+          .preloadEffects(
+            ElevenSounds.preloadTargets,
+            scope: ElevenSounds.preloadScope,
+          )
+          .catchError((Object error) {
+            debugPrint('ELEVEN 효과음을 준비하지 못했습니다: $error');
+          }),
+    );
+  }
+
+  @override
   void dispose() {
+    _backgroundStartTimer?.cancel();
+    _backgroundMusic.dispose();
     _timeoutTimer?.cancel();
     _introTimer?.cancel();
     _closingTimer?.cancel();
@@ -95,6 +128,66 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
     _armTimeout(game, stage);
     _armRoundIntro(game, stage);
     _armVisuals(game, stage);
+    _playSoundCues(game, stage);
+    _syncBackgroundMusic(stage);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 소리 (태블릿만 냄)
+  // ---------------------------------------------------------------------------
+  void _playSoundCues(ElevenGameState game, ElevenTabletStage stage) {
+    if (game.loading) return;
+    final cues = resolveElevenTabletSoundCues(
+      previous: _soundSnapshot,
+      next: game.public,
+      stage: stage,
+    );
+    _soundSnapshot = game.public;
+    for (final cue in cues) {
+      switch (cue) {
+        case ElevenTabletSoundCue.intro:
+          _playSound(ElevenSounds.intro);
+          // 새 판(다시 하기 포함)은 인트로 뒤에 곡을 처음부터 깝니다.
+          _backgroundMusic.stop();
+          _backgroundStartTimer?.cancel();
+          _backgroundStartTimer = Timer(ElevenSounds.backgroundAfterIntro, () {
+            _backgroundStartTimer = null;
+            if (mounted) _syncBackgroundMusic(resolveElevenTabletStage(_game));
+          });
+        case ElevenTabletSoundCue.place:
+          _playSound(ElevenSounds.cardPlace);
+      }
+    }
+  }
+
+  void _syncBackgroundMusic(ElevenTabletStage stage) {
+    switch (stage) {
+      case ElevenTabletStage.connecting:
+        return;
+      case ElevenTabletStage.closing:
+        _backgroundStartTimer?.cancel();
+        _backgroundStartTimer = null;
+        _backgroundMusic.stop();
+      case ElevenTabletStage.result:
+        _backgroundStartTimer?.cancel();
+        _backgroundStartTimer = null;
+        _backgroundMusic.fadeOut();
+      case ElevenTabletStage.firstDrawPick ||
+          ElevenTabletStage.firstDrawReveal ||
+          ElevenTabletStage.firstSubmit ||
+          ElevenTabletStage.secondSubmit ||
+          ElevenTabletStage.roundResult ||
+          ElevenTabletStage.tieDrawPick ||
+          ElevenTabletStage.tieDrawReveal:
+        // 인트로가 울리는 중이면 타이머가 곡을 시작합니다. 재접속처럼 인트로 없이
+        // 진행 중인 판에 들어오면 바로 깝니다. 이미 재생 중이면 start는 무시됩니다.
+        if (_backgroundStartTimer != null) return;
+        _backgroundMusic.start(ElevenSounds.background);
+    }
+  }
+
+  void _playSound(String asset) {
+    if (mounted) SoundEffects.play(context, asset);
   }
 
   // ---------------------------------------------------------------------------
@@ -198,6 +291,7 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
       _resultEmphasisTimer = Timer(ElevenRoundFlowMotion.emphasisAt, () {
         if (mounted && _visualKey == key) {
           setState(() => _resultEmphasized = true);
+          _playSound(ElevenSounds.cardFlip);
         }
       });
     }
@@ -224,6 +318,7 @@ class _ElevenTabletGameState extends ConsumerState<ElevenTabletGame> {
       _drawFaceTimer = Timer(ElevenDrawMotion.flipAt, () {
         if (mounted && _visualKey == key) {
           setState(() => _drawRevealed = true);
+          _playSound(ElevenSounds.cardFlip);
         }
       });
     }
