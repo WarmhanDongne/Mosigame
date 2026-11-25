@@ -495,3 +495,18 @@
   4. 첫 판에서 타일을 골라야 토스트가 뜸 → 태블릿이 처음 받은 상태는 연출을 끄는데, 아무도 뽑지 않은 첫 선공 뽑기는
      막 시작한 판으로 보고 딜·토스트를 재생(`tablet/src/board_state.dart`).
 - 검증: `packages/game_eleven` `flutter test` 169 PASS·37 skip, `flutter analyze lib` exit 0.
+
+### 2026-11-25 S8 남은 실기기 항목 결과 (하준 D12–D15 → Claude Code)
+
+- D12 통과: 선공·후공 휴대폰 강제 종료 뒤 재실행 시 게임으로 복귀. 단, 재실행마다 “asd” 공지 창이 뜸.
+  - 원인: TEST Firestore `platformAnnouncements/notice`가 `active: true`이고 4개 언어 제목·본문이 모두 “asd”인
+    시험용 공지. ELEVEN과 무관하며 데이터는 건드리지 않았다(필요 없으면 하준이 비활성).
+  - 관찰된 겹침(공용 플랫폼, 범위 밖·기록만): 휴대폰 로비는 재실행 시 자동 복귀(`restorePlayerRoom`)와 공지 창
+    (`PlatformAnnouncementHost`)을 동시에 시작한다. 복귀가 먼저 끝나면 게임 화면 위에 공지가 덮여 아무 버튼이나 닫으면
+    게임이 보인다(이번 관찰). 공지가 먼저 뜨면 `_openWaitingRoom`이 `ModalRoute.isCurrent` 검사에서 조용히 멈춰
+    로비에 남을 수 있다(`lib/platform/home/phone/screens/phone_home.dart`). 후속 제안: 복귀 중이거나 로비가 맨 위가
+    아닐 때 공지를 미루기. 하준 결정: 이번에는 기록만.
+- D13 통과: 한 명이 나가 2인 게임이 성립하지 않으면 승자 없이 종료.
+- D14 통과: 다시하기·HOME·그룹 퇴장.
+- D15 통과: 회전·긴 이름·4개 언어(1차 실패는 휴대폰 앱 언어 설정 문제로 정리).
+- S8 실기기 D01–D17 모두 통과. 남은 일: 룰북 본문 하준 확인, 레인 worktree·브랜치 정리, push(승인 필요).
