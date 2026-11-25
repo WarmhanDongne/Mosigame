@@ -62,7 +62,8 @@ bash ./tool/setup_mosigame.sh --prepare
 
 ## Firebase 실행 모드
 
-개발자 브랜치와 `TEST` 검증은 TEST Firebase를 명시합니다.
+`jinsung` 개발 브랜치와 `TEST` 검증은 TEST Firebase를 사용합니다. `jinsung`에서는
+`MOSIGAME_BACKEND`를 생략해도 TEST가 선택됩니다.
 
 ```bash
 flutter run --dart-define=MOSIGAME_BACKEND=test
@@ -74,8 +75,8 @@ flutter run --dart-define=MOSIGAME_BACKEND=test
 flutter run --dart-define=MOSIGAME_BACKEND=local
 ```
 
-`MOSIGAME_BACKEND`를 생략하면 운영 `server` 모드이므로 일반 개발·실기기 검증에서
-생략하지 않습니다.
+운영 Firebase는 반드시 `MOSIGAME_BACKEND=server`를 명시합니다. `develop`·`main`의
+스토어 후보도 운영 확인 시 `server`를 명시해야 합니다.
 
 ## Cloud Functions 테스트 배포
 
