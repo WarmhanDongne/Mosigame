@@ -12,6 +12,9 @@ abstract final class FontFamily {
   /// Font family: BebasNeue
   static const String bebasNeue = 'BebasNeue';
 
+  /// Font family: BlackHanSans
+  static const String blackHanSans = 'BlackHanSans';
+
   /// Font family: BodoniModa
   static const String bodoniModa = 'BodoniModa';
 
@@ -20,4 +23,16 @@ abstract final class FontFamily {
 
   /// Font family: DigitalTimer
   static const String digitalTimer = 'DigitalTimer';
+
+  /// Font family: DoHyeon
+  static const String doHyeon = 'DoHyeon';
+
+  /// Font family: Rye
+  static const String rye = 'Rye';
+
+  /// Font family: SongMyung
+  static const String songMyung = 'SongMyung';
+
+  /// Font family: StardosStencil
+  static const String stardosStencil = 'StardosStencil';
 }

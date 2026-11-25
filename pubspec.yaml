@@ -177,6 +177,10 @@ flutter:
     - family: SongMyung
       fonts:
         - asset: assets/fonts/SongMyung-Regular.ttf
+    - family: StardosStencil
+      fonts:
+        - asset: assets/fonts/StardosStencil-Bold.ttf
+          weight: 700
 
 flutter_gen: 
   output: lib/gen/

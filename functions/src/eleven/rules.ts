@@ -9,8 +9,10 @@ import {gameRandomInt} from "../common/transaction-random.js";
  * 판정 유형(`reason`)은 서버 전용 값입니다. public·응답·로그에 쓰지 않습니다.
  */
 
-/** 개인 손패와 공용 뽑기 묶음의 타일 값입니다. 10은 없습니다. */
+/** 개인 손패의 타일 값입니다. 10은 없습니다. */
 export const ELEVEN_TILES: readonly number[] = Object.freeze([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]);
+/** 공용 뽑기 묶음(첫 선공·최종 동점)의 카드 값입니다. 2026-11-25 계약 변경으로 1–9 9장입니다. */
+export const ELEVEN_DRAW_TILES: readonly number[] = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 export const ELEVEN_MAX_ROUNDS = 11;
 export const ELEVEN_TURN_MS = 60000;
 export const ELEVEN_PLAYER_COUNT = 2;
@@ -276,7 +278,7 @@ export function createElevenDraw(
   if (order[0] === order[1]) {
     throw new ElevenRuleError("invalidPlayers", "Draw order needs two players");
   }
-  return {purpose, order: [order[0], order[1]], slots: shuffleEleven(ELEVEN_TILES, randomInt), picks: {}};
+  return {purpose, order: [order[0], order[1]], slots: shuffleEleven(ELEVEN_DRAW_TILES, randomInt), picks: {}};
 }
 
 /**
@@ -309,7 +311,7 @@ export function nextElevenDrawPicker(draw: ElevenDraw): string | null {
  * 순서와 중복 위치만 검증합니다.
  * @param {ElevenDraw} draw 진행 중인 뽑기
  * @param {string} pickerUid 화면이 안내한 차례
- * @param {number} slotIndex 고른 위치(0–10)
+ * @param {number} slotIndex 고른 위치(0–8)
  * @return {ElevenDraw} 선택이 반영된 새 뽑기
  */
 export function pickElevenDrawSlot(draw: ElevenDraw, pickerUid: string, slotIndex: number): ElevenDraw {

@@ -139,6 +139,7 @@ function resolveRound(game: ElevenGameState, now: number): void {
     winnerUid,
     ...(Object.keys(pub.currentRound.autoSubmitted).length ? {autoSubmitted: {...pub.currentRound.autoSubmitted}} : {}),
   });
+  pub.lastRoundResult = {round: pub.round, winnerUid};
   game.server.lastJudgeReason = reason;
   game.server.nextFirstUid = winnerUid ?? first;
   game.server.submissions = {};

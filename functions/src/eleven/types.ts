@@ -39,6 +39,8 @@ export interface ElevenGameState {
     finishReason?: "winner" | "manual" | "insufficientPlayers";
     finishDetail?: "earlyEnd" | "allRounds" | "tieDraw";
     earlyEnd?: {remainingRounds: number; leaderUid: string; gap: number};
+    /** 직전 라운드 결과. winnerUid가 없거나 null이면 동점입니다. 숫자·합·판정 유형은 넣지 않습니다. */
+    lastRoundResult?: {round: number; winnerUid: string | null};
     startedAt: number;
     updatedAt: number;
     finishedAt?: number;

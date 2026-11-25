@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  ELEVEN_DRAW_TILES,
   ELEVEN_MAX_ROUNDS,
   ELEVEN_TILES,
   ElevenRuleError,
@@ -53,6 +54,7 @@ function assertRuleError(fn, code) {
 
 test("타일은 0–9와 11, 10은 없다", () => {
   assert.deepEqual([...ELEVEN_TILES], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]);
+  assert.deepEqual([...ELEVEN_DRAW_TILES], [1, 2, 3, 4, 5, 6, 7, 8, 9], "공용 뽑기는 1–9 9장(2026-11-25)");
   assert.equal(isElevenTile(10), false);
   assert.equal(isElevenTile(-1), false);
   assert.equal(isElevenTile(12), false);
@@ -237,12 +239,12 @@ test("첫 선공 뽑기 순서는 무작위", () => {
 
 test("공용 뽑기: 순서대로, 서로 다른 위치, 둘 다 뽑은 뒤 공개", () => {
   let draw = createElevenDraw("firstPlayer", [B, A], sequence(0));
-  assert.equal(draw.slots.length, 11);
-  assert.deepEqual([...draw.slots].sort((a, b) => a - b), [...ELEVEN_TILES]);
+  assert.equal(draw.slots.length, 9);
+  assert.deepEqual([...draw.slots].sort((a, b) => a - b), [...ELEVEN_DRAW_TILES]);
   assert.equal(nextElevenDrawPicker(draw), B);
   assertRuleError(() => revealElevenDraw(draw), "drawIncomplete");
   assertRuleError(() => pickElevenDrawSlot(draw, A, 0), "notYourPick");
-  assertRuleError(() => pickElevenDrawSlot(draw, B, 11), "invalidSlot");
+  assertRuleError(() => pickElevenDrawSlot(draw, B, 9), "invalidSlot");
   assertRuleError(() => pickElevenDrawSlot(draw, B, -1), "invalidSlot");
 
   const before = draw;
@@ -262,9 +264,9 @@ test("공용 뽑기: 순서대로, 서로 다른 위치, 둘 다 뽑은 뒤 공�
 });
 
 test("공용 뽑기는 모든 위치 조합에서 큰 숫자가 이긴다", () => {
-  const draw = {purpose: "finalTie", order: [A, B], slots: [...ELEVEN_TILES], picks: {}};
-  for (let x = 0; x < 11; x += 1) {
-    for (let y = 0; y < 11; y += 1) {
+  const draw = {purpose: "finalTie", order: [A, B], slots: [...ELEVEN_DRAW_TILES], picks: {}};
+  for (let x = 0; x < 9; x += 1) {
+    for (let y = 0; y < 9; y += 1) {
       if (x === y) continue;
       const done = pickElevenDrawSlot(pickElevenDrawSlot(draw, A, x), B, y);
       const {values, winnerUid} = revealElevenDraw(done);

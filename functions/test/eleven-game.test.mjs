@@ -20,7 +20,8 @@ function startFirstRound(state, now = 2000) {
   pickElevenTile(state, first, 0, now);
   assert.equal(state.public.phase, 'drawPick');
   assert.equal(state.public.draw.revealed, undefined);
-  assert.equal(state.server.draw.slots.length, 11);
+  assert.equal(state.server.draw.slots.length, 9);
+  assert.deepEqual([...state.server.draw.slots].sort((x, y) => x - y), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   assert.throws(() => pickElevenTile(state, second, 0, now + 1));
   pickElevenTile(state, second, 1, now + 2);
   assert.equal(state.public.phase, 'drawReveal');
@@ -73,11 +74,14 @@ test('timeout picks remaining tile once, result hides numbers and advances on ex
   assert.equal(JSON.stringify(state.public).includes('"value"'), false);
   assert.equal(JSON.stringify(state.controller).includes('"value"'), false);
   assert.equal(state.public.history, undefined);
+  // 4(선공) vs 8(후공): 합 12 → 작은 숫자 승리. 직전 라운드 결과만 공개한다.
+  assert.deepEqual(state.public.lastRoundResult, {round: 1, winnerUid: first});
   assert.equal(completeElevenPhase(state, state.public.revision - 1, 123000), false);
   assert.equal(completeElevenPhase(state, state.public.revision, 123000), true);
   assert.equal(state.public.phase, 'firstSubmit');
   assert.equal(state.public.round, 2);
   assert.equal(state.private[first].submission, undefined);
+  assert.deepEqual(state.public.lastRoundResult, {round: 1, winnerUid: first}, 'next round keeps the previous result');
 });
 
 test('eleven tied rounds reach separate final draw and finish with no round numbers published', () => {
@@ -91,6 +95,7 @@ test('eleven tied rounds reach separate final draw and finish with no round numb
     submitElevenTile(state, second, round, value, 10001 + round * 1000);
     assert.equal(state.public.phase, 'roundResult');
     assert.equal(state.controller.history.at(-1).winnerUid, null);
+    assert.deepEqual(state.public.lastRoundResult, {round, winnerUid: null});
     assert.equal(completeElevenPhase(state, state.public.revision, 10002 + round * 1000), true);
   }
   assert.equal(state.public.phase, 'drawPick');
@@ -192,7 +197,7 @@ test('final tie draw survives RTDB storage before its first pick', () => {
   const state = game();
   state.public.phase = 'drawPick';
   state.public.draw = {purpose: 'finalTie', order: ['a', 'b'], picks: {}, nextPickerUid: 'a'};
-  state.server.draw = {purpose: 'finalTie', slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]};
+  state.server.draw = {purpose: 'finalTie', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9]};
   // 11라운드 직후: 남은 타일은 없고 마지막 제출 기록만 남습니다.
   state.private.a.tiles = [];
   state.private.a.submission = {round: 11, value: 4, auto: false};
@@ -200,4 +205,26 @@ test('final tie draw survives RTDB storage before its first pick', () => {
   assert.deepEqual(stored.private.a.tiles, []);
   pickElevenTile(stored, 'a', 0, 3000);
   assert.equal(stored.public.draw.picks.a, 0);
+});
+
+test('public lastRoundResult is absent before the first judgement and never carries numbers', () => {
+  const state = game();
+  assert.equal(state.public.lastRoundResult, undefined);
+  startFirstRound(state);
+  assert.equal(state.public.lastRoundResult, undefined);
+  const first = state.public.firstUid, second = state.public.secondUid;
+  submitElevenTile(state, first, 1, 9, 3000);
+  submitElevenTile(state, second, 1, 11, 3001);
+  assert.deepEqual(Object.keys(state.public.lastRoundResult).sort(), ['round', 'winnerUid']);
+  assert.deepEqual(state.public.lastRoundResult, {round: 1, winnerUid: second});
+  const published = JSON.stringify(state.public.lastRoundResult);
+  for (const leaked of ['9', '11', '20', 'sum20', 'reason']) assert.equal(published.includes(leaked), false, leaked);
+});
+
+test('draw slot index is limited to the nine shared cards', () => {
+  const state = game();
+  const [first] = state.public.draw.order;
+  assert.throws(() => pickElevenTile(state, first, 9, 2000));
+  pickElevenTile(state, first, 8, 2000);
+  assert.equal(state.public.draw.picks[first], 8);
 });

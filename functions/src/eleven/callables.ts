@@ -9,6 +9,7 @@ import {
   canRestartElevenGame, completeElevenPhase, createElevenGame, finishElevenGame,
   normalizeElevenGame, pickElevenTile, submitElevenTile, timeoutElevenTurn,
 } from "./game.js";
+import {ELEVEN_DRAW_TILES} from "./rules.js";
 import {ElevenGameState, ElevenRoom} from "./types.js";
 
 const REGION = "asia-northeast3";
@@ -55,7 +56,7 @@ export const game_eleven_start_game = onCall<Data>({region: REGION}, async (requ
 
 export const game_eleven_pick_draw_tile = onCall<Data>({region: REGION}, (request) =>
   mutate(request, "game_eleven_pick_draw_tile", true, (game, data, _uid, now) => {
-    pickElevenTile(game, parseUid(data.pickerUid), parseIntInRange(data.slotIndex, 0, 10), now);
+    pickElevenTile(game, parseUid(data.pickerUid), parseIntInRange(data.slotIndex, 0, ELEVEN_DRAW_TILES.length - 1), now);
     return {success: true, revision: game.public.revision};
   }));
 

@@ -34,8 +34,10 @@
 - 11라운드 뒤 누적 동점이면 별도 공용 타일 뽑기로 승자를 정한다. 순서는 직전(11라운드)
   선공 → 후공.
 - 첫 선공도 별도 공용 타일 뽑기로 정한다. 뽑는 순서는 무작위. 큰 숫자가 1라운드 선공.
-- 공용 뽑기 묶음은 0–9, 11 11장이고 개인 손패와 별개다. 두 사람은 서로 다른 위치를
-  고르며, 둘 다 고른 뒤 한 번에 공개한다. 값이 모두 달라 뽑기에는 동점이 없다.
+- 공용 뽑기 묶음은 1–9 9장이고 개인 손패(0–9, 11 11장)와 별개다(2026-11-25 사용자 승인,
+  시안 A 반영). 첫 선공 뽑기와 최종 동점 뽑기 모두 같은 묶음을 쓴다. 두 사람은 서로 다른
+  위치(slotIndex 0–8)를 고르며, 둘 다 고른 뒤 한 번에 공개한다. 숫자가 모두 달라 뽑기에는
+  동점이 없다.
 
 ## 3. 상태도
 
@@ -86,6 +88,7 @@ drawPick(finalTie) ─pick×2─▶ drawReveal(finalTie)
 | `draw` | `{purpose, order: [uid, uid], picks: {uid: slotIndex}, nextPickerUid, revealed?: {uid: number}, winnerUid?}` | 공용 뽑기. `revealed`는 두 번째 선택이 반영되는 같은 전이에서만 쓴다 |
 | `winnerUid`, `finishReason`, `finishDetail` | | `finishDetail`: `earlyEnd` \| `allRounds` \| `tieDraw` |
 | `earlyEnd` | `{remainingRounds, leaderUid, gap}` | T10 이유 안내용. 숫자 없음 |
+| `lastRoundResult` | `{round, winnerUid: string \| null}` 또는 없음 | 직전 라운드 결과(2026-11-25 사용자 승인). P08 표시용. 라운드가 판정되는 전이(`roundResult` 진입)에서 쓰고 다음 판정 때 덮어쓴다. 첫 판정 전에는 없다. `winnerUid`가 없거나 null이면 동점(RTDB는 null을 저장하지 않으므로 클라이언트는 키 없음을 동점으로 읽는다). 숫자·합·판정 유형은 넣지 않는다 |
 | `startedAt`, `updatedAt`, `finishedAt` | | 서버 시각 |
 | 공통 복구 필드 | `interruption`, `gameInstanceId`, `phaseSeq`, `turnSeq`, `dataSeq`, `resumeEpoch`, `recovery` | 러시안 룰렛과 같은 공통 계약을 따른다(S3에서 확인) |
 
@@ -98,6 +101,8 @@ drawPick(finalTie) ─pick×2─▶ drawReveal(finalTie)
 
 휴대폰에 지난 라운드 기록과 이전 제출 숫자를 주지 않는다(정보 공개 정책). 선공 색처럼
 공개된 값은 `public`에서 읽는다.
+예외로 직전 1라운드의 승자 또는 동점만 `public.lastRoundResult`로 공개한다(2026-11-25 승인).
+전체 기록은 계속 `controller/history`에만 둔다.
 
 ### 4.3 `game/controller` — 태블릿 controller만 읽음
 
@@ -109,7 +114,7 @@ drawPick(finalTie) ─pick×2─▶ drawReveal(finalTie)
 
 | 필드 | 설명 |
 | --- | --- |
-| `draw` | `{purpose, slots: number[11]}` 공용 뽑기 배치. 공개 전 숫자는 여기에만 둔다 |
+| `draw` | `{purpose, slots: number[9]}` 공용 뽑기 배치(1–9를 섞은 값). 공개 전 숫자는 여기에만 둔다 |
 | `submissions` | `{uid: number}` 현재 라운드 실제 숫자 |
 | `interruption` | 공통 복구 |
 
@@ -129,7 +134,7 @@ transaction 안에서 재검사 후 한 번에 갱신 → `commandId` 멱등 →
 | 명령 | 호출자 | 입력 | 가능한 phase | 거절 조건 |
 | --- | --- | --- | --- | --- |
 | `game_eleven_start_game` | 태블릿(controller) | roomCode | 방 대기·재시작 | 참가자 ≠ 2명, 다른 게임 선택됨 |
-| `game_eleven_pick_draw_tile` | 태블릿 | roomCode, slotIndex(0–10), pickerUid, commandId | `drawPick` | pickerUid ≠ `draw.nextPickerUid`, 이미 고른 위치, 범위 밖 |
+| `game_eleven_pick_draw_tile` | 태블릿 | roomCode, slotIndex(0–8), pickerUid, commandId | `drawPick` | pickerUid ≠ `draw.nextPickerUid`, 이미 고른 위치, 범위 밖 |
 | `game_eleven_submit_tile` | 휴대폰(본인) | roomCode, round, value, commandId | `firstSubmit`(선공만), `secondSubmit`(후공만) | 차례 아님, round 불일치, 남은 타일 아님, deadline 경과 |
 | `game_eleven_timeout_turn` | 태블릿, 두 휴대폰 | roomCode, round, phase | `firstSubmit`, `secondSubmit` | 마감 전 → `success:false`. phase·round가 이미 바뀜 → `ignored:true` |
 | `game_eleven_complete_phase` | 태블릿 | roomCode, revision | `drawReveal`, `roundResult` | revision 불일치 → `ignored:true` |
@@ -186,7 +191,7 @@ transaction 안에서 재검사 후 한 번에 갱신 → `commandId` 멱등 →
 | P05 후공 제출 가능 | `secondSubmit`, 본인 = 후공 |
 | P06 시간 초과 자동 제출 | 본인 `submission.auto = true` |
 | P07 후공 제출 완료 | 본인 제출 응답 성공 ~ `roundResult` 수신 전, 또는 `roundResult` 표시 직전 |
-| P08 결과·다음 라운드 전환 | `roundResult` |
+| P08 결과·다음 라운드 전환 | `roundResult`, 승패 표시는 `lastRoundResult` |
 | P09 마지막 타일 | 제출 phase이고 본인 `tiles` 길이 1 |
 | P10 / P11 게임 종료 | `finished`, 본인이 승자 / 아님 |
 
@@ -211,6 +216,7 @@ transaction 안에서 재검사 후 한 번에 갱신 → `commandId` 멱등 →
 | 한 명 퇴장 시 승자 없이 종료 | 3 |
 | 결과 단계 카운트다운 없음, 연출 시간 시험값 | 6 |
 | 화면 시안 T01–T13, P01–P11 | 7 |
+| 공용 뽑기 1–9 9장, `public.lastRoundResult` 추가(2026-11-25 계약 변경 승인) | 2, 4.1, 4.4, 5, 7 |
 
 ## 10. 후속 결정
 
