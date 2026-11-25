@@ -67,6 +67,29 @@ void main() {
     expect(serverPlist, contains('1:93097008048:ios:'));
   });
 
+  test('iOS 구글 로그인 URL 스킴은 운영·TEST 클라이언트를 모두 받는다', () {
+    // 선택 스크립트는 GoogleService-Info.plist만 바꾸고 Info.plist는 하나라,
+    // 어느 backend로 빌드해도 구글 로그인 결과가 앱으로 돌아오려면
+    // 두 REVERSED_CLIENT_ID가 모두 등록돼 있어야 합니다.
+    final schemes = _plistArray(
+      File('ios/Runner/Info.plist').readAsStringSync(),
+      'CFBundleURLSchemes',
+    );
+    for (final backend in ['server', 'test']) {
+      final reversedClientId = _plistString(
+        File(
+          'ios/Firebase/GoogleService-Info-$backend.plist',
+        ).readAsStringSync(),
+        'REVERSED_CLIENT_ID',
+      );
+      expect(
+        schemes,
+        contains('<string>$reversedClientId</string>'),
+        reason: '$backend 구글 로그인 URL 스킴이 Info.plist에 없습니다.',
+      );
+    }
+  });
+
   test('Android background FCM resources follow the Dart backend', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     final testConfig =
@@ -123,6 +146,14 @@ void main() {
     expect(host, contains('sound: true'));
     expect(host, contains('badge: false'));
   });
+}
+
+String _plistString(String plist, String key) {
+  final match = RegExp(
+    '<key>$key</key>\\s*<string>([^<]+)</string>',
+  ).firstMatch(plist);
+  expect(match, isNotNull, reason: '$key 값이 없습니다.');
+  return match!.group(1)!;
 }
 
 String _plistArray(String plist, String key) {
