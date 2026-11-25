@@ -1,151 +1,221 @@
-// [score_board.dart] 는 태블릿의 두 참가자 패널과 지난 라운드 기록 줄을 그리는 위젯이다.
-//
-// 공개 정보(점수·선후공·제출 색)와 controller 기록(색·승자)만 쓴다. 숫자는 없다.
-
-// ========================[ import ]==========================
 import 'package:flutter/material.dart';
 import 'package:game_eleven/game_copy.dart';
-import 'package:game_eleven/game_theme.dart';
-import 'package:game_eleven/shared/models/tiles.dart';
+import 'package:game_eleven/shared/noir/noir_motion.dart';
+import 'package:game_eleven/shared/noir/noir_text.dart';
+import 'package:game_eleven/shared/noir/noir_tokens.dart';
 import 'package:game_eleven/shared/services/history_mapper.dart';
-import 'package:game_eleven/shared/services/public_state_mapper.dart';
-import 'package:game_eleven/shared/widgets/tile_face.dart';
+import 'package:game_eleven/shared/widgets/noir_tile.dart';
 
-// ============================================================
-
-class ElevenPlayerPanel extends StatelessWidget {
-  const ElevenPlayerPanel({
-    super.key,
-    required this.player,
-    required this.score,
-    required this.isFirst,
-    required this.isSecond,
-    required this.isTurn,
-    required this.color,
-    required this.autoSubmitted,
-  });
-
-  final ElevenPlayerView player;
-  final int score;
-  final bool isFirst;
-  final bool isSecond;
-  final bool isTurn;
-
-  /// 이번 라운드 제출 색입니다. 제출 전이면 null입니다.
-  final ElevenTileColor? color;
-  final bool autoSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: 260,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isTurn ? ElevenColors.accent : ElevenColors.inkMuted,
-          width: isTurn ? 3 : 1,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            player.nickname,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: ElevenColors.ink,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            isFirst
-                ? ElevenCopy.first
-                : isSecond
-                ? ElevenCopy.second
-                : '',
-            style: const TextStyle(color: ElevenColors.inkMuted, fontSize: 15),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '$score',
-            style: const TextStyle(
-              color: ElevenColors.ink,
-              fontSize: 48,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 76,
-            child: color == null
-                ? null
-                : ElevenTileFace(color: color, size: 56),
-          ),
-          SizedBox(
-            height: 20,
-            child: autoSubmitted
-                ? Text(
-                    ElevenCopy.autoSubmitted,
-                    style: const TextStyle(
-                      color: ElevenColors.accent,
-                      fontSize: 13,
-                    ),
-                  )
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 지난 라운드 기록입니다. 칸마다 선공 색·후공 색과 승자 표시만 있습니다.
+/// The controller-only history remains colour-only even after a round ends.
 class ElevenHistoryStrip extends StatelessWidget {
   const ElevenHistoryStrip({
     super.key,
     required this.history,
     required this.seatOrder,
+    this.animatedRound,
   });
 
   final List<ElevenHistoryEntry> history;
-
-  /// 좌석 순서 uid. 위·아래 줄 순서를 고정합니다.
   final List<String> seatOrder;
+  final int? animatedRound;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (final entry in history)
-          Padding(
-            key: ValueKey('eleven-history-${entry.round}'),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Column(
-              children: [
-                for (final uid in seatOrder)
-                  Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: Opacity(
-                      opacity: entry.isTie || entry.winnerUid == uid ? 1 : .45,
-                      child: ElevenTileFace(color: entry.colors[uid], size: 22),
+    final byRound = {for (final entry in history) entry.round: entry};
+    return SizedBox.fromSize(
+      size: ElevenNoirSpacing.historyCardRect.size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: ElevenNoirColors.creamCard,
+          border: Border.all(
+            color: ElevenNoirColors.ink,
+            width: ElevenNoirBorder.heavy,
+          ),
+          borderRadius: BorderRadius.circular(ElevenNoirRadius.tabletCard),
+          boxShadow: ElevenNoirShadow.card,
+        ),
+        child: Padding(
+          padding: ElevenNoirSpacing.historyCardPadding,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 9,
+                height: 19,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: Text('A', style: ElevenNoirText.columnHead()),
+                      ),
+                    ),
+                    SizedBox(
+                      width: ElevenNoirSpacing.historyRowCenterWidth,
+                      child: Center(
+                        child: Text(
+                          ElevenScreenCopy.historyColumnRound,
+                          style: ElevenNoirText.columnHead(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text('B', style: ElevenNoirText.columnHead()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (var round = 1; round <= 11; round++)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top:
+                      35 +
+                      (round - 1) *
+                          (ElevenNoirSpacing.historyRowHeight +
+                              ElevenNoirSpacing.historyCardGap),
+                  height: ElevenNoirSpacing.historyRowHeight,
+                  child: KeyedSubtree(
+                    key: ValueKey('eleven-history-$round'),
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey(
+                        'history-motion-$round-${animatedRound == round}',
+                      ),
+                      tween: Tween(
+                        begin: animatedRound == round && byRound[round] != null
+                            ? 0
+                            : 1,
+                        end: 1,
+                      ),
+                      duration: animatedRound == round
+                          ? ElevenHistoryRowMotion.tilesIn
+                          : Duration.zero,
+                      curve: ElevenHistoryRowMotion.tileCurve,
+                      builder: (context, progress, child) => Opacity(
+                        opacity: progress.clamp(0.0, 1.0),
+                        child: Transform.translate(
+                          offset: Offset(
+                            ElevenHistoryRowMotion.tileOffsetX * (1 - progress),
+                            0,
+                          ),
+                          child: child,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _cell(
+                              byRound[round],
+                              seatOrder.isNotEmpty ? seatOrder[0] : '',
+                              true,
+                            ),
+                          ),
+                          SizedBox(
+                            width: ElevenNoirSpacing.historyRowCenterWidth,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (byRound[round]?.isTie == true)
+                                  SizedBox(
+                                    height: 38,
+                                    child: Stack(
+                                      alignment: Alignment.topCenter,
+                                      children: [
+                                        Text(
+                                          ElevenScreenCopy.historyTie,
+                                          style: ElevenNoirText.historyTie(),
+                                        ),
+                                        Positioned(
+                                          top: 20,
+                                          child: Text(
+                                            ElevenScreenCopy.historyTieMark,
+                                            style:
+                                                ElevenNoirText.historyTieMark(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else if (byRound[round] case final entry?)
+                                  Text(
+                                    entry.winnerUid == seatOrder.firstOrNull
+                                        ? ElevenScreenCopy.historyWinLeft
+                                        : ElevenScreenCopy.historyWinRight,
+                                    style: ElevenNoirText.historyResult(),
+                                  ),
+                                Text(
+                                  ElevenScreenCopy.historyRound(round),
+                                  style: ElevenNoirText.historyRound(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: _cell(
+                              byRound[round],
+                              seatOrder.length > 1 ? seatOrder[1] : '',
+                              false,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                Text(
-                  '${entry.round}',
-                  style: const TextStyle(
-                    color: ElevenColors.inkMuted,
-                    fontSize: 12,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cell(ElevenHistoryEntry? entry, String uid, bool left) {
+    final color = entry?.colors[uid];
+    final lose = entry != null && !entry.isTie && entry.winnerUid != uid;
+    return Center(
+      child: Opacity(
+        opacity: lose ? ElevenNoirOpacity.lose : 1,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ElevenNoirTile(
+              face: color == null
+                  ? ElevenTileFace.empty
+                  : ElevenTileFace.of(color),
+              spec: ElevenTileSpec.historyCell.copyWith(
+                shadow: ElevenNoirShadow.historyCell(towardLeft: left),
+              ),
+              state: color != null && entry!.winnerUid == uid
+                  ? ElevenTileState.win
+                  : ElevenTileState.normal,
+            ),
+            if (entry != null && entry.firstUid == uid)
+              Positioned(
+                left: -10,
+                top: -9,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: ElevenNoirColors.red,
+                    border: Border.all(
+                      color: ElevenNoirColors.ink,
+                      width: ElevenNoirBorder.thin,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      ElevenNoirRadius.firstBadgeInRow,
+                    ),
+                  ),
+                  child: Text(
+                    ElevenScreenCopy.firstBadge,
+                    style: ElevenNoirText.firstBadge(inHistoryRow: true),
                   ),
                 ),
-              ],
-            ),
-          ),
-      ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

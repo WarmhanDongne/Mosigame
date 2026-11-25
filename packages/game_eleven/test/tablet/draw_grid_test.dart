@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_eleven/shared/services/public_state_mapper.dart';
+import 'package:game_eleven/shared/widgets/noir_tile.dart';
 import 'package:game_eleven/tablet/widgets/draw_grid.dart';
 
 Widget _host(Widget child, {double width = 360}) => MaterialApp(
@@ -28,13 +29,14 @@ void main() {
           ElevenDrawGrid(
             draw: draw,
             nicknameOf: (uid) => uid == 'a' ? 'Ann' : 'Bo',
+            seatByUid: const {'a': 0, 'b': 1},
             enabled: true,
             onPick: picks.add,
           ),
           width: 900,
         ),
       );
-      expect(find.text('Ann'), findsOneWidget);
+      expect(find.text('A'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('eleven-draw-slot-2')));
       await tester.tap(find.byKey(const ValueKey('eleven-draw-slot-5')));
       expect(picks, [5]);
@@ -56,6 +58,7 @@ void main() {
           ElevenDrawGrid(
             draw: revealed,
             nicknameOf: (uid) => uid == 'a' ? 'Ann' : 'Bo',
+            seatByUid: const {'a': 0, 'b': 1},
             enabled: false,
             onPick: picks.add,
           ),
@@ -67,4 +70,41 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('draw order does not change A and B seat orientation', (
+    tester,
+  ) async {
+    const draw = ElevenDrawView(
+      purpose: ElevenDrawPurpose.finalTie,
+      order: ['b', 'a'],
+      picks: {'a': 2, 'b': 5},
+      nextPickerUid: null,
+      revealed: {'a': 1, 'b': 9},
+      winnerUid: 'b',
+    );
+    await tester.pumpWidget(
+      _host(
+        ElevenDrawGrid(
+          draw: draw,
+          nicknameOf: (uid) => uid,
+          seatByUid: const {'a': 0, 'b': 1},
+          enabled: false,
+          onPick: (_) {},
+        ),
+        width: 900,
+      ),
+    );
+    final aTile = find.descendant(
+      of: find.byKey(const ValueKey('eleven-draw-slot-2')),
+      matching: find.byType(ElevenNoirTile),
+    );
+    final bTile = find.descendant(
+      of: find.byKey(const ValueKey('eleven-draw-slot-5')),
+      matching: find.byType(ElevenNoirTile),
+    );
+    expect(tester.widget<ElevenNoirTile>(aTile).numberQuarterTurns, 1);
+    expect(tester.widget<ElevenNoirTile>(bTile).numberQuarterTurns, 3);
+    expect(tester.widget<ElevenNoirTile>(aTile).state, ElevenTileState.normal);
+    expect(tester.widget<ElevenNoirTile>(bTile).state, ElevenTileState.picked);
+  });
 }
