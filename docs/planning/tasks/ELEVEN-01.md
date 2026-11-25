@@ -430,3 +430,20 @@
   working-tree-mutation). 실행 전후 작업 트리 변화 없음.
 - 남은 일(S8 이후): 시뮬레이터·실기기 3대 화면 확인(D01–D17, 언어별 길이·잘림 포함), 룰북 본문 하준 확인,
   레인 worktree·브랜치 정리, TEST 배포(별도 승인), `tool/emulator/backend.test.mjs` 트리거 수(5) 정리.
+
+<a id="s8-test-deploy-20261125"></a>
+### 2026-11-25 S8 TEST 배포 (Claude Code, 하준 승인: Functions 전체 후보·카탈로그, rules 제외)
+
+- 기준: `feature/black-and-white-ui` `7d4d5e30`(push 완료). 프로젝트 TEST `ban-pick-simulator`만. 운영 접근 없음.
+- `npm --prefix functions run deploy:test -- --project=ban-pick-simulator` → **exit 2(부분 실패)**. 기존 함수 업데이트와 ELEVEN
+  7개(`game_eleven_start_game`·`pick_draw_tile`·`submit_tile`·`timeout_turn`·`complete_phase`·`end_game`·`leave_game`,
+  asia-northeast3) 생성은 성공했으나 7개 모두 “Failed to set invoker”(공개 호출 IAM 설정 실패, `roles/functions.admin` 부족 추정).
+- ELEVEN 7개만 다시 배포(`firebase deploy --config ../firebase.test.json --only functions:mosigame-test:game_eleven_* --project
+  ban-pick-simulator --non-interactive`) → exit 0이지만 invoker는 여전히 없음. 확인: 인증 없이 POST하면 ELEVEN 함수는
+  Cloud Run **403 Forbidden**, 기존 `game_russian_roulette_start_game`은 함수 응답 401(로그인이 필요합니다). → 앱에서 ELEVEN
+  명령이 아직 호출되지 않는다. **프로젝트 소유자가 7개 서비스에 `allUsers` → `roles/run.invoker`를 줘야 한다.**
+- TEST Firestore 카탈로그 `games/eleven` 생성(create만, 기존 문서 없음): enabled true, storeVisible false, accessType paid,
+  min/max 2, playTime 10, order 14, 이름·설명·규칙·장르 ko·en·zh-Hans·zh-Hant. 설명·장르 문구는 Claude 초안.
+- 테스트 계정 `ownedGames`: 요청 계정은 아직 TEST Auth에 없어(조회 결과 사용자 없음) 추가하지 못했다. TEST 빌드로 한 번
+  로그인한 뒤 추가한다.
+- RTDB rules는 이번에 배포하지 않았다(하준 선택). TEST rules에 `game/controller` 읽기 규칙이 없으면 태블릿 전적판이 비어 보일 수 있다.
