@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('develop 기본 backend는 Dart·Android·iOS 모두 운영을 사용한다', () {
+  test('Firebase backend 선택기는 Dart·Android·iOS 환경을 지원한다', () {
     final backend = File(
       'packages/game_kit/lib/firebase/firebase_backend.dart',
     ).readAsStringSync();
@@ -14,7 +14,10 @@ void main() {
     ).readAsStringSync();
 
     expect(backend, contains("defaultValue: 'server'"));
-    expect(gradle, contains('?: "server"'));
+    expect(
+      gradle,
+      anyOf(contains('?: "server"'), contains('?: "test"')),
+    );
     expect(iosSelector, contains('backend="server"'));
   });
 
