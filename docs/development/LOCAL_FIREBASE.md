@@ -2,7 +2,8 @@
 
 로컬/서버 선택은 **앱 실행 옵션**으로 결정한다. 선택을 바꿀 때 앱을 완전히 종료하고
 다시 `flutter run`한다. Hot reload/hot restart로 접속 대상을 바꾸지 않는다.
-옵션 생략 또는 `server`는 기존 `project0000-ec01e` 서버에 연결한다.
+`jinsung`에서 옵션을 생략하면 TEST Firebase에 연결한다. 운영 서버는 반드시
+`MOSIGAME_BACKEND=server`를 명시한다.
 로컬 데이터와 계정은 고정 데모 프로젝트 `demo-mosigame-e13`에만 있다.
 
 ## 빠른 시작
