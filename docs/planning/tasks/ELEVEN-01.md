@@ -409,3 +409,18 @@
   한글 없음, locale 전환 시 문구 변경, 룰북 5개 항목 유지. 실기기에서 언어별 길이·잘림은 S8 확인 대상.
 - 검증: `packages/game_eleven` `flutter test --no-pub` 162 PASS·37 skip exit 0, 루트 `flutter analyze --no-pub`
   exit 0, format·경계 exit 0. validate --full 미실행(승인 대상).
+- S7(가) 에뮬레이터(하준 승인: 도구 트리거 수 수정): `tool/emulator/functions.cjs`의 RTDB 트리거 고정 검사를 6 → 8로
+  고쳤다(늘어난 2개는 develop의 푸시 알림 트리거). `tool/emulator/backend.test.mjs`는 예전부터 5를 기대해 이미 맞지 않지만
+  ELEVEN 범위 밖이라 그대로 두었다(별도 정리 필요).
+- 레인 C 에뮬레이터 시나리오(`functions/test/eleven-emulator.test.mjs`) 결함 3개를 실행하며 고쳤다:
+  ① 카탈로그 문서를 firebase-admin Firestore에 임의 자격 증명으로 쓰려다 `firestore/invalid-credential` →
+  공용 fixture처럼 에뮬레이터 REST(Bearer owner)로 변경. ② 정리 때 `rooms/{code}`만 지워 태블릿의
+  `controllerRooms`·`roomCreateSlots`·`roomCreateRequests`가 남아 다음 실행의 방 만들기가 FAILED_PRECONDITION →
+  함께 지운다. ③ 시작·재시작이 직후 접속 동기화 트리거와 겹치면 서버가 의도대로 ABORTED(“참가자 또는 좌석이
+  바뀌었습니다. 다시 시도해주세요”)를 돌려준다 → 앱의 재시도처럼 ABORTED일 때만 최대 5회 재전송.
+- 결과: `ELEVEN_EMULATOR=1 … node --test functions/test/eleven-emulator.test.mjs`(Java 21 PATH, `node tool/emulator/local.mjs start`)
+  5회 연속 PASS. 방 생성 → 2인 참가 → ELEVEN 선택·자리 → 한 판 → 결과 → 재인증 읽기 → 다시하기 → 오래된 명령 무시 →
+  수동 종료 → 다시하기 → 퇴장(승자 없음). 에뮬레이터 종료, 포트 해제 확인. `functions` lint exit 0, 기본 테스트 681 PASS·1 skip.
+- 관찰(서버 변경 없음): 같은 방에서 명령 직후 다시하기를 누르면 드물게 위 ABORTED가 날 수 있다. 서버 설계상 재시도 대상이며,
+  태블릿은 기존 요청 복구 화면으로 재시도를 보여 준다. S8 실기기에서 빈도를 본다.
+- 시뮬레이터 3대(태블릿 1·휴대폰 2) 화면 확인은 아직 하지 않았다(S8 실기기와 함께 진행 예정).

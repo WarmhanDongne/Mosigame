@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createRequire} from 'node:module';
 import {accounts, password, project, seedLocalFixtures, assertLocalEnvironment}
   from '../../tool/emulator/local-fixtures.mjs';
 
@@ -62,18 +61,65 @@ async function waitRoom(code, predicate, label) {
   throw new Error(`Local emulator did not reach ${label}`);
 }
 
+function firestoreValue(data) {
+  if (data === null) return {nullValue: null};
+  if (typeof data === 'string') return {stringValue: data};
+  if (typeof data === 'boolean') return {booleanValue: data};
+  if (typeof data === 'number') return Number.isInteger(data) ? {integerValue: String(data)} : {doubleValue: data};
+  if (Array.isArray(data)) return {arrayValue: {values: data.map(firestoreValue)}};
+  return {mapValue: {fields: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, firestoreValue(v)]))}};
+}
+
+function firestoreDocument(path) {
+  const url = `http://127.0.0.1:8080/v1/projects/${project}/databases/(default)/documents/${path}`;
+  const request = (options = {}) => fetch(url, {...options, signal: AbortSignal.timeout(10000),
+    headers: {Authorization: 'Bearer owner', 'Content-Type': 'application/json'}});
+  return {
+    // 문서가 없으면 null, 있으면 원본 fields(REST 형식)를 그대로 돌려준다.
+    async get() {
+      const response = await request();
+      if (response.status === 404) return null;
+      assert.equal(response.ok, true, `catalog read HTTP ${response.status}`);
+      return (await response.json()).fields ?? {};
+    },
+    async set(data) {
+      const response = await request({method: 'PATCH',
+        body: JSON.stringify({fields: firestoreValue(data).mapValue.fields})});
+      assert.equal(response.ok, true, `catalog write HTTP ${response.status}`);
+    },
+    async restore(fields) {
+      const response = await request({method: 'PATCH', body: JSON.stringify({fields})});
+      assert.equal(response.ok, true, `catalog restore HTTP ${response.status}`);
+    },
+    async delete() {
+      const response = await request({method: 'DELETE'});
+      assert.ok(response.ok || response.status === 404, `catalog delete HTTP ${response.status}`);
+    },
+  };
+}
+
+// 시작·재시작은 준비 직전 참가자·좌석 지문이 바뀌면 ABORTED(“다시 시도해주세요”)로 거절한다.
+// 직전 명령 뒤 접속 동기화 트리거가 같은 방을 쓰는 동안 생길 수 있으며, 앱은 재시도 버튼을 보여 준다.
+// 테스트도 사용자가 재시도하듯 이 경우만 짧게 다시 보낸다.
+async function startWithRetry(person, data, attempts = 5) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await callable(person, 'game_eleven_start_game', {...data, commandId: id()});
+    } catch (error) {
+      if (error.code !== 'ABORTED' || attempt >= attempts) throw error;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  }
+}
+
 test('ELEVEN callable room, full game, reconnect, restart, manual end and leave',
   {skip: !enabled, timeout: 240000}, async () => {
     assertLocalEnvironment();
     assert.equal(process.env.GCLOUD_PROJECT, project);
     await seedLocalFixtures();
-    const require = createRequire(new URL('../package.json', import.meta.url));
-    const {initializeApp, deleteApp} = require('firebase-admin/app');
-    const {getFirestore} = require('firebase-admin/firestore');
-    const admin = initializeApp({projectId: project, credential: {
-      getAccessToken: async () => ({access_token: 'owner', expires_in: 3600}),
-    }}, `eleven-emulator-${Date.now()}`);
-    const catalog = getFirestore(admin).collection('games').doc('eleven');
+    // firebase-admin Firestore는 인증서·ADC 자격 증명만 받으므로, 공용 fixture처럼 에뮬레이터
+    // REST API(Bearer owner)로 카탈로그 문서를 다룬다.
+    const catalog = firestoreDocument('games/eleven');
     const original = await catalog.get();
     let code;
     try {
@@ -94,7 +140,7 @@ test('ELEVEN callable room, full game, reconnect, restart, manual end and leave'
       await callable(tablet, 'beginRealtimeRoomSeating', controller);
       await callable(tablet, 'saveRealtimePlayerSeatIndexes', {...controller,
         seatIndexesByUid: {[a.uid]: 0, [b.uid]: 1}});
-      await callable(tablet, 'game_eleven_start_game', {...controller, commandId: id()});
+      await startWithRetry(tablet, controller);
       await waitRoom(code, room => room.status === 'playing', 'playing room');
       for (const person of players) {
         const pub = await roomValue(code, 'game/public');
@@ -144,7 +190,7 @@ test('ELEVEN callable room, full game, reconnect, restart, manual end and leave'
       assert.equal(read.response.ok, true);
       assert.equal(read.body.status, 'finished');
 
-      await callable(tablet, 'game_eleven_start_game', {...controller, restart: true, commandId: id()});
+      await startWithRetry(tablet, {...controller, restart: true});
       const restarted = await roomValue(code, 'game/public');
       assert.notEqual(restarted.gameInstanceId, firstInstance);
       const old = await callable(tablet, 'game_eleven_complete_phase', {...controller,
@@ -155,17 +201,24 @@ test('ELEVEN callable room, full game, reconnect, restart, manual end and leave'
       state = await roomValue(code, 'game/public');
       assert.equal(state.finishReason, 'manual');
       assert.equal(state.winnerUid ?? null, null);
-      await callable(tablet, 'game_eleven_start_game', {...controller, restart: true, commandId: id()});
+      // 수동 종료 직후에는 방 상태 동기화 트리거가 같은 방을 쓰고 있어 바로 재시작하면 transaction이
+      // 경합으로 abort될 수 있다. 실제 앱처럼 방 상태가 finished로 정리된 뒤 다시하기를 보낸다.
+      await waitRoom(code, room => room.status === 'finished', 'room finished after manual end');
+      await startWithRetry(tablet, {...controller, restart: true});
       const leave = await callable(a, 'game_eleven_leave_game', {...players[0].session, operationId: id()});
       assert.equal(leave.success, true);
       state = await roomValue(code, 'game/public');
       assert.equal(state.finishReason, 'insufficientPlayers');
       assert.equal(state.winnerUid ?? null, null);
     } finally {
-      if (code) await fetch(`${base}/rooms/${code}.json?ns=${namespace}`, {method: 'DELETE',
-        headers: {Authorization: 'Bearer owner'}, signal: AbortSignal.timeout(10000)});
-      if (original.exists) await catalog.set(original.data());
+      // 방만 지우면 태블릿의 방 연결 기록이 남아 다음 실행에서 방을 만들 수 없다. 함께 지운다.
+      const tabletUid = accounts[0].uid;
+      for (const path of [code && `rooms/${code}`, `controllerRooms/${tabletUid}`,
+        `roomCreateSlots/${tabletUid}`, `roomCreateRequests/${tabletUid}`].filter(Boolean)) {
+        await fetch(`${base}/${path}.json?ns=${namespace}`, {method: 'DELETE',
+          headers: {Authorization: 'Bearer owner'}, signal: AbortSignal.timeout(10000)});
+      }
+      if (original) await catalog.restore(original);
       else await catalog.delete();
-      await deleteApp(admin);
     }
   });

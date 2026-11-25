@@ -10,7 +10,7 @@ process.env.FIREBASE_CONFIG = JSON.stringify({...config, projectId: project,
 const candidate = {...require('../../functions/lib/index.js')};
 const databaseFunctions = Object.entries(candidate).filter(([, fn]) =>
   fn.__endpoint?.eventTrigger?.eventType?.includes('database'));
-assert.equal(databaseFunctions.length, 6, 'Review the RTDB trigger manifest when it changes');
+assert.equal(databaseFunctions.length, 8, 'Review the RTDB trigger manifest when it changes');
 for (const [, fn] of databaseFunctions) {
   assert.deepEqual(fn.__endpoint.region, ['asia-southeast1']);
   fn.__endpoint.region = ['us-central1'];
