@@ -449,3 +449,8 @@
 - RTDB rules는 이번에 배포하지 않았다(하준 선택). TEST rules에 `game/controller` 읽기 규칙이 없으면 태블릿 전적판이 비어 보일 수 있다.
 - (후속) 하준이 Cloud Run 콘솔에서 ELEVEN 7개 서비스의 인증을 “공개 액세스 허용”으로 바꿨다. 재확인: 무인증 POST →
   7개 모두 함수 응답 401 “로그인이 필요합니다”(403 해소). 남은 것: 테스트 계정 TEST 로그인 뒤 `ownedGames`에 eleven 추가.
+- iOS TEST 빌드: `flutter run … --dart-define=MOSIGAME_BACKEND=test`가 Swift Package Manager에서 Firebase iOS SDK 충돌
+  (firebase_core·messaging·app_check 12.19.3 vs auth·firestore·functions·database·storage·crashlytics 12.18.0, develop 병합
+  `a582cd1d`에서 유입, ELEVEN 무관)로 실패. 하준 승인으로 이 맥에서만 `flutter config --no-enable-swift-package-manager`,
+  `flutter clean` 뒤 CocoaPods(`Podfile.lock`, 전부 12.19.3)로 `flutter build ios --simulator --debug --dart-define=MOSIGAME_BACKEND=test`
+  → exit 0. 추적 파일(`ios/Runner.xcodeproj/project.pbxproj`, `ios/Podfile.lock`) 변화 없음. 플러그인 버전 정렬은 develop 후속 과제.
