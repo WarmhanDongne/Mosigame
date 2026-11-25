@@ -1174,8 +1174,8 @@ abstract final class ElevenScreenCopy {
   /// 규칙 창 제목. 게임 이름을 쓴다.
   static String get rulebookTitle => ElevenCopy.title;
 
-  /// 규칙 본문(game_kit 룰북 형식: `# 항목` + 본문). 계약 2절 규칙 요약을 그대로 옮긴 초안이며
-  /// 하준 확인 대상이다(S5 레인 검수 B5). 숫자 판정 예시는 넣지 않는다.
+  /// 규칙 본문(game_kit 룰북 형식: `# 항목` + 본문). 계약 2절 규칙 요약을 옮겼고 2026-11-25 하준이
+  /// 이대로 확정했다(뽑는 순서·조기 종료 경계·차례별 시간은 추가하지 않기로 함). 숫자 판정 예시는 넣지 않는다.
   static String get rulebookMarkdown => GameLocale.select(
     ko: '''
 # 게임 방법
