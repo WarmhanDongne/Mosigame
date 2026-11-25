@@ -14,10 +14,7 @@ void main() {
     ).readAsStringSync();
 
     expect(backend, contains("defaultValue: 'server'"));
-    expect(
-      gradle,
-      anyOf(contains('?: "server"'), contains('?: "test"')),
-    );
+    expect(gradle, anyOf(contains('?: "server"'), contains('?: "test"')));
     expect(iosSelector, contains('backend="server"'));
   });
 
