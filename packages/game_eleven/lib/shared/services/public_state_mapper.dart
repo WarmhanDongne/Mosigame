@@ -6,6 +6,7 @@
 // 구독과 상태 발행은 controller가 맡는다. 필드 이름은
 // docs/engineering/ELEVEN_GAME_CONTRACT.md 4.1과 functions/src/eleven/types.ts를 따른다.
 // 공개 상태에는 실제 숫자·합·판정 유형이 없다(뽑기 공개값 `draw.revealed`만 예외).
+// `lastRoundResult`도 직전 라운드의 승자 또는 동점만 담는다(계약 4.1, 2026-11-25).
 
 // ========================[ import ]==========================
 import 'package:flutter/foundation.dart';
@@ -121,7 +122,7 @@ class ElevenDrawView {
   /// 뽑는 순서입니다. [0]이 먼저 고릅니다.
   final List<String> order;
 
-  /// uid → 고른 칸(0–10).
+  /// uid → 고른 칸(0–8).
   final Map<String, int> picks;
   final String? nextPickerUid;
 
@@ -130,6 +131,11 @@ class ElevenDrawView {
   final String? winnerUid;
 
   bool isTaken(int slotIndex) => picks.containsValue(slotIndex);
+
+  /// 태블릿이 이 위치를 고를 수 있게 보여 줄지입니다. 범위(0–8) 밖이거나 이미
+  /// 고른 위치는 고를 수 없습니다. 차례 검증은 서버가 합니다.
+  bool canPick(int slotIndex) =>
+      elevenIsDrawSlot(slotIndex) && !isTaken(slotIndex);
 
   @override
   bool operator ==(Object other) =>
@@ -154,6 +160,50 @@ class ElevenDrawView {
     ),
     winnerUid,
   );
+}
+
+/// 직전 라운드 결과를 본인 기준으로 본 값입니다(P08).
+enum ElevenRoundOutcome { win, lose, tie }
+
+/// `public.lastRoundResult`: 직전 1라운드의 승자 또는 동점만 있습니다(계약 4.1).
+/// 숫자·합·판정 유형은 없고, 이 모델에도 그런 필드를 두지 않습니다.
+@immutable
+class ElevenRoundResult {
+  const ElevenRoundResult({required this.round, this.winnerUid});
+
+  /// 키가 없거나 형식이 맞지 않으면 null(첫 판정 전)입니다.
+  /// `winnerUid`가 없거나 null·빈 값이면 동점입니다(RTDB는 null을 저장하지 않음).
+  static ElevenRoundResult? tryParse(Object? raw) {
+    final map = _map(raw);
+    final round = _int(map['round']);
+    if (round == null) return null;
+    return ElevenRoundResult(
+      round: round,
+      winnerUid: _string(map['winnerUid']),
+    );
+  }
+
+  final int round;
+
+  /// null이면 동점입니다.
+  final String? winnerUid;
+
+  bool get isTie => winnerUid == null;
+
+  ElevenRoundOutcome outcomeFor(String uid) => switch (winnerUid) {
+    null => ElevenRoundOutcome.tie,
+    final winner when winner == uid => ElevenRoundOutcome.win,
+    _ => ElevenRoundOutcome.lose,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is ElevenRoundResult &&
+      round == other.round &&
+      winnerUid == other.winnerUid;
+
+  @override
+  int get hashCode => Object.hash(round, winnerUid);
 }
 
 /// T10 조기 종료 안내용 공개 값입니다.
@@ -199,6 +249,7 @@ class ElevenPublicSnapshot {
     this.finishReason,
     this.finishDetail,
     this.earlyEnd,
+    this.lastRoundResult,
     this.startedAt,
     this.interruption,
   });
@@ -276,6 +327,7 @@ class ElevenPublicSnapshot {
               leaderUid: leaderUid,
               gap: _int(early['gap']) ?? 0,
             ),
+      lastRoundResult: ElevenRoundResult.tryParse(map['lastRoundResult']),
       startedAt: _int(map['startedAt']),
       interruption: interruption is Map
           ? GameInterruption.fromMap(Map<Object?, Object?>.from(interruption))
@@ -301,6 +353,9 @@ class ElevenPublicSnapshot {
   /// `earlyEnd` | `allRounds` | `tieDraw`. 정상 승부 종료에만 있습니다.
   final String? finishDetail;
   final ElevenEarlyEnd? earlyEnd;
+
+  /// 직전 라운드 결과입니다. 첫 판정 전에는 null입니다.
+  final ElevenRoundResult? lastRoundResult;
   final int? startedAt;
   final GameInterruption? interruption;
 
@@ -333,6 +388,7 @@ class ElevenPublicSnapshot {
           finishReason == other.finishReason &&
           finishDetail == other.finishDetail &&
           earlyEnd == other.earlyEnd &&
+          lastRoundResult == other.lastRoundResult &&
           startedAt == other.startedAt &&
           interruption == other.interruption;
 
@@ -356,6 +412,7 @@ class ElevenPublicSnapshot {
     finishReason,
     finishDetail,
     earlyEnd,
+    lastRoundResult,
     startedAt,
     interruption,
   ]);

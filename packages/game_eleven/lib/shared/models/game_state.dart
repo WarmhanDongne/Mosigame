@@ -56,6 +56,18 @@ class ElevenGameState implements GameSessionState<ElevenGameState> {
   bool get isFinished => public.isFinished;
   ElevenHistoryEntry? get lastHistory => history.isEmpty ? null : history.last;
 
+  /// 휴대폰 P08 판정 표시용 이번 라운드 결과입니다. `public.lastRoundResult`가
+  /// 현재 라운드의 것일 때만 돌려줍니다(지난 라운드 값을 새 라운드에 쓰지 않음).
+  /// 승자 또는 동점만 있고 숫자·합·판정 유형은 없습니다.
+  ElevenRoundResult? get currentRoundResult {
+    final result = public.lastRoundResult;
+    return result != null && result.round == public.round ? result : null;
+  }
+
+  /// [uid] 기준 이번 라운드 승·패·동점입니다. 결과가 아직 없으면 null입니다.
+  ElevenRoundOutcome? roundOutcomeFor(String uid) =>
+      currentRoundResult?.outcomeFor(uid);
+
   ElevenGameState copyWith({
     bool? loading,
     ElevenPublicSnapshot? public,

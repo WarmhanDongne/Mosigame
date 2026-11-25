@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_eleven/shared/models/game_state.dart';
 import 'package:game_eleven/shared/models/tiles.dart';
 import 'package:game_eleven/shared/services/history_mapper.dart';
 import 'package:game_eleven/shared/services/private_state_mapper.dart';
@@ -20,6 +21,132 @@ void main() {
         ),
         [1, 3, 5, 7, 9],
       );
+    });
+  });
+
+  group('shared draw deck (contract 2, 2026-11-25)', () {
+    test('is 1–9, nine cards, separate from the 0–9,11 hand', () {
+      expect(elevenDrawTiles, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      expect(elevenDrawSlotCount, 9);
+      expect(elevenDrawTiles.length, elevenDrawSlotCount);
+      expect(elevenDrawTiles, isNot(contains(0)));
+      expect(elevenDrawTiles, isNot(contains(11)));
+    });
+
+    test('slot 0 and 8 are pickable, 9 and -1 are not', () {
+      expect(elevenIsDrawSlot(0), isTrue);
+      expect(elevenIsDrawSlot(8), isTrue);
+      expect(elevenIsDrawSlot(9), isFalse);
+      expect(elevenIsDrawSlot(10), isFalse);
+      expect(elevenIsDrawSlot(-1), isFalse);
+    });
+
+    test('draw view marks taken and out-of-range slots unpickable', () {
+      final draw = ElevenPublicSnapshot.fromValue({
+        'phase': 'drawPick',
+        'draw': {
+          'purpose': 'firstPlayer',
+          'order': ['a', 'b'],
+          'picks': {'a': 8},
+          'nextPickerUid': 'b',
+        },
+      }).draw!;
+      expect(draw.canPick(0), isTrue);
+      expect(draw.canPick(7), isTrue);
+      expect(draw.canPick(8), isFalse, reason: 'already taken by a');
+      expect(draw.canPick(9), isFalse, reason: 'outside 0–8');
+      expect(
+        [
+          for (var i = 0; i < elevenDrawSlotCount; i++) draw.canPick(i),
+        ].where((ok) => ok).length,
+        8,
+      );
+    });
+
+    test('revealed draw cards use the hand color rule (decision 4)', () {
+      expect(
+        elevenDrawTiles.where(
+          (v) => ElevenTileColor.of(v) == ElevenTileColor.black,
+        ),
+        [2, 4, 6, 8],
+      );
+      expect(
+        elevenDrawTiles.where(
+          (v) => ElevenTileColor.of(v) == ElevenTileColor.white,
+        ),
+        [1, 3, 5, 7, 9],
+      );
+    });
+  });
+
+  group('lastRoundResult (contract 4.1, 2026-11-25)', () {
+    ElevenPublicSnapshot parse(Object? last, {int round = 5}) =>
+        ElevenPublicSnapshot.fromValue({
+          'status': 'playing',
+          'phase': 'roundResult',
+          'round': round,
+          'lastRoundResult': ?last,
+        });
+
+    test('missing key means no round has been judged yet', () {
+      expect(parse(null).lastRoundResult, isNull);
+    });
+
+    test('malformed values without a round are ignored', () {
+      expect(parse('tie').lastRoundResult, isNull);
+      expect(parse({'winnerUid': 'a'}).lastRoundResult, isNull);
+    });
+
+    test('winnerUid is read as the round winner', () {
+      final result = parse({'round': 5, 'winnerUid': 'a'}).lastRoundResult!;
+      expect(result.round, 5);
+      expect(result.winnerUid, 'a');
+      expect(result.isTie, isFalse);
+      expect(result.outcomeFor('a'), ElevenRoundOutcome.win);
+      expect(result.outcomeFor('b'), ElevenRoundOutcome.lose);
+    });
+
+    test('missing, null or empty winnerUid is a tie', () {
+      for (final raw in <Map<String, Object?>>[
+        {'round': 5},
+        {'round': 5, 'winnerUid': null},
+        {'round': 5, 'winnerUid': ''},
+      ]) {
+        final result = parse(raw).lastRoundResult!;
+        expect(result.isTie, isTrue, reason: '$raw');
+        expect(result.winnerUid, isNull);
+        expect(result.outcomeFor('a'), ElevenRoundOutcome.tie);
+        expect(result.outcomeFor('b'), ElevenRoundOutcome.tie);
+      }
+    });
+
+    test('takes part in snapshot equality', () {
+      expect(
+        parse({'round': 5, 'winnerUid': 'a'}),
+        parse({'round': 5, 'winnerUid': 'a'}),
+      );
+      expect(
+        parse({'round': 5, 'winnerUid': 'a'}),
+        isNot(parse({'round': 5, 'winnerUid': 'b'})),
+      );
+      expect(parse({'round': 5}), isNot(parse(null)));
+    });
+
+    test('game state exposes it for P08 only for the current round', () {
+      ElevenGameState game(Object? last, int round) => ElevenGameState.initial()
+          .copyWith(loading: false, public: parse(last, round: round));
+      final now = game({'round': 5, 'winnerUid': 'b'}, 5);
+      expect(now.currentRoundResult!.winnerUid, 'b');
+      expect(now.roundOutcomeFor('a'), ElevenRoundOutcome.lose);
+      expect(now.roundOutcomeFor('b'), ElevenRoundOutcome.win);
+      final tie = game({'round': 5}, 5);
+      expect(tie.roundOutcomeFor('a'), ElevenRoundOutcome.tie);
+      // 다음 라운드로 넘어간 뒤에는 지난 결과를 이번 라운드 결과로 쓰지 않습니다.
+      final stale = game({'round': 4, 'winnerUid': 'a'}, 5);
+      expect(stale.public.lastRoundResult, isNotNull);
+      expect(stale.currentRoundResult, isNull);
+      expect(stale.roundOutcomeFor('a'), isNull);
+      expect(game(null, 1).roundOutcomeFor('a'), isNull);
     });
   });
 
@@ -75,8 +202,8 @@ void main() {
         'draw': {
           'purpose': 'finalTie',
           'order': {'1': 'a', '0': 'b'},
-          'picks': {'a': 3, 'b': 9},
-          'revealed': {'a': 11, 'b': 0},
+          'picks': {'a': 3, 'b': 8},
+          'revealed': {'a': 9, 'b': 1},
           'winnerUid': 'a',
         },
         'currentRound': {
@@ -94,6 +221,7 @@ void main() {
       expect(snapshot.draw!.order, ['b', 'a']);
       expect(snapshot.draw!.isTaken(3), isTrue);
       expect(snapshot.draw!.isTaken(4), isFalse);
+      expect(snapshot.draw!.revealed, {'a': 9, 'b': 1});
       expect(snapshot.currentRound.firstColor, ElevenTileColor.white);
       expect(snapshot.currentRound.secondColor, ElevenTileColor.black);
       expect(snapshot.currentRound.autoSubmitted, {'b'});

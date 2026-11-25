@@ -11,8 +11,12 @@
 
 - 제품 결정 원본: 노션 ELEVEN 페이지와 하위 '게임 룰 및 정책', '정보 공개 정책',
   '기기별 UX·UI', '개발 계획·검증·출시'.
-- 화면 참고: Claude 디자인 캔버스 'ELEVEN · 화면 디자인'의 T01–T13, P01–P11.
-  이전 시안 4개는 구현 대상이 아니다.
+- 화면 참고(2026-11-25 갱신): Claude 디자인 캔버스 'ELEVEN · 화면 디자인'(아티팩트
+  6ea11ac6-e281-491d-9726-f891fca89aa7)의 시안 A 느와르 — 태블릿 T01–T13·T13-B, 휴대폰
+  P01–P11·G1–G8, 모션 키트 · 시안 A, 느와르 프로토타입 ①~⑧. 보라·흑백 화면과 다른 시안은
+  구현 대상이 아니다. 저장소 기준 사본: `docs/design/eleven/`.
+- 작업 방식(S5–S7 병렬·Codex 운영) 원본: 노션 'ELEVEN S5–S7 작업 방식 · Claude·Codex 병렬
+  운영 · 2026-11-25'. 지시문: `docs/planning/eleven-lanes/`.
 - 구현 계약: [ELEVEN 게임 계약](../../engineering/ELEVEN_GAME_CONTRACT.md).
 - 단계: 노션 '개발 계획·검증·출시' 5절의 S0–S9. 저장소와 노션 모두 이 작업 ID 하나로
   단계를 기록한다(2026-11-23 노션의 가칭 BWR-S0~S9 표기를 ELEVEN-01로 정리).
@@ -217,3 +221,87 @@
   동일한 `MOSIGAME_BACKEND=local` 빌드를 기본 iPhone 17에 설치·실행하고 실행 파일
   해시가 Player 2·Player 3·iPad와 일치함을 확인한 뒤 재검증했다.
 - `validate --full`은 사용자 지시대로 미실행이다. 커밋·push·배포도 하지 않았다.
+
+<a id="s5-0a-20261125"></a>
+### 2026-11-25 S5 계획 병렬화 · D0 디자인 기준 · S5-0a 계약·서버 (Claude, Cowork)
+
+- 노션 5절 S5·S6·S7을 병렬 레인 구조로 수정하고 작업 방식 하위 페이지를 만들었다.
+  하준 확인 지점: ① S5-0 기준 커밋 승인 ② 병합 후 스크린샷 검토 ③ validate --full 승인·결과.
+- `lib/gen/*.gen.dart` 기존 수정 원인: 이미 등록된 자산·글꼴을 build_runner가 다시 만든 결과
+  (2026-11-25 02:19 KST, 수동 수정 흔적 없음).
+- 루트 `pubspec.yaml`에 `StardosStencil`(Bold, weight 700) 등록. 생성은 S5-0b에서.
+- D0: 디자인 캔버스 버전 1795541629-f371에서 `docs/design/eleven/` 생성(화면 PNG, screens.md,
+  motion.md, motion-frames, data). Playwright 렌더링, 숫자 글꼴은 Stardos 미로드라 PNG의 숫자
+  모양은 screens.md 토큰 기준. 시안의 공용 뽑기 카드는 모두 1–9 9장.
+- S5-0a 계약 변경(2026-11-25 하준 승인): 공용 뽑기 1–9 9장·slotIndex 0–8,
+  `public.lastRoundResult: {round, winnerUid}` 추가. 계약 문서 2·4.1·4.2·4.4·5·7·9절,
+  `functions/src/eleven/{rules,game,callables,types}.ts`, 테스트 2개 파일 수정.
+  RTDB rules는 game/public 필드 검증이 없어 변경 없음.
+- 검증(작업 폴더 `functions/`, Cowork 리눅스 VM에서 맥 node_modules 사용):
+  - `npx tsc` exit 0
+  - `node --test test/eleven-rules.test.mjs test/eleven-game.test.mjs` 28/28 PASS
+  - `node --test test/*.test.mjs` 673/673 PASS, exit 0
+  - `npm run lint` exit 0
+  - `python3 tool/check_package_boundaries.py` 위반 0건, exit 0
+  - validate --full 미실행(승인 대상). 커밋 없음.
+- 다음: S5-0b(맥 Claude Code, `docs/planning/eleven-lanes/S5-0B.md`).
+
+<a id="s5-0b-20261125"></a>
+### 2026-11-25 S5-0b 앱 공통 기반 (Claude Code, 맥 로컬)
+
+- 지시: `docs/planning/eleven-lanes/S5-0B.md`. 브랜치 `feature/black-and-white-ui`, HEAD
+  `5db37ff1`, 기존 미커밋 변경과 `stash@{0}` 보존. 새 Issue·브랜치는 만들지 않았다(지시문이
+  이 작업 트리에서 진행하도록 정함). 커밋 없음.
+- 생성: 루트에서 `dart run build_runner build --delete-conflicting-outputs` exit 0(옵션 무시
+  경고만), `flutter pub get` exit 0. `lib/gen/fonts.gen.dart`에 `FontFamily.stardosStencil`
+  생성 확인. 패키지는 앱 `lib/gen`을 import할 수 없어 `ElevenNoirFonts.number = 'StardosStencil'`
+  문자열 상수를 쓴다.
+- 앱 계약 반영(`packages/game_eleven`):
+  - `tiles.dart`: `elevenDrawSlotCount` 11 → 9, `elevenDrawTiles = [1..9]`,
+    `elevenIsDrawSlot(0–8)`. 공개된 뽑기 카드 색은 손패 규칙(짝수 흑, 홀수 백, 결정 4).
+  - `public_state_mapper.dart`: `ElevenRoundResult`(`lastRoundResult` 키 없음 → null,
+    `winnerUid` 없음·null·빈 값 → 동점), `ElevenRoundOutcome{win,lose,tie}`,
+    `ElevenDrawView.canPick`(범위 밖·이미 고른 위치 false). 숫자·합·판정 유형 필드 없음.
+  - `game_state.dart`: P08용 `currentRoundResult`(현재 라운드 결과만), `roundOutcomeFor(uid)`.
+- 공통 디자인 부품(`lib/shared/`). 토큰 폴더 이름은 `noir/`다. 루트 `.gitignore` 59행
+  `design/`이 모든 `design` 폴더를 무시해 `lib/shared/design/`은 git에 올라가지 않기 때문이다
+  (`.gitignore`는 바꾸지 않음).
+  - `noir/noir_tokens.dart`(screens.md 1절 색·반경·테두리·그림자·흐림·간격),
+    `noir/noir_text.dart`(글자 단계, 숫자 StardosStencil 700·결정 8, 본문 400 → 500),
+    `noir/noir_motion.dart`(MotionKit 1–9·프로토타입 흐름 시점·`Cubic` 곡선),
+    `noir/noir_toast_schedule.dart`(T01–T12 토스트 문구·유지·색 시간표).
+  - `widgets/noir_tile.dart`(흑/백/뒷면/빈 자리 × 보통·선택·사용함·잠김·흐림·승리·패배·고름,
+    손패·패널·안내·슬롯·뽑기 카드·전적칸 크기), `widgets/noir_toast.dart`(8px 떠오름·
+    한 번만 재생·동작 줄이기 시 투명도만·재접속 시 최종 상태).
+- `timing.dart` 변경(motion.md 기준, 값은 noir_motion.dart에서 계산):
+  roundResult 2000 → 3200ms(프로토타입 ④ 새 라운드 전환), drawReveal 600 → 4700ms(①·⑧ 두 번째
+  선택 → 판 전환), roundIntro 800 → 1400ms(T09 토스트 0.2+1.0+0.2), submit 300 → 350ms
+  (MotionKit 3 딜). finalWin 1500ms 유지. 지금 S4 태블릿 골격의 `complete_phase`·T09 겹침
+  시간도 이 값으로 바뀐다.
+- 화면 문구: `game_copy.dart`에 `ElevenScreenCopy` 추가(T01–T13·T13-B, P01–P11, G1–G8 원문).
+  `test/shared/screen_copy_test.dart`가 screens.md 표와 화면별로 양방향 비교한다.
+- 화면 ID: `ElevenPhoneScreen`·`resolveElevenPhoneScreen`(P01–P11·G1–G8),
+  `ElevenTabletScreen`·`resolveElevenTabletScreen`(T01–T13·T13-B)을 기존 `game_stage.dart`에
+  추가. 시간 연출로 갈리는 화면(G6→P08, G7→P10/P11, T06→T07, T10→T13, T09)은 레인이 넘기는
+  `roundResultRevealed`·`gameEndRevealed`·`roundIntroActive`로 고른다. 기존 Stage enum은 유지.
+- 디자인 가드 `test/shared/design_guard_test.dart`: `lib/phone/**`, `lib/tablet/**`에서
+  `Color(0x`, `Colors.`, `fontFamily:`, `TextStyle(`, 숫자 `Duration(`, `Curves.`, `Cubic(`
+  금지. 기존 위반 20줄(S4 골격 `TextStyle(` 18, `Color(0x99000000)` 1, `Duration(200ms)` 1)은
+  레인 범위 화면이라 허용 목록(파일·규칙·줄 내용·이유)에 두었고, 사라지면 테스트가 허용 목록
+  정리를 요구한다.
+- 골든 3개(`test/shared/goldens/`): 휴대폰 손패 상태, 태블릿 슬롯·뽑기 카드·전적칸, 토스트 글자.
+  macOS에서만 비교(다른 OS는 group skip). 테스트에는 한글 글꼴이 없어 한글은 상자로 그려진다.
+- 검증(작업 폴더 `packages/game_eleven`):
+  - `flutter test --no-pub` 111/111 PASS, exit 0
+  - 루트 `flutter analyze --no-pub packages/game_eleven` No issues, exit 0
+  - `dart format --output=none --set-exit-if-changed packages/game_eleven/lib packages/game_eleven/test` exit 0
+  - 루트 `python3 tool/check_package_boundaries.py --max 0` 위반 0건, exit 0
+  - 실행 전후 `git status --porcelain` 비교: 이번 작업 파일 외 tracked/unignored 변경 없음
+    (pubspec.lock 변화 없음). functions는 손대지 않아 생략. validate --full 미실행(승인 대상).
+- 하준 확인 필요:
+  1. 본문 글꼴 Noto Sans KR은 앱에 번들되어 있지 않아 기기 글꼴로 대체된다. 번들은 새 asset.
+  2. P08은 시안에 “내가 이겼어요! +1”과 선공 안내 “내가 먼저 내요”만 있다. 진 경우·동점·후공
+     문구가 없어 키를 만들지 않았다.
+  3. 카드 모서리 점은 측정 자료에 첫 점 위치만 있어 나머지 두 점 간격은 기준 PNG를 보고 맞췄다.
+  4. `game_theme.dart`의 S4 임시 색(`ElevenColors`)은 가드 규칙 밖이라 남겨 두었다. 게임 목록
+     테이블 색(`ElevenColors.table` #111111)도 바꾸지 않았다.

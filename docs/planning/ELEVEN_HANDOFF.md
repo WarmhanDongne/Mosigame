@@ -129,3 +129,34 @@ FULL: 사용자 지시로 미실행. 배포·커밋·push 없음.
 FULL: 사용자 지시로 미실행. 커밋·push·배포 없음.
 다음: S5 디자인/UX 단계. push 전 브랜치 분기 정리.
 ```
+
+
+## 2026-11-25 · S5-0a 계약·서버 + D0 디자인 기준 (Claude, Cowork)
+
+```text
+브랜치/HEAD: feature/black-and-white-ui / 5db37ff1 (커밋 없음, stash@{0} 보존).
+변경: 계약 문서, functions/src/eleven 4개, functions/test eleven 2개, pubspec(StardosStencil),
+  docs/design/eleven/(신규, 약 55MB), docs/planning/eleven-lanes/S5-0B.md(신규).
+검증: tsc 0, functions 테스트 673/673, lint 0, 패키지 경계 0건. FULL 미실행.
+다음: 맥 Claude Code에서 "docs/planning/eleven-lanes/S5-0B.md 읽고 진행".
+  끝나면 기준 커밋 승인 → 레인 지시문(LANE-A/B/C)·worktree 스크립트 작성.
+참고: .gitignore 59행 `design/` 때문에 docs/design/eleven은 git 추적 밖이다. 레인 worktree에는
+  생기지 않으므로 레인 지시문은 원본 폴더 절대경로로 참조한다. 추적 여부는 하준 결정.
+```
+
+## 2026-11-25 · S5-0b 앱 공통 기반 (Claude Code, 맥)
+
+```text
+브랜치/HEAD: feature/black-and-white-ui / 5db37ff1 (커밋 없음, stash@{0} 보존, Issue·새 브랜치 없음).
+완료: FontFamily.stardosStencil 생성, 앱 9장·lastRoundResult 반영, 느와르 토큰·글자·모션 상수,
+  타일·토스트 공통 위젯+골든 3개, 화면 문구 키(ElevenScreenCopy), 화면 ID 순수 함수
+  (ElevenPhoneScreen P01–P11·G1–G8 / ElevenTabletScreen T01–T13·T13-B), 디자인 가드 테스트.
+timing 변경: roundResult 2000→3200, drawReveal 600→4700, roundIntro 800→1400, submit 300→350ms.
+검증: packages/game_eleven flutter test 111/111 exit 0, flutter analyze(패키지) exit 0,
+  dart format 검사 exit 0, 패키지 경계 0건 exit 0. functions 미변경. FULL 미실행.
+레인에게: lib/phone·lib/tablet은 lib/shared/noir/*와 lib/shared/widgets/noir_*.dart만 쓴다.
+  화면을 시안으로 바꾸면 design_guard_test 허용 목록의 해당 줄도 지운다. 문구는
+  ElevenScreenCopy만 쓰고 game_copy.dart는 고치지 않는다.
+하준 확인: Noto Sans KR 번들 여부, P08 패배·동점·후공 문구 부재, 모서리 점 간격 검수.
+다음: 하준 기준 커밋 승인 → 레인 지시문(LANE-A/B/C)·worktree 스크립트.
+```
