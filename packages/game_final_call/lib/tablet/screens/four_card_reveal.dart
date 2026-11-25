@@ -50,6 +50,7 @@ class _FourCardRevealTable extends StatefulWidget {
 
 class _FourCardRevealTableState extends State<_FourCardRevealTable> {
   static const double _heartShatterProgress = 0.22;
+  final _fourCardCue = ProgressSoundCue();
   final _heartbreakCue = ProgressSoundCue();
 
   double _phase(double elapsed, double start, double duration) =>
@@ -78,7 +79,8 @@ class _FourCardRevealTableState extends State<_FourCardRevealTable> {
         );
         final cardWidth = (104 * scale).clamp(72.0, 132.0).toDouble();
         final cardHeight = cardWidth * finalCallCardHeightRatio;
-        final callerCenter = caller == null || caller.seatIndex >= centers.length
+        final callerCenter =
+            caller == null || caller.seatIndex >= centers.length
             ? center
             : centers[caller.seatIndex];
 
@@ -87,6 +89,12 @@ class _FourCardRevealTableState extends State<_FourCardRevealTable> {
           onCompleted: widget.onCompleted,
           builder: (context, progress) {
             final elapsed = progress * _fourCardTotalMs;
+            _fourCardCue.maybePlay(
+              context,
+              FinalCallSounds.fourCard,
+              value: elapsed,
+              threshold: 0,
+            );
             final heartProgress = _phase(
               elapsed,
               _fourCardHeartStart,
@@ -297,7 +305,11 @@ class _FourCardRevealTableState extends State<_FourCardRevealTable> {
           offsetFromMiddle.abs() * 12 * scale,
         );
     final fly = Curves.easeOutCubic.transform(
-      _phase(elapsed, _fourCardFlyStart + index * _fourCardStagger, _fourCardFlyMs),
+      _phase(
+        elapsed,
+        _fourCardFlyStart + index * _fourCardStagger,
+        _fourCardFlyMs,
+      ),
     );
     final flip = _phase(
       elapsed,
@@ -307,7 +319,9 @@ class _FourCardRevealTableState extends State<_FourCardRevealTable> {
     // 네 장이 다 뒤집히면 한 번 통통 튑니다.
     final bounceT = _phase(
       elapsed,
-      _fourCardFlipStart + (count - 1) * _fourCardStagger + _fourCardFlipMs +
+      _fourCardFlipStart +
+          (count - 1) * _fourCardStagger +
+          _fourCardFlipMs +
           index * 70,
       360,
     );

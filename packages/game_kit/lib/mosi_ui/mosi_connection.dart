@@ -148,7 +148,11 @@ class MosiConnectionLayout extends StatelessWidget {
                         child: IntrinsicHeight(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _sheet(wide: false),
+                            children: _sheet(
+                              wide: false,
+                              availableWidth:
+                                  sheet.maxWidth - padding.horizontal,
+                            ),
                           ),
                         ),
                       ),
@@ -197,7 +201,10 @@ class MosiConnectionLayout extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: _sheet(wide: true),
+                      children: _sheet(
+                        wide: true,
+                        compactWide: constraints.maxWidth < 700,
+                      ),
                     ),
                   ),
                 ),
@@ -209,7 +216,11 @@ class MosiConnectionLayout extends StatelessWidget {
     );
   }
 
-  List<Widget> _sheet({required bool wide}) {
+  List<Widget> _sheet({
+    required bool wide,
+    double? availableWidth,
+    bool compactWide = false,
+  }) {
     return [
       Align(
         alignment: Alignment.centerLeft,
@@ -220,18 +231,22 @@ class MosiConnectionLayout extends StatelessWidget {
         ),
       ),
       SizedBox(height: wide ? 20 : 14),
-      Text(
+      MosiBalancedText(
         title.localized,
+        maxLines: 2,
+        availableWidth: availableWidth,
         style: MosiFonts.sans(
-          size: wide ? 38 : 24,
+          size: wide ? (compactWide ? 28 : 38) : 24,
           weight: FontWeight.w700,
           color: MosiColors.navy,
           height: wide ? 1.25 : 1.3,
         ),
       ),
       SizedBox(height: wide ? 14 : 8),
-      Text(
+      MosiBalancedText(
         body.localized,
+        maxLines: 3,
+        availableWidth: availableWidth,
         style: MosiFonts.sans(
           size: wide ? 18 : 15,
           color: MosiColors.ink2,
@@ -346,13 +361,19 @@ class MosiConnectionStatus extends StatelessWidget {
             const _BlinkingDots(),
           if (icon != null || dots) const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              text.localized,
-              style: MosiFonts.sans(
-                size: 14,
-                weight: FontWeight.w700,
-                color: color,
-                height: 1.35,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                text.localized,
+                maxLines: 1,
+                softWrap: false,
+                style: MosiFonts.sans(
+                  size: 14,
+                  weight: FontWeight.w700,
+                  color: color,
+                  height: 1.35,
+                ),
               ),
             ),
           ),

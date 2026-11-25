@@ -4,6 +4,7 @@ import 'package:game_final_call/game_copy.dart';
 import 'package:game_final_call/phone/widgets/game_actions.dart';
 import 'package:game_final_call/shared/models/game_models.dart';
 import 'package:game_final_call/shared/providers/game_controller.dart';
+import 'package:game_final_call/shared/widgets/card_view.dart';
 
 FinalCallCard _card(String color, int value) =>
     FinalCallCard(id: '${color}_$value', color: color, value: value);
@@ -60,6 +61,16 @@ class _Game extends Fake implements FinalCallController {
   };
   @override
   FinalCallTeam? get myTeam => FinalCallTeam.red;
+}
+
+class _FourCardGame extends _Game {
+  @override
+  List<FinalCallCard> get hand => [
+    _card('blue', 7),
+    _card('red', 7),
+    _card('green', 7),
+    _card('yellow', 2),
+  ];
 }
 
 Widget _panel(Widget child) => MaterialApp(
@@ -176,6 +187,38 @@ void main() {
     await tester.tap(find.text('초록 9랑 바꾸기'));
     await tester.tap(find.text(FinalCallCopy.discardNewCard));
     expect(completed, ['green_9', null]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('교체 후 포카드면 예상 합계 대신 포카드를 표시한다', (tester) async {
+    final game = _FourCardGame()
+      ..canDraw = false
+      ..canCall = false
+      ..pendingDraw = _card('yellow', 7)
+      ..pendingDrawSource = 'deck';
+    await tester.pumpWidget(
+      _panel(
+        FinalCallPhoneActions(
+          controller: game,
+          selectedCardId: 'yellow_2',
+          onDraw: (_) {},
+          onCall: () {},
+          onCompleteTurn: (_) async {},
+          replacementInProgress: false,
+        ),
+      ),
+    );
+
+    expect(find.text(FinalCallCopy.fourCardBadge), findsOneWidget);
+    expect(find.text('28'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('새 카드 수신 상태는 카드 뒷면과 진행 문구를 표시한다', (tester) async {
+    await tester.pumpWidget(_panel(const FinalCallNewCardLoadingPanel()));
+    expect(find.text(FinalCallCopy.receivingNewCard), findsOneWidget);
+    expect(find.byType(FinalCallCardBack), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 550));
     expect(tester.takeException(), isNull);
   });
 

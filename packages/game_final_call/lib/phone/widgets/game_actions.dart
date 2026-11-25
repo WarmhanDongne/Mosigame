@@ -380,7 +380,11 @@ class _FourCardTurnStart extends StatelessWidget {
         Text(
           FinalCallCopy.fourCardDrawWarning,
           textAlign: TextAlign.center,
-          style: finalCallPopText(13, color: FinalCallColors.muted, height: 1.35),
+          style: finalCallPopText(
+            13,
+            color: FinalCallColors.muted,
+            height: 1.35,
+          ),
         ),
         const SizedBox(height: 8),
         Opacity(
@@ -598,52 +602,145 @@ class _ScorePreview extends StatelessWidget {
   final FinalCallCombination after;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        FinalCallCopy.ifReplaced,
-        style: finalCallPopText(13, color: FinalCallColors.muted),
-      ),
-      FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+  Widget build(BuildContext context) {
+    final makesFourCard = isFinalCallFourOfAKind(after.cards);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          FinalCallCopy.ifReplaced,
+          style: finalCallPopText(13, color: FinalCallColors.muted),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '$before',
+                style: finalCallPopText(22, color: const Color(0xFF9C95B8)),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: FinalCallColors.ink,
+                ),
+              ),
+              Text(
+                makesFourCard ? FinalCallCopy.fourCardBadge : '${after.score}',
+                style: finalCallPopText(
+                  makesFourCard ? 25 : 40,
+                  color: makesFourCard || after.score >= before
+                      ? FinalCallColors.violet
+                      : FinalCallColors.red,
+                  height: 1,
+                  shadows: finalCallPopOutline(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          FinalCallCopy.combinationName(after, finalCallCardColorLabel),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: finalCallPopText(13),
+        ),
+      ],
+    );
+  }
+}
+
+/// 첨부 시안의 새 카드 수신 상태입니다. 바깥 흰 패널은
+/// [FinalCallPhonePanel]이 유지하고, 카드 뒷면만 떠오르며 세 점이 순서대로
+/// 움직여 서버 응답을 기다리는 중임을 보여 줍니다.
+class FinalCallNewCardLoadingPanel extends StatefulWidget {
+  const FinalCallNewCardLoadingPanel({super.key});
+
+  @override
+  State<FinalCallNewCardLoadingPanel> createState() =>
+      _FinalCallNewCardLoadingPanelState();
+}
+
+class _FinalCallNewCardLoadingPanelState
+    extends State<FinalCallNewCardLoadingPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    label: FinalCallCopy.receivingNewCard.replaceAll('\n', ' '),
+    excludeSemantics: true,
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final wave = math.sin(_controller.value * math.pi * 2);
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              '$before',
-              style: finalCallPopText(22, color: const Color(0xFF9C95B8)),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6),
-              child: Icon(
-                Icons.arrow_forward_rounded,
-                size: 18,
-                color: FinalCallColors.ink,
+            Transform.translate(
+              offset: Offset(0, -5 * wave),
+              child: Transform.rotate(
+                angle: .035 * wave,
+                child: const FinalCallCardBack(width: 74),
               ),
             ),
+            const SizedBox(height: 14),
             Text(
-              '${after.score}',
+              FinalCallCopy.receivingNewCard,
+              textAlign: TextAlign.center,
               style: finalCallPopText(
-                40,
-                color: after.score >= before
-                    ? FinalCallColors.violet
-                    : FinalCallColors.red,
-                height: 1,
-                shadows: finalCallPopOutline(),
+                17,
+                color: FinalCallColors.ink,
+                height: 1.15,
               ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var index = 0; index < 3; index++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Transform.translate(
+                      offset: Offset(
+                        0,
+                        -3 *
+                            math.max(
+                              0,
+                              math.sin(
+                                (_controller.value - index * .14) * math.pi * 2,
+                              ),
+                            ),
+                      ),
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: FinalCallColors.violet,
+                          shape: BoxShape.circle,
+                        ),
+                        child: SizedBox.square(dimension: 8),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
-        ),
-      ),
-      Text(
-        FinalCallCopy.combinationName(after, finalCallCardColorLabel),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: finalCallPopText(13),
-      ),
-    ],
+        );
+      },
+    ),
   );
 }
 
@@ -863,8 +960,7 @@ class FinalCallWaitingPanel extends StatelessWidget {
                           ? FinalCallCopy.partner
                           : null,
                       isMe: order[index].uid == controller.uid,
-                      fourCard:
-                          fourCard && order[index].uid == controller.uid,
+                      fourCard: fourCard && order[index].uid == controller.uid,
                     ),
                 ],
               ),

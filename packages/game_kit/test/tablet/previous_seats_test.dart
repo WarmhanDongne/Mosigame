@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/player_layouts/services/player_layout_factory.dart';
+import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/player_layouts/widgets/player_layout_editor.dart';
 
 class _Player implements GameRoomPlayer {
@@ -30,6 +33,26 @@ class _Player implements GameRoomPlayer {
 }
 
 void main() {
+  test('면 배치는 모든 좌석을 같은 각도로 회전하고 원형 순서를 유지한다', () {
+    for (final playerCount in [2, 3, 4, 6, 8]) {
+      final corners = normalizedPlayerCenters(playerCount);
+      final sides = normalizedSideSeatCenters(playerCount);
+      final expectedRotation = math.pi / playerCount;
+      for (var index = 0; index < playerCount; index++) {
+        final from = corners[index] - const Offset(0.5, 0.5);
+        final to = sides[index] - const Offset(0.5, 0.5);
+        var delta = to.direction - from.direction;
+        while (delta < 0) {
+          delta += math.pi * 2;
+        }
+        while (delta >= math.pi * 2) {
+          delta -= math.pi * 2;
+        }
+        expect(delta, closeTo(expectedRotation, 1e-9));
+      }
+    }
+  });
+
   group('SavedSeatLayout', () {
     test('저장 명단과 현재 명단이 완전히 같을 때만 자동 복원한다', () {
       final saved = SavedSeatLayout.fromWire({
@@ -101,6 +124,62 @@ void main() {
     });
   });
 
+  group('PlayerLayoutFactory.mergeSavedRoster', () {
+    test('교체된 새 참가자는 나간 참가자의 빈 자리를 채운다', () {
+      final layout = PlayerLayoutFactory.mergeSavedRoster(
+        const [
+          _Player('a', 0),
+          _Player('b', 1),
+          _Player('d', 3),
+          _Player('new', -1),
+        ],
+        savedPlayerUids: const {'a', 'b', 'c', 'd'},
+      );
+
+      expect(layout?.seatIndexes, [0, 1, 3, 2]);
+    });
+
+    test('인원이 줄면 남은 참가자의 이전 순서를 유지해 다시 매긴다', () {
+      final layout = PlayerLayoutFactory.mergeSavedRoster(
+        const [_Player('a', 3), _Player('b', 0), _Player('c', 1)],
+        savedPlayerUids: const {'a', 'b', 'c', 'd'},
+      );
+
+      expect(layout?.seatIndexes, [2, 0, 1]);
+    });
+
+    test('인원이 늘면 기존 좌석을 유지하고 새 참가자를 남는 자리에 둔다', () {
+      final layout = PlayerLayoutFactory.mergeSavedRoster(
+        const [
+          _Player('a', 2),
+          _Player('b', 0),
+          _Player('c', 1),
+          _Player('new', -1),
+        ],
+        savedPlayerUids: const {'a', 'b', 'c'},
+      );
+
+      expect(layout?.seatIndexes, [2, 0, 1, 3]);
+    });
+
+    test('기존 참가자가 없거나 이전 좌석이 손상되면 기본 배치를 사용한다', () {
+      expect(
+        PlayerLayoutFactory.mergeSavedRoster(
+          const [_Player('new-a', -1), _Player('new-b', -1)],
+          savedPlayerUids: const {'old-a', 'old-b'},
+        ),
+        isNull,
+      );
+      expect(
+        PlayerLayoutFactory.mergeSavedRoster(
+          const [_Player('a', 1), _Player('b', 1), _Player('new', -1)],
+          savedPlayerUids: const {'a', 'b'},
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('PlayerLayoutEditor 이전 자리', () {
     const players = [_Player('a', 2), _Player('b', 0), _Player('c', 1)];
     final initial = PlayerLayoutFactory.create(players);
@@ -161,13 +240,44 @@ void main() {
       expect(find.text('면 자리'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('seat-layout-mode-toggle')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('모서리 자리'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(MosiButton, '설정 완료'));
       await tester.pump(const Duration(milliseconds: 1700));
       await tester.pump(const Duration(milliseconds: 300));
       expect(prepared.single.seatLayoutMode, SeatLayoutMode.sides);
+    });
+
+    testWidgets('모서리와 면 전환은 좌석 묶음의 간격을 유지하며 한 방향으로 돈다', (tester) async {
+      await pumpEditor(tester);
+      final players = [
+        find.byKey(const ValueKey('a')),
+        find.byKey(const ValueKey('b')),
+        find.byKey(const ValueKey('c')),
+      ];
+      final toggle = find.byKey(const Key('seat-layout-mode-toggle'));
+      final start = players.map(tester.getCenter).toList(growable: false);
+
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(tester.widget<MosiButton>(toggle).onPressed, isNull);
+
+      await tester.pump(const Duration(milliseconds: 325));
+      final middle = players.map(tester.getCenter).toList(growable: false);
+      for (var left = 0; left < players.length; left++) {
+        for (var right = left + 1; right < players.length; right++) {
+          expect(
+            (middle[left] - middle[right]).distance,
+            closeTo((start[left] - start[right]).distance, 0.5),
+            reason: '회전 중에도 좌석 묶음의 상대 간격이 유지되어야 한다.',
+          );
+        }
+      }
+
+      await tester.pumpAndSettle();
+      expect(tester.widget<MosiButton>(toggle).onPressed, isNotNull);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('세 글자 닉네임은 자리 카드에서 말줄임 없이 보인다', (tester) async {

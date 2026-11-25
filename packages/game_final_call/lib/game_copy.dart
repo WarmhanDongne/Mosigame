@@ -226,6 +226,8 @@ abstract final class FinalCallCopy {
   static String get submit => _t('제출', 'Submit', '提交', '提交');
   static String get selectCards => _t('카드 선택', 'Select cards', '选择卡牌', '選擇卡牌');
   static String get newCard => _t('새 카드', 'New card', '新牌', '新牌');
+  static String get receivingNewCard =>
+      _t('새 카드를\n가져오는 중', 'Getting a\nnew card', '正在取得\n新牌', '正在取得\n新牌');
   static String get discard => _t('버리기', 'Discard', '丢弃', '丟棄');
   static String get replace => _t('교체', 'Replace', '替换', '替換');
   static String get confirm => _t('확인', 'Confirm', '确认', '確認');

@@ -273,7 +273,7 @@ class _HoldemTabletGameState extends ConsumerState<HoldemTabletGame> {
   }
 
   Future<void> _endAndExit(HoldemController controller) async {
-    if (await controller.endGame() && mounted) Navigator.of(context).maybePop();
+    if (await controller.endGame() && mounted) exitGameRoute(context);
   }
 }
 

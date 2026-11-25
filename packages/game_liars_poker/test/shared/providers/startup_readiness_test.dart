@@ -147,6 +147,7 @@ void main() {
         'players': {
           'phone': {'status': 'alive', 'remainingCardCount': 5},
           'other': {'status': 'alive', 'remainingCardCount': 5},
+          'peer': {'status': 'alive', 'remainingCardCount': 5},
         },
       };
       query.pub.add(_Event(value));
@@ -182,6 +183,28 @@ void main() {
       );
       await tester.pump();
       expect(game.canCallLiar, true);
+
+      query.pub.add(
+        _Event({
+          ...value,
+          'revision': 4,
+          'recovery': {'paused': false},
+          'players': {
+            'phone': {'status': 'alive', 'remainingCardCount': 5},
+            'other': {'status': 'eliminated', 'remainingCardCount': 0},
+            'peer': {'status': 'alive', 'remainingCardCount': 5},
+          },
+          'lastPlay': {
+            'playId': 'play-1',
+            'playerUid': 'other',
+            'cardCount': 1,
+            'revealed': false,
+          },
+        }),
+      );
+      await tester.pump();
+      expect(game.canCallLiar, false);
+      expect(game.canSelectCards, true);
     },
   );
   testWidgets(

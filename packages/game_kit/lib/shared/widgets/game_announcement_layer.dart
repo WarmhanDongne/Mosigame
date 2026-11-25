@@ -138,18 +138,20 @@ class GameAnnouncementLayer extends StatelessWidget {
     final duration = displayDuration ?? current.duration;
     final localizedText = current.text.localized;
     if (!current.animate && current.kind != GameAnnouncementKind.persistent) {
-      return _StaticTimedAnnouncement(
-        key: ValueKey(current.id),
-        duration: duration,
-        onCompleted: () => onCompleted?.call(current),
-        child: Text(
-          localizedText,
-          textAlign: style.textAlign,
-          style: textStyle,
+      return _fitAnnouncement(
+        _StaticTimedAnnouncement(
+          key: ValueKey(current.id),
+          duration: duration,
+          onCompleted: () => onCompleted?.call(current),
+          child: Text(
+            localizedText,
+            textAlign: style.textAlign,
+            style: textStyle,
+          ),
         ),
       );
     }
-    return switch (current.kind) {
+    return _fitAnnouncement(switch (current.kind) {
       GameAnnouncementKind.gameStart => GameStartAnimation(
         key: ValueKey(current.id),
         text: localizedText,
@@ -176,8 +178,17 @@ class GameAnnouncementLayer extends StatelessWidget {
         textAlign: style.textAlign,
         style: textStyle,
       ),
-    };
+    });
   }
+
+  /// 긴 번역·큰 접근성 글꼴에서도 안내가 화면 밖으로 밀리지 않게 실제 문구만
+  /// 축소합니다. 배경과 단계 애니메이션의 중심은 그대로라 화면이 흔들리지
+  /// 않습니다.
+  Widget _fitAnnouncement(Widget child) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.center,
+    child: child,
+  );
 }
 
 /// 애니메이션을 끈 문구도 유지시간 후 정상적으로 단계를 완료하게 합니다.

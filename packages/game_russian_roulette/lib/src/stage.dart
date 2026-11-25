@@ -159,9 +159,6 @@ class RouletteStageModel {
     this.wedgeOpacity = 1,
     this.secondWedge = true,
     this.shot = false,
-    this.trailFrom,
-    this.trailTo,
-    this.stepMarks = const [],
     this.timerFraction,
     this.label,
     this.labelTag,
@@ -174,6 +171,8 @@ class RouletteStageModel {
     this.cylinderReveal = 1,
     this.banner,
     this.bannerProgress = 1,
+    this.gunPose,
+    this.discBump = 1,
   });
 
   final List<RouletteSeatModel> seats;
@@ -181,9 +180,6 @@ class RouletteStageModel {
   final double wedgeOpacity;
   final bool secondWedge;
   final bool shot;
-  final double? trailFrom;
-  final double? trailTo;
-  final List<double> stepMarks;
   final double? timerFraction;
   final String? label;
   final String? labelTag;
@@ -204,6 +200,12 @@ class RouletteStageModel {
   /// 판 위아래로 크게 찍히는 문구(예: 게임 시작)입니다.
   final String? banner;
   final double bannerProgress;
+
+  /// 총의 자세입니다. null이면 세워 둔 총입니다(시작 연출에서만 씁니다).
+  final RouletteGunPose? gunPose;
+
+  /// 원판이 툭 튀는 배율입니다. 총이 내려앉을 때 잠깐 1을 넘습니다.
+  final double discBump;
 }
 
 /// 판 전체입니다. 주어진 공간에 1180×820 비율로 맞춰 그립니다.
@@ -931,7 +933,6 @@ class _StagePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const c = RouletteStageGeometry.center;
-    final red = Paint()..color = RouletteColors.red;
 
     if (model.rays) {
       for (var i = 0; i < 12; i++) {
@@ -977,28 +978,6 @@ class _StagePainter extends CustomPainter {
       }
     }
 
-    final from = model.trailFrom;
-    final to = model.trailTo;
-    if (from != null && to != null && to > from) {
-      const rx = RouletteStageGeometry.rx - 150;
-      const ry = RouletteStageGeometry.ry - 120;
-      for (var a = from + .28; a <= to - .1; a += .12) {
-        canvas.drawCircle(RouletteStageGeometry.alongAim(a, rx, ry), 3.5, red);
-      }
-      for (final mark in model.stepMarks) {
-        final p = RouletteStageGeometry.alongAim(mark, rx, ry);
-        canvas.drawCircle(p, 9, Paint()..color = RouletteColors.ink);
-        canvas.drawCircle(
-          p,
-          9,
-          Paint()
-            ..color = RouletteColors.red
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3,
-        );
-      }
-    }
-
     if (!model.showCylinder || model.cylinderReveal <= 0) return;
     final reveal = model.cylinderReveal.clamp(0.0, 1.0);
     if (reveal < 1) {
@@ -1012,6 +991,13 @@ class _StagePainter extends CustomPainter {
       final discScale = .85 + .15 * Curves.easeOutBack.transform(reveal);
       canvas.translate(c.dx, c.dy);
       canvas.scale(discScale);
+      canvas.translate(-c.dx, -c.dy);
+    }
+    final bump = model.discBump != 1;
+    if (bump) {
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.scale(model.discBump);
       canvas.translate(-c.dx, -c.dy);
     }
     canvas.drawCircle(
@@ -1044,6 +1030,7 @@ class _StagePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
+    if (bump) canvas.restore();
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(model.gunAim);
@@ -1052,7 +1039,12 @@ class _StagePainter extends CustomPainter {
       final t = Curves.easeOutBack.transform(reveal);
       canvas.scale((1.7 - .7 * t) / (.85 + .15 * t));
     }
-    paintRouletteGun(canvas, shot: model.shot);
+    paintRouletteGunOnDisc(
+      canvas,
+      aim: model.gunAim,
+      pose: model.gunPose ?? RouletteGunPose.standing,
+      shot: model.shot,
+    );
     final flash = model.flash;
     if (flash != null && flash >= 0 && flash < 1) _muzzleFlash(canvas, flash);
     canvas.restore();

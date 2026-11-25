@@ -69,6 +69,18 @@ export interface FinalCallPublicState {
   updatedAt: number;
   finishedAt?: number;
   interruption?: PublicGameInterruption;
+  /**
+   * 마지막 시간 초과 처리입니다. 휴대폰은 uid가 자신이고 at이 새로우면
+   * 조작 패널에 "시간 끝!" 안내를 띄웁니다. 진행 판정에는 쓰지 않습니다.
+   */
+  lastTimeout?: FinalCallTurnTimeout;
+}
+
+/** 시간 초과로 서버가 대신 처리한 일입니다(휴대폰 안내 전용). */
+export interface FinalCallTurnTimeout {
+  uid: string;
+  kind: "discardDeck" | "discardDrawn" | "lastSwapSubmit" | "finalSubmit" | "deckEmpty";
+  at: number;
 }
 
 export interface FinalCallPrivatePlayer {

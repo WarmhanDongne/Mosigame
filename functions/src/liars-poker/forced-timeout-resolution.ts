@@ -68,6 +68,7 @@ export function resolveForcedTimeout(
     game.public.penaltyTargetUid = turnUid;
     delete game.public.penaltyResult;
     delete game.server.penaltyCountIncrementedBeforeRoulette;
+    game.public.lastTimeout = {uid: turnUid, kind: "fold", at: now};
     game.public.revision += 1;
     game.public.updatedAt = now;
     return {
@@ -96,6 +97,7 @@ export function resolveForcedTimeout(
     game.public.lastPlay = revealedLastPlay;
     game.public.roundPlays ??= {};
     game.public.roundPlays[lastPlay.playId] = revealedLastPlay;
+    game.public.lastTimeout = {uid: turnUid, kind: "liar", at: now};
     game.public.revision += 1;
     game.public.updatedAt = now;
     return {
@@ -145,6 +147,7 @@ export function resolveForcedTimeout(
   game.public.roundPlays ??= {};
   game.public.roundPlays[play.playId] = play;
   game.server.lastPlayCards = [submittedCard];
+  game.public.lastTimeout = {uid: turnUid, kind: "submit", at: now};
 
   if (nextTurnUid === null) {
     restartRound(game, findNextAlivePlayer(game.public.players, turnUid), now);

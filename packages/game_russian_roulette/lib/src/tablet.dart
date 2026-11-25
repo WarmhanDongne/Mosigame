@@ -9,6 +9,7 @@ import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/game_recovery_layer.dart';
 import 'package:game_kit/shared/widgets/game_turn_countdown_face.dart';
+import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/sound/game_background_music.dart';
 import 'package:game_kit/sound/providers/sound_provider.dart';
 import 'package:game_kit/sound/sound_effects.dart';
@@ -51,6 +52,7 @@ class _RussianRouletteTabletScreenState
 
   Timer? _phaseTimer;
   Timer? _victoryTimer;
+  Timer? _rotationSoundTimer;
   String _scheduledKey = '';
   int _phaseAttempts = 0;
   String? _audioKey;
@@ -93,6 +95,7 @@ class _RussianRouletteTabletScreenState
     _ticker.dispose();
     _backgroundMusic.dispose();
     _victoryTimer?.cancel();
+    _rotationSoundTimer?.cancel();
     _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
     _phaseTimer?.cancel();
     super.dispose();
@@ -109,7 +112,7 @@ class _RussianRouletteTabletScreenState
 
   void _playEffect(String asset) => SoundEffects.play(context, asset);
 
-  void _syncAudio(RussianRouletteView game) {
+  void _syncAudio(RussianRouletteView game, Duration elapsed) {
     if (!game.loaded) return;
 
     if (!game.finished && !game.paused) {
@@ -119,6 +122,7 @@ class _RussianRouletteTabletScreenState
     }
 
     if (game.paused) {
+      _rotationSoundTimer?.cancel();
       _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
       return;
     }
@@ -129,6 +133,9 @@ class _RussianRouletteTabletScreenState
     if (_audioKey == null) {
       _audioKey = key;
       _lastAudioPhase = game.phase;
+      if (game.phase == 'rotating') {
+        _scheduleRotationSound(game, elapsed, key);
+      }
       return;
     }
     if (_audioKey == key) return;
@@ -139,6 +146,7 @@ class _RussianRouletteTabletScreenState
     _victoryTimer?.cancel();
 
     if (game.phase != 'rotating') {
+      _rotationSoundTimer?.cancel();
       _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
     }
 
@@ -159,15 +167,7 @@ class _RussianRouletteTabletScreenState
 
     switch (game.phase) {
       case 'rotating':
-        if (game.spinCount > 0) {
-          _runSound(
-            _sound?.playSustainedEffect(
-              RussianRouletteSounds.revolverSpin,
-              window: RussianRouletteTiming.rotating(game.spinCount),
-            ),
-            '리볼버 회전음을 재생하지 못했습니다',
-          );
-        }
+        _scheduleRotationSound(game, elapsed, key);
         break;
       case 'outcome':
         _playEffect(RussianRouletteSounds.gunshot);
@@ -177,6 +177,35 @@ class _RussianRouletteTabletScreenState
         break;
       default:
         break;
+    }
+  }
+
+  /// 서버가 회전 단계로 바뀐 순간이 아니라 첫 총구 이동과 동시에 회전음을
+  /// 시작합니다. 상태 수신이 늦으면 이미 지난 만큼을 빼고 남은 모션 구간만
+  /// 재생해 화면과 소리가 다시 어긋나지 않게 합니다.
+  void _scheduleRotationSound(
+    RussianRouletteView game,
+    Duration elapsed,
+    String audioKey,
+  ) {
+    _rotationSoundTimer?.cancel();
+    final timing = rouletteRotationAudioTiming(elapsed, game.spinCount);
+    if (timing == null) return;
+    void play() {
+      if (!mounted || _audioKey != audioKey) return;
+      _runSound(
+        _sound?.playSustainedEffect(
+          RussianRouletteSounds.revolverSpin,
+          window: timing.window,
+        ),
+        '리볼버 회전음을 재생하지 못했습니다',
+      );
+    }
+
+    if (timing.delay == Duration.zero) {
+      play();
+    } else {
+      _rotationSoundTimer = Timer(timing.delay, play);
     }
   }
 
@@ -265,7 +294,7 @@ class _RussianRouletteTabletScreenState
       final ended = await _run(() => _service.command.endGame(widget.roomCode));
       if (!ended) return;
     }
-    if (mounted) await Navigator.of(context).maybePop();
+    if (mounted) exitGameRoute(context);
   }
 
   //=======================연출 시계==============================
@@ -325,12 +354,13 @@ class _RussianRouletteTabletScreenState
     if (startedAt <= 0 || _introReportedGame == startedAt) return;
     _introReportedGame = startedAt;
     unawaited(
-      _service.command.completeIntro(widget.roomCode).then<void>(
-        (_) {},
-        onError: (Object error, StackTrace stack) => debugPrint(
-          '[RussianRoulette] 시작 연출 종료를 알리지 못했습니다: $error',
-        ),
-      ),
+      _service.command
+          .completeIntro(widget.roomCode)
+          .then<void>(
+            (_) {},
+            onError: (Object error, StackTrace stack) =>
+                debugPrint('[RussianRoulette] 시작 연출 종료를 알리지 못했습니다: $error'),
+          ),
     );
   }
 
@@ -407,9 +437,9 @@ class _RussianRouletteTabletScreenState
       });
     }
     final game = RussianRouletteView.fromPublic(session.publicState);
-    _syncAudio(game);
-    _schedule(game);
     final elapsed = _elapsed(game);
+    _syncAudio(game, elapsed);
+    _schedule(game);
     if (game.loaded && !game.finished) _sawPlaying = true;
     return Scaffold(
       backgroundColor: RouletteColors.ink,
@@ -488,13 +518,8 @@ class _RussianRouletteTabletScreenState
       duration: const Duration(milliseconds: 900),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: Tween(begin: 1.04, end: 1.0).animate(animation),
-          child: child,
-        ),
-      ),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
       child: KeyedSubtree(key: ValueKey(mode), child: child),
     );
   }
@@ -604,17 +629,20 @@ class RouletteTabletFrame {
     this.labelTag,
     this.stamp,
     this.shake = Offset.zero,
-    this.trailFrom,
-    this.trailTo,
-    this.stepMarks = const [],
     this.cylinderReveal = 1,
     this.banner,
     this.bannerProgress = 1,
     this.flash,
+    this.gunPose,
+    this.discBump = 1,
   });
 
   /// 총구 섬광 진행(0 → 1)입니다.
   final double? flash;
+
+  /// 시작 연출의 총 자세(눕힘 → 세움)입니다. null이면 세워 둔 총입니다.
+  final RouletteGunPose? gunPose;
+  final double discBump;
 
   final double cylinderReveal;
   final String? banner;
@@ -628,9 +656,6 @@ class RouletteTabletFrame {
   final String? labelTag;
   final RouletteStampModel? stamp;
   final Offset shake;
-  final double? trailFrom;
-  final double? trailTo;
-  final List<double> stepMarks;
 
   RouletteStageModel build(
     double aim, {
@@ -646,23 +671,32 @@ class RouletteTabletFrame {
     labelTag: labelTag,
     stamp: stamp,
     shake: shake,
-    trailFrom: trailFrom,
-    trailTo: trailTo,
-    stepMarks: stepMarks,
     timerFraction: timerFraction,
     cylinderReveal: cylinderReveal,
     banner: banner,
     bannerProgress: bannerProgress,
     flash: flash,
+    gunPose: gunPose,
+    discBump: discBump,
   );
 }
 
 //=======================게임 시작 연출==============================
-// 어두운 판 위에 총이 먼저 떨어지듯 등장 → 시계 방향으로 한 명씩 프로필에 불이
-// 들어오며 총이 따라 돎(마지막이 첫 총구 대상) → 잠깐 정적 뒤 총구 방향으로
-// 붉은 빔이 깜빡이며 켜지고 '게임 시작'이 찍힘.
-const _introGunAt = 300;
+// 어두운 판 위에 총이 옆으로 눕힌 채 첫 총구 대상 방향으로 떨어지듯 놓임 →
+// 손으로 집듯 살짝 들렸다가 굴러 세워지며, 첫 불빛이 켜지는 순간 내려앉음
+// (원판이 툭 튀고 먼지 자국) → 시계 방향으로 한 명씩 프로필에 불이 들어옴
+// (마지막이 첫 총구 대상) → 잠깐 정적 뒤 총구 방향으로 붉은 빔이 깜빡이며
+// 켜지고 '게임 시작'이 찍힘. 시안: B-Anim.
+const _introGunAt = 60;
 const _introLightAt = 1200;
+const _introStandMs = 800;
+
+/// 세우기 동작에서 총이 판에 닿는 지점(진행 %)입니다. 이 순간이 첫 불빛입니다.
+const _introLandAt = 68.0;
+final _introStandAt =
+    _introLightAt - (_introStandMs * _introLandAt / 100).round();
+const _introDustMs = 500;
+const _introBumpMs = 450;
 const _introBeamDelay = 750;
 const _introBannerDelay = 1250;
 const _introTail = 2700;
@@ -707,6 +741,70 @@ Offset _thud(int ms, int at) {
   );
 }
 
+/// (진행 %, 값) 키 사이를 부드럽게(smoothstep) 잇습니다.
+double _introKeys(List<(double, double)> keys, double p) {
+  for (var i = 1; i < keys.length; i++) {
+    final (p1, v1) = keys[i];
+    if (p <= p1) {
+      final (p0, v0) = keys[i - 1];
+      var t = ((p - p0) / (p1 - p0)).clamp(0.0, 1.0);
+      t = t * t * (3 - 2 * t);
+      return v0 + (v1 - v0) * t;
+    }
+  }
+  return keys.last.$2;
+}
+
+// 세우기(0.8초) 키입니다. 살짝 더 눕혔다(집기) 들어 올려 굴리고, 조금 지나치게
+// 돌았다 되돌아오며, 68%에 판에 닿아 살짝 눌렸다 튀어 오릅니다.
+const _standRoll = <(double, double)>[
+  (0, 90), (10, 94), (26, 82), (50, 28), (62, -14), (74, 6), (86, -2), (100, 0),
+];
+const _standScale = <(double, double)>[
+  (0, .94), (10, .95), (30, 1.05), (50, 1.07), (62, 1.02), (68, .97),
+  (80, 1.01), (100, 1),
+];
+const _standShift = <(double, double)>[(0, 37), (10, 37), (55, 0), (100, 0)];
+const _standTilt = <(double, double)>[
+  (0, 0), (10, 1.5), (35, -6), (55, -3), (68, 1.5), (84, -.5), (100, 0),
+];
+const _standLift = <(double, double)>[
+  (0, 0), (10, .08), (30, .85), (50, 1), (62, .55), (68, 0), (100, 0),
+];
+
+/// 시작 연출 [ms]의 총 자세입니다. 다 세운 뒤 먼지도 걷히면 null입니다.
+RouletteGunPose? rouletteIntroGunPose(int ms) {
+  if (ms < _introStandAt) return RouletteGunPose.lying;
+  final dust = ms >= _introLightAt && ms < _introLightAt + _introDustMs
+      ? (ms - _introLightAt) / _introDustMs
+      : null;
+  final p = (ms - _introStandAt) / _introStandMs * 100;
+  if (p >= 100) return dust == null ? null : RouletteGunPose(dust: dust);
+  return RouletteGunPose(
+    roll: _introKeys(_standRoll, p),
+    scale: _introKeys(_standScale, p),
+    shift: _introKeys(_standShift, p),
+    tilt: _introKeys(_standTilt, p),
+    lift: _introKeys(_standLift, p),
+    dust: dust,
+  );
+}
+
+/// 총이 내려앉을 때 원판이 툭 튀는 배율입니다.
+double _introDiscBump(int ms) {
+  final t = (ms - _introLightAt) / _introBumpMs;
+  if (t <= 0 || t >= 1) return 1;
+  const keys = [(0.0, 1.0), (.3, 1.018), (.6, .996), (1.0, 1.0)];
+  for (var i = 1; i < keys.length; i++) {
+    final (t1, v1) = keys[i];
+    if (t <= t1) {
+      final (t0, v0) = keys[i - 1];
+      return v0 + (v1 - v0) * Curves.easeOut.transform((t - t0) / (t1 - t0));
+    }
+  }
+  return 1;
+}
+
 RouletteTabletFrame rouletteIntroFrame(
   RussianRouletteView game,
   int ms, {
@@ -743,17 +841,14 @@ RouletteTabletFrame rouletteIntroFrame(
   final lightEnd = _introLightAt + step * math.max<int>(0, n - 1);
   final beamAt = lightEnd + _introBeamDelay;
   final bannerAt = lightEnd + _introBannerDelay;
-  final lit = ms < _introLightAt
-      ? 0
-      : math.min(n, (ms - _introLightAt) ~/ step + 1);
-  final pointing = order.isEmpty
-      ? game.targetUid
-      : order[math.max(0, lit - 1)].uid;
   final index = {for (var i = 0; i < order.length; i++) order[i].uid: i};
 
   return RouletteTabletFrame(
-    desiredAim: aimOf(pointing),
+    // 총은 처음부터 첫 총구 대상 쪽으로 놓여 돌지 않습니다.
+    desiredAim: aimOf(game.targetUid),
     cylinderReveal: ((ms - _introGunAt) / 700).clamp(0.0, 1.0),
+    gunPose: rouletteIntroGunPose(ms),
+    discBump: _introDiscBump(ms),
     wedgeOpacity: ms < beamAt ? 0 : _flicker((ms - beamAt) / 700),
     shake: _thud(ms, _introGunAt) + _thud(ms, beamAt),
     banner: ms >= bannerAt
@@ -918,16 +1013,6 @@ RouletteTabletFrame rouletteTabletFrame(
       final spins = game.spinCount;
       final startIndex = n == 0 ? 0 : ((finalIndex - spins) % n + n) % n;
       final done = RussianRouletteTiming.completedRotationSteps(elapsed, spins);
-      final startAim = n == 0 ? 0.0 : aimOf(alive[startIndex].uid);
-      final marks = <double>[];
-      var cursor = startAim;
-      for (var j = 1; j <= done; j++) {
-        final uid = alive[(startIndex + j) % n].uid;
-        var next = RouletteStageGeometry.clockwiseFrom(cursor, aimOf(uid));
-        if (next <= cursor + 1e-6) next += math.pi * 2;
-        marks.add(next);
-        cursor = next;
-      }
       final current = n == 0 ? targetUid : alive[(startIndex + done) % n].uid;
       final spinners = rouletteRevealOrder(
         game,
@@ -939,9 +1024,6 @@ RouletteTabletFrame rouletteTabletFrame(
         desiredAim: aimOf(current),
         label: rouletteText('회전', 'Spin', '转动', '轉動'),
         labelTag: '$done / $spins',
-        trailFrom: startAim,
-        trailTo: marks.isEmpty ? null : marks.last,
-        stepMarks: marks,
         seats: [
           for (final p in players)
             if (!p.alive)
@@ -1226,10 +1308,8 @@ class RouletteEndBoard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           for (final entry in ranking)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 11,
-                              ),
+                            SizedBox(
+                              width: 96,
                               child: _RankChip(
                                 player: entry.$1,
                                 rank: entry.$2,

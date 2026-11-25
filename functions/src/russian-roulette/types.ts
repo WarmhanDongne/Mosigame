@@ -46,6 +46,8 @@ export interface RussianRoulettePublicState {
 
 export interface RussianRoulettePrivatePlayer {
   choiceSubmitted: boolean;
+  /** 시간 초과로 서버가 '아무것도 안 하기'를 대신 골랐는지입니다(본인 휴대폰 안내 전용). */
+  autoSelected?: boolean;
   action?: RussianRouletteAction;
   _context?: Record<string, unknown>;
 }

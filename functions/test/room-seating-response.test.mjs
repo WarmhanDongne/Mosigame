@@ -14,7 +14,8 @@ const player = (seatIndex) => ({role: 'player', status: 'active', seatIndex,
 test('seating returns the roster committed after a concurrent join', async (t) => {
   const before = {roomInstanceId: 'room-current', status: 'waiting',
     controllerUid: 'tablet', controllerSessionId, selectedGame: 'yut',
-    players: {first: player(0), second: player(1)}};
+    players: {first: player(0), second: player(1)},
+    seatingPreference: {playerUids: ['first', 'second'], mode: 'sides'}};
   const current = structuredClone(before);
   current.players.third = player(2);
   const snapshot = (value) => ({exists: () => value !== null,
@@ -40,5 +41,7 @@ test('seating returns the roster committed after a concurrent join', async (t) =
     data: {roomCode: 'ABCDE', roomInstanceId: 'room-current', controllerSessionId}});
   assert.deepEqual(Object.keys(result.players), ['first', 'second', 'third']);
   assert.deepEqual(result.playerUids, ['first', 'second', 'third']);
+  assert.deepEqual(result.seatingPreference,
+    {playerUids: ['first', 'second'], mode: 'sides'});
   assert.equal(result.status, 'seating');
 });
