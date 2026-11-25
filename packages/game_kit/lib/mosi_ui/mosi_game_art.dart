@@ -8,6 +8,7 @@
 
 // ========================[ import ]==========================
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
@@ -186,6 +187,26 @@ class MosiGameArt {
     accent: Color(0xFFECE3D0),
   );
 
+  /// ELEVEN 시안 A(느와르 카드룸): 먹색 테이블, 크림 글자, 빨강 버튼.
+  static const eleven = MosiGameArt(
+    id: 'eleven',
+    koreanName: '일레븐',
+    englishName: 'ELEVEN',
+    shelfTheme: MosiShelfTheme(
+      ground: Color(0xFF262524),
+      fg: Color(0xFFF7F0E4),
+      fgDim: Color(0xB3F7F0E4),
+      deep: Color(0xFF141414),
+      btnBg: Color(0xFFC9242A),
+      btnFg: Color(0xFFF7F0E4),
+      accA: Color(0xFFF7F0E4),
+      accB: Color(0xFFC9242A),
+    ),
+    spineColor: Color(0xFF1B1B1B),
+    spineText: Color(0xFFF7F0E4),
+    accent: Color(0xFFE23A3A),
+  );
+
   static const _known = <String, MosiGameArt>{
     'liars_poker': liarsPoker,
     'final_call': finalCall,
@@ -195,6 +216,7 @@ class MosiGameArt {
     'strategy_yut': strategyYut,
     'strategy_yut_edition': strategyYutEdition,
     'russian_roulette': russianRoulette,
+    'eleven': eleven,
   };
 
   /// 표지 그림이 등록된 게임인지 알려 줍니다.
@@ -645,6 +667,8 @@ class _CoverPainter extends CustomPainter {
         _paintYut(canvas, gameId, displayName, englishName);
       case 'russian_roulette':
         _paintRussianRoulette(canvas, displayName, englishName);
+      case 'eleven':
+        _paintEleven(canvas, displayName, englishName);
     }
     canvas.restore();
   }
@@ -827,6 +851,175 @@ void _paintRussianRoulette(
     _grotesk(10, cream, 3.2),
     align: TextAlign.center,
     maxWidth: 136,
+  );
+}
+
+/// CSS `linear-gradient(<deg>, …)`와 같은 축으로 [rect]를 칠하는 셰이더입니다.
+/// 색 경계를 딱 끊으려면 같은 위치에 색을 두 번 둡니다(시안의 흑·빨강·백 사선).
+Shader _cssLinearShader(
+  Rect rect,
+  double degrees,
+  List<Color> colors,
+  List<double> stops,
+) {
+  final a = degrees * math.pi / 180;
+  final dir = Offset(math.sin(a), -math.cos(a));
+  final length =
+      (rect.width * math.sin(a)).abs() + (rect.height * math.cos(a)).abs();
+  final half = dir * (length / 2);
+  return ui.Gradient.linear(
+    rect.center - half,
+    rect.center + half,
+    colors,
+    stops,
+  );
+}
+
+/// ELEVEN 사선 카드의 흑 → 빨간 선 → 백 색 배열입니다.
+List<Color> _elevenSplitColors() => const [
+  Color(0xFF1B1B1B),
+  Color(0xFF1B1B1B),
+  Color(0xFFE23A3A),
+  Color(0xFFE23A3A),
+  Color(0xFFF7F0E4),
+  Color(0xFFF7F0E4),
+];
+
+/// ELEVEN 표지(H1 · 색만 보고 읽어라): 어두운 테이블 가운데에 흑·백으로 갈린
+/// 카드와 빨간 물음표, 주변에 흐릿한 후보 숫자, 아래 먹색 제목 띠.
+void _paintEleven(Canvas canvas, String displayName, String englishName) {
+  const ink = Color(0xFF141414);
+  const cream = Color(0xFFF7F0E4);
+  const red = Color(0xFFE23A3A);
+
+  canvas.drawRect(const Rect.fromLTWH(0, 0, 300, 400), _fill(ink));
+  const picture = Rect.fromLTWH(0, 0, 300, 296);
+  canvas.drawRect(
+    picture,
+    Paint()
+      ..shader = ui.Gradient.radial(
+        const Offset(150, 140),
+        200,
+        const [Color(0xFF3A3735), Color(0xFF262524), ink],
+        const [0, 0.45, 1],
+      ),
+  );
+
+  // 흐릿한 후보 숫자: 상대가 낸 숫자를 추측하는 느낌.
+  void hint(
+    String value,
+    double left,
+    double top,
+    double size,
+    Color color,
+    double degrees, {
+    bool fromRight = false,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: value,
+        style: TextStyle(
+          fontFamily: 'StardosStencil',
+          fontWeight: FontWeight.w700,
+          fontSize: size,
+          height: 1.2,
+          color: color,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final x = fromRight ? 300 - left - painter.width : left;
+    canvas.save();
+    canvas.translate(x + painter.width / 2, top + painter.height / 2);
+    canvas.rotate(degrees * math.pi / 180);
+    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    canvas.restore();
+  }
+
+  hint('0', 22, 92, 30, cream.withValues(alpha: 0.32), -10);
+  hint('4', 40, 170, 34, cream.withValues(alpha: 0.22), 6);
+  hint('8', 28, 84, 36, cream.withValues(alpha: 0.36), 8, fromRight: true);
+  hint('2', 40, 160, 30, cream.withValues(alpha: 0.24), -6, fromRight: true);
+  hint('11', 18, 212, 40, red.withValues(alpha: 0.7), 4, fromRight: true);
+
+  // 가운데 카드: 126° 사선 위는 흑, 아래는 백, 사이에 빨간 선.
+  const cardRect = Rect.fromLTWH(92, 40, 116, 156);
+  final card = RRect.fromRectAndRadius(cardRect, const Radius.circular(16));
+  canvas.drawRRect(card.inflate(6), _fill(cream.withValues(alpha: 0.06)));
+  canvas.drawRRect(
+    card.shift(const Offset(0, 7)),
+    _fill(const Color(0xFF000000)),
+  );
+  canvas.drawRRect(
+    card,
+    Paint()
+      ..shader = _cssLinearShader(cardRect, 126, _elevenSplitColors(), const [
+        0,
+        0.49,
+        0.49,
+        0.515,
+        0.515,
+        1,
+      ]),
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(cardRect.deflate(9), const Radius.circular(9)),
+    _stroke(const Color(0x99B9AE9C), 1),
+  );
+  canvas.drawRRect(card.deflate(1.5), _stroke(ink, 3));
+  final mark = TextPainter(
+    text: TextSpan(
+      text: '?',
+      style: TextStyle(
+        fontFamily: 'StardosStencil',
+        fontWeight: FontWeight.w700,
+        fontSize: 86,
+        height: 1,
+        foreground: _stroke(ink, 6),
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  final markFill = TextPainter(
+    text: const TextSpan(
+      text: '?',
+      style: TextStyle(
+        fontFamily: 'StardosStencil',
+        fontWeight: FontWeight.w700,
+        fontSize: 86,
+        height: 1,
+        color: red,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  final markAt =
+      cardRect.center - Offset(markFill.width / 2, markFill.height / 2);
+  mark.paint(canvas, markAt);
+  markFill.paint(canvas, markAt);
+
+  // 아래 제목 띠
+  canvas.drawRect(
+    const Rect.fromLTWH(0, 290, 300, 6),
+    _fill(const Color(0xFFC9242A)),
+  );
+  _text(
+    canvas,
+    displayName,
+    150,
+    352,
+    _plex(34, cream),
+    align: TextAlign.center,
+    maxWidth: 280,
+  );
+  _text(
+    canvas,
+    '$englishName · 1 VS 1 MIND GAME',
+    150,
+    378,
+    _grotesk(10, const Color(0xFFB9AE9C), 3.2),
+    align: TextAlign.center,
+    maxWidth: 270,
   );
 }
 
@@ -1454,6 +1647,27 @@ class MosiGameSpine extends StatelessWidget {
         ),
       );
     }
+    if (gameId == 'eleven') {
+      return Semantics(
+        button: true,
+        label: GameLocale.select(
+          ko: '$localizedTitle 선택',
+          en: 'Select $localizedTitle',
+          zhHans: '选择 $localizedTitle',
+          zhHant: '選擇 $localizedTitle',
+        ),
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: _ElevenSpine(
+            title: localizedTitle,
+            deep: deep,
+            width: width,
+            height: height,
+          ),
+        ),
+      );
+    }
     if (gameId == 'russian_roulette') {
       return Semantics(
         button: true,
@@ -1598,6 +1812,12 @@ String _localizedGameTitle(MosiGameArt art) => switch (art.id) {
     zhHans: '俄罗斯轮盘',
     zhHant: '俄羅斯輪盤',
   ),
+  'eleven' => GameLocale.select(
+    ko: '일레븐',
+    en: 'ELEVEN',
+    zhHans: 'ELEVEN',
+    zhHant: 'ELEVEN',
+  ),
   _ => art.koreanName,
 };
 
@@ -1621,6 +1841,12 @@ class _SpineBadge extends StatelessWidget {
         const Color(0xFFECE3D0),
         '•',
         const Color(0xFFB3201F),
+      ),
+      'eleven' => (
+        const Color(0xFF1B1B1B),
+        const Color(0xFFF7F0E4),
+        '11',
+        const Color(0xFFF7F0E4),
       ),
       _ => (MosiColors.white, MosiColors.ink, 'A', MosiColors.ink),
     };
@@ -1870,6 +2096,20 @@ class MosiSeatTheme {
     tableDy: 0,
   );
 
+  /// ELEVEN 대기실: 먹색 테이블, 빨강 선택·버튼(시안 A 토큰).
+  static const eleven = MosiSeatTheme(
+    ground: Color(0xFF262524),
+    deep: Color(0xFF141414),
+    table: Color(0xFF1B1B1B),
+    dots: Color(0x09FFFFFF),
+    pill: Color(0x14FFFFFF),
+    pillLine: Color(0x99F7F0E4),
+    button: Color(0xFFC9242A),
+    buttonFg: Color(0xFFF7F0E4),
+    selected: Color(0xFFC9242A),
+    ring: Color(0x99F7F0E4),
+  );
+
   static const strategyYut = MosiSeatTheme(
     ground: MosiColors.navy,
     deep: MosiColors.navyDeepest,
@@ -1921,8 +2161,211 @@ class MosiSeatTheme {
     'holdem' => holdem,
     'strategy_yut' || 'strategy_yut_edition' => strategyYut,
     'russian_roulette' => russianRoulette,
+    'eleven' => eleven,
     _ => fallback,
   };
+}
+
+//=======================ELEVEN 책등==============================
+/// ELEVEN 책등(S1 · 흑백 대각선): 162° 빨간 사선으로 위는 흑, 아래는 백.
+/// 위 칸에 사선 카드와 빨간 물음표, 가운데 세로 제목, 아래 백 면에 스텐실 11.
+/// 시안은 110×564이며 폭에 비례해 줄입니다.
+class _ElevenSpine extends StatelessWidget {
+  const _ElevenSpine({
+    required this.title,
+    required this.deep,
+    required this.width,
+    required this.height,
+  });
+
+  final String title;
+  final Color deep;
+  final double width;
+  final double height;
+
+  static const _ink = Color(0xFF141414);
+  static const _cream = Color(0xFFF7F0E4);
+  static const _red = Color(0xFFE23A3A);
+
+  @override
+  Widget build(BuildContext context) {
+    final s = width / 110;
+    final cjk = RegExp(r'[\u3131-\uD79D\u4E00-\u9FFF]').hasMatch(title);
+    final titleStyle = MosiFonts.sans(
+      size: 44 * s,
+      weight: FontWeight.w700,
+      color: _cream,
+      height: 1.08,
+    );
+    final label = cjk
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final ch in title.characters)
+                if (ch.trim().isNotEmpty) Text(ch, style: titleStyle),
+            ],
+          )
+        : RotatedBox(
+            quarterTurns: 1,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: titleStyle.copyWith(fontSize: 34 * s, height: 1),
+            ),
+          );
+    return Container(
+      width: width,
+      height: height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF111111), width: 3),
+        boxShadow: [BoxShadow(color: deep, offset: const Offset(4, 4))],
+      ),
+      child: CustomPaint(
+        painter: const _ElevenSpinePainter(),
+        child: Column(
+          children: [
+            Container(
+              height: 86 * s,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: _cream, width: 5 * s),
+                ),
+              ),
+              child: _ElevenSplitCardIcon(width: 40 * s),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(4, 26 * s, 4, 4),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: FittedBox(fit: BoxFit.scaleDown, child: label),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(bottom: 18 * s),
+              child: Text(
+                '11',
+                style: TextStyle(
+                  fontFamily: 'StardosStencil',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 50 * s,
+                  height: 1,
+                  color: _ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ElevenSpinePainter extends CustomPainter {
+  const _ElevenSpinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = _cssLinearShader(rect, 162, _elevenSplitColors(), const [
+          0,
+          0.66,
+          0.66,
+          0.676,
+          0.676,
+          1,
+        ]),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ElevenSpinePainter oldDelegate) => false;
+}
+
+/// 흑·백 사선 카드와 빨간 물음표 아이콘(책등 위 칸).
+class _ElevenSplitCardIcon extends StatelessWidget {
+  const _ElevenSplitCardIcon({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = width * 54 / 40;
+    final s = width / 40;
+    return SizedBox(
+      width: width,
+      height: height,
+      child: CustomPaint(
+        painter: _ElevenSplitCardPainter(border: 3 * s),
+        child: Center(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                '?',
+                style: TextStyle(
+                  fontFamily: 'StardosStencil',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 34 * s,
+                  height: 1,
+                  foreground: _stroke(_ElevenSpine._ink, 4 * s),
+                ),
+              ),
+              Text(
+                '?',
+                style: TextStyle(
+                  fontFamily: 'StardosStencil',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 34 * s,
+                  height: 1,
+                  color: _ElevenSpine._red,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ElevenSplitCardPainter extends CustomPainter {
+  const _ElevenSplitCardPainter({required this.border});
+
+  final double border;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final card = RRect.fromRectAndRadius(rect, Radius.circular(border * 8 / 3));
+    canvas.drawRRect(
+      card,
+      Paint()
+        ..shader = _cssLinearShader(rect, 126, _elevenSplitColors(), const [
+          0,
+          0.49,
+          0.49,
+          0.53,
+          0.53,
+          1,
+        ]),
+    );
+    canvas.drawRRect(
+      card.deflate(border / 2),
+      _stroke(_ElevenSpine._cream, border),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ElevenSplitCardPainter oldDelegate) =>
+      oldDelegate.border != border;
 }
 
 //=======================러시안 룰렛 책등==============================

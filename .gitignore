@@ -57,6 +57,12 @@ devtools_options.yaml
 
 main_loby_and_game_modal/
 design/
+# ELEVEN 디자인 기준 자료는 추적한다. 원본 PNG 모션 프레임(45MB)은 용량 때문에 제외.
+!docs/design/
+docs/design/eleven/motion-frames-full/
 work-items/
 *.apk
 packages.zip
+
+# ELEVEN 레인 검수 스크린샷(커밋 제외)
+review_out/

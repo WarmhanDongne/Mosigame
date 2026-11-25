@@ -19,6 +19,7 @@ Widget? buildGameParts(String gameId, {int? playerCount}) => switch (gameId) {
   'strategy_yut' => const _YutParts(strategy: true),
   'strategy_yut_edition' => const _YutParts(strategy: true, edition: true),
   'russian_roulette' => const _RussianRouletteParts(),
+  'eleven' => const _ElevenParts(),
   _ => null,
 };
 
@@ -30,6 +31,7 @@ Color? gamePartsBackground(String gameId) => switch (gameId) {
   'liars_poker' => _liarPartsGround,
   'final_call' => FinalCallColors.night,
   'russian_roulette' => roulette.RouletteColors.ink,
+  'eleven' => eleven.ElevenNoirColors.table,
   _ => null,
 };
 
@@ -225,11 +227,15 @@ class _PartsLayout extends StatelessWidget {
     this.plainLabelColor = const Color(0xFFE2C27E),
     this.plainDividerColor = const Color(0x55E2C27E),
     this.middleStrip,
+    this.bottomStrip,
   });
 
   final List<_Part> parts;
   final List<_Rule> rules;
   final Widget? middleStrip;
+
+  /// 규칙 블록 아래에 붙는 줄입니다(ELEVEN 카드 예시).
+  final Widget? bottomStrip;
 
   /// 구성품을 흰 블록 없이 어두운 바탕 위에 바로 놓습니다. 글자는 밝게 씁니다.
   final bool plainParts;
@@ -302,13 +308,20 @@ class _PartsLayout extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: middleStrip == null ? 11 : 8, child: partsPanel),
+          Expanded(
+            flex: middleStrip == null && bottomStrip == null ? 11 : 8,
+            child: partsPanel,
+          ),
           if (middleStrip != null) ...[
             const SizedBox(height: 14),
             Expanded(flex: 3, child: middleStrip!),
           ],
           const SizedBox(height: 14),
           Expanded(flex: 5, child: rulesPanel),
+          if (bottomStrip != null) ...[
+            const SizedBox(height: 14),
+            Expanded(flex: 3, child: bottomStrip!),
+          ],
         ],
       ),
     );
@@ -1810,4 +1823,101 @@ class _YutParts extends StatelessWidget {
             ],
     );
   }
+}
+
+//=======================구성품 · ELEVEN==============================
+/// 라이어스·룰렛과 같은 형식: 흰 블록 없이 게임 테이블 위에 숫자 타일 11장과
+/// 공용 뽑기 카드 9장을 놓고, 판정표를 가운데 줄에, 규칙만 흰 블록에 둡니다.
+class _ElevenParts extends StatelessWidget {
+  const _ElevenParts();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: eleven.ElevenNoirColors.table,
+    child: _PartsLayout(
+      plainParts: true,
+      plainLabelColor: eleven.ElevenNoirColors.greyBeige,
+      plainDividerColor: const Color(0x40F7F0E4),
+      // 시안: 카드 예시 줄은 '이렇게 해요' 블록 아래에 둡니다.
+      bottomStrip: const eleven.ElevenJudgeStrip(),
+      parts: [
+        _Part(
+          label: GameLocale.select(
+            ko: '숫자 타일',
+            en: 'Number tiles',
+            zhHans: '数字牌',
+            zhHant: '數字牌',
+          ),
+          count: GameLocale.select(
+            ko: '1인 11장',
+            en: '11 each',
+            zhHans: '每人 11 张',
+            zhHant: '每人 11 張',
+          ),
+          flex: 7,
+          child: const eleven.ElevenTileSetArt(),
+        ),
+        _Part(
+          label: GameLocale.select(
+            ko: '뽑기 카드',
+            en: 'Draw cards',
+            zhHans: '抽牌',
+            zhHant: '抽牌',
+          ),
+          count: GameLocale.select(
+            ko: '1–9 9장',
+            en: '1–9 ×9',
+            zhHans: '1–9 共 9 张',
+            zhHant: '1–9 共 9 張',
+          ),
+          flex: 4,
+          child: const eleven.ElevenDrawDeckArt(),
+        ),
+      ],
+      rules: [
+        _Rule(
+          GameLocale.select(
+            ko: '한 장씩 대결',
+            en: 'One tile each',
+            zhHans: '各出一张',
+            zhHant: '各出一張',
+          ),
+          GameLocale.select(
+            ko: '선공이 먼저, 후공이 이어 내요. 상대 타일은 색만 보여요.',
+            en: 'Leader plays first, then the other. You see only their color.',
+            zhHans: '先手先出，后手再出。只能看到对方牌的颜色。',
+            zhHant: '先手先出，後手再出。只能看到對方牌的顏色。',
+          ),
+        ),
+        _Rule(
+          GameLocale.select(
+            ko: '합으로 판정',
+            en: 'Judge by the sum',
+            zhHans: '按和判定',
+            zhHant: '按和判定',
+          ),
+          GameLocale.select(
+            ko: '합이 10 미만이면 큰 수, 10 이상이면 작은 수가 이겨요.',
+            en: 'Sum under 10: higher wins. 10 or more: lower wins.',
+            zhHans: '和小于 10 大数胜，大于等于 10 小数胜。',
+            zhHant: '和小於 10 大數勝，大於等於 10 小數勝。',
+          ),
+        ),
+        _Rule(
+          GameLocale.select(
+            ko: '11라운드',
+            en: '11 rounds',
+            zhHans: '11 回合',
+            zhHant: '11 回合',
+          ),
+          GameLocale.select(
+            ko: '이기면 1점. 점수가 높은 사람이 승리하고, 역전이 불가능하면 일찍 끝나요.',
+            en: '1 point per win. Most points wins; ends early if no comeback is possible.',
+            zhHans: '获胜得 1 分，分高者胜。无法追上时提前结束。',
+            zhHant: '獲勝得 1 分，分高者勝。無法追上時提前結束。',
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -20,7 +20,7 @@ run sequentially and fixture seeding avoids dispatching 505 simultaneous events.
 The runner builds the real candidate and creates an ignored `build/e13-runtime`
 entry. That entry requires both `FUNCTIONS_EMULATOR=true` and the exact demo
 project, sets the namespace which the CLI has installed the actual repository
-rules into, and changes only the five RTDB trigger discovery regions to
+rules into, and changes only the six RTDB trigger discovery regions to
 `us-central1`. The test checks that the original exports still use
 `asia-southeast1`, refuses non-demo/non-emulator adapter use, and compares the
 running rules with `database.rules.json` before any behavioral tests.

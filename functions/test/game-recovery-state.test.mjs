@@ -56,6 +56,7 @@ for (const gameType of [
   'strategy_yut',
   'strategy_yut_edition',
   'russian_roulette',
+  'eleven',
 ]) {
   test(`${gameType}: new protocol-2 game isolates phones but preserves controller pause`, () => {
     const room = fixture();

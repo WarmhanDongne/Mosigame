@@ -8,6 +8,7 @@ const packageTestTargets = <PackageTestTarget>[
   PackageTestTarget('game_holdem'),
   PackageTestTarget('game_yut'),
   PackageTestTarget('game_russian_roulette'),
+  PackageTestTarget('game_eleven'),
 ];
 
 final class PackageTestTarget {

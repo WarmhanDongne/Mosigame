@@ -449,6 +449,10 @@ String _commandLabel(String functionName) => switch (functionName) {
   'game_holdem_complete_dealing' => '홀덤 카드 배분 완료',
   'game_holdem_timeout_turn' => '홀덤 턴 시간 초과',
   'game_holdem_complete_result' => '홀덤 핸드 결과 완료',
+  'game_eleven_pick_draw_tile' => '일레븐 공용 타일 뽑기',
+  'game_eleven_submit_tile' => '일레븐 타일 제출',
+  'game_eleven_timeout_turn' => '일레븐 제출 시간 초과',
+  'game_eleven_complete_phase' => '일레븐 단계 완료',
   _ => functionName,
 };
 

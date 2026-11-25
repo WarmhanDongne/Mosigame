@@ -123,6 +123,32 @@ void main() {
     expect(notifications, 2);
     stop();
   });
+
+  testWidgets('명령 중 재구독해도 완료 뒤 다음 명령을 보낼 수 있다', (tester) async {
+    start();
+    final controller = container.read(provider.notifier);
+    final response = Completer<Object?>();
+    final pending = controller.send(() => response.future);
+    expect(container.read(provider).commandInFlight, isTrue);
+    expect(await controller.send(() async => {'success': true}), isFalse);
+
+    controller.retrySession();
+    response.complete({'success': true});
+    expect(await pending, isFalse); // 이전 구독의 응답은 적용하지 않는다.
+    await tester.pump();
+    expect(container.read(provider).commandInFlight, isFalse);
+
+    var sent = false;
+    expect(
+      await controller.send(() async {
+        sent = true;
+        return {'success': true};
+      }),
+      isTrue,
+    );
+    expect(sent, isTrue);
+    stop();
+  });
 }
 
 class _Snapshot extends Fake implements DataSnapshot {
@@ -140,7 +166,7 @@ class _Event extends Fake implements DatabaseEvent {
 }
 
 class _Query extends Fake implements GameQueryService {
-  final events = StreamController<DatabaseEvent>();
+  final events = StreamController<DatabaseEvent>.broadcast();
   final read = Completer<DataSnapshot>();
   int reads = 0;
   @override
@@ -153,26 +179,52 @@ class _Query extends Fake implements GameQueryService {
 }
 
 class _State implements GameSessionState<_State> {
-  const _State({this.value, this.removed = false, this.errorMessage});
+  const _State({
+    this.value,
+    this.removed = false,
+    this.commandInFlight = false,
+    this.errorMessage,
+  });
   final Object? value;
   final bool removed;
   @override
   final String? errorMessage;
   @override
-  bool get commandInFlight => false;
+  final bool commandInFlight;
   @override
-  _State markCommandStarted() => this;
+  _State markCommandStarted() => _State(
+    value: value,
+    removed: removed,
+    commandInFlight: true,
+    errorMessage: null,
+  );
   @override
-  _State markCommandFinished() => this;
+  _State markCommandFinished() => _State(
+    value: value,
+    removed: removed,
+    commandInFlight: false,
+    errorMessage: errorMessage,
+  );
   @override
-  _State withError(String? message) =>
-      _State(value: value, removed: removed, errorMessage: message);
+  _State withError(String? message) => _State(
+    value: value,
+    removed: removed,
+    commandInFlight: commandInFlight,
+    errorMessage: message,
+  );
   @override
-  _State asRemovedGame() => _State(value: value, removed: true);
+  _State asRemovedGame() => _State(
+    value: value,
+    removed: true,
+    commandInFlight: commandInFlight,
+    errorMessage: errorMessage,
+  );
 }
 
 class _Controller extends GameSessionController<_State> {
   _Controller(this.query);
+  Future<bool> send(Future<Object?> Function() command) => run(command);
+
   @override
   final GameQueryService query;
   @override

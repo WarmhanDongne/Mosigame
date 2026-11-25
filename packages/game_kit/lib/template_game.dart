@@ -111,6 +111,14 @@ abstract class TemplateGame implements GameGateway {
   //[의자이미지]
   ImageProvider? get layoutChairImage => null;
 
+  /// 자리 배치 완료 연출의 가운데 테이블을 그림 대신 위젯으로 그립니다.
+  /// null이면 [layoutTableImage] 또는 [tableColor] 원형 테이블을 씁니다.
+  Widget? buildLayoutTable(BuildContext context) => null;
+
+  /// 자리 배치 완료 연출의 의자 자리를 위젯으로 그립니다. 테이블을 향해
+  /// 돌리지 않고 똑바로 세워 둡니다. null이면 [layoutChairImage]를 씁니다.
+  Widget? buildLayoutChair(BuildContext context, int seatIndex) => null;
+
   //==========[ 튜토리얼 ]==========
 
   //[첫플레이] 자리 배치가 끝난 뒤 게임 시작 전에 보여 줄 튜토리얼
