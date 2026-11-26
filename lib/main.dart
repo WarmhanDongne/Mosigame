@@ -1,24 +1,16 @@
-import 'package:game_kit/firebase/firebase_backend.dart';
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
 import 'package:game_kit/core/layout/app_system_ui.dart';
-import 'package:game_kit/localization/game_locale.dart';
-import 'package:game_kit/core/time/server_clock.dart';
 import 'package:game_kit/core/layout/device_layout.dart';
-import 'package:project00/firebase_bootstrap.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Google Sign-In SDK 패키지
-import 'package:project00/app.dart';
-import 'package:project00/game_assets/game_asset_bootstrap.dart';
-import 'package:project00/games/game_registry.dart';
-import 'package:game_kit/core/diagnostics/crash_reporting.dart';
-import 'package:game_kit/core/diagnostics/dev_error_overlay.dart';
 import 'package:game_kit/core/sound/providers/sound_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:project00/app.dart';
+import 'package:project00/platform/startup/startup_boot.dart';
+import 'package:project00/platform/startup/startup_splash.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -26,173 +18,114 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 링크 처리 인스턴스 생성. 콜드 스타트 보다 먼저 생성. 이메일 인증 링크 기능도 수행
   final appLinks = AppLinks();
-
-  //=======================[ 플랫폼 기본 방향 ]==============================
-  // 게임이 직접 방향을 변경하기 전까지 플랫폼 화면은 휴대폰에서 세로입니다.
-  // Android 태블릿은 가로를 유지하고, iPad는 iPadOS 26의 전체 scene을 사용할 수
-  // 있도록 현재 기기 방향을 따릅니다.
-  //
-  // 중요: runApp 전이나 첫 화면 initState에서 적용하면 안 됩니다. iOS scene이
-  // 기기 판별은 DeviceLayout 한 곳에서 합니다(게임 종료 후 방향 복원과 같은
-  // 기준을 써야 로비 방향이 어긋나지 않습니다).
-  // 2. Firebase 네이티브 SDK 인스턴스 초기화
-  // 빌드 실패 시 오류 전송
-  try {
-    await initializeFirebaseBackend();
-  } catch (error, stack) {
-    debugPrint('Firebase 초기화 실패: $error\n$stack');
-    runApp(const _StartupFailureApp());
-    return;
-  }
-
-  //=======================[ 오류 수집 시작 ]==============================
-  // Firebase 초기화 바로 뒤에 붙입니다. 이 뒤에 나는 위젯·비동기 오류는
-  // 개발 중에는 화면(오른쪽 아래 빨간 표시)에서 보고, 릴리스에서는
-  // Crashlytics로 올라갑니다.
-  installDevErrorWidgetBuilder();
-  await CrashReporting.initialize();
-  // 다운로드 게임은 앱 지원 디렉터리의 영구 캐시를 사용합니다. 여기서는
-  // 저장소만 연결하며 네트워크 요청은 하지 않습니다. 실제 다운로드는 향후
-  // 소유 게임 다운로드 버튼이 명시적으로 시작합니다.
-  try {
-    await initializeGameAssets(catalog: const GameRegistry());
-  } catch (error, stack) {
-    // 번들 게임은 캐시 없이도 동작하므로 시작을 막지 않습니다.
-    CrashReporting.recordError(error, stack, reason: '게임 에셋 저장소 초기화');
-  }
-  // App Check는 먼저 토큰을 관찰 모드로 발급합니다. Firebase 콘솔에서 정상
-  // 요청 비율을 확인한 뒤 Functions/RTDB/Storage enforcement를 단계적으로
-  // 켜야 구버전 앱과 설정 누락 기기를 한꺼번에 차단하지 않습니다.
-  try {
-    if (!FirebaseBackend.isLocal) {
-      await FirebaseAppCheck.instanceFor(app: FirebaseBackend.app).activate(
-        providerAndroid: kDebugMode
-            ? const AndroidDebugProvider()
-            : const AndroidPlayIntegrityProvider(),
-        providerApple: kDebugMode
-            ? const AppleDebugProvider()
-            : const AppleAppAttestWithDeviceCheckFallbackProvider(),
-      );
-    }
-  } catch (error, stack) {
-    CrashReporting.recordError(error, stack, reason: 'Firebase App Check 초기화');
-  }
-  Uri? initialEmailLink;
-  try {
-    initialEmailLink = await appLinks.getInitialLink();
-  } catch (error, stack) {
-    CrashReporting.recordError(error, stack, reason: '초기 이메일 링크 읽기');
-  }
-
-  //=======================[ 서버 시각 보정 시작 ]==============================
-  // 턴 마감은 서버 시각 기준이므로, 기기 시계 오차·수동 변경·백그라운드 복귀에
-  // 영향받지 않도록 서버와의 차이를 계속 추적합니다.
-  ServerClock.start();
-
-  //========================[ 구글 SDK 초기화 ]==================================
-  // 3. Google Sign-In SDK 초기화 및 Client ID 주입 (최신 API 필수 전제 조건)
-  // 실패해도 앱은 시작합니다. 구글 로그인만 실패하고 게스트·이메일·Apple
-  // 로그인은 쓸 수 있어야 하므로, 여기서 멈추지 않고 기록만 남깁니다.
-  if (!FirebaseBackend.isLocal) {
-    try {
-      await GoogleSignIn.instance.initialize(
-        clientId: selectedFirebaseOptions.iosClientId,
-        serverClientId: selectedGoogleServerClientId,
-      );
-    } catch (error, stack) {
-      CrashReporting.recordError(error, stack, reason: '구글 로그인 SDK 초기화');
-    }
-  }
-
-  //===============[ 앱 실행 그리고 소리 관리 객체 생성 및 공유 ]======================
   final soundProvider = SoundProvider();
+  final boot = StartupBoot(appLinks: appLinks);
+
+  //=======================[ 시작 화면을 먼저 띄웁니다 ]==============================
+  // Firebase·App Check·구글 SDK를 기다린 뒤에 그리면 그동안 네이티브 시작
+  // 화면에서 멈춰 보입니다. 첫 프레임을 먼저 그리고 준비는 뒤에서 합니다.
+  // 시작 화면은 Firebase를 쓰지 않으므로 초기화 전에 그려도 안전합니다.
   runApp(
-    ProviderScope(
-      child: ChangeNotifierProvider.value(
-        value: soundProvider,
-        child: App(
-          emailLinks: appLinks.uriLinkStream,
-          initialEmailLink: initialEmailLink,
-        ),
-      ),
+    StartupShell(
+      boot: boot,
+      soundProvider: soundProvider,
+      emailLinks: appLinks.uriLinkStream,
     ),
   );
 
   //=======================[ iOS scene 연결 이후 초기 방향 ]==============================
+  // 플랫폼 기본 방향입니다. runApp 전이나 첫 화면 initState에서 적용하면 iOS
+  // scene이 아직 없어 요청이 사라집니다. 기기 판별은 DeviceLayout 한 곳에서
+  // 합니다(게임 종료 후 방향 복원과 같은 기준을 써야 로비 방향이 어긋나지 않습니다).
   _InitialOrientationApplier().start();
 
-  //=======================[ 첫 프레임 이후 네이티브 초기화 ]==============================
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    // 네이티브 오디오 플러그인이 첫 화면 렌더링을 막지 않도록 첫 프레임이
-    // 그려진 뒤 사운드를 초기화합니다.
-    unawaited(soundProvider.initialize());
-  });
+  unawaited(boot.start());
 }
 
-//=======================[ 시작 실패 화면 ]==============================
-/// Firebase 초기화가 실패했을 때만 띄우는 최소 화면입니다.
-/// 추후 분리 요소(9/13)
-/// 이 시점에는 앱의 테마·번역·오류 수집이 모두 준비되지 않았으므로 아무
-/// 의존성 없이 그릴 수 있는 것만 씁니다.
-class _StartupFailureApp extends StatelessWidget {
-  const _StartupFailureApp();
+//=======================[ 시작 화면과 앱 사이 ]==============================
+/// 준비가 끝날 때까지 시작 화면을 덮어 두고, 끝나면 걷어내며 앱을 보여 줍니다.
+///
+/// 앱 본체는 준비가 끝난 뒤에 만듭니다. Firebase 초기화 전에 [AuthGate]가
+/// 붙으면 로그인 스트림을 먼저 열어 버리기 때문입니다.
+class StartupShell extends StatefulWidget {
+  const StartupShell({
+    super.key,
+    required this.boot,
+    required this.soundProvider,
+    required this.emailLinks,
+  });
+
+  final StartupBoot boot;
+  final SoundProvider soundProvider;
+  final Stream<Uri> emailLinks;
+
+  @override
+  State<StartupShell> createState() => _StartupShellState();
+}
+
+class _StartupShellState extends State<StartupShell> {
+  /// 걷어내는 움직임까지 끝났는지입니다. 그 전까지는 앱 위에 덮여 있습니다.
+  bool _splashGone = false;
+  bool _soundStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.boot.addListener(_onBootChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.boot.removeListener(_onBootChanged);
+    super.dispose();
+  }
+
+  void _onBootChanged() {
+    if (widget.boot.ready && !_soundStarted) {
+      _soundStarted = true;
+      // 네이티브 오디오 플러그인이 첫 화면 렌더링을 막지 않도록 앱이 올라온
+      // 뒤에 사운드를 초기화합니다.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(widget.soundProvider.initialize());
+      });
+    }
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
-    final locale = View.of(context).platformDispatcher.locale;
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFF141414),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.cloud_off, color: Color(0xFF8A8A8A), size: 48),
-                const SizedBox(height: 20),
-                Text(
-                  GameLocale.selectFor(
-                    locale,
-                    ko: '앱을 시작할 수 없습니다',
-                    en: 'Unable to start the app',
-                    zhHans: '无法启动应用',
-                    zhHant: '無法啟動 App',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFECECEC),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+    final boot = widget.boot;
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (boot.ready)
+            ProviderScope(
+              child: ChangeNotifierProvider.value(
+                value: widget.soundProvider,
+                child: App(
+                  userChanges: boot.userChanges,
+                  emailLinks: widget.emailLinks,
+                  initialEmailLink: boot.initialEmailLink,
+                  initialUpdateRequired: boot.updateRequired,
+                  initialUpdateCheckCompleted: true,
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  GameLocale.selectFor(
-                    locale,
-                    ko: '네트워크 상태를 확인한 뒤 앱을 다시 실행해 주세요.\n문제가 계속되면 앱을 최신 버전으로 업데이트해 주세요.',
-                    en: 'Check your network, then restart the app.\nIf the problem continues, update to the latest version.',
-                    zhHans: '请检查网络后重新启动应用。\n如果问题持续，请更新到最新版本。',
-                    zhHant: '請檢查網路後重新啟動 App。\n如果問題持續，請更新到最新版本。',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFA8A8A8), height: 1.6),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          if (!_splashGone)
+            StartupSplash(
+              failure: boot.failure,
+              onRetry: boot.retry,
+              exiting: boot.ready,
+              onExitDone: () => setState(() => _splashGone = true),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// 앱 최초 화면 방향을 iOS scene이 활성화된 뒤 한 번만 적용합니다.
-///
-/// Flutter 첫 프레임은 `UIWindowScene`이 아직 unattached인 시점에도 만들어질 수
-/// 있으므로 `addPostFrameCallback`만으로는 충분하지 않습니다. lifecycle의
-/// `resumed`를 기준으로 해야 실제 창에 방향 요청이 전달됩니다.
 class _InitialOrientationApplier with WidgetsBindingObserver {
   bool _completed = false;
 

@@ -6,9 +6,11 @@ import 'package:game_kit/player_layouts/models/player_layout.dart';
 import 'package:game_kit/recovery/widgets/critical_network_guard.dart';
 import 'package:game_kit/shared/widgets/game_route_exit.dart';
 import 'package:game_kit/template_game.dart';
+import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:game_russian_roulette/src/phone.dart';
 import 'package:game_russian_roulette/src/service.dart';
 import 'package:game_russian_roulette/src/tablet.dart';
+import 'package:game_russian_roulette/src/tutorial.dart';
 
 class RussianRouletteGame extends TemplateGame {
   const RussianRouletteGame();
@@ -63,6 +65,9 @@ class RussianRouletteGame extends TemplateGame {
 
   @override
   bool get usesDoorEntrance => true;
+
+  @override
+  GameTutorial get tutorial => const RussianRouletteTutorial();
 
   @override
   Future<void> startGame(String roomCode, {Map<String, Object?>? options}) =>

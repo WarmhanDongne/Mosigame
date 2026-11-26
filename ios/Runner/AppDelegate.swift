@@ -16,6 +16,23 @@ import firebase_messaging
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "CameraSettingsPlugin") {
+      let channel = FlutterMethodChannel(name: "mosigame/camera_settings", binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { call, result in
+        guard call.method == "open" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+          result(FlutterError(code: "settings_unavailable", message: nil, details: nil))
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { opened in
+          if opened { result(nil) }
+          else { result(FlutterError(code: "settings_unavailable", message: nil, details: nil)) }
+        }
+      }
+    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "YutMotionPlugin") {
       YutMotionPlugin.register(with: registrar)
     }

@@ -11,6 +11,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:project00/platform/home/gamelist/models/game_info.dart';
 import 'package:project00/platform/home/phone/screens/phone_room_join.dart';
 import 'package:project00/platform/home/phone/widgets/phone_flow_transition.dart';
+import 'package:project00/platform/home/phone/widgets/phone_join_scanner.dart';
 import 'package:project00/platform/home/phone/widgets/phone_own_game_list.dart';
 import 'support/firebase_test_bootstrap.dart';
 
@@ -158,13 +159,17 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // 스캔선은 반복 애니메이션이므로 settle 대신 첫 프레임만 확인합니다.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
       expect(find.text('1 / 3'), findsOneWidget);
       await tester.drag(
         find.byKey(const Key('phone-book-shelf')),
         const Offset(-150, 0),
       );
-      await tester.pumpAndSettle();
+      // 스캔선은 반복 애니메이션이므로 settle 대신 첫 프레임만 확인합니다.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
       expect(find.text('2 / 3'), findsOneWidget);
       expect(find.text('final_call'), findsOneWidget);
       // 옆 책등도 같은 이름표를 가지므로 마지막(점 버튼)을 누릅니다.
@@ -180,6 +185,157 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final size in [const Size(320, 700), const Size(390, 844)]) {
+    testWidgets('QR 로비는 ${size.width.toInt()} 폭에서 스캐너와 코드 칸을 함께 둔다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewPadding = FakeViewPadding(
+        bottom: size.width == 390 ? 34 : 0,
+      );
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewPadding);
+      final original = MobileScannerPlatform.instance;
+      final camera = FakeEntryCamera();
+      MobileScannerPlatform.instance = camera;
+      addTearDown(() {
+        MobileScannerPlatform.instance = original;
+        camera.captures.close();
+      });
+      var finished = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: phoneScannerLobbyBackground,
+            body: Column(
+              children: [
+                Expanded(
+                  child: PhoneJoinScanner(
+                    gameCatalog: const EmptyGameCatalog(),
+                    busy: false,
+                    onJoinFinished: () => finished++,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      // 스캔선은 반복 애니메이션이므로 settle 대신 첫 프레임만 확인합니다.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      // 로비에서 바로 카메라가 켜지고, 코드를 다 넣기 전에는 참여 버튼이 없습니다.
+      expect(camera.starts, 1);
+      expect(find.byType(MobileScanner), findsOneWidget);
+      expect(find.textContaining('QR'), findsWidgets);
+      expect(find.text('또는 방 코드 입력'), findsOneWidget);
+      expect(find.text('그룹 참여'), findsNothing);
+      expect(find.text('QR로 찍기'), findsNothing);
+      final boxes = find.byKey(const ValueKey('lobby-room-code-boxes'));
+      expect(boxes, findsOneWidget);
+      final initialCodeTop = tester.getTopLeft(boxes).dy;
+
+      // 코드 칸을 누르면 이전 디자인의 전용 자판이 올라옵니다.
+      await tester.tap(boxes);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('room-code-keyboard')), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('방 코드 입력'), findsOneWidget);
+      expect(tester.getTopLeft(boxes).dy, lessThan(initialCodeTop));
+      expect(find.byKey(const Key('lobby-qr-scan-button')), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('room-code-keyboard'))).bottom,
+        size.height,
+      );
+      expect(camera.stops, greaterThan(0));
+      expect(finished, 0);
+      await tester.tap(find.bySemanticsLabel('키보드 내리기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 320));
+      expect(find.byKey(const ValueKey('room-code-keyboard')), findsNothing);
+      await tester.tap(boxes);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('lobby-qr-scan-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 320));
+      expect(find.byKey(const ValueKey('room-code-keyboard')), findsNothing);
+      await tester.tap(boxes);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('room-code-keyboard')), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'ABCDE');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('그룹 참여'), findsOneWidget);
+      expect(
+        tester.getRect(find.text('그룹 참여')).bottom,
+        lessThanOrEqualTo(
+          tester.getRect(find.byKey(const ValueKey('room-code-keyboard'))).top,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    });
+  }
+
+  testWidgets('로비 카메라 거절은 버튼으로 재시도하고 설정 복귀 후 다시 시작한다', (tester) async {
+    final original = MobileScannerPlatform.instance;
+    final camera = FakeEntryCamera()..denied = true;
+    MobileScannerPlatform.instance = camera;
+    const settings = MethodChannel('mosigame/camera_settings');
+    var openedSettings = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(settings, (call) async {
+          expect(call.method, 'open');
+          openedSettings++;
+          return null;
+        });
+    addTearDown(() {
+      MobileScannerPlatform.instance = original;
+      camera.captures.close();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(settings, null);
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PhoneJoinScanner(
+            gameCatalog: const EmptyGameCatalog(),
+            busy: false,
+            onJoinFinished: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('카메라 허용'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    final attempts = camera.starts;
+    await tester.tap(find.text('카메라 허용'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(camera.starts, greaterThan(attempts));
+    expect(find.text('설정 열기'), findsOneWidget);
+    await tester.tap(find.text('설정 열기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(openedSettings, 1);
+    camera.denied = false;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('카메라 허용'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('스캔→코드 입력→오류→스캔은 같은 route에서 동작하며 중복 검증을 막는다', (tester) async {
     tester.view.physicalSize = const Size(320, 700);
@@ -259,15 +415,7 @@ void main() {
     await tester.pump();
     expect(requests, 0);
     await tester.pump(const Duration(milliseconds: 120));
-    expect(
-      tester
-          .widget<FractionalTranslation>(
-            find.byKey(const Key('room-code-keyboard-slide')),
-          )
-          .translation
-          .dy,
-      inExclusiveRange(0, 1),
-    );
+    expect(find.byKey(const ValueKey('room-code-keyboard')), findsNothing);
     expect(find.text('방 코드 입력'), findsOneWidget);
     expect(requests, 0);
     await tester.tap(find.byType(MosiButton));

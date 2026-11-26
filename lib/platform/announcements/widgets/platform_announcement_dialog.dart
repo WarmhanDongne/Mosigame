@@ -8,13 +8,17 @@ Future<void> showPlatformAnnouncementDialog({
   required PlatformAnnouncement announcement,
   VoidCallback? onOpenStore,
 }) {
+  final maintenance = announcement.kind == PlatformAnnouncementKind.maintenance;
   return showDialog<void>(
     context: context,
-    barrierDismissible: true,
-    builder: (dialogContext) => _PlatformAnnouncementDialog(
-      announcement: announcement,
-      onOpenStore: onOpenStore,
-      onDismiss: () => Navigator.of(dialogContext).pop(),
+    barrierDismissible: !maintenance,
+    builder: (dialogContext) => PopScope(
+      canPop: !maintenance,
+      child: _PlatformAnnouncementDialog(
+        announcement: announcement,
+        onOpenStore: onOpenStore,
+        onDismiss: () => Navigator.of(dialogContext).pop(),
+      ),
     ),
   );
 }
@@ -52,6 +56,7 @@ class _PlatformAnnouncementDialog extends StatelessWidget {
         : copy.title;
     final body = copy.body;
     final period = announcement.maintenancePeriod;
+    final isPhone = MediaQuery.sizeOf(context).shortestSide < 600;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       backgroundColor: Colors.transparent,
@@ -149,73 +154,21 @@ class _PlatformAnnouncementDialog extends StatelessWidget {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 21),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: MosiButton(
-                          label: maintenance
-                              ? GameLocale.select(
-                                  ko: '나중에',
-                                  en: 'Later',
-                                  zhHans: '稍后',
-                                  zhHant: '稍後',
-                                )
-                              : GameLocale.select(
-                                  ko: '닫기',
-                                  en: 'Close',
-                                  zhHans: '关闭',
-                                  zhHant: '關閉',
-                                ),
-                          variant: MosiButtonVariant.outline,
-                          height: 51,
-                          onPressed: onDismiss,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: maintenance || onOpenStore == null ? 1 : 2,
-                        child: MosiButton(
-                          label: maintenance || onOpenStore == null
-                              ? GameLocale.select(
-                                  ko: '닫기',
-                                  en: 'Close',
-                                  zhHans: '关闭',
-                                  zhHant: '關閉',
-                                )
-                              : GameLocale.select(
-                                  ko: '상점으로',
-                                  en: 'Go to store',
-                                  zhHans: '前往商店',
-                                  zhHant: '前往商店',
-                                ),
-                          height: 51,
-                          onPressed: maintenance || onOpenStore == null
-                              ? onDismiss
-                              : () {
-                                  onDismiss();
-                                  onOpenStore?.call();
-                                },
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (!maintenance) ...[
+                    const SizedBox(height: 21),
+                    _buildNoticeActions(isPhone: isPhone),
+                  ],
                 ],
               ),
             ),
-            // The card's top rule stops behind the round badge instead of
-            // visually cutting through the announcement/maintenance icon.
+            // 둥근 모서리는 남기되 아이콘 높이를 가로지르는 카드 윗선은
+            // 공지·점검 모두 흰색으로 덮어 보이지 않게 합니다.
             Positioned(
+              key: const Key('platform-announcement-top-rule-mask'),
               top: -1,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 108,
-                  height: 5,
-                  color: MosiColors.white,
-                ),
-              ),
+              left: 25,
+              right: 25,
+              child: Container(height: 5, color: MosiColors.white),
             ),
             Positioned(
               top: -44,
@@ -246,6 +199,51 @@ class _PlatformAnnouncementDialog extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNoticeActions({required bool isPhone}) {
+    final close = GameLocale.select(
+      ko: '닫기',
+      en: 'Close',
+      zhHans: '关闭',
+      zhHant: '關閉',
+    );
+    if (isPhone || onOpenStore == null) {
+      return MosiButton(
+        label: close,
+        height: 51,
+        expand: true,
+        onPressed: onDismiss,
+      );
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: MosiButton(
+            label: close,
+            variant: MosiButtonVariant.outline,
+            height: 51,
+            onPressed: onDismiss,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: MosiButton(
+            label: GameLocale.select(
+              ko: '상점으로',
+              en: 'Go to store',
+              zhHans: '前往商店',
+              zhHant: '前往商店',
+            ),
+            height: 51,
+            onPressed: () {
+              onDismiss();
+              onOpenStore?.call();
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:firebase_auth_platform_interface/firebase_auth_platform_interfac
 import 'package:firebase_core_platform_interface/test.dart';
 import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:game_kit/core/layout/app_orientation.dart';
+import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/models/game_room_context.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
@@ -713,6 +714,100 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();
+  });
+
+  testWidgets('선택 게임 이름·시간·인원은 모든 언어와 휴대폰 폭에서 크게 한 줄로 보인다', (tester) async {
+    final previousLocale = GameLocale.current;
+    addTearDown(() => GameLocale.current = previousLocale);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const cases = [
+      (Locale('ko'), Size(320, 700)),
+      (Locale('en'), Size(390, 844)),
+      (
+        Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+        Size(320, 700),
+      ),
+      (
+        Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+        Size(390, 844),
+      ),
+    ];
+
+    for (final (locale, size) in cases) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      GameLocale.current = locale;
+      final provider = _provider()
+        ..selectedGameId = 'russian_roulette'
+        ..selectedGame = GameInfo.fromJson({
+          'id': 'russian_roulette',
+          'name': '러시안 룰렛',
+          'localizedNames': {
+            'en': 'Russian Roulette',
+            'zh-Hans': '俄罗斯轮盘生存游戏',
+            'zh-Hant': '俄羅斯輪盤生存遊戲',
+          },
+          'description': '총의 방향을 바꾸며 마지막 생존자를 가리는 게임입니다.',
+          'localizedDescriptions': {
+            'en': 'Change the direction and become the final survivor.',
+            'zh-Hans': '改变枪口方向，成为最后的生存者。',
+            'zh-Hant': '改變槍口方向，成為最後的生存者。',
+          },
+          'minPlayers': 2,
+          'maxPlayers': 8,
+          'playTime': 5,
+        });
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          theme: PlatformTheme.light(),
+          home: PhoneRoomWaiting(
+            provider: provider,
+            headerForTesting: const SizedBox(height: 72),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final summary = find.byKey(const ValueKey('selected-game-summary'));
+      final name = tester.widget<Text>(
+        find.byKey(const ValueKey('selected-game-name')),
+      );
+      final description = tester.widget<Text>(
+        find.byKey(const ValueKey('selected-game-description')),
+      );
+      expect(summary, findsOneWidget);
+      expect(name.maxLines, 1);
+      expect(name.softWrap, isFalse);
+      expect(name.style?.fontSize, 36);
+      expect(description.style?.fontSize, 22);
+      expect(description.style?.fontWeight, FontWeight.w500);
+      for (final key in const [
+        ValueKey('selected-game-time'),
+        ValueKey('selected-game-player-count'),
+      ]) {
+        final metric = find.byKey(key);
+        expect(metric, findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(
+                find.descendant(of: metric, matching: find.byType(Text)),
+              )
+              .style
+              ?.fontSize,
+          18,
+        );
+      }
+      expect(
+        tester.getRect(find.byKey(const ValueKey('selected-game-name'))).right,
+        lessThanOrEqualTo(tester.getRect(summary).right),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+    }
   });
 
   testWidgets('동작 줄이기 설정에서는 선택 전환을 즉시 완료한다', (tester) async {

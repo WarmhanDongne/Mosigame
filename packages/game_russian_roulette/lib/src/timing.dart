@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/animation.dart';
 import 'package:game_russian_roulette/src/view.dart';
 
@@ -95,25 +93,34 @@ abstract final class RussianRouletteTiming {
   }
 }
 
-/// 회전 단계에 진입한 뒤 실제 총구 모션과 효과음을 맞추기 위한 남은 시간입니다.
-/// 첫 이동 전 준비 구간에는 [delay]만 기다리고, 이미 이동이 시작됐다면
-/// [Duration.zero]으로 즉시 이어 재생합니다.
-({Duration delay, Duration window})? rouletteRotationAudioTiming(
-  Duration elapsed,
-  int spinCount,
-) {
-  if (spinCount <= 0) return null;
-  final startMs = RussianRouletteTiming.rotationLead.inMilliseconds;
-  final endMs =
-      startMs +
-      RussianRouletteTiming.rotationStep.inMilliseconds * spinCount.clamp(0, 8);
-  final elapsedMs = elapsed.inMilliseconds.clamp(0, endMs).toInt();
-  if (elapsedMs >= endMs) return null;
-  final delayMs = math.max(0, startMs - elapsedMs);
-  return (
-    delay: Duration(milliseconds: delayMs),
-    window: Duration(milliseconds: endMs - math.max(startMs, elapsedMs)),
-  );
+/// 화면이 실제로 그려진 시간만 누적하는 러시안 룰렛 연출 시계입니다.
+///
+/// Ticker의 절대 경과 시간을 그대로 쓰면 앱 비활성화나 긴 프레임 뒤에 연출이
+/// 중간으로 점프합니다. 한 프레임의 최대 증가량을 제한하고, 비활성화 중에는
+/// 시간을 누적하지 않아 시작 연출과 총구 한 칸 이동을 빠뜨리지 않습니다.
+class RoulettePresentationClock {
+  static const maxFrameDelta = Duration(milliseconds: 50);
+
+  Duration? _lastTick;
+  int _nowMilliseconds = 0;
+
+  int get nowMilliseconds => _nowMilliseconds;
+
+  void detach() {
+    _lastTick = null;
+  }
+
+  void tick(Duration tickerElapsed, {required bool active}) {
+    final previous = _lastTick;
+    _lastTick = tickerElapsed;
+    if (!active || previous == null) return;
+
+    final delta = tickerElapsed - previous;
+    if (delta <= Duration.zero) return;
+    _nowMilliseconds += delta.inMilliseconds
+        .clamp(0, maxFrameDelta.inMilliseconds)
+        .toInt();
+  }
 }
 
 /// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.
@@ -124,16 +131,19 @@ abstract final class RussianRouletteTiming {
 bool rouletteShouldStartIntro(
   RussianRouletteView game, {
   required int presentedStartedAt,
-  required int serverNow,
+  required int? serverNow,
 }) {
   if (game.round != 1 ||
       game.phase != 'selecting' ||
       game.paused ||
       game.startedAt <= 0 ||
-      game.startedAt == presentedStartedAt ||
-      game.deadlineAt <= serverNow) {
+      game.startedAt == presentedStartedAt) {
     return false;
   }
+  // 서버 시각 보정이 준비되기 전에는 기기 시계를 대신 쓰지 않습니다. 새 게임
+  // 연출을 생략하는 것보다 한 번 온전히 보여 주는 쪽으로 안전하게 판정합니다.
+  if (serverNow == null) return true;
+  if (game.deadlineAt <= serverNow) return false;
   return game.deadlineAt - serverNow >
       RussianRouletteTiming.introMinimumRemaining.inMilliseconds;
 }

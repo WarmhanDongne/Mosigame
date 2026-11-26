@@ -173,6 +173,12 @@ String? _koreanServerMessage(Object error) {
   return message;
 }
 
+/// 네트워크 때문에 난 오류인지입니다.
+///
+/// 시작 화면처럼 '인터넷이 끊겼다'와 '서버가 안 받는다'를 갈라 보여 줘야 하는
+/// 곳에서 씁니다. 판단 기준은 사용자 문구를 만들 때와 같습니다.
+bool isNetworkError(Object? error) => error != null && _isNetworkError(error);
+
 final RegExp _hangul = RegExp(r'[가-힣]');
 
 bool _isNetworkError(Object error) {

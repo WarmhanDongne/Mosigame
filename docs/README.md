@@ -39,7 +39,7 @@ AI는 루트 [`AGENTS.md`](../AGENTS.md) 하나에서 시작합니다. 모든 �
 - [`FIREBASE_MCP.md`](operations/FIREBASE_MCP.md): 승인된 production RTDB 단일 경로 읽기
 - [`FIREBASE_SERVER_LOGS.md`](operations/FIREBASE_SERVER_LOGS.md): 승인 범위의 정제된 서버 로그 읽기
 - [`MOSIGAME_SYSTEM_MAP.html`](engineering/MOSIGAME_SYSTEM_MAP.html): 시각적 개발자 운영 Map.
-  기능 브랜치를 개발자 이름 브랜치에 합치기 전에 현재 코드로 갱신
+  `jinsung`에서 직접 작업할 때 현재 코드로 갱신
 
 ## 더 이상 현재 기준으로 사용하지 않는 자료
 
