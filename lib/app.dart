@@ -31,11 +31,15 @@ class App extends StatelessWidget {
     this.userChanges,
     this.emailLinks,
     this.initialEmailLink,
+    this.initialUpdateRequired = false,
+    this.initialUpdateCheckCompleted = false,
   });
 
   final Stream<User?>? userChanges;
   final Stream<Uri>? emailLinks;
   final Uri? initialEmailLink;
+  final bool initialUpdateRequired;
+  final bool initialUpdateCheckCompleted;
 
   @override
   Widget build(BuildContext context) {
@@ -70,18 +74,22 @@ class App extends StatelessWidget {
             // 서버가 요구하는 최소 빌드보다 낮으면 모든 화면 위에 스토어 업데이트
             // 안내를 덮습니다. 확인하지 못하면 그대로 통과합니다.
             builder: (context, child) => AppUpdateGate(
+              initialUpdateRequired: initialUpdateRequired,
+              checkOnStart: !initialUpdateCheckCompleted,
               child: AppNetworkGuard(child: child ?? const SizedBox.shrink()),
             ),
             // 새 패치가 있으면 받는 동안만 패치 화면을 덮습니다. 확인 중에는
             // 화면을 막지 않고, 패치가 없거나 실패하면 그대로 통과합니다.
-            home: ShorebirdPatchGate(
-              child: AuthGate(
-                gameCatalog: const GameRegistry(),
-                userChanges: userChanges,
-                emailLinks: emailLinks,
-                initialEmailLink: initialEmailLink,
-              ),
-            ),
+            home: initialUpdateRequired
+                ? const SizedBox.shrink()
+                : ShorebirdPatchGate(
+                    child: AuthGate(
+                      gameCatalog: const GameRegistry(),
+                      userChanges: userChanges,
+                      emailLinks: emailLinks,
+                      initialEmailLink: initialEmailLink,
+                    ),
+                  ),
           );
         },
       ),

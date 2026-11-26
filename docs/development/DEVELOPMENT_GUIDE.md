@@ -55,7 +55,8 @@ license 동의, Firebase 로그인과 secret 입력은 사람이 처리합니다
 
 ### TEST 프로젝트
 
-개발자 브랜치, 기능 브랜치와 `TEST` 실기기 검증의 기본 모드입니다.
+`jinsung` 개발 브랜치에서 직접 작업하며 `TEST` 실기기 검증의 기본 모드입니다.
+`jinsung`에서는 `MOSIGAME_BACKEND`를 생략해도 TEST가 선택됩니다.
 
 ```bash
 flutter run --dart-define=MOSIGAME_BACKEND=test
@@ -71,8 +72,8 @@ flutter run --dart-define=MOSIGAME_BACKEND=local
 
 ### 운영 서버
 
-`MOSIGAME_BACKEND`를 생략하거나 `server`로 지정하면 운영 Firebase입니다. 일반 기능 개발과
-실기기 검증에서 사용하지 않습니다.
+운영 Firebase는 `MOSIGAME_BACKEND=server`를 명시해야 합니다. 일반 기능 개발과
+TEST 실기기 검증에서는 운영 모드를 사용하지 않습니다.
 
 ```bash
 flutter run --dart-define=MOSIGAME_BACKEND=server

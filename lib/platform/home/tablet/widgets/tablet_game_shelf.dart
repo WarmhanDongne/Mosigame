@@ -785,9 +785,11 @@ class _ShelfBody extends StatelessWidget {
                             style: MosiFonts.grotesk(
                               locale: Localizations.maybeLocaleOf(context),
                               size: englishSize,
-                              color: art.id == 'liars_poker'
-                                  ? theme.accA
-                                  : theme.accB,
+                              color: switch (art.id) {
+                                'russian_roulette' => MosiColors.sun,
+                                'liars_poker' => theme.accA,
+                                _ => theme.accB,
+                              },
                               letterSpacing: compact ? 2.4 : 3,
                             ),
                           ),

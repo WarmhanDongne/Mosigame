@@ -44,7 +44,7 @@ class RussianRouletteTabletScreen extends ConsumerStatefulWidget {
 
 class _RussianRouletteTabletScreenState
     extends ConsumerState<RussianRouletteTabletScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _service = RussianRouletteService();
   final _backgroundMusic = GameBackgroundMusic();
   static const _maxPhaseAttempts = 3;
@@ -52,11 +52,13 @@ class _RussianRouletteTabletScreenState
 
   Timer? _phaseTimer;
   Timer? _victoryTimer;
-  Timer? _rotationSoundTimer;
   String _scheduledKey = '';
+  String _phaseAdvanceStartedKey = '';
   int _phaseAttempts = 0;
   String? _audioKey;
   String? _lastAudioPhase;
+  String _rotationAudioKey = '';
+  int _rotationAudioStep = 0;
   SoundProvider? _sound;
   bool _reportedReady = false;
   bool _soundPrepared = false;
@@ -92,22 +94,12 @@ class _RussianRouletteTabletScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     _backgroundMusic.dispose();
     _victoryTimer?.cancel();
-    _rotationSoundTimer?.cancel();
-    _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
     _phaseTimer?.cancel();
     super.dispose();
-  }
-
-  void _runSound(Future<void>? operation, String message) {
-    if (operation == null) return;
-    unawaited(
-      operation.catchError((Object error) {
-        debugPrint('$message: $error');
-      }),
-    );
   }
 
   void _playEffect(String asset) => SoundEffects.play(context, asset);
@@ -122,8 +114,7 @@ class _RussianRouletteTabletScreenState
     }
 
     if (game.paused) {
-      _rotationSoundTimer?.cancel();
-      _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
+      _audioKey = null;
       return;
     }
 
@@ -133,24 +124,21 @@ class _RussianRouletteTabletScreenState
     if (_audioKey == null) {
       _audioKey = key;
       _lastAudioPhase = game.phase;
-      if (game.phase == 'rotating') {
-        _scheduleRotationSound(game, elapsed, key);
-      }
+      _syncRotationSound(game, elapsed, key);
       return;
     }
-    if (_audioKey == key) return;
+    if (_audioKey == key) {
+      _syncRotationSound(game, elapsed, key);
+      return;
+    }
 
     final previousPhase = _lastAudioPhase;
     _audioKey = key;
     _lastAudioPhase = game.phase;
     _victoryTimer?.cancel();
 
-    if (game.phase != 'rotating') {
-      _rotationSoundTimer?.cancel();
-      _runSound(_sound?.stopSustainedEffect(), '회전음을 멈추지 못했습니다');
-    }
-
     if (game.finished) {
+      _resetRotationSound();
       if (previousPhase == 'firing') {
         _playEffect(RussianRouletteSounds.gunshot);
       }
@@ -167,73 +155,84 @@ class _RussianRouletteTabletScreenState
 
     switch (game.phase) {
       case 'rotating':
-        _scheduleRotationSound(game, elapsed, key);
+        _syncRotationSound(game, elapsed, key);
         break;
       case 'outcome':
+        _resetRotationSound();
         _playEffect(RussianRouletteSounds.gunshot);
         if (game.shotBlocked == true) {
           _playEffect(RussianRouletteSounds.shieldImpact);
         }
         break;
       default:
+        _resetRotationSound();
         break;
     }
   }
 
-  /// 서버가 회전 단계로 바뀐 순간이 아니라 첫 총구 이동과 동시에 회전음을
-  /// 시작합니다. 상태 수신이 늦으면 이미 지난 만큼을 빼고 남은 모션 구간만
-  /// 재생해 화면과 소리가 다시 어긋나지 않게 합니다.
-  void _scheduleRotationSound(
+  void _resetRotationSound() {
+    _rotationAudioKey = '';
+    _rotationAudioStep = 0;
+  }
+
+  /// 화면에서 실제로 새 총구 이동을 시작했을 때만 회전음을 한 번 재생합니다.
+  /// 서버 경과 시간과 별도 타이머로 예약하지 않아 프레임 지연 뒤 소리와 총구가
+  /// 서로 다른 칸을 가리키지 않습니다.
+  void _syncRotationSound(
     RussianRouletteView game,
     Duration elapsed,
     String audioKey,
   ) {
-    _rotationSoundTimer?.cancel();
-    final timing = rouletteRotationAudioTiming(elapsed, game.spinCount);
-    if (timing == null) return;
-    void play() {
-      if (!mounted || _audioKey != audioKey) return;
-      _runSound(
-        _sound?.playSustainedEffect(
-          RussianRouletteSounds.revolverSpin,
-          window: timing.window,
-        ),
-        '리볼버 회전음을 재생하지 못했습니다',
-      );
+    if (game.phase != 'rotating') {
+      _resetRotationSound();
+      return;
     }
-
-    if (timing.delay == Duration.zero) {
-      play();
-    } else {
-      _rotationSoundTimer = Timer(timing.delay, play);
+    if (_rotationAudioKey != audioKey) {
+      _rotationAudioKey = audioKey;
+      _rotationAudioStep = 0;
+    }
+    final displayedStep = RussianRouletteTiming.completedRotationSteps(
+      elapsed,
+      game.spinCount,
+    );
+    if (displayedStep > _rotationAudioStep) {
+      _rotationAudioStep = displayedStep;
+      _playEffect(RussianRouletteSounds.revolverSpin);
     }
   }
 
   Future<bool> _run(Future<Object?> Function() command) =>
       ref.read(russianRouletteSessionProvider(_args).notifier).execute(command);
 
-  void _schedule(RussianRouletteView game) {
+  void _schedule(RussianRouletteView game, Duration elapsed) {
     final key = roulettePhaseKey(game);
-    if (_scheduledKey == key) return;
-    _scheduledKey = key;
-    _phaseAttempts = 0;
-    _phaseTimer?.cancel();
-    _phaseTimer = null;
+    if (_scheduledKey != key) {
+      _scheduledKey = key;
+      _phaseAdvanceStartedKey = '';
+      _phaseAttempts = 0;
+      _phaseTimer?.cancel();
+      _phaseTimer = null;
+    }
     // 중단·종료 중에는 진행 명령을 보내지 않습니다. 서버도 거절합니다.
     final delay = roulettePhaseDelay(game);
     if (delay == null) return;
+    final lead = RussianRouletteTiming.phaseRequestLead.inMilliseconds;
+    final remaining = delay.inMilliseconds - lead - elapsed.inMilliseconds;
+
+    // 회전은 벽시계 Timer가 아니라 화면에서 실제 재생한 시간으로 완료합니다.
+    // 긴 프레임이나 백그라운드 복귀 뒤에도 모든 좌석을 한 칸씩 보여 준 다음에만
+    // 서버에 다음 단계를 요청합니다.
+    if (game.phase == 'rotating') {
+      if (remaining > 0 || _phaseAdvanceStartedKey == key) return;
+      _phaseAdvanceStartedKey = key;
+      unawaited(_advancePhase(key));
+      return;
+    }
+    if (_phaseTimer != null || _phaseAdvanceStartedKey == key) return;
     // 중단 동안에도 단계 시계는 흘렀고 연출은 끝까지 그려졌습니다. 남은
     // 시간만 기다려 재개 직후 이미 끝난 연출을 처음부터 다시 기다리지
     // 않습니다. 새 단계는 아직 시계를 맞추기 전이라 전체 시간을 씁니다.
-    final since = _phaseKey == '${game.status}:${game.phase}:${game.round}'
-        ? _nowMs - _phaseStartedAt
-        : 0;
-    // 응답이 오는 동안 화면이 멈춰 보이지 않게 끝나기 조금 전에 요청합니다.
-    final lead = RussianRouletteTiming.phaseRequestLead.inMilliseconds;
-    _armPhase(
-      key,
-      Duration(milliseconds: math.max(0, delay.inMilliseconds - lead - since)),
-    );
+    _armPhase(key, Duration(milliseconds: math.max(0, remaining)));
   }
 
   void _armPhase(String key, Duration wait) {
@@ -241,6 +240,7 @@ class _RussianRouletteTabletScreenState
     _phaseTimer = Timer(wait, () {
       _phaseTimer = null;
       if (!mounted || _scheduledKey != key) return;
+      _phaseAdvanceStartedKey = key;
       unawaited(_advancePhase(key));
     });
   }
@@ -301,15 +301,22 @@ class _RussianRouletteTabletScreenState
   // 서버 단계는 한 번에 바뀌므로, 단계 안의 한 명씩 공개·한 칸씩 회전은
   // 태블릿이 단계를 처음 본 순간부터 흐른 시간으로 그립니다.
   late final Ticker _ticker = createTicker(_onTick);
+  final RoulettePresentationClock _presentationClock =
+      RoulettePresentationClock();
   String _phaseKey = '';
   int _phaseStartedAt = 0;
+  String _rotationPresentationKey = '';
+  int _rotationPresentationStartedAt = 0;
   bool _sawPlaying = false;
   bool _animating = false;
+  bool _lifecycleActive = true;
+  bool _gamePresentationPaused = false;
   double? _gunFrom;
   double? _gunTo;
   int _gunStartedAt = 0;
 
   int get _nowMs => DateTime.now().millisecondsSinceEpoch;
+  int get _animationNowMs => _presentationClock.nowMilliseconds;
   int get _serverNow => ServerClock.nowMillis();
 
   // 게임 시작 연출: 1턴 선택이 막 시작됐을 때(남은 시간이 넉넉할 때) 한 번만.
@@ -325,17 +332,17 @@ class _RussianRouletteTabletScreenState
     final fresh = rouletteShouldStartIntro(
       game,
       presentedStartedAt: _introGame,
-      serverNow: _serverNow,
+      serverNow: ServerClock.hasSynced ? _serverNow : null,
     );
     if (fresh) {
       _introGame = game.startedAt;
       // 화면 준비가 늦어도 어두운 준비 → 좌석 점등 → 랜덤 총구 지정 순서를
       // 건너뛰지 않고 새 게임마다 한 번 온전히 보여 줍니다.
-      _introStartedAt = _nowMs;
+      _introStartedAt = _animationNowMs;
     }
     final started = _introStartedAt;
     if (started == null) return null;
-    final ms = _nowMs - started;
+    final ms = _animationNowMs - started;
     if (game.round != 1 ||
         game.phase != 'selecting' ||
         ms >= rouletteIntroLength(game.aliveCount)) {
@@ -367,13 +374,36 @@ class _RussianRouletteTabletScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final state = WidgetsBinding.instance.lifecycleState;
+    _lifecycleActive = state == null || state == AppLifecycleState.resumed;
     _ticker.start();
   }
 
-  void _onTick(Duration _) {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final active = state == AppLifecycleState.resumed;
+    if (_lifecycleActive == active) return;
+    _lifecycleActive = active;
+    _presentationClock.detach();
+    if (!active) {
+      _phaseTimer?.cancel();
+      _phaseTimer = null;
+      _scheduledKey = '';
+      _phaseAdvanceStartedKey = '';
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onTick(Duration tickerElapsed) {
+    _presentationClock.tick(
+      tickerElapsed,
+      active: _lifecycleActive && !_gamePresentationPaused,
+    );
     if (!mounted) return;
     final turning =
-        _nowMs - _gunStartedAt <
+        _animationNowMs - _gunStartedAt <
         RussianRouletteTiming.gunTurn.inMilliseconds + 60;
     if (_animating || turning) setState(() {});
   }
@@ -393,6 +423,22 @@ class _RussianRouletteTabletScreenState
     return Duration(milliseconds: _nowMs - _phaseStartedAt);
   }
 
+  Duration _displayElapsed(RussianRouletteView game, Duration serverElapsed) {
+    if (game.phase != 'rotating') {
+      _rotationPresentationKey = '';
+      return serverElapsed;
+    }
+    final key =
+        '${game.round}:${game.phase}:${game.targetUid}:${game.spinCount}';
+    if (_rotationPresentationKey != key) {
+      _rotationPresentationKey = key;
+      _rotationPresentationStartedAt = _animationNowMs;
+    }
+    return Duration(
+      milliseconds: _animationNowMs - _rotationPresentationStartedAt,
+    );
+  }
+
   /// 총구를 [desired] 방향으로 시계 방향 회전시키고 지금 각도를 돌려줍니다.
   double _gunAim(double desired) {
     final to = _gunTo;
@@ -407,7 +453,7 @@ class _RussianRouletteTabletScreenState
         ((normalizedTo - normalizedDesired).abs() - math.pi * 2).abs() > 1e-3) {
       _gunFrom = _gunValue();
       _gunTo = RouletteStageGeometry.clockwiseFrom(to, desired);
-      _gunStartedAt = _nowMs;
+      _gunStartedAt = _animationNowMs;
     }
     return _gunValue();
   }
@@ -416,7 +462,7 @@ class _RussianRouletteTabletScreenState
     final from = _gunFrom ?? 0.0;
     final to = _gunTo ?? 0.0;
     final t =
-        ((_nowMs - _gunStartedAt) /
+        ((_animationNowMs - _gunStartedAt) /
                 RussianRouletteTiming.gunTurn.inMilliseconds)
             .clamp(0.0, 1.0);
     return from + (to - from) * RussianRouletteTiming.gunTurnCurve.transform(t);
@@ -437,9 +483,13 @@ class _RussianRouletteTabletScreenState
       });
     }
     final game = RussianRouletteView.fromPublic(session.publicState);
-    final elapsed = _elapsed(game);
+    if (_gamePresentationPaused != game.paused) {
+      _gamePresentationPaused = game.paused;
+      _presentationClock.detach();
+    }
+    final elapsed = _displayElapsed(game, _elapsed(game));
     _syncAudio(game, elapsed);
-    _schedule(game);
+    _schedule(game, elapsed);
     if (game.loaded && !game.finished) _sawPlaying = true;
     return Scaffold(
       backgroundColor: RouletteColors.ink,
@@ -503,7 +553,7 @@ class _RussianRouletteTabletScreenState
   int _wedgeAt = 0;
 
   double _smoothWedge(double target) {
-    final now = _nowMs;
+    final now = _animationNowMs;
     final dt = (now - _wedgeAt).clamp(0, 200);
     _wedgeAt = now;
     _wedge += (target - _wedge) * (1 - math.exp(-dt / 160));
@@ -574,7 +624,7 @@ class _RussianRouletteTabletScreenState
         seatLayoutMode: widget.playerLayout.seatLayoutMode,
       );
       _wedge = frame.wedgeOpacity;
-      _wedgeAt = _nowMs;
+      _wedgeAt = _animationNowMs;
       return (
         'play',
         RouletteStage(model: frame.build(_gunAim(frame.desiredAim))),
@@ -758,18 +808,43 @@ double _introKeys(List<(double, double)> keys, double p) {
 // 세우기(0.8초) 키입니다. 살짝 더 눕혔다(집기) 들어 올려 굴리고, 조금 지나치게
 // 돌았다 되돌아오며, 68%에 판에 닿아 살짝 눌렸다 튀어 오릅니다.
 const _standRoll = <(double, double)>[
-  (0, 90), (10, 94), (26, 82), (50, 28), (62, -14), (74, 6), (86, -2), (100, 0),
+  (0, 90),
+  (10, 94),
+  (26, 82),
+  (50, 28),
+  (62, -14),
+  (74, 6),
+  (86, -2),
+  (100, 0),
 ];
 const _standScale = <(double, double)>[
-  (0, .94), (10, .95), (30, 1.05), (50, 1.07), (62, 1.02), (68, .97),
-  (80, 1.01), (100, 1),
+  (0, .94),
+  (10, .95),
+  (30, 1.05),
+  (50, 1.07),
+  (62, 1.02),
+  (68, .97),
+  (80, 1.01),
+  (100, 1),
 ];
 const _standShift = <(double, double)>[(0, 37), (10, 37), (55, 0), (100, 0)];
 const _standTilt = <(double, double)>[
-  (0, 0), (10, 1.5), (35, -6), (55, -3), (68, 1.5), (84, -.5), (100, 0),
+  (0, 0),
+  (10, 1.5),
+  (35, -6),
+  (55, -3),
+  (68, 1.5),
+  (84, -.5),
+  (100, 0),
 ];
 const _standLift = <(double, double)>[
-  (0, 0), (10, .08), (30, .85), (50, 1), (62, .55), (68, 0), (100, 0),
+  (0, 0),
+  (10, .08),
+  (30, .85),
+  (50, 1),
+  (62, .55),
+  (68, 0),
+  (100, 0),
 ];
 
 /// 시작 연출 [ms]의 총 자세입니다. 다 세운 뒤 먼지도 걷히면 null입니다.

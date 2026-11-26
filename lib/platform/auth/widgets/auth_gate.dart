@@ -1,8 +1,8 @@
-import 'package:game_kit/firebase/firebase_backend.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:game_kit/firebase/firebase_backend.dart';
 import 'package:project00/platform/auth/screens/guest_setup_screen.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:game_kit/localization/game_locale.dart';
@@ -18,6 +18,7 @@ import 'package:project00/platform/home/home.dart';
 import 'package:project00/platform/notifications/push_notification_host.dart';
 import 'package:game_kit/template_game.dart';
 import 'package:project00/platform/widgets/app_startup_surface.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({
@@ -26,6 +27,7 @@ class AuthGate extends StatefulWidget {
     this.emailLinks,
     this.initialEmailLink,
     this.onboardingService,
+    this.authService,
     this.onAuthRestoreTimeout,
     this.gameCatalog = const EmptyGameCatalog(),
   });
@@ -34,6 +36,7 @@ class AuthGate extends StatefulWidget {
   final Stream<Uri>? emailLinks;
   final Uri? initialEmailLink;
   final OnboardingService? onboardingService;
+  final FirebaseAuthService? authService;
   final GameCatalog gameCatalog;
 
   /// 저장된 로그인 정보를 제때 복원하지 못했을 때 할 일입니다.
@@ -46,7 +49,12 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
+  static const _automaticGuestLaunchKey =
+      'auth.automaticGuestFirstLaunchConsumed';
+
   late final OnboardingService _onboardingService;
+  FirebaseAuthService? _authService;
+  late final Future<SharedPreferences> _preferences;
 
   /// 로그인 상태 스트림입니다. **반드시 한 번만 만들어 보관합니다.**
   ///
@@ -73,11 +81,21 @@ class _AuthGateState extends State<AuthGate> {
   bool _onboardingFailed = false;
   int _onboardingGeneration = 0;
   bool _isRestoringAuth = true;
+  bool _guestSignInStarted = false;
+  bool _showManualLogin = false;
+  bool _wasSignedIn = false;
+  int _guestSignInGeneration = 0;
+  String? _guestSignInError;
+  bool _automaticGuestLaunchLoaded = false;
+  bool _automaticGuestLaunchConsumed = false;
+  bool _automaticGuestFlowActive = false;
 
   @override
   void initState() {
     super.initState();
     _onboardingService = widget.onboardingService ?? OnboardingService();
+    _authService = widget.authService;
+    _preferences = SharedPreferences.getInstance();
     _userChanges = widget.userChanges ?? FirebaseBackend.auth.userChanges();
     final initialLink = widget.initialEmailLink;
     if (initialLink != null &&
@@ -85,7 +103,11 @@ class _AuthGateState extends State<AuthGate> {
       _emailLink = initialLink;
     }
     _subscribeToEmailLinks();
+    unawaited(_loadAutomaticGuestLaunchState());
   }
+
+  FirebaseAuthService get _resolvedAuthService =>
+      _authService ??= FirebaseAuthService();
 
   @override
   void didUpdateWidget(covariant AuthGate oldWidget) {
@@ -139,6 +161,12 @@ class _AuthGateState extends State<AuthGate> {
     }
     final user = authSnapshot.data;
     if (user == null) {
+      if (_wasSignedIn) {
+        _wasSignedIn = false;
+        _automaticGuestFlowActive = false;
+        _guestSignInStarted = false;
+        _guestSignInError = null;
+      }
       unawaited(PushDeviceRegistration.clearSignedOutToken());
       _clearOnboardingWatch();
       final link = _emailLink;
@@ -165,7 +193,48 @@ class _AuthGateState extends State<AuthGate> {
           onboardingService: _onboardingService,
         );
       }
-      return const LoginScreen();
+      if (!_automaticGuestLaunchLoaded) {
+        return const _AppInitializingView(step: '앱 시작 준비');
+      }
+      if (isTabletLayout(context)) {
+        unawaited(_consumeAutomaticGuestLaunch());
+        return LoginScreen(authService: _resolvedAuthService);
+      }
+      if (!_automaticGuestFlowActive) {
+        if (_automaticGuestLaunchConsumed) {
+          return LoginScreen(authService: _resolvedAuthService);
+        }
+        _automaticGuestFlowActive = true;
+        unawaited(_consumeAutomaticGuestLaunch());
+      }
+      if (_showManualLogin) {
+        return LoginScreen(authService: _resolvedAuthService);
+      }
+      final guestError = _guestSignInError;
+      if (guestError != null) {
+        return _AutomaticGuestSignInErrorView(
+          message: guestError,
+          onRetry: _retryGuestSignIn,
+          onUseExistingAccount: () {
+            setState(() => _showManualLogin = true);
+          },
+        );
+      }
+      _ensureGuestSignIn();
+      return _AppInitializingView(
+        key: const ValueKey('automatic-guest-sign-in'),
+        step: '게스트 로그인',
+        onTimeout: _handleGuestSignInTimeout,
+      );
+    }
+    if (!_wasSignedIn) {
+      _wasSignedIn = true;
+      _automaticGuestFlowActive = false;
+      unawaited(_consumeAutomaticGuestLaunch());
+      _guestSignInGeneration++;
+      _guestSignInStarted = false;
+      _guestSignInError = null;
+      _showManualLogin = false;
     }
     if (_emailLink != null) {
       return const _AppInitializingView(step: '이메일 링크 처리');
@@ -241,6 +310,79 @@ class _AuthGateState extends State<AuthGate> {
         pushUid: user.uid,
       ),
     };
+  }
+
+  void _ensureGuestSignIn() {
+    if (_guestSignInStarted || _guestSignInError != null || _showManualLogin) {
+      return;
+    }
+    _guestSignInStarted = true;
+    final generation = ++_guestSignInGeneration;
+    scheduleMicrotask(() async {
+      try {
+        await _resolvedAuthService.signInAsGuest();
+      } on AuthServiceException catch (error) {
+        if (!mounted || generation != _guestSignInGeneration) return;
+        setState(() {
+          _guestSignInStarted = false;
+          _guestSignInError = error.message;
+        });
+      }
+    });
+  }
+
+  Future<void> _loadAutomaticGuestLaunchState() async {
+    try {
+      final preferences = await _preferences;
+      final consumed = preferences.getBool(_automaticGuestLaunchKey) ?? false;
+      if (!mounted) return;
+      setState(() {
+        _automaticGuestLaunchLoaded = true;
+        _automaticGuestLaunchConsumed =
+            _automaticGuestLaunchConsumed || consumed;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _automaticGuestLaunchLoaded = true;
+        _automaticGuestLaunchConsumed = true;
+      });
+    }
+  }
+
+  Future<void> _consumeAutomaticGuestLaunch() async {
+    if (_automaticGuestLaunchConsumed) return;
+    _automaticGuestLaunchConsumed = true;
+    try {
+      final preferences = await _preferences;
+      await preferences.setBool(_automaticGuestLaunchKey, true);
+    } catch (_) {
+      // 저장할 수 없는 환경에서는 같은 실행 중 중복 자동 로그인을 막고,
+      // 다음 실행은 안전하게 Firebase의 로그인 상태 복원 결과에 맡깁니다.
+    }
+  }
+
+  void _handleGuestSignInTimeout() {
+    if (!_guestSignInStarted || _wasSignedIn || !mounted) return;
+    _guestSignInGeneration++;
+    setState(() {
+      _guestSignInStarted = false;
+      _guestSignInError = GameLocale.select(
+        ko: '게스트 로그인이 지연되고 있습니다. 다시 시도해주세요.',
+        en: 'Guest sign-in is taking too long. Try again.',
+        zhHans: '访客登录时间过长，请重试。',
+        zhHant: '訪客登入時間過長，請重試。',
+      );
+    });
+  }
+
+  void _retryGuestSignIn() {
+    _guestSignInGeneration++;
+    setState(() {
+      _guestSignInStarted = false;
+      _guestSignInError = null;
+      _showManualLogin = false;
+    });
   }
 
   /// 이 uid의 온보딩 상태를 구독합니다. 이미 같은 uid를 듣고 있으면
@@ -346,6 +488,10 @@ class _AuthGateState extends State<AuthGate> {
     // 가입 중단 확인 등 열린 모달을 닫고, 같은 인증 shell의 내용만 갱신합니다.
     Navigator.of(context).popUntil((route) => route.isFirst);
     setState(() {
+      _guestSignInGeneration++;
+      _guestSignInStarted = false;
+      _guestSignInError = null;
+      _showManualLogin = false;
       _emailLink = link;
       _emailLinkError = null;
     });
@@ -359,6 +505,58 @@ class _AuthGateState extends State<AuthGate> {
       if (error == null) _reauthenticationEmail = null;
     });
   }
+}
+
+class _AutomaticGuestSignInErrorView extends StatelessWidget {
+  const _AutomaticGuestSignInErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onUseExistingAccount,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onUseExistingAccount;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      MosiAuthHeader(
+        title: GameLocale.select(
+          ko: '게스트로 시작하기',
+          en: 'Continue as guest',
+          zhHans: '以访客身份开始',
+          zhHant: '以訪客身分開始',
+        ),
+      ),
+      const SizedBox(height: 20),
+      MosiNotice(message: message),
+      const SizedBox(height: 20),
+      MosiButton(
+        key: const ValueKey('automatic-guest-retry'),
+        label: '다시 시도'.localized,
+        expand: true,
+        background: MosiColors.lime,
+        foreground: MosiColors.ink,
+        onPressed: onRetry,
+      ),
+      const SizedBox(height: 12),
+      MosiButton(
+        key: const ValueKey('automatic-guest-existing-login'),
+        label: GameLocale.select(
+          ko: '기존 계정으로 로그인',
+          en: 'Sign in to an existing account',
+          zhHans: '登录现有账号',
+          zhHant: '登入現有帳號',
+        ),
+        expand: true,
+        background: MosiColors.white,
+        foreground: MosiColors.navy,
+        onPressed: onUseExistingAccount,
+      ),
+    ],
+  );
 }
 
 /// 홈 전체가 빠져나간 뒤 인증 화면이 들어옵니다. 인증 내부의 카드 교체는

@@ -299,30 +299,34 @@ void main() {
     );
   });
 
-  test(
-    'rotation sound starts with the first gun motion and catches up safely',
-    () {
-      final fresh = rouletteRotationAudioTiming(Duration.zero, 2)!;
-      expect(fresh.delay, RussianRouletteTiming.rotationLead);
-      expect(fresh.window, RussianRouletteTiming.rotationStep * 2);
+  test('presentation clock does not consume a stalled or inactive gap', () {
+    final clock = RoulettePresentationClock();
+    clock.tick(Duration.zero, active: true);
+    clock.tick(const Duration(milliseconds: 16), active: true);
+    expect(clock.nowMilliseconds, 16);
 
-      final late = rouletteRotationAudioTiming(
-        const Duration(milliseconds: 700),
-        2,
-      )!;
-      expect(late.delay, Duration.zero);
-      expect(late.window, const Duration(milliseconds: 1900));
+    // 2초 동안 프레임을 못 그려도 다음 프레임에서 2초를 한 번에 소비하지 않습니다.
+    clock.tick(const Duration(milliseconds: 2016), active: true);
+    expect(
+      clock.nowMilliseconds,
+      16 + RoulettePresentationClock.maxFrameDelta.inMilliseconds,
+    );
 
-      expect(
-        rouletteRotationAudioTiming(
-          RussianRouletteTiming.rotationLead +
-              RussianRouletteTiming.rotationStep * 2,
-          2,
-        ),
-        isNull,
-      );
-    },
-  );
+    clock.detach();
+    clock.tick(const Duration(milliseconds: 4000), active: false);
+    clock.tick(const Duration(milliseconds: 5000), active: false);
+    clock.detach();
+    clock.tick(const Duration(milliseconds: 6000), active: true);
+    expect(
+      clock.nowMilliseconds,
+      16 + RoulettePresentationClock.maxFrameDelta.inMilliseconds,
+    );
+    clock.tick(const Duration(milliseconds: 6016), active: true);
+    expect(
+      clock.nowMilliseconds,
+      32 + RoulettePresentationClock.maxFrameDelta.inMilliseconds,
+    );
+  });
 
   test('gun turn crosses the angle boundary clockwise without reversing', () {
     final from = 350 * math.pi / 180;
@@ -378,6 +382,16 @@ void main() {
           game(),
           presentedStartedAt: 0,
           serverNow: 100000,
+        ),
+        isTrue,
+      );
+      // 서버 시각 보정 전에는 기기 시계로 후반이라고 오판하지 않고 새 게임
+      // 시작 연출을 보존합니다.
+      expect(
+        rouletteShouldStartIntro(
+          game(),
+          presentedStartedAt: 0,
+          serverNow: null,
         ),
         isTrue,
       );

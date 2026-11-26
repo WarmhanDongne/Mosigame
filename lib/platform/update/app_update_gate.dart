@@ -30,6 +30,9 @@ const appUpdateAndroidStoreUrl =
     'https://play.google.com/store/apps/details?id=com.warmhandongne.msg';
 const appUpdateIosStoreUrl = 'https://apps.apple.com/app/id6828464086';
 
+/// 시작 애니메이션이 업데이트 서버 응답만 기다리며 멈추지 않는 최대 시간입니다.
+const appUpdateCheckTimeout = Duration(seconds: 4);
+
 /// `appConfig/update` 문서에서 [platform]의 최소 빌드 번호를 읽습니다.
 ///
 /// 값이 없거나 숫자가 아니면 null입니다(업데이트를 요구하지 않음).
@@ -64,6 +67,22 @@ Future<int?> _readMinimumBuild() async {
 Future<int?> _readCurrentBuild() async =>
     int.tryParse((await PackageInfo.fromPlatform()).buildNumber);
 
+/// 앱 시작 인증보다 먼저 필수 업데이트 여부를 확인합니다.
+///
+/// 읽기 실패 처리는 호출자가 맡습니다. 시작 흐름은 실패를 기록하고 통과하며,
+/// [AppUpdateGate]는 기존처럼 현재 화면을 유지합니다.
+Future<bool> readAppUpdateRequired({
+  Future<int?> Function()? readMinimumBuild,
+  Future<int?> Function()? readCurrentBuild,
+  Duration timeout = appUpdateCheckTimeout,
+}) async {
+  final values = await Future.wait<int?>([
+    (readCurrentBuild ?? _readCurrentBuild)(),
+    (readMinimumBuild ?? _readMinimumBuild)(),
+  ]).timeout(timeout);
+  return isAppUpdateRequired(currentBuild: values[0], minimumBuild: values[1]);
+}
+
 Future<void> _openStore() async {
   final url = defaultTargetPlatform == TargetPlatform.iOS
       ? appUpdateIosStoreUrl
@@ -78,6 +97,8 @@ class AppUpdateGate extends StatefulWidget {
     this.readMinimumBuild,
     this.readCurrentBuild,
     this.openStore,
+    this.initialUpdateRequired = false,
+    this.checkOnStart = true,
   });
 
   final Widget child;
@@ -87,20 +108,27 @@ class AppUpdateGate extends StatefulWidget {
   final Future<int?> Function()? readCurrentBuild;
   final Future<void> Function()? openStore;
 
+  /// 시작 애니메이션 뒤에서 이미 확인한 필수 업데이트 결과입니다.
+  final bool initialUpdateRequired;
+
+  /// false면 첫 확인을 생략하고 앱 복귀 때부터 다시 확인합니다.
+  final bool checkOnStart;
+
   @override
   State<AppUpdateGate> createState() => _AppUpdateGateState();
 }
 
 class _AppUpdateGateState extends State<AppUpdateGate>
     with WidgetsBindingObserver {
-  bool _updateRequired = false;
+  late bool _updateRequired;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    _updateRequired = widget.initialUpdateRequired;
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_check());
+    if (widget.checkOnStart) unawaited(_check());
   }
 
   @override
@@ -118,13 +146,9 @@ class _AppUpdateGateState extends State<AppUpdateGate>
     if (_busy) return;
     _busy = true;
     try {
-      final currentBuild =
-          await (widget.readCurrentBuild ?? _readCurrentBuild)();
-      final minimumBuild =
-          await (widget.readMinimumBuild ?? _readMinimumBuild)();
-      final required = isAppUpdateRequired(
-        currentBuild: currentBuild,
-        minimumBuild: minimumBuild,
+      final required = await readAppUpdateRequired(
+        readMinimumBuild: widget.readMinimumBuild,
+        readCurrentBuild: widget.readCurrentBuild,
       );
       if (mounted && required != _updateRequired) {
         setState(() => _updateRequired = required);
@@ -150,7 +174,7 @@ class _AppUpdateGateState extends State<AppUpdateGate>
     if (!_updateRequired) return widget.child;
     return ShorebirdPatchScreen(
       title: '업데이트가 필요해요',
-      message: '최신 버전으로 업데이트한 뒤 이용해 주세요',
+      message: '새 버전으로 바꾼 뒤 이어서 놀 수 있어요',
       buttonDelay: Duration.zero,
       buttonLabel: '업데이트하기',
       onSkip: () => unawaited(_handleUpdate()),

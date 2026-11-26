@@ -5,7 +5,7 @@ import 'package:game_kit/localization/game_locale.dart';
 import 'package:game_kit/mosi_ui/mosi_design.dart';
 import 'package:project00/platform/localization/platform_localizations.dart';
 import 'package:project00/platform/profile/providers/profile_update_controller.dart';
-import 'package:project00/platform/profile/widgets/tablet_profile_modal.dart';
+import 'package:project00/platform/profile/widgets/phone_profile_menu.dart';
 
 /// 선반 오른쪽 위 내 프로필 버튼입니다: 닉네임 + 동그란 얼굴.
 class Profile extends StatelessWidget {
@@ -25,12 +25,8 @@ class Profile extends StatelessWidget {
           final user = snapshot.data;
           final pending = updates.pendingFor(user?.uid);
           final name = pending?.nickname ?? profileDisplayName(user);
-          void openProfile() => showMosiDialog<bool>(
-            context: context,
-            // 누른 버튼 자리에서 펼쳐지고 같은 자리로 접힙니다(로비 연출 8번).
-            origin: mosiOriginOf(context),
-            builder: (_) => const TabletProfileModal(),
-          );
+          // 휴대폰과 태블릿 모두 같은 말풍선 프로필 메뉴를 사용합니다.
+          void openProfile() => showPhoneProfileMenu(context);
           return Semantics(
             button: true,
             label: context.l10n.editProfile,

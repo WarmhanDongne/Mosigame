@@ -1615,143 +1615,107 @@ class _SelectedGameDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _WaitingGameColors.of(gameInfo.id);
     final locale = Localizations.localeOf(context);
-    final localizedRules = gameInfo.localizedRulesFor(locale);
-    final rules = localizedRules.trim().isEmpty
-        ? GameLocale.select(
-            ko: '게임 규칙을 준비 중입니다.',
-            en: 'Game rules are being prepared.',
-            zhHans: '游戏规则准备中。',
-            zhHant: '遊戲規則準備中。',
-          )
-        : localizedRules;
+    final description = gameInfo.localizedDescription(locale).trim();
     return CustomScrollView(
+      key: const ValueKey('selected-game-details'),
       slivers: [
-        // 게임 색 바탕 위: 표지와 소개
+        // 게임 선택 화면은 게임마다 내용만 바뀌고, 표지·정보·설명 배치는
+        // 같은 템플릿을 씁니다. 표지 아래에는 한 줄 설명을 두어 긴 설명이
+        // 오른쪽 정보와 부딪히지 않게 합니다.
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.button,
-                    border: Border.all(color: MosiColors.ink, width: 2),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    GameLocale.select(
-                      ko: '그룹이 선택한 게임',
-                      en: 'Selected by the room',
-                      zhHans: '房间选择的游戏',
-                      zhHant: '房間選擇的遊戲',
-                    ),
-                    style: MosiFonts.sans(
-                      size: 12,
-                      weight: FontWeight.w700,
-                      color: colors.buttonFg,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final coverWidth = (constraints.maxWidth * 0.4).clamp(
-                      110.0,
-                      170.0,
-                    );
-                    final details = _SelectedGameSummary(gameInfo: gameInfo);
-                    final cover = MosiGameCover(
-                      gameId: gameInfo.id,
-                      width: coverWidth,
-                      fallbackName: gameInfo.name,
-                      fallbackImageUrl: gameInfo.imageUrl,
-                      displayName: gameInfo.localizedName(
-                        Localizations.localeOf(context),
-                      ),
-                      englishName: gameInfo.englishName,
-                      shadowColor: MosiColors.ink,
-                    );
-                    if (constraints.maxWidth < 330) {
-                      return Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final coverWidth = (constraints.maxWidth * 0.4).clamp(
+                  110.0,
+                  190.0,
+                );
+                final details = _SelectedGameSummary(gameInfo: gameInfo);
+                final cover = MosiGameCover(
+                  gameId: gameInfo.id,
+                  width: coverWidth,
+                  fallbackName: gameInfo.name,
+                  fallbackImageUrl: gameInfo.imageUrl,
+                  displayName: gameInfo.localizedName(locale),
+                  englishName: gameInfo.englishName,
+                  shadowColor: MosiColors.ink,
+                );
+                final poster = SizedBox(width: coverWidth, child: cover);
+                final content = constraints.maxWidth < 330
+                    ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(child: cover),
+                          Center(child: poster),
                           const SizedBox(height: 18),
                           details,
                         ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          poster,
+                          const SizedBox(width: 20),
+                          Expanded(child: details),
+                        ],
                       );
-                    }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        cover,
-                        const SizedBox(width: 20),
-                        Expanded(child: details),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        // 흰 시트: 게임 규칙. 규칙이 짧아도 시트가 화면 아래까지 이어집니다.
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: DecoratedBox(
-            // 위쪽 테두리만 검은 선으로 보이도록 검은 판 위에 흰 판을 3px 내려 겹칩니다.
-            decoration: const BoxDecoration(
-              color: MosiColors.ink,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 3),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(20, 24, 24, 24),
-                decoration: const BoxDecoration(
-                  color: MosiColors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '게임 규칙'.localized,
-                      style: MosiFonts.sans(
-                        size: 18,
-                        weight: FontWeight.w700,
-                        color: colors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: MosiColors.paper,
+                        color: colors.button,
                         border: Border.all(color: MosiColors.ink, width: 2),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        rules,
+                        GameLocale.select(
+                          ko: '그룹이 선택한 게임',
+                          en: 'Selected by the room',
+                          zhHans: '房间选择的游戏',
+                          zhHant: '房間選擇的遊戲',
+                        ),
                         style: MosiFonts.sans(
-                          size: 14,
-                          color: MosiColors.ink2,
-                          height: 1.7,
+                          size: 12,
+                          weight: FontWeight.w700,
+                          color: colors.buttonFg,
+                          height: 1.2,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 18),
+                    content,
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      // 설명은 포스터 폭에 가두지 않고 전체 가로 영역을
+                      // 사용해 말줄임 없이 기기 폭에 맞춰 줄바꿈합니다.
+                      SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          description,
+                          key: const ValueKey('selected-game-description'),
+                          softWrap: true,
+                          style: MosiFonts.sans(
+                            color: colors.fg.withValues(alpha: .9),
+                            size: 22,
+                            weight: FontWeight.w500,
+                            height: 1.32,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
+        // 규칙 시트 없이 게임 테마색 바탕이 참여자 줄까지 이어집니다.
+        const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
       ],
     );
   }
@@ -1769,71 +1733,127 @@ class _SelectedGameSummary extends StatelessWidget {
     final englishName = gameInfo.englishName;
     final colors = _WaitingGameColors.of(gameInfo.id);
     return Column(
+      key: const ValueKey('selected-game-summary'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          displayName,
-          style: MosiFonts.sans(
-            size: 26,
-            height: 1.15,
-            weight: FontWeight.w700,
-            color: colors.fg,
+        SizedBox(
+          width: double.infinity,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              displayName,
+              key: const ValueKey('selected-game-name'),
+              maxLines: 1,
+              softWrap: false,
+              style: MosiFonts.sans(
+                size: 36,
+                height: 1.08,
+                weight: FontWeight.w800,
+                color: colors.fg,
+                letterSpacing: -1,
+              ),
+            ),
           ),
         ),
         if (englishName.toUpperCase() != displayName.toUpperCase())
           Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              englishName,
-              style: MosiFonts.grotesk(
-                size: 11,
-                weight: FontWeight.w700,
-                color: colors.darkGround ? colors.button : colors.shadow,
-                letterSpacing: 2.5,
+            padding: const EdgeInsets.only(top: 6),
+            child: SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  englishName,
+                  key: const ValueKey('selected-game-english-name'),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: MosiFonts.grotesk(
+                    size: 16,
+                    weight: FontWeight.w700,
+                    color: colors.darkGround ? colors.button : colors.shadow,
+                    letterSpacing: 2.2,
+                  ),
+                ),
               ),
             ),
           ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
+        const SizedBox(height: 18),
+        Row(
+          key: const ValueKey('selected-game-metrics'),
           children: [
             if (gameInfo.playTime > 0)
-              MosiPill(
-                label: GameLocale.select(
-                  ko: '${gameInfo.playTime}분',
-                  en: '${gameInfo.playTime} min',
-                  zhHans: '${gameInfo.playTime} 分钟',
-                  zhHant: '${gameInfo.playTime} 分鐘',
+              Expanded(
+                child: _SelectedGameMetric(
+                  key: const ValueKey('selected-game-time'),
+                  label: GameLocale.select(
+                    ko: '${gameInfo.playTime}분',
+                    en: '${gameInfo.playTime} min',
+                    zhHans: '${gameInfo.playTime} 分钟',
+                    zhHant: '${gameInfo.playTime} 分鐘',
+                  ),
+                  color: colors.fg,
                 ),
-                fontSize: 13,
-                color: colors.fg,
-                borderColor: colors.fg,
               ),
+            if (gameInfo.playTime > 0 && gameInfo.minPlayers > 0)
+              const SizedBox(width: 10),
             if (gameInfo.minPlayers > 0)
-              MosiPill(
-                label: GameLocale.select(
-                  ko: '${gameInfo.minPlayers}–${gameInfo.maxPlayers}명',
-                  en: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} players',
-                  zhHans: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} 人',
-                  zhHant: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} 人',
+              Expanded(
+                child: _SelectedGameMetric(
+                  key: const ValueKey('selected-game-player-count'),
+                  label: GameLocale.select(
+                    ko: '${gameInfo.minPlayers}–${gameInfo.maxPlayers}명',
+                    en: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} players',
+                    zhHans: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} 人',
+                    zhHant: '${gameInfo.minPlayers}–${gameInfo.maxPlayers} 人',
+                  ),
+                  color: colors.fg,
                 ),
-                fontSize: 13,
-                color: colors.fg,
-                borderColor: colors.fg,
               ),
           ],
         ),
-        const SizedBox(height: 14),
-        Text(
-          gameInfo.localizedDescription(locale),
+      ],
+    );
+  }
+}
+
+/// 시간과 인원은 같은 크기의 가로 배지로 고정합니다. 긴 번역은 배지 안에서
+/// 한 줄을 유지한 채 필요한 만큼만 축소됩니다.
+class _SelectedGameMetric extends StatelessWidget {
+  const _SelectedGameMetric({
+    super.key,
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        border: Border.all(color: color, width: 2.5),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
           style: MosiFonts.sans(
-            color: colors.fg.withValues(alpha: .82),
-            size: 13,
-            height: 1.55,
+            locale: Localizations.maybeLocaleOf(context),
+            size: 18,
+            weight: FontWeight.w800,
+            color: color,
+            height: 1.1,
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1861,9 +1881,9 @@ class _WaitingPlayersBar extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
         20,
-        12,
+        16,
         20,
-        14 + MediaQuery.paddingOf(context).bottom,
+        20 + MediaQuery.paddingOf(context).bottom,
       ),
       decoration: const BoxDecoration(
         color: MosiColors.white,
@@ -1912,7 +1932,7 @@ class _WaitingPlayersBar extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           if (players.isEmpty)
             Text(
               '아직 참가자가 없습니다.'.localized,
@@ -1920,7 +1940,7 @@ class _WaitingPlayersBar extends StatelessWidget {
             )
           else
             SizedBox(
-              height: 58 + nameHeight,
+              height: 76 + nameHeight,
               child: ListView.separated(
                 key: const Key('waiting-players-scroll'),
                 scrollDirection: Axis.horizontal,
@@ -1940,7 +1960,7 @@ class _WaitingPlayersBar extends StatelessWidget {
                     ),
                     excludeSemantics: true,
                     child: SizedBox(
-                      width: 60,
+                      width: 76,
                       child: Column(
                         children: [
                           Stack(
@@ -1952,19 +1972,19 @@ class _WaitingPlayersBar extends StatelessWidget {
                               Opacity(
                                 opacity: player.isConnected ? 1 : .45,
                                 child: Container(
-                                  padding: const EdgeInsets.all(2),
+                                  padding: const EdgeInsets.all(3),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: player.isConnected
                                           ? colors.button
                                           : MosiColors.navyFaint,
-                                      width: 2,
+                                      width: 3,
                                     ),
                                   ),
                                   child: MosiFace(
                                     characterId: player.characterId,
-                                    size: 42,
+                                    size: 56,
                                     ring: true,
                                   ),
                                 ),

@@ -1,22 +1,42 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project00/platform/update/app_update_gate.dart';
+
+var _probeBuilds = 0;
+
+class _AppContentProbe extends StatelessWidget {
+  const _AppContentProbe();
+
+  @override
+  Widget build(BuildContext context) {
+    _probeBuilds += 1;
+    return const Text('lobby');
+  }
+}
 
 Widget _app({
   required Future<int?> Function() minimum,
   required Future<int?> Function() current,
   Future<void> Function()? openStore,
+  bool initialUpdateRequired = false,
+  bool checkOnStart = true,
 }) => MaterialApp(
   builder: (context, child) => AppUpdateGate(
     readMinimumBuild: minimum,
     readCurrentBuild: current,
     openStore: openStore,
+    initialUpdateRequired: initialUpdateRequired,
+    checkOnStart: checkOnStart,
     child: child!,
   ),
-  home: const Scaffold(body: Text('lobby')),
+  home: const Scaffold(body: _AppContentProbe()),
 );
 
 void main() {
+  setUp(() => _probeBuilds = 0);
+
   test('플랫폼별 최소 빌드 번호를 읽고 잘못된 값은 무시한다', () {
     const data = {
       'minBuild': {'android': 8, 'ios': 9},
@@ -43,6 +63,58 @@ void main() {
     expect(isAppUpdateRequired(currentBuild: 9, minimumBuild: 8), isFalse);
     expect(isAppUpdateRequired(currentBuild: null, minimumBuild: 8), isFalse);
     expect(isAppUpdateRequired(currentBuild: 7, minimumBuild: null), isFalse);
+  });
+
+  test('시작 업데이트 검사는 현재 빌드와 최소 빌드를 함께 판정한다', () async {
+    expect(
+      await readAppUpdateRequired(
+        readCurrentBuild: () async => 7,
+        readMinimumBuild: () async => 8,
+      ),
+      isTrue,
+    );
+    expect(
+      await readAppUpdateRequired(
+        readCurrentBuild: () async => 8,
+        readMinimumBuild: () async => 8,
+      ),
+      isFalse,
+    );
+  });
+
+  test('업데이트 확인이 제한 시간을 넘으면 시작 흐름이 실패로 처리할 수 있다', () async {
+    await expectLater(
+      readAppUpdateRequired(
+        readCurrentBuild: () async => 7,
+        readMinimumBuild: () => Completer<int?>().future,
+        timeout: Duration.zero,
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+  });
+
+  testWidgets('시작에서 확인한 필수 업데이트는 앱 화면보다 먼저 표시한다', (tester) async {
+    var reads = 0;
+    await tester.pumpWidget(
+      _app(
+        minimum: () async {
+          reads += 1;
+          return 8;
+        },
+        current: () async {
+          reads += 1;
+          return 7;
+        },
+        initialUpdateRequired: true,
+        checkOnStart: false,
+      ),
+    );
+    await tester.pump();
+
+    expect(reads, 0);
+    expect(_probeBuilds, 0);
+    expect(find.text('lobby'), findsNothing);
+    expect(find.text('업데이트가 필요해요'), findsOneWidget);
   });
 
   testWidgets('최소 빌드보다 낮으면 업데이트 화면을 덮고 스토어를 연다', (tester) async {

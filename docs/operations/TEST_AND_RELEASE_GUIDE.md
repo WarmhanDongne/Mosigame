@@ -6,20 +6,18 @@
 ## 1. 흐름
 
 ```text
-개발자_기능 → 개발자 통합 → TEST → develop → 스토어 배포 → main
+jinsung 작업 → TEST → develop → 스토어 배포 → main
 ```
 
-1. 기능 개발이 끝나면 같은 기능 브랜치에서
-   [`MOSIGAME_SYSTEM_MAP.html`](../engineering/MOSIGAME_SYSTEM_MAP.html)을 현재 코드에 맞게
-   갱신합니다.
-2. Map 갱신을 포함한 기능 브랜치를 개발자 브랜치에 병합합니다.
-3. 최신 원격 `TEST`와 `develop`을 fetch합니다.
-4. 개발자 후보를 `TEST`에서 테스트 Firebase로 실행합니다.
-5. Cloud Functions 변경이 있으면 테스트 프로젝트에 먼저 배포합니다.
-6. 휴대폰·태블릿 실기기에서 관련 흐름과 혼합 버전 호환성을 확인합니다.
-7. 사용자 컨펌 후 검증된 기능 커밋을 `develop`에 병합합니다.
-8. 스토어 제출 전 FULL과 최종 실기기 체크를 다시 수행합니다.
-9. 실제 App Store·Google Play 배포 완료 뒤 `develop`을 `main`에 반영합니다.
+1. `jinsung`에서 작업하고 [`MOSIGAME_SYSTEM_MAP.html`](../engineering/MOSIGAME_SYSTEM_MAP.html)을
+   현재 코드에 맞게 갱신합니다.
+2. 최신 원격 `TEST`와 `develop`을 fetch합니다.
+3. `jinsung` 후보를 `TEST`에서 테스트 Firebase로 실행합니다.
+4. Cloud Functions 변경이 있으면 테스트 프로젝트에 먼저 배포합니다.
+5. 휴대폰·태블릿 실기기에서 관련 흐름과 혼합 버전 호환성을 확인합니다.
+6. 사용자 컨펌 후 검증된 `jinsung` 커밋을 `develop`에 병합합니다.
+7. 스토어 제출 전 FULL과 최종 실기기 체크를 다시 수행합니다.
+8. 실제 App Store·Google Play 배포 완료 뒤 `develop`을 `main`에 반영합니다.
 
 ## 2. TEST 앱 실행
 
