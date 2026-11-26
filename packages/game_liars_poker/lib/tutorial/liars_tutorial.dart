@@ -29,7 +29,6 @@ import 'package:game_kit/player_layouts/services/player_slot_positions.dart';
 import 'package:game_kit/tutorial/game_tutorial.dart';
 import 'package:game_liars_poker/game_assets.dart';
 import 'package:game_liars_poker/game_theme.dart';
-import 'package:game_liars_poker/phone/widgets/truth_count_hint.dart';
 import 'package:game_liars_poker/gen/assets.gen.dart';
 import 'package:game_liars_poker/shared/widgets/card_face_view.dart';
 import 'package:game_liars_poker/shared/widgets/pressable_button.dart';

@@ -138,7 +138,11 @@ class RoomCodeBoxes extends StatelessWidget {
 /// 프레임부터 자판을 실제로 hit-test할 수 있어, 손가락을 떼자마자 키를
 /// 누르는 경우에도 입력이 누락되지 않습니다.
 class RoomCodeKeypadTransition extends StatelessWidget {
-  const RoomCodeKeypadTransition({required this.visible, required this.child});
+  const RoomCodeKeypadTransition({
+    super.key,
+    required this.visible,
+    required this.child,
+  });
 
   final bool visible;
   final Widget child;
@@ -161,10 +165,7 @@ class RoomCodeKeypadTransition extends StatelessWidget {
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.topCenter,
         clipBehavior: Clip.none,
-        children: <Widget>[
-          ...previousChildren,
-          if (currentChild != null) currentChild,
-        ],
+        children: <Widget>[...previousChildren, ?currentChild],
       ),
       child: visible
           ? KeyedSubtree(key: const ValueKey('keyboard-visible'), child: child)
@@ -176,6 +177,7 @@ class RoomCodeKeypadTransition extends StatelessWidget {
 /// 방 코드 전용 자판입니다. 숫자는 노란 키, 영문 대문자는 흰 키입니다.
 class RoomCodeKeypad extends StatelessWidget {
   const RoomCodeKeypad({
+    super.key,
     required this.length,
     required this.enabled,
     required this.onKey,
@@ -367,7 +369,7 @@ class _CodeKeyState extends State<_CodeKey> {
 }
 
 class InlineJoinFeedback extends StatelessWidget {
-  const InlineJoinFeedback({required this.feedback});
+  const InlineJoinFeedback({super.key, required this.feedback});
 
   final RoomJoinFeedback feedback;
 
@@ -398,7 +400,7 @@ class InlineJoinFeedback extends StatelessWidget {
 }
 
 class ScannerFrame extends StatelessWidget {
-  const ScannerFrame();
+  const ScannerFrame({super.key});
 
   @override
   Widget build(BuildContext context) {

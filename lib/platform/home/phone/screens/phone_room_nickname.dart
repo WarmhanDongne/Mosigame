@@ -443,8 +443,7 @@ class _PhoneRoomNicknameState extends State<PhoneRoomNickname> {
                                   key: const Key('room-character-grid'),
                                   shrinkWrap: true,
                                   padding: EdgeInsets.zero,
-                                  physics:
-                                      const NeverScrollableScrollPhysics(),
+                                  physics: const NeverScrollableScrollPhysics(),
                                   itemCount: roomCharacters.length,
                                   gridDelegate:
                                       const SliverGridDelegateWithFixedCrossAxisCount(

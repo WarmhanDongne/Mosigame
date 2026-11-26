@@ -515,11 +515,7 @@ class _PhoneRoomJoinState extends State<PhoneRoomJoin>
     ],
   );
 
-  Widget _buildCodeLead() => Column(
-    children: [
-      const SizedBox(height: 4),
-    ],
-  );
+  Widget _buildCodeLead() => Column(children: [const SizedBox(height: 4)]);
 
   Widget _buildScanner() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 22),

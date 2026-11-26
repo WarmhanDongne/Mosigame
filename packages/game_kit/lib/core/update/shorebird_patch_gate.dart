@@ -196,6 +196,8 @@ class _ShorebirdPatchGateState extends State<ShorebirdPatchGate>
         buttonDelay: Duration.zero,
         buttonLabel: '계속하기',
         onSkip: _continueToApp,
+        // 다 받았으니 금 간 로고 대신 온전한 로고를 보여 줍니다.
+        restored: true,
       ),
     };
   }

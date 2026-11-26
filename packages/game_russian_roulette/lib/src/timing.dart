@@ -93,29 +93,34 @@ abstract final class RussianRouletteTiming {
   }
 }
 
-/// 회전 단계에서 아직 재생해야 할 각 칸의 효과음 시작 지연입니다.
+/// 화면이 실제로 그려진 시간만 누적하는 러시안 룰렛 연출 시계입니다.
 ///
-/// 이미 끝난 칸은 건너뛰고, 현재 총구 이동이 진행 중이면 첫 효과음을 즉시
-/// 재생합니다. 이후 효과음은 각 총구 이동 시작 시점에 한 번씩 재생합니다.
-List<Duration> rouletteRotationAudioDelays(Duration elapsed, int spinCount) {
-  final count = spinCount.clamp(0, 8);
-  if (count == 0) return const [];
+/// Ticker의 절대 경과 시간을 그대로 쓰면 앱 비활성화나 긴 프레임 뒤에 연출이
+/// 중간으로 점프합니다. 한 프레임의 최대 증가량을 제한하고, 비활성화 중에는
+/// 시간을 누적하지 않아 시작 연출과 총구 한 칸 이동을 빠뜨리지 않습니다.
+class RoulettePresentationClock {
+  static const maxFrameDelta = Duration(milliseconds: 50);
 
-  final elapsedMs = elapsed.inMilliseconds.clamp(0, 1 << 31).toInt();
-  final leadMs = RussianRouletteTiming.rotationLead.inMilliseconds;
-  final stepMs = RussianRouletteTiming.rotationStep.inMilliseconds;
-  final turnMs = RussianRouletteTiming.gunTurn.inMilliseconds;
-  final delays = <Duration>[];
+  Duration? _lastTick;
+  int _nowMilliseconds = 0;
 
-  for (var step = 0; step < count; step++) {
-    final startMs = leadMs + stepMs * step;
-    if (elapsedMs < startMs) {
-      delays.add(Duration(milliseconds: startMs - elapsedMs));
-    } else if (elapsedMs < startMs + turnMs) {
-      delays.add(Duration.zero);
-    }
+  int get nowMilliseconds => _nowMilliseconds;
+
+  void detach() {
+    _lastTick = null;
   }
-  return delays;
+
+  void tick(Duration tickerElapsed, {required bool active}) {
+    final previous = _lastTick;
+    _lastTick = tickerElapsed;
+    if (!active || previous == null) return;
+
+    final delta = tickerElapsed - previous;
+    if (delta <= Duration.zero) return;
+    _nowMilliseconds += delta.inMilliseconds
+        .clamp(0, maxFrameDelta.inMilliseconds)
+        .toInt();
+  }
 }
 
 /// 태블릿이 새 게임의 시작 연출을 처음부터 재생해야 하는지 판정합니다.
@@ -126,16 +131,19 @@ List<Duration> rouletteRotationAudioDelays(Duration elapsed, int spinCount) {
 bool rouletteShouldStartIntro(
   RussianRouletteView game, {
   required int presentedStartedAt,
-  required int serverNow,
+  required int? serverNow,
 }) {
   if (game.round != 1 ||
       game.phase != 'selecting' ||
       game.paused ||
       game.startedAt <= 0 ||
-      game.startedAt == presentedStartedAt ||
-      game.deadlineAt <= serverNow) {
+      game.startedAt == presentedStartedAt) {
     return false;
   }
+  // 서버 시각 보정이 준비되기 전에는 기기 시계를 대신 쓰지 않습니다. 새 게임
+  // 연출을 생략하는 것보다 한 번 온전히 보여 주는 쪽으로 안전하게 판정합니다.
+  if (serverNow == null) return true;
+  if (game.deadlineAt <= serverNow) return false;
   return game.deadlineAt - serverNow >
       RussianRouletteTiming.introMinimumRemaining.inMilliseconds;
 }

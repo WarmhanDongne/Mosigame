@@ -224,6 +224,9 @@ abstract class GameTutorial {
   /// 그 밖의 이유로 닫히면 대기 화면의 세로로 되돌립니다.
   bool get phoneLandscape => false;
 
+  /// 끝 화면(목표 문구·다시 보기·게임 시작!)의 색과 글꼴입니다.
+  TutorialEndStyle get autoEndStyle => const TutorialEndStyle();
+
   /// [autoPlay]일 때 [step] 단계를 보여 주는 시간입니다.
   Duration autoDuration(int step) => const Duration(seconds: 5);
 
@@ -934,6 +937,7 @@ class _GameTutorialTabletHostState extends State<GameTutorialTabletHost> {
                         child: TutorialAutoEnd(
                           key: ValueKey('auto-end-${session.round}'),
                           slogan: _tutorial.buildAutoEndSlogan(context),
+                        style: _tutorial.autoEndStyle,
                           countdown: _autoEndCountdown,
                           onReplay: _starting ? null : _replay,
                         ),
@@ -1860,6 +1864,7 @@ class TutorialPhaseCaption extends StatelessWidget {
     this.sub,
     this.subStyle,
     this.textAlign = TextAlign.center,
+    this.riseOffset = 18,
   });
 
   /// (문구, 나타나는 시각)입니다. 첫 문구는 보통 0초입니다.
@@ -1870,6 +1875,9 @@ class TutorialPhaseCaption extends StatelessWidget {
   final String? sub;
   final TextStyle? subStyle;
   final TextAlign textAlign;
+
+  /// 다음 문구가 올라오는 거리입니다(시안 rise 18px · qRise 14px).
+  final double riseOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -1884,11 +1892,14 @@ class TutorialPhaseCaption extends StatelessWidget {
         for (var i = 0; i < phases.length; i++)
           TutorialTimed(
             from: phases[i].$2,
-            to: i + 1 < phases.length ? phases[i + 1].$2 : null,
+            to: i + 1 < phases.length
+                ? phases[i + 1].$2 - const Duration(milliseconds: 200)
+                : null,
+            fade: const Duration(milliseconds: 300),
             child: TutorialAppear(
               delay: phases[i].$2,
-              offset: i == 0 ? Offset.zero : const Offset(0, 14),
-              duration: const Duration(milliseconds: 360),
+              offset: i == 0 ? Offset.zero : Offset(0, riseOffset),
+              duration: const Duration(milliseconds: 400),
               curve: Curves.easeOut,
               child: Column(
                 crossAxisAlignment: cross,
@@ -1977,95 +1988,168 @@ class TutorialAutoSkipButton extends StatelessWidget {
 }
 
 //==========[ 자동 진행 끝 화면(태블릿) ]==========
-/// 목표 문구 아래 '다시 보기' 버튼 안에서 5→1을 세고, 다 세면 '게임 시작!'을
-/// 띄웁니다. 실제 게임 시작은 진행자가 맡습니다.
-class TutorialAutoEnd extends StatefulWidget {
+/// 끝 화면의 게임별 색과 글꼴입니다. 시안과 같은 값을 넣어 주세요.
+class TutorialEndStyle {
+  const TutorialEndStyle({
+    this.ink = _ink,
+    this.cream = _cream,
+    this.accent = _sun,
+    this.goBg = _lime,
+    this.shade = const Color(0xCC080418),
+    this.numStyle,
+    this.labelStyle,
+    this.goStyle,
+  });
+
+  /// 글자·테두리·그림자 색입니다.
+  final Color ink;
+
+  /// '다시 보기' 버튼 바탕색입니다.
+  final Color cream;
+
+  /// 숫자를 세는 동그라미 바탕색입니다.
+  final Color accent;
+
+  /// '게임 시작!' 바탕색입니다.
+  final Color goBg;
+
+  /// 화면을 덮는 색입니다.
+  final Color shade;
+
+  /// 동그라미 안 숫자(26px)입니다.
+  final TextStyle? numStyle;
+
+  /// '다시 보기'(20px)입니다.
+  final TextStyle? labelStyle;
+
+  /// '게임 시작!'(38px)입니다.
+  final TextStyle? goStyle;
+}
+
+/// 목표 문구 아래 '다시 보기' 버튼 안에서 5→1을 세고, 다 세면 '게임 시작!'으로
+/// 바뀝니다. 시안과 같은 시각(0.6초부터 1초마다 · 5.6초에 사라지고 5.7초에
+/// 등장)으로 움직입니다. 실제 게임 시작은 진행자가 맡습니다.
+class TutorialAutoEnd extends StatelessWidget {
   const TutorialAutoEnd({
     super.key,
     required this.slogan,
     required this.countdown,
     required this.onReplay,
+    this.style = const TutorialEndStyle(),
   });
 
   final Widget slogan;
   final Duration countdown;
   final VoidCallback? onReplay;
+  final TutorialEndStyle style;
+
+  /// 첫 숫자가 보이는 시각입니다.
+  static const _first = Duration(milliseconds: 600);
 
   @override
-  State<TutorialAutoEnd> createState() => _TutorialAutoEndState();
-}
-
-class _TutorialAutoEndState extends State<TutorialAutoEnd> {
-  late int _left = widget.countdown.inSeconds;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() => _left = math.max(0, _left - 1));
-      if (_left == 0) timer.cancel();
-    });
+  Widget build(BuildContext context) {
+    final seconds = math.max(1, countdown.inSeconds);
+    final fadeAt = _first + Duration(seconds: seconds);
+    final goAt = fadeAt + const Duration(milliseconds: 100);
+    return ColoredBox(
+      color: style.shade,
+      child: Center(
+        child: TutorialAppear(
+          duration: const Duration(milliseconds: 500),
+          fromScale: .6,
+          offset: Offset.zero,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              slogan,
+              const SizedBox(height: 30),
+              SizedBox(
+                height: 64,
+                child: Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    TutorialTimed(
+                      to: fadeAt,
+                      fade: const Duration(milliseconds: 250),
+                      child: _replay(seconds),
+                    ),
+                    TutorialLater(
+                      at: goAt,
+                      child: TutorialAppear(
+                        fromScale: .6,
+                        offset: Offset.zero,
+                        child: _go(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xD9080418),
-    child: Center(
-      child: TutorialAppear(
-        fromScale: .85,
-        offset: Offset.zero,
-        child: Column(
+  Widget _replay(int seconds) => Semantics(
+    button: true,
+    label: _t('튜토리얼 다시 보기', 'Watch again', '再看一遍', '再看一遍'),
+    child: GestureDetector(
+      onTap: onReplay,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.fromLTRB(8, 0, 24, 0),
+        decoration: BoxDecoration(
+          color: style.cream,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: style.ink, width: 3),
+          boxShadow: [BoxShadow(color: style.ink, offset: const Offset(0, 5))],
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            widget.slogan,
-            const SizedBox(height: 40),
             SizedBox(
-              height: 76,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 320),
-                transitionBuilder: (child, animation) => ScaleTransition(
-                  scale: Tween<double>(begin: .6, end: 1).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutBack,
-                    ),
+              width: 44,
+              height: 44,
+              child: ClipOval(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: style.accent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: style.ink, width: 3),
                   ),
-                  child: FadeTransition(opacity: animation, child: child),
-                ),
-                child: _left > 0
-                    ? _replayButton()
-                    : Container(
-                        key: const ValueKey('go'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 36,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _lime,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _ink, width: 4),
-                          boxShadow: const [
-                            BoxShadow(color: _ink, offset: Offset(0, 6)),
-                          ],
-                        ),
-                        child: Text(
-                          _t('게임 시작!', 'Game start!', '游戏开始！', '遊戲開始！'),
-                          style: const TextStyle(
-                            color: _ink,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 44,
+                  child: Stack(
+                    children: [
+                      for (var k = 0; k < seconds; k++)
+                        Positioned.fill(
+                          child: _CountNumber(
+                            text: '${seconds - k}',
+                            delay: _first + Duration(seconds: k),
+                            style:
+                                style.numStyle ??
+                                TextStyle(
+                                  color: style.ink,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 26,
+                                  height: 1,
+                                ),
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                ),
               ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _t('다시 보기', 'Watch again', '再看一遍', '再看一遍'),
+              style:
+                  style.labelStyle ??
+                  TextStyle(
+                    color: style.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
             ),
           ],
         ),
@@ -2073,63 +2157,97 @@ class _TutorialAutoEndState extends State<TutorialAutoEnd> {
     ),
   );
 
-  Widget _replayButton() => Semantics(
-    key: const ValueKey('replay'),
-    button: true,
-    label: _t('튜토리얼 다시 보기', 'Watch again', '再看一遍', '再看一遍'),
-    child: GestureDetector(
-      onTap: widget.onReplay,
-      child: Container(
-        height: 70,
-        padding: const EdgeInsets.fromLTRB(9, 0, 26, 0),
-        decoration: BoxDecoration(
-          color: _cream,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _ink, width: 3),
-          boxShadow: const [BoxShadow(color: _ink, offset: Offset(0, 5))],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _sun,
-                shape: BoxShape.circle,
-                border: Border.all(color: _ink, width: 3),
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                transitionBuilder: (child, animation) => ScaleTransition(
-                  scale: Tween<double>(begin: 1.6, end: 1).animate(animation),
-                  child: FadeTransition(opacity: animation, child: child),
-                ),
-                child: Text(
-                  '$_left',
-                  key: ValueKey(_left),
-                  style: const TextStyle(
-                    color: _ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 30,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              _t('다시 보기', 'Watch again', '再看一遍', '再看一遍'),
-              style: const TextStyle(
-                color: _ink,
-                fontWeight: FontWeight.w800,
-                fontSize: 24,
-              ),
-            ),
-          ],
-        ),
-      ),
+  Widget _go() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 4),
+    decoration: BoxDecoration(
+      color: style.goBg,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: style.ink, width: 4),
+      boxShadow: [BoxShadow(color: style.ink, offset: const Offset(0, 6))],
     ),
+    child: Text(
+      _t('게임 시작!', 'Game start!', '游戏开始！', '遊戲開始！'),
+      style:
+          style.goStyle ??
+          TextStyle(
+            color: style.ink,
+            fontWeight: FontWeight.w900,
+            fontSize: 38,
+            height: 1.2,
+          ),
+    ),
+  );
+}
+
+/// 1초 동안 커졌다 사라지는 숫자 하나입니다(시안 cdNum).
+class _CountNumber extends StatefulWidget {
+  const _CountNumber({
+    required this.text,
+    required this.delay,
+    required this.style,
+  });
+
+  final String text;
+  final Duration delay;
+  final TextStyle style;
+
+  @override
+  State<_CountNumber> createState() => _CountNumberState();
+}
+
+class _CountNumberState extends State<_CountNumber>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 1),
+  );
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(widget.delay, () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    builder: (context, _) {
+      final t = _c.value;
+      double opacity;
+      double scale;
+      if (t <= 0) {
+        opacity = 0;
+        scale = 1.6;
+      } else if (t < .15) {
+        final k = t / .15;
+        opacity = k;
+        scale = 1.6 - .6 * k;
+      } else if (t < .85) {
+        opacity = 1;
+        scale = 1;
+      } else {
+        final k = (t - .85) / .15;
+        opacity = 1 - k;
+        scale = 1 - .3 * k;
+      }
+      return Opacity(
+        opacity: opacity.clamp(0, 1),
+        child: Transform.scale(
+          scale: scale,
+          child: Center(child: Text(widget.text, style: widget.style)),
+        ),
+      );
+    },
   );
 }
 
@@ -2144,6 +2262,8 @@ class TutorialLookAtTablet extends StatefulWidget {
     this.titleStyle,
     this.tabletWidth = 200,
     this.glow = const Color(0xFFE2C27E),
+    this.titleGap = 26,
+    this.bodyGap = 16,
   });
 
   final String? title;
@@ -2153,6 +2273,10 @@ class TutorialLookAtTablet extends StatefulWidget {
   final TextStyle? titleStyle;
   final double tabletWidth;
   final Color glow;
+
+  /// 태블릿 그림과 제목, 제목과 안내 사이 간격입니다.
+  final double titleGap;
+  final double bodyGap;
 
   @override
   State<TutorialLookAtTablet> createState() => _TutorialLookAtTabletState();
@@ -2206,7 +2330,7 @@ class _TutorialLookAtTabletState extends State<TutorialLookAtTablet>
                 painter: const TutorialTabletPainter(),
               ),
             ),
-            const SizedBox(height: 26),
+            SizedBox(height: widget.titleGap),
             Text(
               widget.title ??
                   _t('태블릿을 봐 주세요!', 'Look at the tablet!', '请看平板！', '請看平板！'),
@@ -2222,7 +2346,7 @@ class _TutorialLookAtTabletState extends State<TutorialLookAtTablet>
                   ),
             ),
             if (widget.body != null) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: widget.bodyGap),
               widget.body!,
             ],
           ],
